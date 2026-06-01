@@ -1,0 +1,363 @@
+<script lang="ts">
+  import type { ActiveFilters, Bootstrap, SearchResponse, SortKey } from './lib/types';
+  import { SearchApi } from './lib/api';
+  import { t } from './lib/i18n';
+  import SearchBox from './components/SearchBox.svelte';
+  import SortSelect from './components/SortSelect.svelte';
+  import FacetPanel from './components/FacetPanel.svelte';
+  import ResultsList from './components/ResultsList.svelte';
+
+  /**
+   * One instance per mounted block. Owns the search state (query, page, sort,
+   * filters) in memory — there's no URL sync because a page may host several
+   * blocks that would otherwise fight over the address bar. Seeds from the
+   * server-rendered first page so it paints instantly.
+   */
+
+  interface Props {
+    bootstrap: Bootstrap;
+  }
+
+  const { bootstrap }: Props = $props();
+
+  const api = $derived.by(() => new SearchApi(bootstrap.endpoints));
+
+  // svelte-ignore state_referenced_locally
+  const initialResponse =
+    bootstrap.initial_response && Array.isArray(bootstrap.initial_response.hits)
+      ? bootstrap.initial_response
+      : null;
+
+  let query = $state('');
+  let page = $state(1);
+  // svelte-ignore state_referenced_locally
+  let sort = $state<SortKey>(bootstrap.default_sort ?? 'relevance');
+  let filters = $state<ActiveFilters>({});
+
+  let response = $state<SearchResponse | null>(initialResponse);
+  let isLoading = $state(false);
+  let error = $state<string | null>(null);
+
+  // The SSR snapshot already reflects the pristine browse state, so skip the
+  // first reactive fetch when we have it.
+  let skipNextFetch = initialResponse != null && initialResponse.available;
+  let reqId = 0;
+
+  $effect(() => {
+    const q = query;
+    const p = page;
+    const s = sort;
+    const f = filters;
+
+    if (skipNextFetch) {
+      skipNextFetch = false;
+      return;
+    }
+
+    // Always request counts for the configured facets plus any currently
+    // selected field, so a selected value never vanishes from the sidebar.
+    const facetFields = Array.from(new Set([...bootstrap.facets, ...Object.keys(f)]));
+    const myId = ++reqId;
+    isLoading = true;
+    error = null;
+
+    api
+      .search({
+        q,
+        page: p,
+        per_page: bootstrap.per_page,
+        sort: s,
+        filters: f,
+        facets: facetFields,
+        locked_filter: bootstrap.locked_filter,
+      })
+      .then((r) => {
+        if (myId !== reqId) {
+          return; // a newer search has superseded this one
+        }
+        response = r;
+      })
+      .catch((e: Error) => {
+        if (myId !== reqId) {
+          return;
+        }
+        console.error('[dre-search] search failed', e);
+        error = e.message;
+        response = null;
+      })
+      .finally(() => {
+        if (myId === reqId) {
+          isLoading = false;
+        }
+      });
+  });
+
+  const facets = $derived(response?.facets ?? []);
+  const activeCount = $derived(
+    Object.values(filters).reduce((n, values) => n + (values?.length ?? 0), 0),
+  );
+
+  function handleQueryChange(next: string): void {
+    query = next;
+    page = 1;
+  }
+
+  function handleSortChange(next: SortKey): void {
+    sort = next;
+    page = 1;
+  }
+
+  function handleFacetToggle(field: string, value: string, checked: boolean): void {
+    const current = filters[field] ?? [];
+    if (checked) {
+      if (!current.includes(value)) {
+        filters = { ...filters, [field]: [...current, value] };
+      }
+    } else {
+      const kept = current.filter((v) => v !== value);
+      if (kept.length === 0) {
+        const next = { ...filters };
+        delete next[field];
+        filters = next;
+      } else {
+        filters = { ...filters, [field]: kept };
+      }
+    }
+    page = 1;
+  }
+
+  function handleClearAll(): void {
+    filters = {};
+    page = 1;
+  }
+
+  function handlePageChange(next: number): void {
+    page = next;
+  }
+</script>
+
+<div class="dre-search">
+  <SearchBox
+    value={query}
+    placeholder={t('search_placeholder')}
+    {api}
+    itemUrlBase={bootstrap.item_url_base}
+    onQueryChange={handleQueryChange}
+  />
+
+  {#if error}
+    <div class="dre-search__error" role="alert">
+      <strong>{t('search_unavailable')}</strong>
+      <span>{error}</span>
+    </div>
+  {/if}
+
+  {#if response && !response.available}
+    <div class="dre-search__notice" role="status">
+      <strong>{t('search_unavailable')}</strong>
+      <p>{t('search_unavailable_hint')}</p>
+    </div>
+  {:else}
+    <div
+      class="dre-search__layout"
+      class:dre-search__layout--no-facets={bootstrap.facets.length === 0}
+    >
+      {#if bootstrap.facets.length > 0}
+        <aside class="dre-search__facets" aria-label={t('filters')}>
+          <FacetPanel
+            {facets}
+            order={bootstrap.facets}
+            labels={bootstrap.facet_labels}
+            selected={filters}
+            {activeCount}
+            onToggle={handleFacetToggle}
+            onClearAll={handleClearAll}
+          />
+        </aside>
+      {/if}
+
+      <div class="dre-search__results" aria-busy={isLoading}>
+        {#if response}
+          <header class="dre-search__toolbar" aria-live="polite">
+            <span class="dre-search__count">
+              {#if response.found > 0}
+                <strong>{response.found.toLocaleString()}</strong>
+                {response.found === 1 ? t('result_one') : t('result_other')}
+              {:else}
+                {t('no_results_title')}
+              {/if}
+            </span>
+            <SortSelect value={sort} onChange={handleSortChange} />
+          </header>
+        {/if}
+
+        {#if isLoading && !response}
+          <p class="dre-search__status">{t('searching')}</p>
+        {:else if response && response.found === 0}
+          <div class="dre-search__empty" role="status">
+            <strong>{t('no_results_title')}</strong>
+            {#if activeCount > 0}
+              <p>{t('try_removing_filter')}</p>
+              <button type="button" class="dre-search__clear-link" onclick={handleClearAll}>
+                {t('clear_all_filters')}
+              </button>
+            {:else if query.trim() !== ''}
+              <p>{t('try_broader_query')}</p>
+            {:else}
+              <p>{t('corpus_empty')}</p>
+            {/if}
+          </div>
+        {:else if response}
+          <ResultsList
+            hits={response.hits}
+            found={response.found}
+            page={response.page}
+            perPage={bootstrap.per_page}
+            itemUrlBase={bootstrap.item_url_base}
+            onPageChange={handlePageChange}
+          />
+        {/if}
+      </div>
+    </div>
+  {/if}
+</div>
+
+<style>
+  .dre-search {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md, 1rem);
+    color: var(--ink, #222);
+    font-size: var(--text-base, 1rem);
+  }
+
+  .dre-search__layout {
+    display: grid;
+    grid-template-columns: minmax(14rem, 17rem) 1fr;
+    gap: var(--space-xl, 2rem);
+    align-items: start;
+  }
+  .dre-search__layout--no-facets {
+    grid-template-columns: 1fr;
+  }
+
+  .dre-search__facets {
+    position: sticky;
+    top: var(--space-md, 1rem);
+    align-self: start;
+    max-height: calc(100vh - var(--space-xl, 2rem));
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding-inline-end: var(--space-md, 1rem);
+    border-inline-end: 1px solid var(--border-light, #eee);
+  }
+
+  .dre-search__results {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md, 1rem);
+    min-width: 0;
+    transition: opacity var(--transition-base, 200ms ease);
+  }
+  .dre-search__results[aria-busy='true'] {
+    opacity: 0.65;
+  }
+
+  .dre-search__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md, 1rem);
+    flex-wrap: wrap;
+    padding-block-end: var(--space-sm, 0.5rem);
+    border-bottom: 1px solid var(--border-light, #eee);
+  }
+  .dre-search__count {
+    color: var(--muted, #666);
+    font-size: var(--text-sm, 0.9rem);
+    font-variant-numeric: tabular-nums;
+  }
+  .dre-search__count strong {
+    color: var(--ink-strong, var(--ink, #222));
+    font-size: var(--text-lg, 1.125rem);
+  }
+
+  .dre-search__error,
+  .dre-search__notice {
+    border-radius: var(--radius-md, 0.5rem);
+    padding: var(--space-md, 1rem);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs, 0.25rem);
+  }
+  .dre-search__error {
+    background: color-mix(in srgb, var(--error, #c0392b) 12%, var(--surface, #fff));
+    border: 1px solid color-mix(in srgb, var(--error, #c0392b) 35%, transparent);
+    color: var(--ink-strong, var(--ink, #222));
+  }
+  .dre-search__notice {
+    background: var(--surface-sunken, #f6f6f6);
+    border: 1px dashed var(--border, #ccc);
+    color: var(--muted, #555);
+    text-align: center;
+  }
+  .dre-search__notice p {
+    margin: 0;
+  }
+
+  .dre-search__status {
+    color: var(--muted, #666);
+    font-size: var(--text-sm, 0.9rem);
+    margin: 0;
+  }
+
+  .dre-search__empty {
+    background: var(--surface-sunken, #f9f9f9);
+    border: 1px dashed var(--border, #ccc);
+    border-radius: var(--radius-md, 0.5rem);
+    padding: var(--space-2xl, 3rem) var(--space-lg, 1.5rem);
+    text-align: center;
+    color: var(--muted, #666);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-sm, 0.5rem);
+  }
+  .dre-search__empty strong {
+    color: var(--ink-strong, var(--ink, #222));
+    font-size: var(--text-lg, 1.125rem);
+  }
+  .dre-search__empty p {
+    margin: 0;
+  }
+  .dre-search__clear-link {
+    background: none;
+    border: 1px solid var(--primary, #2a4d8f);
+    color: var(--primary, #2a4d8f);
+    border-radius: var(--radius-md, 0.5rem);
+    padding: 0.4rem 0.75rem;
+    font-size: var(--text-sm, 0.9rem);
+    cursor: pointer;
+    margin-top: var(--space-xs, 0.25rem);
+  }
+  .dre-search__clear-link:hover {
+    background: var(--primary, #2a4d8f);
+    color: var(--primary-contrast, #fff);
+  }
+
+  @media (max-width: 48rem) {
+    .dre-search__layout {
+      grid-template-columns: 1fr;
+      gap: var(--space-md, 1rem);
+    }
+    .dre-search__facets {
+      position: static;
+      max-height: none;
+      overflow: visible;
+      padding-inline-end: 0;
+      border-inline-end: none;
+      border-bottom: 1px solid var(--border-light, #eee);
+      padding-block-end: var(--space-md, 1rem);
+    }
+  }
+</style>

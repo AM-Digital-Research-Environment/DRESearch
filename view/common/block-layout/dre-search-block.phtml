@@ -1,0 +1,46 @@
+<?php
+/**
+ * @var \Laminas\View\Renderer\PhpRenderer $this
+ * @var \Omeka\Api\Representation\SitePageBlockRepresentation $block
+ * @var array $data
+ * @var array $bootstrap   Config blob the Svelte client reads on mount.
+ * @var string $title
+ * @var string $intro_html Admin-authored HTML (not user input).
+ *
+ * Mount contract (kept in sync with src/svelte/main.ts):
+ *   1. <div data-dre-search-root data-dre-block-id="..."> mount target + skeleton.
+ *   2. sibling <script type="application/json" id="dre-search-state-..."> bootstrap.
+ */
+$id = (string) (int) $block->id();
+?>
+<section class="dre-search-block" aria-label="<?= $this->escapeHtmlAttr($this->translate('Research search')) ?>">
+    <?php if ($title !== ''): ?>
+        <h2 class="dre-search-block__title"><?= $this->escapeHtml($title) ?></h2>
+    <?php endif; ?>
+
+    <?php if (trim($intro_html) !== ''): ?>
+        <div class="dre-search-block__intro"><?= $intro_html ?></div>
+    <?php endif; ?>
+
+    <noscript>
+        <p><?= $this->translate('Search requires JavaScript to be enabled.') ?></p>
+    </noscript>
+
+    <div
+        data-dre-search-root
+        data-dre-block-id="<?= $this->escapeHtmlAttr($id) ?>"
+        class="dre-search-block__root"
+        id="dre-search-root-<?= $this->escapeHtmlAttr($id) ?>"
+    >
+        <div class="dre-search-block__skeleton" aria-hidden="true">
+            <div class="dre-search-block__skeleton-input"></div>
+            <div class="dre-search-block__skeleton-results">
+                <?php for ($i = 0; $i < 3; $i++): ?>
+                    <div class="dre-search-block__skeleton-row"></div>
+                <?php endfor; ?>
+            </div>
+        </div>
+    </div>
+
+    <script type="application/json" id="dre-search-state-<?= $this->escapeHtmlAttr($id) ?>"><?= $this->dreBootstrapJson($bootstrap) ?></script>
+</section>

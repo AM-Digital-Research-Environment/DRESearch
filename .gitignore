@@ -1,0 +1,25 @@
+# PHP
+vendor/
+composer.lock
+
+# Node / Svelte build
+node_modules/
+.svelte-kit/
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local env / logs
+.env
+.env.local
+*.log
+.claude/
+
+# Notes:
+# - asset/dist/ IS tracked. The compiled Svelte bundle ships in the repo so
+#   production deployments don't need a Node toolchain — composer install +
+#   module activation is enough. Rebuild it with `npm run build` after editing
+#   anything under src/svelte/.

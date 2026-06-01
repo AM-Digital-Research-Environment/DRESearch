@@ -1,0 +1,12 @@
+# Normalise line endings to LF in the repository and on checkout — this module
+# runs on Linux (Docker) and ships a precompiled bundle in asset/dist.
+* text=auto eol=lf
+
+# Binary assets (none yet, but keep Git from munging them if added).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.woff binary
+*.woff2 binary

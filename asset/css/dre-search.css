@@ -1,0 +1,65 @@
+/*
+ * Server-rendered shell styles for the DRE Search block: the container, title,
+ * intro, and the loading skeleton shown until the Svelte bundle mounts. Every
+ * component-scoped style ships in dist/dre-search.css (the compiled bundle).
+ *
+ * Uses DRE-theme design tokens with literal fallbacks so the block still looks
+ * reasonable in a theme that doesn't define them.
+ */
+
+.dre-search-block {
+    margin-block: var(--space-lg, 1.5rem);
+}
+
+.dre-search-block__title {
+    font-family: var(--font-display, Georgia, "Times New Roman", serif);
+    font-size: var(--text-2xl, 1.875rem);
+    color: var(--ink-strong, #1a1a1a);
+    margin-block: 0 var(--space-4, 1rem);
+}
+
+.dre-search-block__intro {
+    color: var(--ink-light, #555);
+    margin-block-end: var(--space-4, 1rem);
+    max-width: var(--measure-wide, 72.5rem);
+}
+
+.dre-search-block__root {
+    min-height: 8rem;
+}
+
+.dre-search-block__skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4, 1rem);
+}
+
+.dre-search-block__skeleton-input {
+    height: 2.75rem;
+    border-radius: var(--radius-md, 0.5rem);
+    background: var(--surface-sunken, #ececec);
+}
+
+.dre-search-block__skeleton-results {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3, 0.75rem);
+}
+
+.dre-search-block__skeleton-row {
+    height: 4.5rem;
+    border-radius: var(--radius-md, 0.5rem);
+    background: var(--surface-sunken, #ececec);
+    animation: dre-search-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes dre-search-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dre-search-block__skeleton-row {
+        animation: none;
+    }
+}

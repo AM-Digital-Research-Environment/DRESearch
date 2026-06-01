@@ -1,0 +1,19 @@
+{
+  "name": "am-digital-research-environment/dre-search",
+  "description": "Typesense-backed faceted search for the Africa Multiple DRE Omeka S instance. Indexes research items directly from the Omeka dashboard via MySQL; Typesense is optional.",
+  "type": "omeka-module",
+  "license": "GPL-3.0-or-later",
+  "require": {
+    "php": ">=8.2",
+    "ext-json": "*",
+    "typesense/typesense-php": "^6.0",
+    "guzzlehttp/guzzle": "^7.10",
+    "php-http/guzzle7-adapter": "^1.1",
+    "http-interop/http-factory-guzzle": "^1.2"
+  },
+  "autoload": {
+    "psr-4": {
+      "DRESearch\\": "src/"
+    }
+  }
+}

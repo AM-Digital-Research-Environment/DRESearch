@@ -1,0 +1,59 @@
+<?php
+/**
+ * @var \Laminas\View\Renderer\PhpRenderer $this
+ * @var array{configured:bool, reachable:bool, collection:string, documents:?int, error:?string} $status
+ * @var \DRESearch\Form\MaintenanceForm $form
+ */
+$this->headTitle($this->translate('DRE Search'));
+$form->setAttribute('action', $this->url('admin/dre-search/reindex'));
+$form->prepare();
+?>
+<?= $this->pageTitle($this->translate('DRE Search'), 1, $this->translate('Maintenance')) ?>
+
+<h2><?= $this->translate('Typesense status') ?></h2>
+<table class="tablesaw" data-tablesaw-mode="stack">
+    <tbody>
+        <tr>
+            <th><?= $this->translate('Configured') ?></th>
+            <td>
+                <?php if ($status['configured']): ?>
+                    <?= $this->translate('Yes') ?>
+                <?php else: ?>
+                    <?= $this->translate('No — set the connection under Modules → DRE Search → Configure.') ?>
+                <?php endif; ?>
+            </td>
+        </tr>
+        <tr>
+            <th><?= $this->translate('Server reachable') ?></th>
+            <td><?= $status['reachable'] ? $this->translate('Yes') : $this->translate('No') ?></td>
+        </tr>
+        <tr>
+            <th><?= $this->translate('Collection alias') ?></th>
+            <td><code><?= $this->escapeHtml($status['collection']) ?></code></td>
+        </tr>
+        <tr>
+            <th><?= $this->translate('Documents indexed') ?></th>
+            <td><?= $status['documents'] === null ? '—' : $this->escapeHtml((string) $status['documents']) ?></td>
+        </tr>
+        <?php if (!empty($status['error'])): ?>
+        <tr>
+            <th><?= $this->translate('Last error') ?></th>
+            <td class="error"><?= $this->escapeHtml($status['error']) ?></td>
+        </tr>
+        <?php endif; ?>
+    </tbody>
+</table>
+
+<h2><?= $this->translate('Reindex') ?></h2>
+<p>
+    <?= $this->translate('Rebuild the search index from the current Omeka content. This runs as a background job — you can keep working while it completes.') ?>
+</p>
+
+<?php if ($status['configured']): ?>
+    <?= $this->form()->openTag($form) ?>
+    <?= $this->formHidden($form->get('dre_search_csrf')) ?>
+    <button type="submit" class="button"><?= $this->translate('Reindex now') ?></button>
+    <?= $this->form()->closeTag() ?>
+<?php else: ?>
+    <p class="error"><?= $this->translate('Configure the Typesense connection before reindexing.') ?></p>
+<?php endif; ?>
