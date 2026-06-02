@@ -27,7 +27,11 @@
   const showYear = $derived(bootstrap.show_year && bootstrap.year_bounds != null);
   const hasSidebar = $derived(bootstrap.facets.length > 0 || showYear);
   const placeholder = $derived(
-    bootstrap.card_kind === 'project' ? t('search_placeholder_project') : t('search_placeholder'),
+    bootstrap.card_kind === 'project'
+      ? t('search_placeholder_project')
+      : bootstrap.card_kind === 'publication'
+        ? t('search_placeholder_publication')
+        : t('search_placeholder'),
   );
 
   // svelte-ignore state_referenced_locally

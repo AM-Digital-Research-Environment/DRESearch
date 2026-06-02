@@ -4,14 +4,16 @@ Typesense-backed faceted search for the Africa Multiple **DRE** Omeka S instance
 (the one populated by [MongoDB2OmekaS]). It indexes content directly from the
 Omeka dashboard via MySQL — there is no external ingestion pipeline.
 
-Two search corpora ship out of the box, each as its own page block:
+Three search corpora ship out of the box, each as its own page block:
 
 - **Research items search** — the digitised research items (resource template 10).
 - **Research projects search** — the cluster's research projects (template 5).
+- **Publications search** — the cluster bibliography (journal articles, books,
+  chapters, theses, … — one item set across several templates).
 
-Both are **search profiles**: independent Typesense collections + facet/index
-mappings, all config-driven. Adding a third corpus (e.g. publications) is a
-config block plus a mapper — not a rewrite.
+All are **search profiles**: independent Typesense collections + facet/index
+mappings, all config-driven. Adding a further corpus is a config block plus a
+mapper — not a rewrite.
 
 **Typesense is optional.** With no connection configured the module installs
 cleanly and the site runs normally; the search blocks just show a quiet
@@ -30,6 +32,11 @@ don't want a search backend.
   and the number of associated research items.
   - Facets: a **Year** range slider, **Institution**, **Research section**, and
     **Has research items** (yes/no).
+- A **Publications search** page block: cards show a formatted bibliographic
+  reference — title, authors (linked to their person pages), venue (journal or
+  book + series), volume/issue, pages, publisher, year, abstract, and a DOI link.
+  - Facets: a **Year** range slider, **Type, Author, Journal / Book, Publisher,
+    Keyword, Language**.
 - A dashboard **Reindex** action per corpus (Admin → DRE Search) that rebuilds
   an index as a background job, reading the Omeka database and pushing to
   Typesense in batches.
@@ -82,13 +89,13 @@ Admin → **DRE Search** → **Reindex**: one button per corpus. Progress is log
 to Admin → Jobs. Re-run after significant content changes (or wire the job to a
 schedule via the Cron module). Each reindex builds a fresh, timestamped Typesense
 collection and swaps that profile's alias (`dre_research_current` /
-`dre_projects_current`) to it atomically, so live searches never hit a half-built
-index.
+`dre_projects_current` / `dre_publications_current`) to it atomically, so live
+searches never hit a half-built index.
 
 ## The page blocks
 
-Edit a site page → add the **Research items search** or **Research projects
-search** block. Both share the same options:
+Edit a site page → add the **Research items search**, **Research projects
+search**, or **Publications search** block. All share the same options:
 
 - **Filters to show** — which facets appear in the sidebar, including whether the
   **Year** range slider shows.
@@ -98,7 +105,7 @@ search** block. Both share the same options:
   e.g. pin items to one project (`project_s`) or projects to one research section
   (`section_ss`).
 
-Put each block on its own page and link both in the site navigation.
+Put each block on its own page and link them in the site navigation.
 
 ## Data model
 
@@ -135,11 +142,35 @@ list, and each block's facet picker all derive from the profile config.
 | PI(s) (card)               | `dcterms:creator`  | linked person titles                                                          |
 | Associated items (card)    | — derived —        | research items (template 10) linking back via `dcterms:isPartOf`, public only |
 
+### Publications (`research_publications`) — item set 29918
+
+Publications span ~10 type-specific resource templates (article, book, chapter,
+thesis, …) but share one item set, so this profile scopes by **`item_set_id`
+(29918)** with **`template_id: null`** — the only profile with no template filter.
+
+| Field                  | Omeka property                                          | Notes                                                        |
+| ---------------------- | ------------------------------------------------------- | ------------------------------------------------------------ |
+| Type (facet)           | `dcterms:type`                                          | linked publication-type title (set 30613)                    |
+| Author (facet + card)  | `bibo:authorList`                                       | linked person titles (set 18); `author_ids` link the card    |
+| Journal / Book (facet) | `dcterms:isPartOf`                                      | literal venue + series                                       |
+| Publisher (facet)      | `dcterms:publisher`                                     | literal                                                      |
+| Keyword (facet)        | `dcterms:subject`                                       | linked subject titles (set 1852), literal fallback           |
+| Language (facet)       | `dcterms:language`                                      | linked language (set 19), literal fallback                   |
+| Year (range slider)    | `dcterms:date`                                          | `numeric:timestamp` → single `year`                          |
+| Reference bits (card)  | `bibo:editorList`, `bibo:volume`, `bibo:issue`, pages\* | editors, volume/issue, recombined page string                |
+| DOI (card)             | `bibo:doi`                                              | the URI value's `@id` (full `https://doi.org/…` link)        |
+| Abstract (card)        | `bibo:abstract`                                         | publications use `bibo:abstract`, **not** `dcterms:abstract` |
+
+\* Pages come from `bibo:pages` / `bibo:pageStart` / `bibo:pageEnd` /
+`bibo:numPages` (the pipeline splits them by publication kind) and are recombined
+into one display string — `141–165`, a lone start, or `121 pp.`.
+
 > **Before the first production reindex, verify these IDs against your
 > instance** — the project IDs (template 5, item set 20, authority sets 17/110,
-> `dcterms:type` target 3346) and the item authority sets / `dcterms:type`
-> targets. They come from the MongoDB2OmekaS config; on a different Omeka
-> instance, override the `dre_search` config in `config/local.config.php`.
+> `dcterms:type` target 3346), the publication item set (29918) and type set
+> (30613), and the item authority sets / `dcterms:type` targets. They come from
+> the MongoDB2OmekaS config; on a different Omeka instance, override the
+> `dre_search` config in `config/local.config.php`.
 
 ## Development
 

@@ -67,8 +67,15 @@ final class Reindexer
         $batch = [];
 
         $sql = 'SELECT id, title, is_public FROM resource'
-            . ' WHERE resource_type = :rt AND resource_template_id = :tid AND id > :lastId';
-        $params = ['rt' => Item::class, 'tid' => $templateId];
+            . ' WHERE resource_type = :rt AND id > :lastId';
+        $params = ['rt' => Item::class];
+        // A profile may scope by template, by item set, or both. Publications
+        // span several templates but share one item set, so template_id is null
+        // there and the set alone defines the corpus.
+        if ($templateId !== null) {
+            $sql .= ' AND resource_template_id = :tid';
+            $params['tid'] = $templateId;
+        }
         if ($itemSetId !== null) {
             $sql .= ' AND id IN (SELECT item_id FROM item_item_set WHERE item_set_id = :setId)';
             $params['setId'] = $itemSetId;
@@ -129,6 +136,9 @@ final class Reindexer
         if ($this->profile->kind() === 'project') {
             return new ProjectMapper($this->profile);
         }
+        if ($this->profile->kind() === 'publication') {
+            return new PublicationMapper($this->profile);
+        }
 
         $auth = new AuthorityResolver($this->connection, $this->profile);
         $auth->load();
@@ -151,7 +161,7 @@ final class Reindexer
 
     /**
      * @param list<int> $ids
-     * @return array<int, array<string, list<array{vrid:?int, value:?string, title:?string}>>>
+     * @return array<int, array<string, list<array{vrid:?int, value:?string, uri:?string, title:?string}>>>
      */
     private function loadValues(array $ids): array
     {
@@ -162,7 +172,7 @@ final class Reindexer
         $termList = "'" . implode("','", $this->valueTerms) . "'";
 
         $sql = "SELECT v.resource_id AS rid, CONCAT(vo.prefix, ':', p.local_name) AS term,"
-            . ' v.value_resource_id AS vrid, v.value AS val, t.title AS ttitle'
+            . ' v.value_resource_id AS vrid, v.value AS val, v.uri AS turi, t.title AS ttitle'
             . ' FROM value v'
             . ' JOIN property p ON v.property_id = p.id'
             . ' JOIN vocabulary vo ON p.vocabulary_id = vo.id'
@@ -176,6 +186,7 @@ final class Reindexer
             $out[$rid][(string) $row['term']][] = [
                 'vrid'  => $row['vrid'] !== null ? (int) $row['vrid'] : null,
                 'value' => $row['val'] !== null ? (string) $row['val'] : null,
+                'uri'   => $row['turi'] !== null ? (string) $row['turi'] : null,
                 'title' => $row['ttitle'] !== null ? (string) $row['ttitle'] : null,
             ];
         }

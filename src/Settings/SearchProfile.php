@@ -16,9 +16,11 @@ namespace DRESearch\Settings;
  * configurable.
  *
  * `kind` selects the indexer mapper and the result card:
- *   - 'item'    : research items (shared-property facets via AuthorityResolver)
- *   - 'project' : research projects (linked-title facets, a date range, and a
- *                 reverse count of associated research items)
+ *   - 'item'        : research items (shared-property facets via AuthorityResolver)
+ *   - 'project'     : research projects (linked-title facets, a date range, and a
+ *                     reverse count of associated research items)
+ *   - 'publication' : bibliographic references (linked authors + literal venue/
+ *                     publisher, a single year, and a formatted reference card)
  */
 final class SearchProfile
 {
@@ -36,7 +38,7 @@ final class SearchProfile
         private readonly string $label,
         private readonly string $collection,
         private readonly string $kind,
-        private readonly int $templateId,
+        private readonly ?int $templateId,
         private readonly ?int $itemSetId,
         private readonly string $queryBy,
         private readonly array $facets,
@@ -89,7 +91,9 @@ final class SearchProfile
             (string) ($c['label'] ?? $name),
             (string) ($c['collection'] ?? ($name . '_current')),
             (string) ($c['kind'] ?? 'item'),
-            (int) ($c['template_id'] ?? 0),
+            // null = no template filter (e.g. publications span several
+            // templates but share one item set); scoping then relies on item_set_id.
+            isset($c['template_id']) && $c['template_id'] !== null ? (int) $c['template_id'] : null,
             isset($c['item_set_id']) && $c['item_set_id'] !== null ? (int) $c['item_set_id'] : null,
             (string) ($c['query_by'] ?? 'title'),
             $facets,
@@ -107,7 +111,7 @@ final class SearchProfile
     public function label(): string { return $this->label; }
     public function collection(): string { return $this->collection; }
     public function kind(): string { return $this->kind; }
-    public function templateId(): int { return $this->templateId; }
+    public function templateId(): ?int { return $this->templateId; }
     public function itemSetId(): ?int { return $this->itemSetId; }
     public function queryBy(): string { return $this->queryBy; }
 

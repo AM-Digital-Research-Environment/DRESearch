@@ -8,7 +8,7 @@
 export type SortKey = 'relevance' | 'newest' | 'oldest' | 'title';
 
 /** Which result card to render — selected by the profile's `kind`. */
-export type CardKind = 'item' | 'project';
+export type CardKind = 'item' | 'project' | 'publication';
 
 /** Single origin year vs a start/end range. */
 export type DateMode = 'single' | 'range';
@@ -76,6 +76,22 @@ export interface Doc {
   year_end?: number;
   item_count?: number;
   has_items?: string;
+
+  // Publication fields.
+  author_ss?: string[];
+  /** Person item ids, parallel to author_ss ("" where the author is unlinked). */
+  author_ids?: string[];
+  editor_ss?: string[];
+  /** Journal or book title (and any series), the venue. */
+  container_ss?: string[];
+  publisher_ss?: string[];
+  keyword_ss?: string[];
+  volume_s?: string;
+  issue_s?: string;
+  /** Normalised page range / count, e.g. "141–165" or "121 pp.". */
+  pages_s?: string;
+  /** Resolvable DOI link, e.g. "https://doi.org/10.1163/…". */
+  doi_s?: string;
 
   // Shared.
   abstract?: string;

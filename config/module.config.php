@@ -50,8 +50,9 @@ return [
         'factories' => [
             // Research items: keeps the original 'dreSearch' id so blocks
             // already placed on site pages keep working after the upgrade.
-            'dreSearch'         => Service\BlockLayout\ResearchItemsSearchBlockFactory::class,
-            'dreSearchProjects' => Service\BlockLayout\ResearchProjectsSearchBlockFactory::class,
+            'dreSearch'             => Service\BlockLayout\ResearchItemsSearchBlockFactory::class,
+            'dreSearchProjects'     => Service\BlockLayout\ResearchProjectsSearchBlockFactory::class,
+            'dreSearchPublications' => Service\BlockLayout\ResearchPublicationsSearchBlockFactory::class,
         ],
     ],
 
@@ -276,6 +277,55 @@ return [
                     'from_template' => 10,
                     'property'      => 'dcterms:isPartOf',
                     'public_only'   => true,
+                ],
+            ],
+
+            // Publications — the cluster bibliography (journal articles, books,
+            // chapters, theses, …). These span ~10 type-specific templates but
+            // share a single item set, so the corpus is defined by item_set_id
+            // (template_id is null). Links are unambiguous: bibo:authorList =
+            // authors, dcterms:isPartOf = journal/book title, dcterms:publisher =
+            // publisher; keywords + language are linked subjects/languages (literal
+            // fallback). The card shows a formatted bibliographic reference, so the
+            // mapper also emits editors, volume/issue, a page range, and a DOI link.
+            'research_publications' => [
+                'label'       => 'Publications', // @translate
+                'collection'  => 'dre_publications_current',
+                'kind'        => 'publication',
+                'template_id' => null, // spans the publication-type templates (article, book, chapter, …)
+                'item_set_id' => 29918, // the single "publications" item set holds them all
+                'query_by'    => 'title,abstract,author_ss,editor_ss,container_ss,publisher_ss,keyword_ss',
+                // mode 'single' = one publication year; facet => a year range slider.
+                // dcterms:date is a numeric:timestamp whose @value is the year.
+                'date'        => ['mode' => 'single', 'property' => 'dcterms:date', 'label' => 'Year', 'facet' => true],
+
+                'facets' => [
+                    'type_s'       => ['property' => 'dcterms:type',      'label' => 'Type',         'array' => false],
+                    'author_ss'    => ['property' => 'bibo:authorList',   'label' => 'Author',       'array' => true],
+                    'container_ss' => ['property' => 'dcterms:isPartOf',  'label' => 'Journal / Book', 'array' => true],
+                    'publisher_ss' => ['property' => 'dcterms:publisher', 'label' => 'Publisher',    'array' => true],
+                    'keyword_ss'   => ['property' => 'dcterms:subject',   'label' => 'Keyword',      'array' => true],
+                    'language_ss'  => ['property' => 'dcterms:language',  'label' => 'Language',     'array' => true],
+                ],
+
+                // Display-only reference bits. author_ids carries the person item
+                // ids parallel to author_ss (so the card links each author);
+                // volume/issue/pages/doi are shown only, never searched/faceted.
+                'display_fields' => [
+                    'author_ids' => ['property' => null,             'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'editor_ss'  => ['property' => 'bibo:editorList', 'type' => 'string[]', 'facet' => false],
+                    'volume_s'   => ['property' => 'bibo:volume',    'type' => 'string', 'facet' => false, 'index' => false],
+                    'issue_s'    => ['property' => 'bibo:issue',     'type' => 'string', 'facet' => false, 'index' => false],
+                    'pages_s'    => ['property' => null,             'type' => 'string', 'facet' => false, 'index' => false],
+                    'doi_s'      => ['property' => null,             'type' => 'string', 'facet' => false, 'index' => false],
+                ],
+
+                // Properties read beyond the facet/display/date props: the abstract,
+                // the page-family the mapper recombines, and the DOI URI value.
+                'read_properties' => [
+                    'bibo:abstract',
+                    'bibo:pages', 'bibo:pageStart', 'bibo:pageEnd', 'bibo:numPages',
+                    'bibo:doi',
                 ],
             ],
         ],

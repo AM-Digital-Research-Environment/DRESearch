@@ -7,6 +7,7 @@
 const STRINGS: Record<string, string> = {
   search_placeholder: 'Search research items…',
   search_placeholder_project: 'Search research projects…',
+  search_placeholder_publication: 'Search publications…',
   clear_search: 'Clear search',
 
   filters: 'Filters',
@@ -49,6 +50,15 @@ const STRINGS: Record<string, string> = {
   pi_label: 'PI',
   research_items_one: '{n} research item',
   research_items_other: '{n} research items',
+
+  // Publication card.
+  in_prefix: 'In:',
+  ed_short: 'ed.',
+  eds_short: 'eds.',
+  vol_short: 'vol.',
+  no_short: 'no.',
+  pp_short: 'pp.',
+  doi_label: 'DOI',
 };
 
 export function t(key: string, vars?: Record<string, string | number>): string {

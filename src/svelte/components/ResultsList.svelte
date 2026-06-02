@@ -2,6 +2,7 @@
   import type { CardKind, Doc } from '../lib/types';
   import ResultItem from './ResultItem.svelte';
   import ProjectCard from './ProjectCard.svelte';
+  import PublicationCard from './PublicationCard.svelte';
 
   interface Props {
     hits: Doc[];
@@ -46,6 +47,8 @@
     <li class="dre-results__item">
       {#if cardKind === 'project'}
         <ProjectCard {doc} {itemUrlBase} {onAddFilter} />
+      {:else if cardKind === 'publication'}
+        <PublicationCard {doc} {itemUrlBase} {onAddFilter} />
       {:else}
         <ResultItem {doc} {itemUrlBase} />
       {/if}
