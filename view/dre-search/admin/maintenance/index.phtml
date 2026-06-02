@@ -51,7 +51,7 @@ $form->prepare();
 
 <?php if ($status['configured']): ?>
     <?= $this->form()->openTag($form) ?>
-    <?= $this->formHidden($form->get('dre_search_csrf')) ?>
+    <?= $this->formHidden($form->get('csrf')) ?>
     <button type="submit" class="button"><?= $this->translate('Reindex now') ?></button>
     <?= $this->form()->closeTag() ?>
 <?php else: ?>
