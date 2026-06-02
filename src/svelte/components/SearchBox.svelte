@@ -244,16 +244,20 @@
   }
   /*
    * The host theme styles every <button> (and its :hover) as a primary button —
-   * a green fill, a lift transform, and a glow — via a rule whose specificity
-   * (e.g. `button:hover:not(.disabled):not(:disabled)`) beats a scoped class. So
-   * guard the exact properties that rule would hijack — background, transform,
-   * box-shadow — with !important, keeping the clear control a quiet, centred ×
-   * (transparent, with only a faint neutral hover) on any theme.
+   * a green fill/lift/glow AND a white label (color: --primary-contrast) — via
+   * `button:hover:not(.disabled):not(:disabled)`, whose specificity beats a scoped
+   * class. So guard every property that rule hijacks — background, color, box-shadow,
+   * transform — with !important, keeping the clear control a quiet, transparent ×.
+   *
+   * Centre on the INPUT's height, not the flex wrapper's: the theme also gives
+   * inputs a bottom margin, which makes the wrapper taller than the input, so a
+   * %-based centre lands a few px low. Anchoring to --size-control-lg (the input's
+   * own height) keeps the × on the input's true vertical centre.
    */
   .dre-search-box__clear {
     position: absolute;
     inset-inline-end: var(--space-sm, 0.5rem);
-    top: 50%;
+    top: calc(var(--size-control-lg, 2.75rem) / 2);
     transform: translateY(-50%) !important;
     display: inline-flex;
     align-items: center;
@@ -267,7 +271,7 @@
     border: 0;
     background: transparent !important;
     box-shadow: none !important;
-    color: var(--muted, #888);
+    color: var(--muted, #888) !important;
     font-size: 1.25rem;
     line-height: 1;
     cursor: pointer;
@@ -276,9 +280,9 @@
     appearance: none;
   }
   .dre-search-box__clear:hover {
-    /* Faint neutral wash from the icon's own colour — never the theme's green. */
+    /* Faint neutral wash + a readable label — never the theme's green-on-green. */
     background: color-mix(in srgb, currentColor 16%, transparent) !important;
-    color: var(--ink, #222);
+    color: var(--ink, #222) !important;
   }
   .dre-search-box__clear:focus-visible {
     outline: none;
