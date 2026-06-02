@@ -16,11 +16,14 @@ namespace DRESearch\Settings;
  * configurable.
  *
  * `kind` selects the indexer mapper and the result card:
- *   - 'item'        : research items (shared-property facets via AuthorityResolver)
- *   - 'project'     : research projects (linked-title facets, a date range, and a
- *                     reverse count of associated research items)
- *   - 'publication' : bibliographic references (linked authors + literal venue/
- *                     publisher, a single year, and a formatted reference card)
+ *   - 'item'         : research items (shared-property facets via AuthorityResolver)
+ *   - 'project'      : research projects (linked-title facets, a date range, and a
+ *                      reverse count of associated research items)
+ *   - 'publication'  : bibliographic references (linked authors + literal venue/
+ *                      publisher, a single year, and a formatted reference card)
+ *   - 'person'       : people (affiliation + reverse-link roles & association counts)
+ *   - 'section'      : research sections (leaders, derived phase, project count)
+ *   - 'organisation' : institutions & groups (Type facet + reverse-link roles & counts)
  */
 final class SearchProfile
 {
@@ -32,7 +35,7 @@ final class SearchProfile
      * @param array{mode:string,property:?string,label:string} $date
      * @param list<string> $readProperties
      * @param array{from_template:int,property:string,public_only:bool}|null $itemLink
-     * @param array{counts?:array<string,array<string,mixed>>,roles?:list<array<string,mixed>>}|null $personLinks
+     * @param array{counts?:array<string,array<string,mixed>>,roles?:list<array<string,mixed>>}|null $reverseLinks
      */
     public function __construct(
         private readonly string $name,
@@ -49,7 +52,7 @@ final class SearchProfile
         private readonly array $date,
         private readonly array $readProperties,
         private readonly ?array $itemLink,
-        private readonly ?array $personLinks,
+        private readonly ?array $reverseLinks,
     ) {
     }
 
@@ -107,7 +110,9 @@ final class SearchProfile
             $date,
             array_values($c['read_properties'] ?? []),
             $c['item_link'] ?? null,
-            $c['person_links'] ?? null,
+            // `reverse_links` is the current key; `person_links` is accepted as a
+            // back-compat alias (the mechanism was first built for the people corpus).
+            $c['reverse_links'] ?? $c['person_links'] ?? null,
         );
     }
 
@@ -272,21 +277,25 @@ final class SearchProfile
     }
 
     /**
-     * Reverse person-link config (person kind): how to count the records that
-     * reference each indexed person, and which relationships to surface as roles.
+     * Reverse-link config (person & organisation kinds): how to count the records
+     * that reference each indexed entity, and which relationships to surface as
+     * roles. The mechanism is corpus-agnostic — people count the items/publications
+     * referencing them; organisations count the projects they fund, items crediting
+     * them, and people affiliated with them.
      *
-     *   counts: field => { from_template?:int, from_item_set?:int, public_only:bool }
+     *   counts: field => { properties?:?list<string>, from_template?:int,
+     *                      from_item_set?:int, public_only:bool }
      *   roles:  list of { label:string, properties?:?list<string>, from_template?:int,
      *                     from_item_set?:int, public_only?:bool }
      *
-     * A role's `properties` null = any reference (e.g. "contributed to a research
+     * A rule's `properties` null = any reference (e.g. "contributed to a research
      * item"); otherwise only references via those properties (e.g. dcterms:creator
      * on a project = "Principal investigator").
      *
      * @return array{counts?:array<string,array<string,mixed>>,roles?:list<array<string,mixed>>}|null
      */
-    public function personLinks(): ?array
+    public function reverseLinks(): ?array
     {
-        return $this->personLinks;
+        return $this->reverseLinks;
     }
 }

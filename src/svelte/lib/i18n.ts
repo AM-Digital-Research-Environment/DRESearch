@@ -10,6 +10,7 @@ const STRINGS: Record<string, string> = {
   search_placeholder_publication: 'Search publications…',
   search_placeholder_person: 'Search people…',
   search_placeholder_section: 'Search research sections…',
+  search_placeholder_organisation: 'Search organisations…',
   clear_search: 'Clear search',
 
   filters: 'Filters',
@@ -77,6 +78,10 @@ const STRINGS: Record<string, string> = {
   members_other: '{n} members',
   projects_one: '{n} project',
   projects_other: '{n} projects',
+
+  // Organisation card.
+  people_one: '{n} person',
+  people_other: '{n} people',
 };
 
 export function t(key: string, vars?: Record<string, string | number>): string {
@@ -107,4 +112,9 @@ export function membersLabel(n: number): string {
 /** Pluralised "{n} projects". */
 export function projectsLabel(n: number): string {
   return t(n === 1 ? 'projects_one' : 'projects_other', { n: n.toLocaleString() });
+}
+
+/** Pluralised "{n} people". */
+export function peopleLabel(n: number): string {
+  return t(n === 1 ? 'people_one' : 'people_other', { n: n.toLocaleString() });
 }

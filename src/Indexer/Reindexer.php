@@ -62,7 +62,7 @@ final class Reindexer
         $templateId = $this->profile->templateId();
         $itemSetId = $this->profile->itemSetId();
         $itemLink = $this->profile->itemLink();
-        $personLinks = $this->profile->personLinks();
+        $reverseLinks = $this->profile->reverseLinks();
         $total = 0;
         $lastId = 0;
         $batch = [];
@@ -97,8 +97,8 @@ final class Reindexer
             $valuesByItem = $this->loadValues($ids);
             $thumbnails = $this->loadThumbnails($ids);
             $counts = $itemLink !== null ? $this->loadItemCounts($ids, $itemLink) : [];
-            [$personCounts, $personRoles] = $personLinks !== null
-                ? $this->loadPersonLinks($ids, $personLinks)
+            [$reverseCounts, $reverseRoles] = $reverseLinks !== null
+                ? $this->loadReverseLinks($ids, $reverseLinks)
                 : [[], []];
 
             foreach ($rows as $r) {
@@ -111,12 +111,12 @@ final class Reindexer
                 if ($itemLink !== null) {
                     $item['item_count'] = $counts[$id] ?? 0;
                 }
-                if ($personLinks !== null) {
+                if ($reverseLinks !== null) {
                     $item['counts'] = [];
-                    foreach ($personCounts as $field => $map) {
+                    foreach ($reverseCounts as $field => $map) {
                         $item['counts'][$field] = $map[$id] ?? 0;
                     }
-                    $item['roles'] = $personRoles[$id] ?? [];
+                    $item['roles'] = $reverseRoles[$id] ?? [];
                 }
                 $batch[] = $mapper->map($item, $valuesByItem[$id] ?? [], $thumbnails[$id] ?? null);
                 if (count($batch) >= self::BATCH) {
@@ -155,6 +155,9 @@ final class Reindexer
         }
         if ($this->profile->kind() === 'section') {
             return new SectionMapper($this->profile);
+        }
+        if ($this->profile->kind() === 'organisation') {
+            return new OrganisationMapper($this->profile);
         }
 
         $auth = new AuthorityResolver($this->connection, $this->profile);
@@ -228,17 +231,17 @@ final class Reindexer
     }
 
     /**
-     * Person reverse-links: for the person corpus, compute (a) per-bucket counts
-     * of the records that reference each person and (b) the set of role labels a
-     * person earns from the relationships configured in `person_links`. Each
+     * Reverse-links (person & organisation corpora): compute (a) per-bucket counts
+     * of the records that reference each indexed entity and (b) the set of role
+     * labels it earns from the relationships configured in `reverse_links`. Each
      * count bucket / role rule is one {@see reverseCount} query.
      *
      * @param list<int> $ids
      * @param array{counts?:array<string,array<string,mixed>>,roles?:list<array<string,mixed>>} $links
      * @return array{0:array<string,array<int,int>>, 1:array<int,list<string>>}
-     *         [ field => [personId => count], personId => [role labels] ]
+     *         [ field => [entityId => count], entityId => [role labels] ]
      */
-    private function loadPersonLinks(array $ids, array $links): array
+    private function loadReverseLinks(array $ids, array $links): array
     {
         $counts = [];
         foreach (($links['counts'] ?? []) as $field => $rule) {

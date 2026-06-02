@@ -171,6 +171,9 @@ final class SearchProxy
         } elseif ($profile->kind() === 'section') {
             $leader = $doc['pi_ss'][0] ?? ($doc['spokesperson_ss'][0] ?? null);
             $parts = [$doc['phase_s'] ?? null, $leader];
+        } elseif ($profile->kind() === 'organisation') {
+            // Type (Institution / Group) + the first role it plays.
+            $parts = [$doc['type_s'] ?? null, $doc['roles_ss'][0] ?? null];
         } else {
             $parts = [$doc['type_s'] ?? null, isset($doc['year']) ? (string) $doc['year'] : null];
         }

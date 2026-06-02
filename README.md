@@ -4,7 +4,7 @@ Typesense-backed faceted search for the Africa Multiple **DRE** Omeka S instance
 (the one populated by [MongoDB2OmekaS]). It indexes content directly from the
 Omeka dashboard via MySQL — there is no external ingestion pipeline.
 
-Five search corpora ship out of the box, each as its own page block:
+Six search corpora ship out of the box, each as its own page block:
 
 - **Research items search** — the digitised research items (resource template 10).
 - **Research projects search** — the cluster's research projects (template 5).
@@ -15,6 +15,9 @@ Five search corpora ship out of the box, each as its own page block:
 - **Research sections search** — the cluster's thematic sections (template 7),
   filterable by phase and associated person, with per-section project and member
   counts.
+- **Organisations search** — institutions _and_ groups (template 2, one item set),
+  split by a Type facet and filterable by the role each plays, with per-organisation
+  project, research-item, and affiliated-people counts.
 
 All are **search profiles**: independent Typesense collections + facet/index
 mappings, all config-driven. Adding a further corpus is a config block plus a
@@ -56,6 +59,14 @@ don't want a search backend.
   leader are clickable filters.
   - Facets: **Phase** (1 / 2) and **Associated person** (PIs, spokesperson, or
     members).
+- An **Organisations search** page block: one corpus for both institutions and
+  groups (bands, choirs, archives, …). Cards show the name, a **Type** chip
+  (Institution / Group), role chips, and how many projects, research items, and
+  affiliated people the organisation is associated with (laid out two-up on wide
+  screens, since the cards are compact). The Type and role chips are clickable
+  filters.
+  - Facets: **Type** (Institution / Group) and **Role** (Funder, Contributor,
+    Host institution).
 - A dashboard **Reindex** action per corpus (Admin → DRE Search) that rebuilds
   an index as a background job, reading the Omeka database and pushing to
   Typesense in batches.
@@ -109,14 +120,14 @@ to Admin → Jobs. Re-run after significant content changes (or wire the job to 
 schedule via the Cron module). Each reindex builds a fresh, timestamped Typesense
 collection and swaps that profile's alias (`dre_research_current` /
 `dre_projects_current` / `dre_publications_current` / `dre_people_current` /
-`dre_sections_current`) to it atomically, so live searches never hit a half-built
-index.
+`dre_sections_current` / `dre_organisations_current`) to it atomically, so live
+searches never hit a half-built index.
 
 ## The page blocks
 
 Edit a site page → add the **Research items search**, **Research projects
-search**, **Publications search**, **People search**, or **Research sections
-search** block. All share the same options:
+search**, **Publications search**, **People search**, **Research sections
+search**, or **Organisations search** block. All share the same options:
 
 - **Filters to show** — which facets appear in the sidebar, including whether the
   **Year** range slider shows.
@@ -195,7 +206,7 @@ into one display string — `141–165`, a lone start, or `121 pp.`.
 
 A person record carries only a name and affiliation; the roles and counts come
 from the **reverse** direction — the records that point _at_ the person. The
-reindexer computes these per person from the profile's `person_links` config
+reindexer computes these per person from the profile's `reverse_links` config
 (one grouped query per count bucket / role rule per page). This corpus has **no
 date** — it sorts by name.
 
@@ -233,6 +244,31 @@ section carries. No date — sorts by name.
 | Projects (card)           | — derived (`item_link`) — | public projects (template 5) linking via `dcterms:isPartOf`                 |
 | Abstract (card)           | `dcterms:abstract`        |                                                                             |
 
+### Organisations (`research_organisations`) — resource template 2, item set 110
+
+One corpus for **both** institutions and groups: the pipeline stores them as the
+same Organisation item (template 2, item set 110) and tells them apart with
+`dcterms:type` (→ "Institution" / "Group"), which becomes the **Type** facet. Like
+people, an organisation's substance is in the **reverse** direction, so the same
+`reverse_links` machinery counts the records pointing _at_ it and derives the roles
+it plays. No date — sorts by name.
+
+| Field                 | Source                                                          | Notes                                            |
+| --------------------- | --------------------------------------------------------------- | ------------------------------------------------ |
+| Type (facet)          | `dcterms:type` on the organisation                              | linked type item title — "Institution" / "Group" |
+| Role (facet)          | — derived (reverse) —                                           | see the role rules below                         |
+| Projects (card)       | projects (template 5) funding it via `frapo:isFundedBy`, public | `project_count`                                  |
+| Research items (card) | research items (template 10) crediting it (any role), public    | `item_count`                                     |
+| People (card)         | people (template 4) affiliated via `dcterms:isPartOf`, public   | `people_count`                                   |
+
+**Role rules** (an organisation earns a role if a public record references it so):
+
+| Role             | Source corpus           | Property           |
+| ---------------- | ----------------------- | ------------------ |
+| Funder           | project (template 5)    | `frapo:isFundedBy` |
+| Contributor      | research item (tmpl 10) | any reference      |
+| Host institution | person (template 4)     | `dcterms:isPartOf` |
+
 > **Before the first production reindex, verify these IDs against your
 > instance** — the project IDs (template 5, item set 20, authority sets 17/110,
 > `dcterms:type` target 3346), the publication item set (29918) and type set
@@ -240,9 +276,12 @@ section carries. No date — sorts by name.
 > properties (`dcterms:creator`, `foaf:member`, `bibo:authorList`,
 > `bibo:editorList`), the research-sections template (7) / item set (17) and their
 > leadership properties (`dcterms:creator` = PIs, `marcrel:spk` = spokesperson,
-> `foaf:member` = members), and the item authority sets / `dcterms:type` targets.
-> They come from the MongoDB2OmekaS config; on a different Omeka instance, override
-> the `dre_search` config in `config/local.config.php`.
+> `foaf:member` = members), the organisations template (2) / item set (110) and
+> their reverse-link properties (`frapo:isFundedBy`, `dcterms:isPartOf`) plus the
+> `dcterms:type` targets that split Institution vs Group, and the item authority
+> sets / `dcterms:type` targets. They come from the MongoDB2OmekaS config; on a
+> different Omeka instance, override the `dre_search` config in
+> `config/local.config.php`.
 
 ## Development
 
@@ -263,8 +302,9 @@ toolchain.
 - **Multi-corpus by config.** A `ProfileRegistry` (built from
   `dre_search.profiles`) holds one `SearchProfile` per corpus. The schema
   builder, paged reindexer, query builder, search proxy, and page blocks are all
-  parameterised by a profile; a profile's `kind` (`item` | `project`) selects its
-  indexer mapper and its result card.
+  parameterised by a profile; a profile's `kind` (`item` | `project` |
+  `publication` | `person` | `section` | `organisation`) selects its indexer
+  mapper and its result card.
 - **Search is server-side.** The browser calls the module's own JSON endpoints
   (`/dre-search/api/search`, `/dre-search/api/suggest`) with a `profile`; PHP
   forwards to Typesense with the server-held key and enforces `is_public:=true`.

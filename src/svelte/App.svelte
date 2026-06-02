@@ -35,7 +35,9 @@
           ? t('search_placeholder_person')
           : bootstrap.card_kind === 'section'
             ? t('search_placeholder_section')
-            : t('search_placeholder'),
+            : bootstrap.card_kind === 'organisation'
+              ? t('search_placeholder_organisation')
+              : t('search_placeholder'),
   );
 
   // svelte-ignore state_referenced_locally
@@ -59,6 +61,9 @@
   // Mobile only: the sidebar is collapsed by default and toggled open. Ignored
   // on wider viewports, where the sidebar is always shown (see styles).
   let facetsOpen = $state(false);
+
+  // Root element, so paging can scroll back to the top of this block's results.
+  let rootEl = $state<HTMLElement | undefined>(undefined);
 
   // The SSR snapshot already reflects the pristine browse state, so skip the
   // first reactive fetch when we have it.
@@ -174,10 +179,18 @@
 
   function handlePageChange(next: number): void {
     page = next;
+    // Jump back to the top of this block so the new page starts from the first
+    // result instead of leaving the viewport down at the pager.
+    if (rootEl) {
+      const reduce =
+        typeof window !== 'undefined' &&
+        window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      rootEl.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    }
   }
 </script>
 
-<div class="dre-search">
+<div class="dre-search" bind:this={rootEl}>
   <SearchBox
     value={query}
     {placeholder}

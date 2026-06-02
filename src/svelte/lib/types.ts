@@ -8,7 +8,7 @@
 export type SortKey = 'relevance' | 'newest' | 'oldest' | 'title';
 
 /** Which result card to render — selected by the profile's `kind`. */
-export type CardKind = 'item' | 'project' | 'publication' | 'person' | 'section';
+export type CardKind = 'item' | 'project' | 'publication' | 'person' | 'section' | 'organisation';
 
 /** Single origin year vs a start/end range. */
 export type DateMode = 'single' | 'range';
@@ -105,6 +105,12 @@ export interface Doc {
   spokesperson_ss?: string[];
   member_count?: number;
   project_count?: number;
+
+  // Organisation fields (institutions & groups). type_s = "Institution" / "Group";
+  // roles_ss = Funder / Contributor / Host institution. project_count and item_count
+  // are shared with the sections/projects corpora.
+  /** Number of people who name this organisation as their affiliation. */
+  people_count?: number;
 
   // Shared.
   abstract?: string;

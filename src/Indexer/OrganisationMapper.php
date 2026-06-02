@@ -6,21 +6,22 @@ namespace DRESearch\Indexer;
 use DRESearch\Settings\SearchProfile;
 
 /**
- * Maps one person (resource template 4, item set 18) into a Typesense document.
+ * Maps one organisation (resource template 2, item set 110) into a Typesense
+ * document. The corpus holds BOTH institutions and groups: the pipeline stores
+ * them as the same Organisation item and distinguishes them with dcterms:type
+ * ("Institution" / "Group"), which becomes the single-valued `type_s` facet.
  *
- * A person record itself carries almost nothing — the display name and the
- * affiliation(s) (dcterms:isPartOf → linked Institution). Everything else a
- * People search wants is in the *reverse* direction: how many research items and
- * publications a person is associated with, and which roles they hold (principal
- * investigator, project member, author, editor, research contributor). Those are
- * computed by the {@see Reindexer} from `reverse_links` config and handed in via
- * $item['counts'] and $item['roles']; this mapper just lays them into the doc.
+ * Like a person, an organisation record itself carries almost nothing — a name
+ * and its type. Everything a useful card wants is in the *reverse* direction:
+ * how many projects it funds, research items credit it, and people are affiliated
+ * with it, plus the roles it plays (funder / contributor / host institution).
+ * Those are computed by the {@see Reindexer} from `reverse_links` config and
+ * handed in via $item['counts'] and $item['roles']; this mapper lays them in.
  *
  * Which property feeds which facet comes from {@see SearchProfile} (config-driven);
- * the stable field names (affiliation_ss, roles_ss, item_count, …) are the
- * interface.
+ * the stable field names (type_s, roles_ss, project_count, …) are the interface.
  */
-final class PersonMapper implements MapperInterface
+final class OrganisationMapper implements MapperInterface
 {
     public function __construct(private readonly SearchProfile $profile)
     {
@@ -34,8 +35,8 @@ final class PersonMapper implements MapperInterface
             'title'     => $item['title'] !== '' ? $item['title'] : sprintf('[Unnamed #%d]', $item['id']),
         ];
 
-        // Property-backed facets (e.g. affiliation_ss ← dcterms:isPartOf). Derived
-        // facets such as roles_ss carry no property and are filled below.
+        // Property-backed facets (type_s ← dcterms:type). Derived facets such as
+        // roles_ss carry no property and are filled below.
         foreach ($this->profile->all() as $field => $def) {
             if (empty($def['property'])) {
                 continue;
@@ -47,7 +48,7 @@ final class PersonMapper implements MapperInterface
             $doc[$field] = $this->profile->isMultivalued($field) ? $titles : $titles[0];
         }
 
-        // Roles — the reverse relationships the person holds (see Reindexer).
+        // Roles — how the organisation participates (see Reindexer reverse_links).
         if ($this->profile->hasFacet('roles_ss')) {
             $roles = array_values(array_unique(array_map('strval', $item['roles'] ?? [])));
             if ($roles) {
@@ -55,8 +56,8 @@ final class PersonMapper implements MapperInterface
             }
         }
 
-        // Association counts (research items, publications, …). Always emitted so
-        // the card can show "0" and the field can be sorted on.
+        // Association counts (projects funded, items credited, people affiliated).
+        // Always emitted so the card can show "0" and the field can be sorted on.
         $counts = $item['counts'] ?? [];
         foreach ($this->profile->displayFields() as $field => $def) {
             if (($def['type'] ?? '') === 'int32') {

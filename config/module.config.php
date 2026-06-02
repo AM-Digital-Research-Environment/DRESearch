@@ -52,9 +52,10 @@ return [
             // already placed on site pages keep working after the upgrade.
             'dreSearch'             => Service\BlockLayout\ResearchItemsSearchBlockFactory::class,
             'dreSearchProjects'     => Service\BlockLayout\ResearchProjectsSearchBlockFactory::class,
-            'dreSearchPublications' => Service\BlockLayout\ResearchPublicationsSearchBlockFactory::class,
-            'dreSearchPeople'       => Service\BlockLayout\ResearchPeopleSearchBlockFactory::class,
-            'dreSearchSections'     => Service\BlockLayout\ResearchSectionsSearchBlockFactory::class,
+            'dreSearchPublications'  => Service\BlockLayout\ResearchPublicationsSearchBlockFactory::class,
+            'dreSearchPeople'        => Service\BlockLayout\ResearchPeopleSearchBlockFactory::class,
+            'dreSearchSections'      => Service\BlockLayout\ResearchSectionsSearchBlockFactory::class,
+            'dreSearchOrganisations' => Service\BlockLayout\ResearchOrganisationsSearchBlockFactory::class,
         ],
     ],
 
@@ -167,7 +168,8 @@ return [
         // mapping. The first profile is the default (used when a request/block
         // omits a profile name). Add a third corpus (e.g. publications) by
         // adding a profile here + a mapper — no rewrite. Each profile's `kind`
-        // selects its indexer mapper and its result card ('item' | 'project').
+        // selects its indexer mapper and its result card ('item' | 'project' |
+        // 'publication' | 'person' | 'section' | 'organisation').
         'profiles' => [
 
             // Research items — resource template 10. Eight facets resolved from
@@ -362,7 +364,8 @@ return [
                 // roles they earn. Counts = DISTINCT public records of that corpus
                 // referencing the person (any property). Roles = presence of a
                 // reference via the given properties (null = any). Public only.
-                'person_links' => [
+                // (The same generic mechanism powers the organisations corpus.)
+                'reverse_links' => [
                     'counts' => [
                         'item_count'        => ['from_template' => 10,    'public_only' => true],
                         'publication_count' => ['from_item_set' => 29918, 'public_only' => true],
@@ -420,6 +423,64 @@ return [
                     'from_template' => 5,
                     'property'      => 'dcterms:isPartOf',
                     'public_only'   => true,
+                ],
+            ],
+
+            // Organisations — resource template 2 (foaf:Organization), item set 110.
+            // This single corpus holds BOTH institutions and groups (bands, choirs,
+            // archives, …): the pipeline stores them as the same Organisation item
+            // and tells them apart with dcterms:type ("Institution" / "Group"), so
+            // the Type facet splits the corpus. An organisation record itself carries
+            // only a name + type; everything else is in the *reverse* direction, so —
+            // exactly like the people corpus — `reverse_links` counts the records that
+            // reference each organisation (projects it funds, research items crediting
+            // it, people affiliated with it) and derives the roles it plays. No date —
+            // the corpus sorts by name.
+            'research_organisations' => [
+                'label'       => 'Organisations', // @translate
+                'collection'  => 'dre_organisations_current',
+                'kind'        => 'organisation',
+                'template_id' => 2,
+                'item_set_id' => 110,
+                'query_by'    => 'title',
+                'date'        => ['mode' => 'none'],
+
+                'facets' => [
+                    // Institution vs Group, straight from dcterms:type (linked
+                    // type item → its title). Single-valued.
+                    'type_s'   => ['property' => 'dcterms:type', 'label' => 'Type', 'array' => false],
+                    // Derived from the reverse relationships below — how the
+                    // organisation participates in the research data.
+                    'roles_ss' => ['property' => null, 'label' => 'Role', 'array' => true, 'derived' => true],
+                ],
+
+                // Card figures — association counts (mapper-emitted, sortable). The
+                // card shows only the non-zero ones, so groups read as "N research
+                // items" while institutions read as "N projects · N people".
+                'display_fields' => [
+                    'project_count' => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
+                    'item_count'    => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
+                    'people_count'  => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
+                ],
+
+                // Reverse links (the same mechanism as the people corpus). Counts =
+                // DISTINCT public records referencing the organisation via the rule;
+                // roles = presence of any such reference. Public only.
+                'reverse_links' => [
+                    'counts' => [
+                        // Projects funded by this institution (frapo:isFundedBy).
+                        'project_count' => ['from_template' => 5,  'properties' => ['frapo:isFundedBy'], 'public_only' => true],
+                        // Research items crediting this organisation in any role
+                        // (marcrel:* etc.) — the "contributed items" figure groups have.
+                        'item_count'    => ['from_template' => 10, 'public_only' => true],
+                        // People who name this organisation as their affiliation.
+                        'people_count'  => ['from_template' => 4,  'properties' => ['dcterms:isPartOf'], 'public_only' => true],
+                    ],
+                    'roles' => [
+                        ['label' => 'Funder',           'from_template' => 5,  'properties' => ['frapo:isFundedBy'], 'public_only' => true],
+                        ['label' => 'Contributor',      'from_template' => 10, 'public_only' => true],
+                        ['label' => 'Host institution', 'from_template' => 4,  'properties' => ['dcterms:isPartOf'], 'public_only' => true],
+                    ],
                 ],
             ],
         ],
