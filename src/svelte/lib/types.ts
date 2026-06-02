@@ -7,10 +7,32 @@
 
 export type SortKey = 'relevance' | 'newest' | 'oldest' | 'title';
 
+/** Which result card to render — selected by the profile's `kind`. */
+export type CardKind = 'item' | 'project';
+
+/** Single origin year vs a start/end range. */
+export type DateMode = 'single' | 'range';
+
+/** Global year span for the range slider. */
+export interface YearBounds {
+  min: number;
+  max: number;
+}
+
 /** Per-block config the server inlines; read once on mount. */
 export interface Bootstrap {
   block_id: number;
-  /** Facet fields to show, in order (subset of the eight). */
+  /** Search profile (corpus) this block queries, e.g. "research_projects". */
+  profile: string;
+  /** Result card to render. */
+  card_kind: CardKind;
+  /** Date handling for this corpus. */
+  date_mode: DateMode;
+  /** Whether to show the year range slider (range profiles only). */
+  show_year: boolean;
+  /** Slider bounds (range profiles), or null. */
+  year_bounds: YearBounds | null;
+  /** Facet fields to show, in order. */
   facets: string[];
   /** field => translated label (so the client needs no hardcoded strings). */
   facet_labels: Record<string, string>;
@@ -25,10 +47,12 @@ export interface Bootstrap {
   initial_response?: SearchResponse;
 }
 
-/** A Typesense document, trimmed to the fields the card renders. */
+/** A Typesense document, trimmed to the fields the cards render. */
 export interface Doc {
   id: string;
   title: string;
+
+  // Research-item fields.
   type_s?: string;
   project_s?: string;
   country_ss?: string[];
@@ -39,6 +63,18 @@ export interface Doc {
   digitisation_ss?: string[];
   creator_ss?: string[];
   year?: number;
+
+  // Research-project fields.
+  institution_ss?: string[];
+  section_ss?: string[];
+  pi_ss?: string[];
+  member_ss?: string[];
+  year_start?: number;
+  year_end?: number;
+  item_count?: number;
+  has_items?: string;
+
+  // Shared.
   abstract?: string;
   description?: string;
   thumbnail_url?: string;
@@ -70,15 +106,15 @@ export interface SearchResponse {
 export interface Suggestion {
   id: string;
   title: string;
-  type?: string | null;
-  project?: string | null;
-  year?: number | null;
+  /** A short "·"-joined meta line (type · year, or section · year range). */
+  subtitle?: string | null;
 }
 
 /** field => selected values. */
 export type ActiveFilters = Record<string, string[]>;
 
 export interface SearchRequest {
+  profile: string;
   q: string;
   page: number;
   per_page: number;
@@ -86,4 +122,7 @@ export interface SearchRequest {
   filters: ActiveFilters;
   facets: string[];
   locked_filter: string;
+  /** Year bounds — null means "no constraint at that end". */
+  year_from?: number | null;
+  year_to?: number | null;
 }

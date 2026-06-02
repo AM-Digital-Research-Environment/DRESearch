@@ -5,79 +5,80 @@ namespace DRESearch\Indexer;
 
 use Closure;
 use Doctrine\DBAL\Connection;
-use DRESearch\Settings\FacetConfig;
+use DRESearch\Settings\SearchProfile;
 use Omeka\Entity\Item;
 use Typesense\Client;
 
 /**
- * Rebuilds the Typesense index from the Omeka database.
+ * Rebuilds the Typesense index for one {@see SearchProfile} from the Omeka
+ * database.
  *
- * Strategy: build a fresh, timestamp-versioned collection, stream research
- * items into it PAGED (keyset by id) and batch-upserted, then swap the live
- * alias to it atomically and drop the previous versions. Reads never touch the
- * half-built collection, and memory stays flat regardless of corpus size — the
- * only thing held whole is the small authority lookup.
+ * Strategy: build a fresh, timestamp-versioned collection, stream the profile's
+ * source resources into it PAGED (keyset by id) and batch-upserted, then swap
+ * the live alias to it atomically and drop the previous versions. Reads never
+ * touch the half-built collection, and memory stays flat regardless of corpus
+ * size — the only thing held whole is the small authority lookup (item kind).
  *
- * The resource template and the property terms to read are taken from
- * {@see FacetConfig}, so the reindex follows the same config a reuser overrides.
+ * Everything corpus-specific — the resource template + item set to read, the
+ * property terms, the mapper, and the optional reverse item-count — comes from
+ * the profile, so the reindex follows the same config a reuser overrides.
  */
 final class Reindexer
 {
-    /** Research items read per SQL page. */
+    /** Resources read per SQL page. */
     private const PAGE = 500;
     /** Documents per Typesense import call. */
     private const BATCH = 100;
 
-    /** Non-facet property terms always read (display, dates, creator roles). */
-    private const FIXED_TERMS = [
-        'dcterms:abstract', 'dcterms:description',
-        'dcterms:issued', 'dcterms:created', 'dcterms:date',
-        'dcterms:creator', 'dcterms:contributor', 'marcrel:aut', 'marcrel:edt',
-    ];
-
+    private readonly string $alias;
     /** @var list<string> */
     private readonly array $valueTerms;
+    /** @var array<string,?int> */
+    private array $propIdCache = [];
 
     /** @param Closure(string):void $log */
     public function __construct(
         private readonly Connection $connection,
         private readonly Client $client,
-        private readonly string $alias,
-        private readonly FacetConfig $facetConfig,
+        private readonly SearchProfile $profile,
         private readonly Closure $log,
     ) {
-        $this->valueTerms = array_values(array_unique(
-            array_merge($this->facetConfig->properties(), self::FIXED_TERMS),
-        ));
+        $this->alias = $profile->collection();
+        $this->valueTerms = $profile->readProperties();
     }
 
     /** @return array{documents:int, collection:string} */
     public function run(): array
     {
-        ($this->log)('Starting reindex…');
+        ($this->log)(sprintf("Starting reindex of '%s'…", $this->profile->name()));
 
-        $auth = new AuthorityResolver($this->connection, $this->facetConfig);
-        $auth->load();
-        ($this->log)(sprintf('Authority lookup: %d items', $auth->count()));
-        $mapper = new ResearchItemMapper($auth, $this->facetConfig);
+        $mapper = $this->buildMapper();
 
         $base = $this->collectionBase();
         $collection = $base . gmdate('YmdHis');
-        $this->client->collections->create((new SchemaProvider())->collection($collection, $this->facetConfig));
+        $this->client->collections->create((new SchemaProvider())->collection($collection, $this->profile));
         ($this->log)(sprintf('Created collection %s', $collection));
 
-        $templateId = $this->facetConfig->researchTemplateId();
+        $templateId = $this->profile->templateId();
+        $itemSetId = $this->profile->itemSetId();
+        $itemLink = $this->profile->itemLink();
         $total = 0;
         $lastId = 0;
         $batch = [];
 
+        $sql = 'SELECT id, title, is_public FROM resource'
+            . ' WHERE resource_type = :rt AND resource_template_id = :tid AND id > :lastId';
+        $params = ['rt' => Item::class, 'tid' => $templateId];
+        if ($itemSetId !== null) {
+            $sql .= ' AND id IN (SELECT item_id FROM item_item_set WHERE item_set_id = :setId)';
+            $params['setId'] = $itemSetId;
+        }
+        $sql .= ' ORDER BY id ASC LIMIT ' . self::PAGE;
+
         while (true) {
-            $rows = $this->connection->executeQuery(
-                'SELECT id, title, is_public FROM resource'
-                . ' WHERE resource_type = :rt AND resource_template_id = :tid AND id > :lastId'
-                . ' ORDER BY id ASC LIMIT ' . self::PAGE,
-                ['rt' => Item::class, 'tid' => $templateId, 'lastId' => $lastId],
-            )->fetchAllAssociative();
+            $rows = $this->connection
+                ->executeQuery($sql, ['lastId' => $lastId] + $params)
+                ->fetchAllAssociative();
 
             if (!$rows) {
                 break;
@@ -87,14 +88,19 @@ final class Reindexer
             $lastId = (int) end($ids);
             $valuesByItem = $this->loadValues($ids);
             $thumbnails = $this->loadThumbnails($ids);
+            $counts = $itemLink !== null ? $this->loadItemCounts($ids, $itemLink) : [];
 
             foreach ($rows as $r) {
                 $id = (int) $r['id'];
-                $batch[] = $mapper->map(
-                    ['id' => $id, 'title' => (string) ($r['title'] ?? ''), 'is_public' => (bool) $r['is_public']],
-                    $valuesByItem[$id] ?? [],
-                    $thumbnails[$id] ?? null,
-                );
+                $item = [
+                    'id'        => $id,
+                    'title'     => (string) ($r['title'] ?? ''),
+                    'is_public' => (bool) $r['is_public'],
+                ];
+                if ($itemLink !== null) {
+                    $item['item_count'] = $counts[$id] ?? 0;
+                }
+                $batch[] = $mapper->map($item, $valuesByItem[$id] ?? [], $thumbnails[$id] ?? null);
                 if (count($batch) >= self::BATCH) {
                     $this->flush($collection, $batch);
                     $total += count($batch);
@@ -116,6 +122,18 @@ final class Reindexer
         ($this->log)(sprintf('Done — %d documents indexed.', $total));
 
         return ['documents' => $total, 'collection' => $collection];
+    }
+
+    private function buildMapper(): MapperInterface
+    {
+        if ($this->profile->kind() === 'project') {
+            return new ProjectMapper($this->profile);
+        }
+
+        $auth = new AuthorityResolver($this->connection, $this->profile);
+        $auth->load();
+        ($this->log)(sprintf('Authority lookup: %d items', $auth->count()));
+        return new ResearchItemMapper($auth, $this->profile);
     }
 
     /**
@@ -162,6 +180,58 @@ final class Reindexer
             ];
         }
         return $out;
+    }
+
+    /**
+     * Count, per linked target id, the resources of `from_template` whose
+     * `property` points at it — i.e. how many research items belong to each
+     * project. One query per page.
+     *
+     * @param list<int> $ids
+     * @param array{from_template:int,property:string,public_only:bool} $itemLink
+     * @return array<int, int>
+     */
+    private function loadItemCounts(array $ids, array $itemLink): array
+    {
+        $idList = implode(',', array_map('intval', $ids));
+        $propId = $this->propertyId($itemLink['property']);
+        if ($idList === '' || $propId === null) {
+            return [];
+        }
+
+        $publicClause = !empty($itemLink['public_only']) ? ' AND r.is_public = 1' : '';
+        $sql = 'SELECT v.value_resource_id AS pid, COUNT(DISTINCT v.resource_id) AS cnt'
+            . ' FROM value v'
+            . ' JOIN resource r ON v.resource_id = r.id'
+            . ' WHERE v.property_id = :pid AND r.resource_template_id = :tpl'
+            . $publicClause
+            . " AND v.value_resource_id IN ($idList)"
+            . ' GROUP BY v.value_resource_id';
+
+        $out = [];
+        $result = $this->connection->executeQuery(
+            $sql,
+            ['pid' => $propId, 'tpl' => (int) $itemLink['from_template']],
+        );
+        foreach ($result->fetchAllAssociative() as $row) {
+            $out[(int) $row['pid']] = (int) $row['cnt'];
+        }
+        return $out;
+    }
+
+    /** Resolve (and cache) a property id from its "prefix:local" term. */
+    private function propertyId(string $term): ?int
+    {
+        if (array_key_exists($term, $this->propIdCache)) {
+            return $this->propIdCache[$term];
+        }
+        [$prefix, $local] = array_pad(explode(':', $term, 2), 2, '');
+        $id = $this->connection->executeQuery(
+            'SELECT p.id FROM property p JOIN vocabulary vo ON p.vocabulary_id = vo.id'
+            . ' WHERE vo.prefix = :prefix AND p.local_name = :local',
+            ['prefix' => $prefix, 'local' => $local],
+        )->fetchOne();
+        return $this->propIdCache[$term] = ($id !== false ? (int) $id : null);
     }
 
     /**

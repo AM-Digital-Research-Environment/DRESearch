@@ -21,13 +21,16 @@ class SearchController extends AbstractActionController
 
     public function apiSearchAction(): Response
     {
-        return $this->json($this->proxy->search($this->readBody()));
+        $body = $this->readBody();
+        $profile = (string) ($body['profile'] ?? '');
+        return $this->json($this->proxy->search($profile, $body));
     }
 
     public function apiSuggestAction(): Response
     {
+        $profile = (string) ($this->params()->fromQuery('profile') ?? $this->params()->fromPost('profile') ?? '');
         $q = (string) ($this->params()->fromQuery('q') ?? $this->params()->fromPost('q') ?? '');
-        return $this->json($this->proxy->suggest($q));
+        return $this->json($this->proxy->suggest($profile, $q));
     }
 
     /**

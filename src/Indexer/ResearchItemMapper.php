@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace DRESearch\Indexer;
 
-use DRESearch\Settings\FacetConfig;
+use DRESearch\Settings\SearchProfile;
 
 /**
  * Maps one research item — its denormalised columns plus its grouped property
@@ -11,7 +11,7 @@ use DRESearch\Settings\FacetConfig;
  * facets (including the three shared-property cases) via {@see AuthorityResolver}.
  *
  * Which Omeka property feeds each facet, and the authority IDs used to
- * disambiguate, all come from {@see FacetConfig} (config-driven). The
+ * disambiguate, all come from the {@see SearchProfile} (config-driven). The
  * resolution *logic* keys on the stable facet field names (type_s, subject_ss,
  * country_ss, …).
  *
@@ -19,7 +19,7 @@ use DRESearch\Settings\FacetConfig;
  *   ['vrid' => ?int, 'value' => ?string, 'title' => ?string]
  * where vrid/title come from a value_resource link and value is the literal.
  */
-final class ResearchItemMapper
+final class ResearchItemMapper implements MapperInterface
 {
     /** Roles folded into creator_ss for search + byline. */
     private const CREATOR_TERMS = ['dcterms:creator', 'dcterms:contributor', 'marcrel:aut', 'marcrel:edt'];
@@ -29,7 +29,7 @@ final class ResearchItemMapper
 
     public function __construct(
         private readonly AuthorityResolver $auth,
-        private readonly FacetConfig $facetConfig,
+        private readonly SearchProfile $profile,
     ) {
     }
 
@@ -41,18 +41,18 @@ final class ResearchItemMapper
     {
         // Facet → Omeka property (config-driven). '' if a facet is unmapped,
         // which simply yields no values from $values.
-        $pType     = $this->facetConfig->property('type_s') ?? '';
-        $pProject  = $this->facetConfig->property('project_s') ?? '';
-        $pCountry  = $this->facetConfig->property('country_ss') ?? '';
-        $pLanguage = $this->facetConfig->property('language_ss') ?? '';
-        $pSubject  = $this->facetConfig->property('subject_ss') ?? ''; // shared with tag_ss
-        $pAudience = $this->facetConfig->property('audience_ss') ?? '';
-        $pFormat   = $this->facetConfig->property('digitisation_ss') ?? '';
+        $pType     = $this->profile->property('type_s') ?? '';
+        $pProject  = $this->profile->property('project_s') ?? '';
+        $pCountry  = $this->profile->property('country_ss') ?? '';
+        $pLanguage = $this->profile->property('language_ss') ?? '';
+        $pSubject  = $this->profile->property('subject_ss') ?? ''; // shared with tag_ss
+        $pAudience = $this->profile->property('audience_ss') ?? '';
+        $pFormat   = $this->profile->property('digitisation_ss') ?? '';
 
-        $setProject  = $this->facetConfig->itemSet('project');
-        $setDigital  = $this->facetConfig->itemSet('digital');
-        $itemTag     = $this->facetConfig->typeItem('tag');
-        $itemCountry = $this->facetConfig->typeItem('country');
+        $setProject  = $this->profile->itemSet('project');
+        $setDigital  = $this->profile->itemSet('digital');
+        $itemTag     = $this->profile->typeItem('tag');
+        $itemCountry = $this->profile->typeItem('country');
 
         $doc = [
             'id'        => (string) $item['id'],

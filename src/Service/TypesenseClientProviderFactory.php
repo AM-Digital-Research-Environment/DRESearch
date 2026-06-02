@@ -14,6 +14,8 @@ use Psr\Container\ContainerInterface;
  *   2. Environment vars (TYPESENSE_HOST / TYPESENSE_API_KEY / …) — handy in
  *      Docker, where the same key is already in the compose .env
  *   3. module.config.php defaults (host "typesense", port 8108, …)
+ *
+ * Connection only — collection aliases live per-profile in dre_search.profiles.
  */
 final class TypesenseClientProviderFactory implements FactoryInterface
 {
@@ -27,9 +29,8 @@ final class TypesenseClientProviderFactory implements FactoryInterface
         $port = (int) self::resolve($settings, 'dre_search_typesense_port', 'TYPESENSE_PORT', (string) ($defaults['port'] ?? 8108));
         $protocol = self::resolve($settings, 'dre_search_typesense_protocol', 'TYPESENSE_PROTOCOL', (string) ($defaults['protocol'] ?? 'http'));
         $apiKey = self::resolve($settings, 'dre_search_typesense_api_key', 'TYPESENSE_API_KEY', '');
-        $collection = self::resolve($settings, 'dre_search_collection', 'TYPESENSE_COLLECTION', (string) ($defaults['collection'] ?? 'dre_research_current'));
 
-        return new TypesenseClientProvider($host, $port, $protocol, $apiKey, $collection);
+        return new TypesenseClientProvider($host, $port, $protocol, $apiKey);
     }
 
     /** Non-empty setting wins, then a non-empty env var, then the default. */

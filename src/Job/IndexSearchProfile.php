@@ -5,15 +5,16 @@ namespace DRESearch\Job;
 
 use DRESearch\Indexer\Reindexer;
 use DRESearch\Search\TypesenseClientProvider;
-use DRESearch\Settings\FacetConfig;
+use DRESearch\Settings\ProfileRegistry;
 use Omeka\Job\AbstractJob;
 
 /**
- * Background job that rebuilds the Typesense index from the Omeka database.
- * Dispatched from the admin Maintenance page. Progress is written to the Omeka
- * job log (Admin → Jobs), so a long reindex is observable without shell access.
+ * Background job that rebuilds the Typesense index for one search profile from
+ * the Omeka database. Dispatched from the admin Maintenance page with a
+ * `profile` argument. Progress is written to the Omeka job log (Admin → Jobs),
+ * so a long reindex is observable without shell access.
  */
-class IndexResearchItems extends AbstractJob
+class IndexSearchProfile extends AbstractJob
 {
     public function perform(): void
     {
@@ -29,15 +30,21 @@ class IndexResearchItems extends AbstractJob
             return;
         }
 
-        /** @var FacetConfig $facetConfig */
-        $facetConfig = $services->get(FacetConfig::class);
+        /** @var ProfileRegistry $registry */
+        $registry = $services->get(ProfileRegistry::class);
+        $profileName = (string) $this->getArg('profile', '');
+        $profile = $registry->get($profileName);
+        if ($profile === null) {
+            $logger->warn(sprintf('DRESearch: unknown search profile "%s" — reindex skipped.', $profileName));
+            return;
+        }
 
         $log = static function (string $message) use ($logger): void {
             $logger->info('DRESearch: ' . $message);
         };
 
         try {
-            $reindexer = new Reindexer($connection, $client, $provider->collection(), $facetConfig, $log);
+            $reindexer = new Reindexer($connection, $client, $profile, $log);
             $stats = $reindexer->run();
             $logger->info('DRESearch: reindex complete', $stats);
         } catch (\Throwable $e) {

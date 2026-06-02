@@ -1,7 +1,8 @@
 <?php
 /**
  * @var \Laminas\View\Renderer\PhpRenderer $this
- * @var array{configured:bool, reachable:bool, collection:string, documents:?int, error:?string} $status
+ * @var bool $configured
+ * @var list<array{name:string, label:string, collection:string, reachable:bool, documents:?int, error:?string}> $profiles
  * @var \DRESearch\Form\MaintenanceForm $form
  */
 $this->headTitle($this->translate('DRE Search'));
@@ -11,48 +12,57 @@ $form->prepare();
 <?= $this->pageTitle($this->translate('DRE Search'), 1, $this->translate('Maintenance')) ?>
 
 <h2><?= $this->translate('Typesense status') ?></h2>
+
+<p>
+    <strong><?= $this->translate('Configured') ?>:</strong>
+    <?php if ($configured): ?>
+        <?= $this->translate('Yes') ?>
+    <?php else: ?>
+        <?= $this->translate('No — set the connection under Modules → DRE Search → Configure.') ?>
+    <?php endif; ?>
+</p>
+
 <table class="tablesaw" data-tablesaw-mode="stack">
-    <tbody>
+    <thead>
         <tr>
-            <th><?= $this->translate('Configured') ?></th>
+            <th><?= $this->translate('Search') ?></th>
+            <th><?= $this->translate('Collection alias') ?></th>
+            <th><?= $this->translate('Server reachable') ?></th>
+            <th><?= $this->translate('Documents indexed') ?></th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php foreach ($profiles as $p): ?>
+        <tr>
+            <th scope="row"><?= $this->escapeHtml($this->translate($p['label'])) ?></th>
+            <td><code><?= $this->escapeHtml($p['collection']) ?></code></td>
+            <td><?= $p['reachable'] ? $this->translate('Yes') : $this->translate('No') ?></td>
             <td>
-                <?php if ($status['configured']): ?>
-                    <?= $this->translate('Yes') ?>
-                <?php else: ?>
-                    <?= $this->translate('No — set the connection under Modules → DRE Search → Configure.') ?>
+                <?= $p['documents'] === null ? '—' : $this->escapeHtml((string) $p['documents']) ?>
+                <?php if (!empty($p['error'])): ?>
+                    <div class="error"><?= $this->escapeHtml($p['error']) ?></div>
                 <?php endif; ?>
             </td>
         </tr>
-        <tr>
-            <th><?= $this->translate('Server reachable') ?></th>
-            <td><?= $status['reachable'] ? $this->translate('Yes') : $this->translate('No') ?></td>
-        </tr>
-        <tr>
-            <th><?= $this->translate('Collection alias') ?></th>
-            <td><code><?= $this->escapeHtml($status['collection']) ?></code></td>
-        </tr>
-        <tr>
-            <th><?= $this->translate('Documents indexed') ?></th>
-            <td><?= $status['documents'] === null ? '—' : $this->escapeHtml((string) $status['documents']) ?></td>
-        </tr>
-        <?php if (!empty($status['error'])): ?>
-        <tr>
-            <th><?= $this->translate('Last error') ?></th>
-            <td class="error"><?= $this->escapeHtml($status['error']) ?></td>
-        </tr>
-        <?php endif; ?>
+        <?php endforeach; ?>
     </tbody>
 </table>
 
 <h2><?= $this->translate('Reindex') ?></h2>
 <p>
-    <?= $this->translate('Rebuild the search index from the current Omeka content. This runs as a background job — you can keep working while it completes.') ?>
+    <?= $this->translate('Rebuild a search index from the current Omeka content. Each runs as a background job — you can keep working while it completes.') ?>
 </p>
 
-<?php if ($status['configured']): ?>
+<?php if ($configured): ?>
     <?= $this->form()->openTag($form) ?>
     <?= $this->formHidden($form->get('csrf')) ?>
-    <button type="submit" class="button"><?= $this->translate('Reindex now') ?></button>
+    <div class="dre-search-reindex-buttons">
+        <?php foreach ($profiles as $p): ?>
+            <button type="submit" class="button" name="profile" value="<?= $this->escapeHtmlAttr($p['name']) ?>">
+                <?= $this->translate('Reindex') ?>: <?= $this->escapeHtml($this->translate($p['label'])) ?>
+            </button>
+        <?php endforeach; ?>
+    </div>
     <?= $this->form()->closeTag() ?>
 <?php else: ?>
     <p class="error"><?= $this->translate('Configure the Typesense connection before reindexing.') ?></p>

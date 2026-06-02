@@ -21,10 +21,11 @@ return [
             // Server-side search: forwards queries to Typesense, forcing
             // is_public:=true, and normalises the response for the client.
             Search\SearchProxy::class => Service\SearchProxyFactory::class,
-            // Facet / index mapping, built from the 'dre_search' config below.
-            // A reuser overrides item-set IDs, facets, query fields, etc. via
+            // The search profiles (corpora) and their facet / index mapping,
+            // built from the 'dre_search.profiles' config below. A reuser
+            // overrides templates, item sets, facets, query fields, etc. via
             // config/local.config.php — no module source edits needed.
-            Settings\FacetConfig::class => Service\FacetConfigFactory::class,
+            Settings\ProfileRegistry::class => Service\ProfileRegistryFactory::class,
         ],
     ],
 
@@ -42,12 +43,15 @@ return [
         ],
     ],
 
-    // Page block — lets editors drop the faceted search surface onto any Site
-    // page. Factory (not invokable) so render() can pull SearchProxy for the
-    // server-rendered first page of results.
+    // Page blocks — let editors drop a faceted search surface onto any Site
+    // page. One per corpus; factories (not invokables) so render() can pull
+    // SearchProxy for the server-rendered first page of results.
     'block_layouts' => [
         'factories' => [
-            'dreSearch' => Service\BlockLayout\DreSearchBlockFactory::class,
+            // Research items: keeps the original 'dreSearch' id so blocks
+            // already placed on site pages keep working after the upgrade.
+            'dreSearch'         => Service\BlockLayout\ResearchItemsSearchBlockFactory::class,
+            'dreSearchProjects' => Service\BlockLayout\ResearchProjectsSearchBlockFactory::class,
         ],
     ],
 
@@ -139,66 +143,135 @@ return [
     // Everything instance-specific lives here and is overridable, key by key,
     // via config/local.config.php — porting DRESearch to another Omeka instance
     // means a config override, not a source edit. The Typesense field names
-    // (type_s, country_ss, …) are the stable interface; what backs each one on
-    // the Omeka side is what you change.
+    // (type_s, institution_ss, year_start, …) are the stable interface; what
+    // backs each one on the Omeka side is what you change.
     //
     // Connection bits are additionally overridable by the admin settings form
     // and by environment variables (see TypesenseClientProviderFactory).
     'dre_search' => [
         'typesense' => [
-            'host'       => 'typesense',
-            'port'       => 8108,
-            'protocol'   => 'http',
-            // Alias that always points at the live collection; the reindexer
-            // builds dre_research_<timestamp> and swaps the alias atomically.
-            'collection' => 'dre_research_current',
+            'host'     => 'typesense',
+            'port'     => 8108,
+            'protocol' => 'http',
         ],
         'public_search' => [
             // Hard filter appended to every public query, enforced server-side.
             'filter_by' => 'is_public:=true',
         ],
 
-        // The resource template whose items are indexed as "research items".
-        // (MongoDB2OmekaS writes research items with template id 10.)
-        'research_template_id' => 10,
+        // ── Search profiles (corpora) ───────────────────────────────────────
+        // Each profile is an independent Typesense collection + facet/index
+        // mapping. The first profile is the default (used when a request/block
+        // omits a profile name). Add a third corpus (e.g. publications) by
+        // adding a profile here + a mapper — no rewrite. Each profile's `kind`
+        // selects its indexer mapper and its result card ('item' | 'project').
+        'profiles' => [
 
-        // Full-text fields Typesense searches (query_by), in priority order.
-        'query_by' => 'title,abstract,description,subject_ss,tag_ss,creator_ss',
+            // Research items — resource template 10. Eight facets resolved from
+            // linked authority items (three share a property and are split by
+            // the target's dcterms:type / item set; see ResearchItemMapper).
+            'research_items' => [
+                'label'       => 'Research items', // @translate
+                // Alias that always points at the live collection; the reindexer
+                // builds dre_research_<timestamp> and swaps the alias atomically.
+                'collection'  => 'dre_research_current',
+                'kind'        => 'item',
+                'template_id' => 10,
+                'item_set_id' => null, // research items aren't confined to one set
+                'query_by'    => 'title,abstract,description,subject_ss,tag_ss,creator_ss',
+                // mode 'single' = one origin year; facet => a year range slider.
+                'date'        => ['mode' => 'single', 'label' => 'Year', 'facet' => true],
 
-        // Authority item sets backing the facets (DRE instance defaults).
-        'authority_item_sets' => [
-            'type'     => 1,
-            'language' => 19,
-            'project'  => 20,
-            'location' => 1851,
-            'subject'  => 1852,
-            'audience' => 3169,
-            'digital'  => 7438,
-            'genre'    => 21, // also on dcterms:format — excluded from digitisation
-        ],
+                // Authority item sets backing the facets (DRE instance defaults).
+                'authority_item_sets' => [
+                    'type'     => 1,
+                    'language' => 19,
+                    'project'  => 20,
+                    'location' => 1851,
+                    'subject'  => 1852,
+                    'audience' => 3169,
+                    'digital'  => 7438,
+                    'genre'    => 21, // also on dcterms:format — excluded from digitisation
+                ],
 
-        // dcterms:type discriminator target items, used to split the
-        // shared-property facets (see ResearchItemMapper).
-        'type_items' => [
-            'lcsh'         => 3167,
-            'tag'          => 22199,
-            'country'      => 3168,
-            'geo_location' => 22431,
-        ],
+                // dcterms:type discriminator target items, used to split the
+                // shared-property facets (see ResearchItemMapper).
+                'type_items' => [
+                    'lcsh'         => 3167,
+                    'tag'          => 22199,
+                    'country'      => 3168,
+                    'geo_location' => 22431,
+                ],
 
-        // The facets: Typesense field => { Omeka property, UI label,
-        // multi-valued? }. Order here is the display order. Add/remove a facet
-        // by editing this map (then reindex); the schema, the SQL term list,
-        // and the block's facet picker all derive from it.
-        'facets' => [
-            'type_s'          => ['property' => 'dcterms:type',     'label' => 'Type',                'array' => false],
-            'project_s'       => ['property' => 'dcterms:isPartOf', 'label' => 'Project',             'array' => false],
-            'country_ss'      => ['property' => 'dcterms:spatial',  'label' => 'Country',             'array' => true],
-            'language_ss'     => ['property' => 'dcterms:language', 'label' => 'Language',            'array' => true],
-            'subject_ss'      => ['property' => 'dcterms:subject',  'label' => 'Subject',             'array' => true],
-            'tag_ss'          => ['property' => 'dcterms:subject',  'label' => 'Tag',                 'array' => true],
-            'audience_ss'     => ['property' => 'dcterms:audience', 'label' => 'Target audience',     'array' => true],
-            'digitisation_ss' => ['property' => 'dcterms:format',   'label' => 'Digitisation method', 'array' => true],
+                // Facets: Typesense field => { Omeka property, UI label,
+                // multi-valued? }. Order here is the display order.
+                'facets' => [
+                    'type_s'          => ['property' => 'dcterms:type',     'label' => 'Type',                'array' => false],
+                    'project_s'       => ['property' => 'dcterms:isPartOf', 'label' => 'Project',             'array' => false],
+                    'country_ss'      => ['property' => 'dcterms:spatial',  'label' => 'Country',             'array' => true],
+                    'language_ss'     => ['property' => 'dcterms:language', 'label' => 'Language',            'array' => true],
+                    'subject_ss'      => ['property' => 'dcterms:subject',  'label' => 'Subject',             'array' => true],
+                    'tag_ss'          => ['property' => 'dcterms:subject',  'label' => 'Tag',                 'array' => true],
+                    'audience_ss'     => ['property' => 'dcterms:audience', 'label' => 'Target audience',     'array' => true],
+                    'digitisation_ss' => ['property' => 'dcterms:format',   'label' => 'Digitisation method', 'array' => true],
+                ],
+
+                // creator_ss is populated by ResearchItemMapper from a union of
+                // role properties (see read_properties); declared here only so
+                // the schema knows the field. property = null (mapper-emitted).
+                'display_fields' => [
+                    'creator_ss' => ['property' => null, 'type' => 'string[]', 'facet' => true],
+                ],
+
+                // Extra property terms the reindexer must read beyond the facet
+                // properties (display, dates, creator roles).
+                'read_properties' => [
+                    'dcterms:abstract', 'dcterms:description',
+                    'dcterms:issued', 'dcterms:created', 'dcterms:date',
+                    'dcterms:creator', 'dcterms:contributor', 'marcrel:aut', 'marcrel:edt',
+                ],
+            ],
+
+            // Research projects — resource template 5, item set 20. Links are
+            // unambiguous (frapo:isFundedBy = institution, dcterms:isPartOf =
+            // research section, dcterms:creator = PI), so facets resolve straight
+            // from the linked title (see ProjectMapper). A date *range* from
+            // dcterms:temporal, and a reverse count of the research items that
+            // belong to each project (the has_items facet + card figure).
+            'research_projects' => [
+                'label'       => 'Research projects', // @translate
+                'collection'  => 'dre_projects_current',
+                'kind'        => 'project',
+                'template_id' => 5,
+                'item_set_id' => 20,
+                'query_by'    => 'title,abstract,pi_ss,institution_ss,section_ss',
+                // mode 'range' = start/end years; facet => a year range slider.
+                'date'        => ['mode' => 'range', 'property' => 'dcterms:temporal', 'label' => 'Year', 'facet' => true],
+
+                'facets' => [
+                    'institution_ss' => ['property' => 'frapo:isFundedBy', 'label' => 'Institution',       'array' => true],
+                    'section_ss'     => ['property' => 'dcterms:isPartOf',  'label' => 'Research section',   'array' => true],
+                    'has_items'      => ['property' => null, 'label' => 'Has research items', 'array' => false, 'derived' => true],
+                ],
+
+                // pi_ss / member_ss are linked-title fields the mapper fills from
+                // their property; item_count is the reverse-count figure.
+                'display_fields' => [
+                    'pi_ss'      => ['property' => 'dcterms:creator', 'type' => 'string[]', 'facet' => false],
+                    'member_ss'  => ['property' => 'foaf:member',     'type' => 'string[]', 'facet' => false],
+                    'item_count' => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
+                ],
+
+                'read_properties' => ['dcterms:abstract'],
+
+                // has_items / item_count: count research items (template 10) that
+                // link to each project via dcterms:isPartOf. Public items only.
+                'item_link' => [
+                    'from_template' => 10,
+                    'property'      => 'dcterms:isPartOf',
+                    'public_only'   => true,
+                ],
+            ],
         ],
     ],
 ];

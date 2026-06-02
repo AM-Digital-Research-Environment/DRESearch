@@ -3,24 +3,26 @@ declare(strict_types=1);
 
 namespace DRESearch\Search;
 
-use DRESearch\Settings\FacetConfig;
+use DRESearch\Settings\SearchProfile;
 
 /**
  * Translates a structured search request from the client into Typesense search
- * parameters. The is_public:=true constraint is hard-coded here (not taken from
- * the request), so a crafted client payload can never widen visibility.
+ * parameters for one {@see SearchProfile}. The is_public:=true constraint is
+ * hard-coded here (not taken from the request), so a crafted client payload can
+ * never widen visibility.
  *
- * The searchable fields (query_by) and the valid facet fields come from
- * {@see FacetConfig}, so this stays correct when the facet set is overridden.
+ * The searchable fields (query_by), the valid facet fields, and the date handling
+ * (single origin year vs a start/end range) all come from the profile, so this
+ * stays correct across corpora.
  *
  * Expected request keys (all optional):
  *   q             string  full-text query ('' = browse everything)
  *   page          int     1-based
  *   per_page      int     capped at PER_PAGE_MAX
  *   sort          string  relevance | newest | oldest | title
- *   filters       array   field => [values]  (validated against FacetConfig)
- *   facets        array   facet fields to count (defaults to all FacetConfig)
- *   year_from/to  int     optional origin-year bounds
+ *   filters       array   field => [values]  (validated against the profile)
+ *   facets        array   facet fields to count (defaults to all profile facets)
+ *   year_from/to  int     optional year bounds (overlap for range profiles)
  *   locked_filter string  admin-authored raw filter from the block (echoed by
  *                         the client; only ever narrows, never widens)
  */
@@ -29,7 +31,7 @@ final class QueryBuilder
     private const PER_PAGE_DEFAULT = 20;
     private const PER_PAGE_MAX = 50;
 
-    public function __construct(private readonly FacetConfig $facetConfig)
+    public function __construct(private readonly SearchProfile $profile)
     {
     }
 
@@ -44,7 +46,7 @@ final class QueryBuilder
 
         $params = [
             'q'                => $isBrowse ? '*' : $q,
-            'query_by'         => $this->facetConfig->queryBy(),
+            'query_by'         => $this->profile->queryBy(),
             'filter_by'        => $this->buildFilter($req),
             'facet_by'         => $this->buildFacetBy($req),
             'max_facet_values' => 100,
@@ -60,8 +62,14 @@ final class QueryBuilder
 
     public function suggest(string $q): array
     {
-        // Only request fields that exist in the schema (id/title/year + facets).
-        $include = array_merge(['id', 'title', 'year'], $this->facetConfig->fieldNames());
+        // Request only fields the suggestion subtitle might use (id/title + the
+        // date field(s) + facets + display fields), so the payload stays small.
+        $include = array_merge(
+            ['id', 'title'],
+            $this->profile->isRangeDate() ? ['year_start', 'year_end'] : ['year'],
+            $this->profile->fieldNames(),
+            array_keys($this->profile->displayFields()),
+        );
         return [
             'q'              => $q,
             'query_by'       => 'title',
@@ -70,7 +78,25 @@ final class QueryBuilder
             'sort_by'        => '_text_match:desc',
             'page'           => 1,
             'per_page'       => 6,
-            'include_fields' => implode(',', $include),
+            'include_fields' => implode(',', array_values(array_unique($include))),
+        ];
+    }
+
+    /**
+     * Minimal query for the year facet stats (slider bounds). facet_stats
+     * (min/max) are computed over all matches regardless of per_page, so we ask
+     * for a single hit (per_page 1 is always valid) and read the stats.
+     */
+    public function yearStats(): array
+    {
+        return [
+            'q'          => '*',
+            'query_by'   => 'title',
+            'filter_by'  => 'is_public:=true',
+            'facet_by'   => implode(',', $this->profile->yearStatFields()),
+            'page'       => 1,
+            'per_page'   => 1,
+            'sort_by'    => $this->profile->sortYearField() . ':asc',
         ];
     }
 
@@ -87,7 +113,7 @@ final class QueryBuilder
 
         $filters = $req['filters'] ?? [];
         if (is_array($filters)) {
-            foreach ($this->facetConfig->fieldNames() as $field) {
+            foreach ($this->profile->fieldNames() as $field) {
                 $values = $filters[$field] ?? null;
                 if (!is_array($values) || $values === []) {
                     continue;
@@ -103,20 +129,51 @@ final class QueryBuilder
             }
         }
 
-        if (isset($req['year_from']) && is_numeric($req['year_from'])) {
-            $clauses[] = 'year:>=' . (int) $req['year_from'];
-        }
-        if (isset($req['year_to']) && is_numeric($req['year_to'])) {
-            $clauses[] = 'year:<=' . (int) $req['year_to'];
-        }
+        $this->appendYearFilter($clauses, $req);
 
         return implode(' && ', $clauses);
+    }
+
+    /**
+     * Year bounds. For a single-date profile these test the `year` field
+     * directly; for a range profile they test overlap of [year_start, year_end]
+     * with the selected window (a project matches if it started on/before `to`
+     * and ended on/after `from`).
+     *
+     * @param list<string> $clauses
+     * @param array<string,mixed> $req
+     */
+    private function appendYearFilter(array &$clauses, array $req): void
+    {
+        $hasFrom = isset($req['year_from']) && is_numeric($req['year_from']);
+        $hasTo = isset($req['year_to']) && is_numeric($req['year_to']);
+        if (!$hasFrom && !$hasTo) {
+            return;
+        }
+        $from = $hasFrom ? (int) $req['year_from'] : null;
+        $to = $hasTo ? (int) $req['year_to'] : null;
+
+        if ($this->profile->isRangeDate()) {
+            if ($from !== null) {
+                $clauses[] = 'year_end:>=' . $from;
+            }
+            if ($to !== null) {
+                $clauses[] = 'year_start:<=' . $to;
+            }
+        } else {
+            if ($from !== null) {
+                $clauses[] = 'year:>=' . $from;
+            }
+            if ($to !== null) {
+                $clauses[] = 'year:<=' . $to;
+            }
+        }
     }
 
     /** @param array<string,mixed> $req */
     private function buildFacetBy(array $req): string
     {
-        $allowed = $this->facetConfig->fieldNames();
+        $allowed = $this->profile->fieldNames();
         $requested = $req['facets'] ?? null;
         if (is_array($requested) && $requested !== []) {
             $fields = array_values(array_intersect($allowed, array_map('strval', $requested)));
@@ -129,13 +186,14 @@ final class QueryBuilder
 
     private function buildSort(string $sort, bool $isBrowse): string
     {
+        $yearField = $this->profile->sortYearField();
         return match ($sort) {
-            'newest' => 'year:desc',
-            'oldest' => 'year:asc',
+            'newest' => $yearField . ':desc',
+            'oldest' => $yearField . ':asc',
             'title'  => 'title:asc',
             // Relevance is meaningless on a wildcard browse, so fall back to
             // newest there.
-            default  => $isBrowse ? 'year:desc' : '_text_match:desc',
+            default  => $isBrowse ? $yearField . ':desc' : '_text_match:desc',
         };
     }
 }

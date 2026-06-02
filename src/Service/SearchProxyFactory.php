@@ -5,7 +5,7 @@ namespace DRESearch\Service;
 
 use DRESearch\Search\SearchProxy;
 use DRESearch\Search\TypesenseClientProvider;
-use DRESearch\Settings\FacetConfig;
+use DRESearch\Settings\ProfileRegistry;
 use Laminas\ServiceManager\Factory\FactoryInterface;
 use Psr\Container\ContainerInterface;
 
@@ -15,7 +15,7 @@ final class SearchProxyFactory implements FactoryInterface
     {
         return new SearchProxy(
             $container->get(TypesenseClientProvider::class),
-            $container->get(FacetConfig::class),
+            $container->get(ProfileRegistry::class),
         );
     }
 }

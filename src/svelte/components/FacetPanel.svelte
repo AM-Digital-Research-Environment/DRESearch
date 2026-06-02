@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import type { ActiveFilters, Facet } from '../lib/types';
   import { t } from '../lib/i18n';
   import FacetGroup from './FacetGroup.svelte';
@@ -14,9 +15,12 @@
     activeCount: number;
     onToggle: (field: string, value: string, checked: boolean) => void;
     onClearAll: () => void;
+    /** Optional extra control rendered above the facet groups (e.g. a year slider). */
+    prepend?: Snippet;
   }
 
-  const { facets, order, labels, selected, activeCount, onToggle, onClearAll }: Props = $props();
+  const { facets, order, labels, selected, activeCount, onToggle, onClearAll, prepend }: Props =
+    $props();
 
   function labelFor(field: string): string {
     return labels[field] ?? field;
@@ -71,10 +75,11 @@
     </section>
   {/if}
 
-  {#if orderedFacets.length === 0}
+  {#if orderedFacets.length === 0 && !prepend}
     <p class="dre-facets__empty">{t('search_to_see_options')}</p>
   {:else}
     <div class="dre-facets__groups">
+      {@render prepend?.()}
       {#each orderedFacets as facet (facet.field)}
         <FacetGroup
           field={facet.field}

@@ -6,6 +6,7 @@
 
 const STRINGS: Record<string, string> = {
   search_placeholder: 'Search research items…',
+  search_placeholder_project: 'Search research projects…',
   clear_search: 'Clear search',
 
   filters: 'Filters',
@@ -26,7 +27,7 @@ const STRINGS: Record<string, string> = {
   result_one: 'result',
   result_other: 'results',
 
-  no_results_title: 'No matching research items',
+  no_results_title: 'No results found',
   try_removing_filter: 'Try removing a filter or broadening your search.',
   clear_all_filters: 'Clear all filters',
   try_broader_query: 'Try a different or broader search term.',
@@ -38,6 +39,16 @@ const STRINGS: Record<string, string> = {
   untitled: 'Untitled',
   project_label: 'Project',
   suggestions: 'Suggestions',
+
+  // Year range slider.
+  year_label: 'Year',
+  year_from: 'From',
+  year_to: 'To',
+
+  // Project card.
+  pi_label: 'PI',
+  research_items_one: '{n} research item',
+  research_items_other: '{n} research items',
 };
 
 export function t(key: string, vars?: Record<string, string | number>): string {
@@ -48,4 +59,9 @@ export function t(key: string, vars?: Record<string, string | number>): string {
     }
   }
   return str;
+}
+
+/** Pluralised "{n} research items". */
+export function researchItemsLabel(n: number): string {
+  return t(n === 1 ? 'research_items_one' : 'research_items_other', { n: n.toLocaleString() });
 }

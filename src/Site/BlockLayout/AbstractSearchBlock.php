@@ -4,7 +4,8 @@ declare(strict_types=1);
 namespace DRESearch\Site\BlockLayout;
 
 use DRESearch\Search\SearchProxy;
-use DRESearch\Settings\FacetConfig;
+use DRESearch\Settings\ProfileRegistry;
+use DRESearch\Settings\SearchProfile;
 use Laminas\View\Renderer\PhpRenderer;
 use Omeka\Api\Representation\SitePageBlockRepresentation;
 use Omeka\Api\Representation\SitePageRepresentation;
@@ -12,23 +13,26 @@ use Omeka\Api\Representation\SiteRepresentation;
 use Omeka\Site\BlockLayout\AbstractBlockLayout;
 
 /**
- * Page block that drops the faceted research-item search onto any Site page.
+ * Shared page block for a faceted search over one {@see SearchProfile}. Two thin
+ * subclasses bind it to a corpus — research items and research projects — each
+ * appearing as its own entry in the block picker.
  *
  * Persisted block data (site_block.data):
  *   {
  *     "title":            "Optional H2",
  *     "intro_html":       "Optional intro HTML",
- *     "facets":           ["type_s","country_ss", ...],   // which facets to show
+ *     "facets":           ["institution_ss", ...],         // which facets to show
+ *     "show_year":        "1",                               // year slider (range profiles)
  *     "default_sort":     "relevance" | "newest" | "oldest" | "title",
  *     "results_per_page": 20,
- *     "locked_filter":    "project_s:=`Remoboko`"          // optional, raw filter_by
+ *     "locked_filter":    "section_ss:=`Mobilities`"         // optional, raw filter_by
  *   }
  *
- * render() injects the Svelte bundle, builds a bootstrap blob, and server-side
- * renders the first page through SearchProxy so the block paints results
- * immediately (and degrades to a quiet notice when Typesense is off).
+ * render() injects the Svelte bundle, builds a bootstrap blob (including the
+ * profile name + card kind so the client renders the right card), and server-side
+ * renders the first page so the block paints immediately.
  */
-class DreSearchBlock extends AbstractBlockLayout
+abstract class AbstractSearchBlock extends AbstractBlockLayout
 {
     private const SORT_OPTIONS = [
         'relevance' => 'Relevance',       // @translate
@@ -39,13 +43,16 @@ class DreSearchBlock extends AbstractBlockLayout
 
     public function __construct(
         private readonly SearchProxy $proxy,
-        private readonly FacetConfig $facetConfig,
+        private readonly ProfileRegistry $registry,
     ) {
     }
 
-    public function getLabel()
+    /** The profile name this block searches (e.g. 'research_items'). */
+    abstract protected function profileName(): string;
+
+    protected function profile(): ?SearchProfile
     {
-        return 'DRE Search'; // @translate
+        return $this->registry->get($this->profileName());
     }
 
     public function form(
@@ -54,10 +61,15 @@ class DreSearchBlock extends AbstractBlockLayout
         ?SitePageRepresentation $page = null,
         ?SitePageBlockRepresentation $block = null
     ) {
+        $profile = $this->profile();
+        $allFacets = $profile ? $profile->all() : [];
+        $hasYearFacet = $profile && $profile->hasYearFacet();
+
         $data = $block ? $block->data() : [];
         $title        = (string) ($data['title'] ?? '');
         $introHtml    = (string) ($data['intro_html'] ?? '');
-        $facets       = $data['facets'] ?? $this->facetConfig->fieldNames();
+        $facets       = $data['facets'] ?? array_keys($allFacets);
+        $showYear     = !$block || (bool) ($data['show_year'] ?? true);
         $defaultSort  = (string) ($data['default_sort'] ?? 'relevance');
         $perPage      = (int) ($data['results_per_page'] ?? 20);
         $lockedFilter = (string) ($data['locked_filter'] ?? '');
@@ -96,7 +108,16 @@ class DreSearchBlock extends AbstractBlockLayout
                 <div class="field-description"><?= $esc($t('Which facets appear in the sidebar.')) ?></div>
             </div>
             <div class="inputs">
-                <?php foreach ($this->facetConfig->all() as $field => $def): ?>
+                <?php if ($hasYearFacet): ?>
+                    <label style="display:block;">
+                        <input type="checkbox"
+                               name="<?= $escAttr($prefix) ?>[show_year]"
+                               value="1" <?= $showYear ? 'checked' : '' ?>>
+                        <?= $esc($t($profile->dateLabel())) ?>
+                        <code style="opacity:.6"><?= $esc($t('range slider')) ?></code>
+                    </label>
+                <?php endif; ?>
+                <?php foreach ($allFacets as $field => $def): ?>
                     <label style="display:block;">
                         <input type="checkbox"
                                name="<?= $escAttr($prefix) ?>[facets][]"
@@ -138,13 +159,13 @@ class DreSearchBlock extends AbstractBlockLayout
             <div class="field-meta">
                 <label for="dre-search-locked"><?= $esc($t('Locked filter (optional)')) ?></label>
                 <div class="field-description">
-                    <?= $esc($t('Pins this block to a subset, Typesense filter_by syntax. Example: project_s:=`Remoboko`')) ?>
+                    <?= $esc($t('Pins this block to a subset, Typesense filter_by syntax. Example: section_ss:=`Mobilities`')) ?>
                 </div>
             </div>
             <div class="inputs">
                 <input id="dre-search-locked" type="text"
                        name="<?= $escAttr($prefix) ?>[locked_filter]"
-                       value="<?= $escAttr($lockedFilter) ?>" placeholder="project_s:=`...`">
+                       value="<?= $escAttr($lockedFilter) ?>" placeholder="field:=`...`">
             </div>
         </div>
         <?php
@@ -157,6 +178,7 @@ class DreSearchBlock extends AbstractBlockLayout
         $templateViewScript = 'common/block-layout/dre-search-block'
     ) {
         $data = $block->data();
+        $profile = $this->profile();
 
         // Inject the bundle once per page (headLink/headScript dedupe by URL).
         $view->headLink()->appendStylesheet($view->assetUrl('css/dre-search.css', 'DRESearch'));
@@ -167,15 +189,19 @@ class DreSearchBlock extends AbstractBlockLayout
             ['defer' => true]
         );
 
+        $allFields = $profile ? $profile->fieldNames() : [];
+
         // Sanitise the configured facet list against the known fields.
         $facets = array_values(array_intersect(
-            $this->facetConfig->fieldNames(),
-            (array) ($data['facets'] ?? $this->facetConfig->fieldNames())
+            $allFields,
+            (array) ($data['facets'] ?? $allFields)
         ));
         if ($facets === []) {
-            $facets = $this->facetConfig->fieldNames();
+            $facets = $allFields;
         }
 
+        $hasYearFacet = $profile && $profile->hasYearFacet();
+        $showYear     = $hasYearFacet && (bool) ($data['show_year'] ?? true);
         $defaultSort  = (string) ($data['default_sort'] ?? 'relevance');
         $perPage      = (int) ($data['results_per_page'] ?? 20);
         $perPage      = $perPage > 0 ? $perPage : 20;
@@ -183,13 +209,19 @@ class DreSearchBlock extends AbstractBlockLayout
 
         $facetLabels = [];
         foreach ($facets as $field) {
-            $facetLabels[$field] = (string) $view->translate($this->facetConfig->label($field));
+            $facetLabels[$field] = (string) $view->translate($profile->facetLabel($field));
         }
 
+        $profileName = $profile ? $profile->name() : '';
         $siteSlug = $block->page()->site()->slug();
 
         $bootstrap = [
             'block_id'      => (int) $block->id(),
+            'profile'       => $profileName,
+            'card_kind'     => $profile ? $profile->kind() : 'item',
+            'date_mode'     => $profile ? $profile->dateMode() : 'single',
+            'show_year'     => $showYear,
+            'year_bounds'   => $showYear ? $this->proxy->yearBounds($profileName) : null,
             'facets'        => $facets,
             'facet_labels'  => $facetLabels,
             'default_sort'  => $defaultSort,
@@ -204,7 +236,7 @@ class DreSearchBlock extends AbstractBlockLayout
         ];
 
         // Server-render the first (browse) page so the block paints immediately.
-        $bootstrap['initial_response'] = $this->proxy->search([
+        $bootstrap['initial_response'] = $this->proxy->search($profileName, [
             'q'             => '',
             'page'          => 1,
             'per_page'      => $perPage,

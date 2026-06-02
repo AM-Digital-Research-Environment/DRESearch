@@ -1,7 +1,7 @@
 {
   "name": "dre-search-client",
-  "version": "0.1.0",
-  "description": "Svelte client for the DRESearch Omeka S module — faceted research-item search backed by Typesense.",
+  "version": "0.3.0",
+  "description": "Svelte client for the DRESearch Omeka S module — faceted search (research items + research projects) backed by Typesense.",
   "private": true,
   "type": "module",
   "scripts": {

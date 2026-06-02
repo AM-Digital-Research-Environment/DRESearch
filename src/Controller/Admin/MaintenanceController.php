@@ -4,27 +4,32 @@ declare(strict_types=1);
 namespace DRESearch\Controller\Admin;
 
 use DRESearch\Form\MaintenanceForm;
-use DRESearch\Job\IndexResearchItems;
+use DRESearch\Job\IndexSearchProfile;
 use DRESearch\Search\TypesenseClientProvider;
+use DRESearch\Settings\ProfileRegistry;
 use Laminas\Mvc\Controller\AbstractActionController;
 use Laminas\View\Model\ViewModel;
 use Omeka\Stdlib\Message;
 
 /**
- * Admin → DRE Search. Shows the Typesense connection status and a button that
- * dispatches the reindex background job.
+ * Admin → DRE Search. Shows the Typesense connection status and, per search
+ * profile, the collection's document count and a button that dispatches that
+ * profile's reindex background job.
  */
 class MaintenanceController extends AbstractActionController
 {
-    public function __construct(private readonly TypesenseClientProvider $provider)
-    {
+    public function __construct(
+        private readonly TypesenseClientProvider $provider,
+        private readonly ProfileRegistry $registry,
+    ) {
     }
 
     public function indexAction(): ViewModel
     {
         $view = new ViewModel([
-            'status' => $this->collectStatus(),
-            'form'   => $this->getForm(MaintenanceForm::class),
+            'configured' => $this->provider->isConfigured(),
+            'profiles'   => $this->collectStatuses(),
+            'form'       => $this->getForm(MaintenanceForm::class),
         ]);
         $view->setTemplate('dre-search/admin/maintenance/index');
         return $view;
@@ -48,10 +53,17 @@ class MaintenanceController extends AbstractActionController
             return $this->redirect()->toRoute('admin/dre-search');
         }
 
-        $job = $this->jobDispatcher()->dispatch(IndexResearchItems::class);
+        $profile = $this->registry->get((string) $this->params()->fromPost('profile', ''));
+        if ($profile === null) {
+            $this->messenger()->addError('Unknown search profile.'); // @translate
+            return $this->redirect()->toRoute('admin/dre-search');
+        }
+
+        $job = $this->jobDispatcher()->dispatch(IndexSearchProfile::class, ['profile' => $profile->name()]);
         $jobUrl = $this->url()->fromRoute('admin/id', ['controller' => 'job', 'id' => $job->getId()]);
         $message = new Message(
-            'Reindex queued. Track progress in %1$sjob #%2$s%3$s.', // @translate
+            'Reindex of “%1$s” queued. Track progress in %2$sjob #%3$s%4$s.', // @translate
+            $profile->label(),
             sprintf('<a href="%s">', htmlspecialchars($jobUrl, ENT_QUOTES, 'UTF-8')),
             $job->getId(),
             '</a>'
@@ -63,39 +75,48 @@ class MaintenanceController extends AbstractActionController
     }
 
     /**
-     * @return array{configured:bool, reachable:bool, collection:string, documents:?int, error:?string}
+     * One status row per profile: connection state plus the live collection's
+     * document count (0 when the server is up but the collection was never
+     * built; null when unreachable).
+     *
+     * @return list<array{name:string, label:string, collection:string, reachable:bool, documents:?int, error:?string}>
      */
-    private function collectStatus(): array
+    private function collectStatuses(): array
     {
-        $status = [
-            'configured' => $this->provider->isConfigured(),
-            'reachable'  => false,
-            'collection' => $this->provider->collection(),
-            'documents'  => null,
-            'error'      => null,
-        ];
-
         $client = $this->provider->getClient();
-        if ($client === null) {
-            return $status;
-        }
+        $rows = [];
 
-        try {
-            $info = $client->collections[$this->provider->collection()]->retrieve();
-            $status['reachable'] = true;
-            $status['documents'] = isset($info['num_documents']) ? (int) $info['num_documents'] : null;
-        } catch (\Throwable $e) {
-            // The collection may simply not exist yet (never reindexed). Probe
-            // health to tell "server down" from "collection absent".
-            try {
-                $client->health->retrieve();
-                $status['reachable'] = true;
-                $status['documents'] = 0;
-            } catch (\Throwable $inner) {
-                $status['error'] = $inner->getMessage();
+        foreach ($this->registry->all() as $profile) {
+            $row = [
+                'name'       => $profile->name(),
+                'label'      => $profile->label(),
+                'collection' => $profile->collection(),
+                'reachable'  => false,
+                'documents'  => null,
+                'error'      => null,
+            ];
+
+            if ($client !== null) {
+                try {
+                    $info = $client->collections[$profile->collection()]->retrieve();
+                    $row['reachable'] = true;
+                    $row['documents'] = isset($info['num_documents']) ? (int) $info['num_documents'] : null;
+                } catch (\Throwable $e) {
+                    // The collection may simply not exist yet (never reindexed).
+                    // Probe health to tell "server down" from "collection absent".
+                    try {
+                        $client->health->retrieve();
+                        $row['reachable'] = true;
+                        $row['documents'] = 0;
+                    } catch (\Throwable $inner) {
+                        $row['error'] = $inner->getMessage();
+                    }
+                }
             }
+
+            $rows[] = $row;
         }
 
-        return $status;
+        return $rows;
     }
 }

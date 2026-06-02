@@ -5,6 +5,7 @@
   import SearchBox from './components/SearchBox.svelte';
   import SortSelect from './components/SortSelect.svelte';
   import FacetPanel from './components/FacetPanel.svelte';
+  import YearRangeFacet from './components/YearRangeFacet.svelte';
   import ResultsList from './components/ResultsList.svelte';
 
   /**
@@ -20,7 +21,14 @@
 
   const { bootstrap }: Props = $props();
 
-  const api = $derived.by(() => new SearchApi(bootstrap.endpoints));
+  const api = $derived.by(() => new SearchApi(bootstrap.endpoints, bootstrap.profile));
+
+  // Year range slider (range profiles only). null at either end = no constraint.
+  const showYear = $derived(bootstrap.show_year && bootstrap.year_bounds != null);
+  const hasSidebar = $derived(bootstrap.facets.length > 0 || showYear);
+  const placeholder = $derived(
+    bootstrap.card_kind === 'project' ? t('search_placeholder_project') : t('search_placeholder'),
+  );
 
   // svelte-ignore state_referenced_locally
   const initialResponse =
@@ -33,6 +41,8 @@
   // svelte-ignore state_referenced_locally
   let sort = $state<SortKey>(bootstrap.default_sort ?? 'relevance');
   let filters = $state<ActiveFilters>({});
+  let yearFrom = $state<number | null>(null);
+  let yearTo = $state<number | null>(null);
 
   let response = $state<SearchResponse | null>(initialResponse);
   let isLoading = $state(false);
@@ -48,6 +58,8 @@
     const p = page;
     const s = sort;
     const f = filters;
+    const yf = yearFrom;
+    const yt = yearTo;
 
     if (skipNextFetch) {
       skipNextFetch = false;
@@ -63,6 +75,7 @@
 
     api
       .search({
+        profile: bootstrap.profile,
         q,
         page: p,
         per_page: bootstrap.per_page,
@@ -70,6 +83,8 @@
         filters: f,
         facets: facetFields,
         locked_filter: bootstrap.locked_filter,
+        year_from: yf,
+        year_to: yt,
       })
       .then((r) => {
         if (myId !== reqId) {
@@ -94,7 +109,8 @@
 
   const facets = $derived(response?.facets ?? []);
   const activeCount = $derived(
-    Object.values(filters).reduce((n, values) => n + (values?.length ?? 0), 0),
+    Object.values(filters).reduce((n, values) => n + (values?.length ?? 0), 0) +
+      (yearFrom != null || yearTo != null ? 1 : 0),
   );
 
   function handleQueryChange(next: string): void {
@@ -128,6 +144,15 @@
 
   function handleClearAll(): void {
     filters = {};
+    yearFrom = null;
+    yearTo = null;
+    page = 1;
+  }
+
+  function handleYearChange(from: number, to: number): void {
+    const bounds = bootstrap.year_bounds;
+    yearFrom = bounds && from <= bounds.min ? null : from;
+    yearTo = bounds && to >= bounds.max ? null : to;
     page = 1;
   }
 
@@ -139,7 +164,7 @@
 <div class="dre-search">
   <SearchBox
     value={query}
-    placeholder={t('search_placeholder')}
+    {placeholder}
     {api}
     itemUrlBase={bootstrap.item_url_base}
     onQueryChange={handleQueryChange}
@@ -158,11 +183,20 @@
       <p>{t('search_unavailable_hint')}</p>
     </div>
   {:else}
-    <div
-      class="dre-search__layout"
-      class:dre-search__layout--no-facets={bootstrap.facets.length === 0}
-    >
-      {#if bootstrap.facets.length > 0}
+    {#snippet yearSlider()}
+      {#if showYear && bootstrap.year_bounds}
+        <YearRangeFacet
+          min={bootstrap.year_bounds.min}
+          max={bootstrap.year_bounds.max}
+          from={yearFrom ?? bootstrap.year_bounds.min}
+          to={yearTo ?? bootstrap.year_bounds.max}
+          onChange={handleYearChange}
+        />
+      {/if}
+    {/snippet}
+
+    <div class="dre-search__layout" class:dre-search__layout--no-facets={!hasSidebar}>
+      {#if hasSidebar}
         <aside class="dre-search__facets" aria-label={t('filters')}>
           <FacetPanel
             {facets}
@@ -172,6 +206,7 @@
             {activeCount}
             onToggle={handleFacetToggle}
             onClearAll={handleClearAll}
+            prepend={showYear ? yearSlider : undefined}
           />
         </aside>
       {/if}
@@ -214,6 +249,7 @@
             page={response.page}
             perPage={bootstrap.per_page}
             itemUrlBase={bootstrap.item_url_base}
+            cardKind={bootstrap.card_kind}
             onPageChange={handlePageChange}
           />
         {/if}

@@ -3,62 +3,72 @@ declare(strict_types=1);
 
 namespace DRESearch\Indexer;
 
-use DRESearch\Settings\FacetConfig;
+use DRESearch\Settings\SearchProfile;
 
 /**
- * Builds the Typesense collection schema for DRE research items — keyword
- * search only (no embedding field, so the container stays lean). The facet
- * fields are generated from {@see FacetConfig}, so adding/removing a facet in
- * config flows straight into the schema on the next reindex.
+ * Builds the Typesense collection schema for a search profile — keyword search
+ * only (no embedding field, so the container stays lean). Facet fields, extra
+ * display fields, and the date field(s) are all generated from the
+ * {@see SearchProfile}, so adding/removing a facet (or switching a profile's
+ * date mode) in config flows straight into the schema on the next reindex.
  *
  * No default_sorting_field: dates are optional, so every query passes sort_by
  * explicitly (relevance, or year asc/desc).
  */
 final class SchemaProvider
 {
-    public function collection(string $name, FacetConfig $facetConfig): array
+    public function collection(string $name, SearchProfile $profile): array
     {
-        $facetNames = $facetConfig->fieldNames();
-        $used = array_flip($facetNames);
         $fields = [];
+        $used = [];
 
-        // Identity + display fields (skip any name a facet already claims).
-        $head = [
-            ['name' => 'id', 'type' => 'string'],
-            ['name' => 'is_public', 'type' => 'bool', 'facet' => false],
-            ['name' => 'title', 'type' => 'string', 'sort' => true],
-            ['name' => 'abstract', 'type' => 'string', 'optional' => true],
-            ['name' => 'description', 'type' => 'string', 'optional' => true],
-            ['name' => 'creator_ss', 'type' => 'string[]', 'facet' => true, 'optional' => true],
-        ];
-        foreach ($head as $field) {
-            if (!isset($used[$field['name']])) {
+        $add = static function (array $field) use (&$fields, &$used): void {
+            $n = $field['name'];
+            if (!isset($used[$n])) {
                 $fields[] = $field;
-                $used[$field['name']] = true;
+                $used[$n] = true;
             }
-        }
+        };
 
-        // Facet fields (data-driven).
-        foreach ($facetNames as $name_) {
-            $fields[] = [
-                'name'     => $name_,
-                'type'     => $facetConfig->isMultivalued($name_) ? 'string[]' : 'string',
+        // Identity + universal display fields.
+        $add(['name' => 'id', 'type' => 'string']);
+        $add(['name' => 'is_public', 'type' => 'bool', 'facet' => false]);
+        $add(['name' => 'title', 'type' => 'string', 'sort' => true]);
+        $add(['name' => 'abstract', 'type' => 'string', 'optional' => true]);
+        $add(['name' => 'description', 'type' => 'string', 'optional' => true]);
+
+        // Facet fields (data-driven). Derived facets (e.g. has_items) are plain
+        // single-valued strings.
+        foreach ($profile->fieldNames() as $field) {
+            $add([
+                'name'     => $field,
+                'type'     => $profile->isMultivalued($field) ? 'string[]' : 'string',
                 'facet'    => true,
                 'optional' => true,
-            ];
+            ]);
         }
 
-        // Origin date + display.
-        $tail = [
-            ['name' => 'year', 'type' => 'int32', 'facet' => true, 'sort' => true, 'optional' => true],
-            ['name' => 'date', 'type' => 'int64', 'sort' => true, 'optional' => true],
-            ['name' => 'thumbnail_url', 'type' => 'string', 'index' => false, 'optional' => true],
-        ];
-        foreach ($tail as $field) {
-            if (!isset($used[$field['name']])) {
-                $fields[] = $field;
-            }
+        // Extra display / query fields (e.g. creator_ss, pi_ss, member_ss, item_count).
+        foreach ($profile->displayFields() as $field => $def) {
+            $add([
+                'name'     => $field,
+                'type'     => $def['type'],
+                'facet'    => $def['facet'],
+                'sort'     => $def['sort'],
+                'optional' => true,
+            ]);
         }
+
+        // Origin date(s) — single year, or a start/end range.
+        if ($profile->isRangeDate()) {
+            $add(['name' => 'year_start', 'type' => 'int32', 'facet' => true, 'sort' => true, 'optional' => true]);
+            $add(['name' => 'year_end', 'type' => 'int32', 'facet' => true, 'sort' => true, 'optional' => true]);
+        } else {
+            $add(['name' => 'year', 'type' => 'int32', 'facet' => true, 'sort' => true, 'optional' => true]);
+            $add(['name' => 'date', 'type' => 'int64', 'sort' => true, 'optional' => true]);
+        }
+
+        $add(['name' => 'thumbnail_url', 'type' => 'string', 'index' => false, 'optional' => true]);
 
         return [
             'name' => $name,

@@ -178,10 +178,8 @@
             }}
           >
             <span class="dre-search-box__suggestion-title">{s.title}</span>
-            {#if s.type || s.year}
-              <span class="dre-search-box__suggestion-meta">
-                {[s.type, s.year].filter(Boolean).join(' · ')}
-              </span>
+            {#if s.subtitle}
+              <span class="dre-search-box__suggestion-meta">{s.subtitle}</span>
             {/if}
           </a>
         </li>

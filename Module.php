@@ -37,7 +37,6 @@ class Module extends AbstractModule
         'dre_search_typesense_port',
         'dre_search_typesense_protocol',
         'dre_search_typesense_api_key',
-        'dre_search_collection',
     ];
 
     public function getConfig(): array

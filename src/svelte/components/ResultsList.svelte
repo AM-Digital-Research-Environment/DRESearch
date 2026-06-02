@@ -1,6 +1,7 @@
 <script lang="ts">
-  import type { Doc } from '../lib/types';
+  import type { CardKind, Doc } from '../lib/types';
   import ResultItem from './ResultItem.svelte';
+  import ProjectCard from './ProjectCard.svelte';
 
   interface Props {
     hits: Doc[];
@@ -8,10 +9,11 @@
     page: number;
     perPage: number;
     itemUrlBase: string;
+    cardKind: CardKind;
     onPageChange: (next: number) => void;
   }
 
-  const { hits, found, page, perPage, itemUrlBase, onPageChange }: Props = $props();
+  const { hits, found, page, perPage, itemUrlBase, cardKind, onPageChange }: Props = $props();
 
   // Cap at 100 pages — deep pagination past that is rarely useful and keeps
   // the pager bounded.
@@ -40,7 +42,11 @@
 <ol class="dre-results">
   {#each hits as doc (doc.id)}
     <li class="dre-results__item">
-      <ResultItem {doc} {itemUrlBase} />
+      {#if cardKind === 'project'}
+        <ProjectCard {doc} {itemUrlBase} />
+      {:else}
+        <ResultItem {doc} {itemUrlBase} />
+      {/if}
     </li>
   {/each}
 </ol>

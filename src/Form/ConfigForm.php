@@ -51,24 +51,14 @@ class ConfigForm extends Form
             ],
         ]);
 
-        $this->add([
-            'name'    => 'dre_search_collection',
-            'type'    => Element\Text::class,
-            'options' => [
-                'label' => 'Collection alias', // @translate
-                'info'  => 'Typesense collection alias the search reads from.', // @translate
-            ],
-            'attributes' => ['placeholder' => 'dre_research_current'],
-        ]);
-
-        // Everything optional — a blank host simply disables search.
+        // Everything optional — a blank host simply disables search. Collection
+        // aliases are per-profile config (dre_search.profiles), not set here.
         $inputFilter = $this->getInputFilter();
         foreach ([
             'dre_search_typesense_host',
             'dre_search_typesense_port',
             'dre_search_typesense_protocol',
             'dre_search_typesense_api_key',
-            'dre_search_collection',
         ] as $name) {
             $inputFilter->add(['name' => $name, 'required' => false]);
         }

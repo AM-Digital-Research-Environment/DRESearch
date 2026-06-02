@@ -17,6 +17,9 @@ use Typesense\Client;
  * used server-side (the search proxy enforces is_public:=true and forwards
  * results) and never reaches the browser, so there's no need for a separate
  * search-only / scoped key the way a browser-direct architecture would require.
+ *
+ * Connection only — the collection alias is a per-profile concern (each
+ * SearchProfile carries its own), so this just builds the shared client.
  */
 final class TypesenseClientProvider
 {
@@ -25,19 +28,12 @@ final class TypesenseClientProvider
         private readonly int $port,
         private readonly string $protocol,
         private readonly string $apiKey,
-        private readonly string $collection,
     ) {
     }
 
     public function isConfigured(): bool
     {
         return $this->host !== '' && $this->apiKey !== '';
-    }
-
-    /** Collection alias the search reads from / the reindexer swaps. */
-    public function collection(): string
-    {
-        return $this->collection;
     }
 
     /**

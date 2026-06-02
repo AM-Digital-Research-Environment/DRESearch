@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace DRESearch\Indexer;
 
 use Doctrine\DBAL\Connection;
-use DRESearch\Settings\FacetConfig;
+use DRESearch\Settings\SearchProfile;
 
 /**
  * Loads, once per reindex, a compact lookup of every authority item that backs
@@ -27,7 +27,7 @@ final class AuthorityResolver
 
     public function __construct(
         private readonly Connection $connection,
-        private readonly FacetConfig $facetConfig,
+        private readonly SearchProfile $profile,
     ) {
     }
 
@@ -35,7 +35,7 @@ final class AuthorityResolver
     {
         $this->byId = [];
 
-        $sets = $this->facetConfig->allItemSets();
+        $sets = $this->profile->allItemSets();
         if (!$sets) {
             return;
         }
