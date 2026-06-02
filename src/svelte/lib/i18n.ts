@@ -19,6 +19,10 @@ const STRINGS: Record<string, string> = {
   show_more: 'Show {n} more',
   show_less: 'Show less',
   search_to_see_options: 'No filter options for the current results.',
+  facet_search_placeholder: 'Search {label}…',
+  facet_no_matches: 'No matches',
+  show_filters: 'Filters',
+  hide_filters: 'Hide filters',
 
   sort_label: 'Sort',
   sort_relevance: 'Relevance',

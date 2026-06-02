@@ -47,7 +47,7 @@ don't want a search backend.
     Keyword, Language**.
 - A **People search** page block: cards show the person's name, affiliation(s),
   role chips, and how many research items and publications they're associated
-  with.
+  with (laid out two-up on wide screens, since the cards are compact).
   - Facets: **Affiliation** and **Role** (Principal investigator, Project member,
     Author, Editor, Research contributor).
 - A **Research sections search** page block: cards show the section name, its
@@ -127,6 +127,11 @@ search** block. All share the same options:
   (`section_ss`).
 
 Put each block on its own page and link them in the site navigation.
+
+Facet behaviour is the same across every block: a facet with many values shows a
+**type-to-filter** box (scroll or type to find a value — no "show N more"), and on
+narrow screens the whole filter sidebar collapses behind a **Filters** toggle
+(with an active-filter count) that opens and closes it.
 
 ## Data model
 

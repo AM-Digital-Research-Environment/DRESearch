@@ -56,6 +56,10 @@
   let isLoading = $state(false);
   let error = $state<string | null>(null);
 
+  // Mobile only: the sidebar is collapsed by default and toggled open. Ignored
+  // on wider viewports, where the sidebar is always shown (see styles).
+  let facetsOpen = $state(false);
+
   // The SSR snapshot already reflects the pristine browse state, so skip the
   // first reactive fetch when we have it.
   let skipNextFetch = initialResponse != null && initialResponse.available;
@@ -207,9 +211,29 @@
       {/if}
     {/snippet}
 
+    {#if hasSidebar}
+      <button
+        type="button"
+        class="dre-search__facets-toggle"
+        aria-expanded={facetsOpen}
+        aria-controls="dre-facets-{bootstrap.block_id}"
+        onclick={() => (facetsOpen = !facetsOpen)}
+      >
+        <span>{facetsOpen ? t('hide_filters') : t('show_filters')}</span>
+        {#if activeCount > 0}
+          <span class="dre-search__facets-toggle-badge">{activeCount}</span>
+        {/if}
+      </button>
+    {/if}
+
     <div class="dre-search__layout" class:dre-search__layout--no-facets={!hasSidebar}>
       {#if hasSidebar}
-        <aside class="dre-search__facets" aria-label={t('filters')}>
+        <aside
+          id="dre-facets-{bootstrap.block_id}"
+          class="dre-search__facets"
+          class:dre-search__facets--open={facetsOpen}
+          aria-label={t('filters')}
+        >
           <FacetPanel
             {facets}
             order={bootstrap.facets}
@@ -288,6 +312,42 @@
   }
   .dre-search__layout--no-facets {
     grid-template-columns: 1fr;
+  }
+
+  /* Mobile-only filters toggle — hidden on wider viewports where the sidebar is
+     always visible. */
+  .dre-search__facets-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs, 0.5rem);
+    width: 100%;
+    padding: 0.6rem 0.9rem;
+    border: 1px solid var(--border, #ccc);
+    border-radius: var(--radius-md, 0.5rem);
+    background: var(--surface, #fff);
+    color: var(--ink-strong, var(--ink, #222));
+    font: inherit;
+    font-size: var(--text-sm, 0.9rem);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .dre-search__facets-toggle:hover {
+    border-color: var(--primary, #2a4d8f);
+    color: var(--primary, #2a4d8f);
+  }
+  .dre-search__facets-toggle-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.4rem;
+    border-radius: var(--radius-full, 9999px);
+    background: var(--primary, #2a4d8f);
+    color: var(--primary-contrast, #fff);
+    font-size: var(--text-xs, 0.7rem);
+    font-weight: 600;
   }
 
   .dre-search__facets {
@@ -399,7 +459,12 @@
       grid-template-columns: 1fr;
       gap: var(--space-md, 1rem);
     }
+    .dre-search__facets-toggle {
+      display: flex;
+    }
+    /* Collapsed by default; the toggle reveals it as an inline panel. */
     .dre-search__facets {
+      display: none;
       position: static;
       max-height: none;
       overflow: visible;
@@ -407,6 +472,9 @@
       border-inline-end: none;
       border-bottom: 1px solid var(--border-light, #eee);
       padding-block-end: var(--space-md, 1rem);
+    }
+    .dre-search__facets--open {
+      display: block;
     }
   }
 </style>

@@ -14,9 +14,20 @@
 
   const COLLAPSED = 8;
   let open = $state(true);
-  let expanded = $state(false);
+  let query = $state('');
 
-  const visible = $derived(expanded ? counts : counts.slice(0, COLLAPSED));
+  // Once a facet has more values than fit comfortably, offer a type-to-filter box
+  // and scroll the list — no "show N more" expander.
+  const searchable = $derived(counts.length > COLLAPSED);
+
+  const searching = $derived(query.trim() !== '');
+  const visible = $derived.by(() => {
+    const q = query.trim().toLowerCase();
+    if (q === '') {
+      return counts;
+    }
+    return counts.filter((c) => c.value.toLowerCase().includes(q));
+  });
 </script>
 
 <section class="dre-facet">
@@ -34,27 +45,37 @@
   </button>
 
   {#if open}
-    <ul class="dre-facet__list">
-      {#each visible as c (c.value)}
-        <li>
-          <label class="dre-facet__option">
-            <input
-              type="checkbox"
-              checked={selected.includes(c.value)}
-              onchange={(e) =>
-                onToggle(field, c.value, (e.currentTarget as HTMLInputElement).checked)}
-            />
-            <span class="dre-facet__value">{c.value}</span>
-            <span class="dre-facet__count">{c.count.toLocaleString()}</span>
-          </label>
-        </li>
-      {/each}
-    </ul>
+    {#if searchable}
+      <div class="dre-facet__search">
+        <input
+          type="search"
+          class="dre-facet__search-input"
+          placeholder={t('facet_search_placeholder', { label })}
+          aria-label={t('facet_search_placeholder', { label })}
+          bind:value={query}
+        />
+      </div>
+    {/if}
 
-    {#if counts.length > COLLAPSED}
-      <button type="button" class="dre-facet__more" onclick={() => (expanded = !expanded)}>
-        {expanded ? t('show_less') : t('show_more', { n: counts.length - COLLAPSED })}
-      </button>
+    {#if visible.length > 0}
+      <ul class="dre-facet__list">
+        {#each visible as c (c.value)}
+          <li>
+            <label class="dre-facet__option">
+              <input
+                type="checkbox"
+                checked={selected.includes(c.value)}
+                onchange={(e) =>
+                  onToggle(field, c.value, (e.currentTarget as HTMLInputElement).checked)}
+              />
+              <span class="dre-facet__value">{c.value}</span>
+              <span class="dre-facet__count">{c.count.toLocaleString()}</span>
+            </label>
+          </li>
+        {/each}
+      </ul>
+    {:else if searching}
+      <p class="dre-facet__nomatch">{t('facet_no_matches')}</p>
     {/if}
   {/if}
 </section>
@@ -108,6 +129,36 @@
     color: var(--muted, #888);
     font-size: var(--text-xs, 0.75rem);
   }
+
+  .dre-facet__search {
+    margin-top: var(--space-sm, 0.5rem);
+  }
+  /* Reset the host theme's generic input chrome and apply a compact field. */
+  .dre-facet__search-input {
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--border, #ccc);
+    border-radius: var(--radius-sm, 0.375rem);
+    background: var(--surface, #fff);
+    color: var(--ink, #222);
+    font: inherit;
+    font-size: var(--text-sm, 0.85rem);
+    box-shadow: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .dre-facet__search-input::placeholder {
+    color: var(--muted, #999);
+  }
+  .dre-facet__search-input:focus,
+  .dre-facet__search-input:focus-visible {
+    outline: none;
+    border-color: var(--primary, #2a4d8f);
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(42, 77, 143, 0.18));
+  }
+
   .dre-facet__list {
     list-style: none;
     margin: var(--space-sm, 0.5rem) 0 0;
@@ -115,6 +166,10 @@
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
+    /* Keep a long (searched) list from dominating the sidebar; scroll within. */
+    max-height: 22rem;
+    overflow-y: auto;
+    scrollbar-width: thin;
   }
   .dre-facet__option {
     display: flex;
@@ -140,16 +195,10 @@
     font-size: var(--text-xs, 0.75rem);
     font-variant-numeric: tabular-nums;
   }
-  .dre-facet__more {
-    margin-top: var(--space-xs, 0.25rem);
-    background: none;
-    border: none;
+  .dre-facet__nomatch {
+    margin: var(--space-sm, 0.5rem) 0 0;
     padding: 0.2rem 0.25rem;
-    color: var(--primary, #2a4d8f);
-    font-size: var(--text-xs, 0.75rem);
-    cursor: pointer;
-  }
-  .dre-facet__more:hover {
-    text-decoration: underline;
+    color: var(--muted, #888);
+    font-size: var(--text-sm, 0.85rem);
   }
 </style>

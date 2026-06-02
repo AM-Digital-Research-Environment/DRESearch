@@ -44,7 +44,7 @@
   }
 </script>
 
-<ol class="dre-results">
+<ol class="dre-results" class:dre-results--two-col={cardKind === 'person'}>
   {#each hits as doc (doc.id)}
     <li class="dre-results__item">
       {#if cardKind === 'project'}
@@ -116,6 +116,16 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-md, 1rem);
+  }
+  /* Compact cards (people) are sparse, so pack them two-up on wider screens. */
+  .dre-results--two-col {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 60rem) {
+    .dre-results--two-col {
+      grid-template-columns: 1fr 1fr;
+    }
   }
 
   .dre-pager {
