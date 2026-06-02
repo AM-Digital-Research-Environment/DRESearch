@@ -26,18 +26,24 @@
   // Year range slider (range profiles only). null at either end = no constraint.
   const showYear = $derived(bootstrap.show_year && bootstrap.year_bounds != null);
   const hasSidebar = $derived(bootstrap.facets.length > 0 || showYear);
+  // A corpus may set its own placeholder (e.g. the authority-term corpora, which
+  // share a card kind); otherwise fall back to a kind-derived default.
   const placeholder = $derived(
-    bootstrap.card_kind === 'project'
-      ? t('search_placeholder_project')
-      : bootstrap.card_kind === 'publication'
-        ? t('search_placeholder_publication')
-        : bootstrap.card_kind === 'person'
-          ? t('search_placeholder_person')
-          : bootstrap.card_kind === 'section'
-            ? t('search_placeholder_section')
-            : bootstrap.card_kind === 'organisation'
-              ? t('search_placeholder_organisation')
-              : t('search_placeholder'),
+    bootstrap.search_placeholder?.trim()
+      ? bootstrap.search_placeholder
+      : bootstrap.card_kind === 'project'
+        ? t('search_placeholder_project')
+        : bootstrap.card_kind === 'publication'
+          ? t('search_placeholder_publication')
+          : bootstrap.card_kind === 'person'
+            ? t('search_placeholder_person')
+            : bootstrap.card_kind === 'section'
+              ? t('search_placeholder_section')
+              : bootstrap.card_kind === 'organisation'
+                ? t('search_placeholder_organisation')
+                : bootstrap.card_kind === 'term'
+                  ? t('search_placeholder_term')
+                  : t('search_placeholder'),
   );
 
   // svelte-ignore state_referenced_locally

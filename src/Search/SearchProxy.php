@@ -174,6 +174,9 @@ final class SearchProxy
         } elseif ($profile->kind() === 'organisation') {
             // Type (Institution / Group) + the first role it plays.
             $parts = [$doc['type_s'] ?? null, $doc['roles_ss'][0] ?? null];
+        } elseif ($profile->kind() === 'term') {
+            // Sub-type, if the corpus has one (Country / Tag / …).
+            $parts = [$doc['type_s'] ?? null];
         } else {
             $parts = [$doc['type_s'] ?? null, isset($doc['year']) ? (string) $doc['year'] : null];
         }

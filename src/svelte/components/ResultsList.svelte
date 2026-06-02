@@ -6,6 +6,7 @@
   import PersonCard from './PersonCard.svelte';
   import SectionCard from './SectionCard.svelte';
   import OrganisationCard from './OrganisationCard.svelte';
+  import TermCard from './TermCard.svelte';
 
   interface Props {
     hits: Doc[];
@@ -47,7 +48,9 @@
 
 <ol
   class="dre-results"
-  class:dre-results--two-col={cardKind === 'person' || cardKind === 'organisation'}
+  class:dre-results--two-col={cardKind === 'person' ||
+    cardKind === 'organisation' ||
+    cardKind === 'term'}
 >
   {#each hits as doc (doc.id)}
     <li class="dre-results__item">
@@ -61,6 +64,8 @@
         <SectionCard {doc} {itemUrlBase} {onAddFilter} />
       {:else if cardKind === 'organisation'}
         <OrganisationCard {doc} {itemUrlBase} {onAddFilter} />
+      {:else if cardKind === 'term'}
+        <TermCard {doc} {itemUrlBase} {onAddFilter} />
       {:else}
         <ResultItem {doc} {itemUrlBase} />
       {/if}
@@ -123,8 +128,8 @@
     flex-direction: column;
     gap: var(--space-md, 1rem);
   }
-  /* Compact cards (people, organisations) are sparse, so pack them two-up on
-     wider screens. */
+  /* Compact cards (people, organisations, authority terms) are sparse, so pack
+     them two-up on wider screens. */
   .dre-results--two-col {
     display: grid;
     grid-template-columns: 1fr;

@@ -56,6 +56,10 @@ return [
             'dreSearchPeople'        => Service\BlockLayout\ResearchPeopleSearchBlockFactory::class,
             'dreSearchSections'      => Service\BlockLayout\ResearchSectionsSearchBlockFactory::class,
             'dreSearchOrganisations' => Service\BlockLayout\ResearchOrganisationsSearchBlockFactory::class,
+            'dreSearchGenres'        => Service\BlockLayout\ResearchGenresSearchBlockFactory::class,
+            'dreSearchLanguages'     => Service\BlockLayout\ResearchLanguagesSearchBlockFactory::class,
+            'dreSearchLocations'     => Service\BlockLayout\ResearchLocationsSearchBlockFactory::class,
+            'dreSearchSubjects'      => Service\BlockLayout\ResearchSubjectsSearchBlockFactory::class,
         ],
     ],
 
@@ -169,7 +173,10 @@ return [
         // omits a profile name). Add a third corpus (e.g. publications) by
         // adding a profile here + a mapper — no rewrite. Each profile's `kind`
         // selects its indexer mapper and its result card ('item' | 'project' |
-        // 'publication' | 'person' | 'section' | 'organisation').
+        // 'publication' | 'person' | 'section' | 'organisation' | 'term'). The
+        // `term` kind (genres, languages, locations, subjects & tags) is the
+        // generic authority-term corpus: a name + optional Type facet + reverse-
+        // link counts, all driven by config (TermMapper + TermCard).
         'profiles' => [
 
             // Research items — resource template 10. Eight facets resolved from
@@ -480,6 +487,137 @@ return [
                         ['label' => 'Funder',           'from_template' => 5,  'properties' => ['frapo:isFundedBy'], 'public_only' => true],
                         ['label' => 'Contributor',      'from_template' => 10, 'public_only' => true],
                         ['label' => 'Host institution', 'from_template' => 4,  'properties' => ['dcterms:isPartOf'], 'public_only' => true],
+                    ],
+                ],
+            ],
+
+            // ── Authority-term corpora ──────────────────────────────────────────
+            // Genres, languages, locations, and subjects & tags. Each indexes one
+            // curated authority item set and — exactly like the people and
+            // organisations corpora — derives its substance from the *reverse*
+            // direction: how many public records reference each term. They share
+            // the generic `term` kind (TermMapper + TermCard): a name, an optional
+            // Type facet straight from the term's own dcterms:type, and reverse-link
+            // association counts. Scoped by item set alone (template_id null), since
+            // the authority set is the definitive grouping. No date — sort by name.
+            // The linking properties below are the same ones the working
+            // research-items / publications facets already use, so the reverse counts
+            // line up with those corpora.
+
+            // Genres — item set 21. A research item links to a genre via
+            // dcterms:format (the same property as the digitisation method, but
+            // genres live in set 21, not the technical set 7438). One reverse count:
+            // the public research items in each genre. No sub-type → no facets.
+            'research_genres' => [
+                'label'       => 'Genres', // @translate
+                'placeholder' => 'Search genres…', // @translate
+                'collection'  => 'dre_genres_current',
+                'kind'        => 'term',
+                'template_id' => null,
+                'item_set_id' => 21,
+                'query_by'    => 'title',
+                'date'        => ['mode' => 'none'],
+
+                'facets' => [],
+
+                'display_fields' => [
+                    'item_count' => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
+                ],
+
+                'reverse_links' => [
+                    'counts' => [
+                        'item_count' => ['from_template' => 10, 'properties' => ['dcterms:format'], 'public_only' => true],
+                    ],
+                ],
+            ],
+
+            // Languages — item set 19. Both research items and publications link to
+            // a language via dcterms:language, so two reverse counts (items +
+            // publications). No sub-type → no facets.
+            'research_languages' => [
+                'label'       => 'Languages', // @translate
+                'placeholder' => 'Search languages…', // @translate
+                'collection'  => 'dre_languages_current',
+                'kind'        => 'term',
+                'template_id' => null,
+                'item_set_id' => 19,
+                'query_by'    => 'title',
+                'date'        => ['mode' => 'none'],
+
+                'facets' => [],
+
+                'display_fields' => [
+                    'item_count'        => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
+                    'publication_count' => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
+                ],
+
+                'reverse_links' => [
+                    'counts' => [
+                        'item_count'        => ['from_template' => 10,    'properties' => ['dcterms:language'], 'public_only' => true],
+                        'publication_count' => ['from_item_set' => 29918, 'properties' => ['dcterms:language'], 'public_only' => true],
+                    ],
+                ],
+            ],
+
+            // Locations — item set 1851. A location's own dcterms:type splits the
+            // corpus (Country vs the geographic-location / city kind) into the Type
+            // facet. Research items reference a location via dcterms:spatial; one
+            // reverse count per term. Unlike the research-items Country facet, this
+            // corpus does NOT roll cities up to their country — each place term shows
+            // its own direct mention count, so both "Nigeria" and "Lagos" are findable.
+            'research_locations' => [
+                'label'       => 'Locations', // @translate
+                'placeholder' => 'Search locations…', // @translate
+                'collection'  => 'dre_locations_current',
+                'kind'        => 'term',
+                'template_id' => null,
+                'item_set_id' => 1851,
+                'query_by'    => 'title',
+                'date'        => ['mode' => 'none'],
+
+                'facets' => [
+                    'type_s' => ['property' => 'dcterms:type', 'label' => 'Type', 'array' => false],
+                ],
+
+                'display_fields' => [
+                    'item_count' => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
+                ],
+
+                'reverse_links' => [
+                    'counts' => [
+                        'item_count' => ['from_template' => 10, 'properties' => ['dcterms:spatial'], 'public_only' => true],
+                    ],
+                ],
+            ],
+
+            // Subjects & tags — item set 1852, the same set the research-items
+            // Subject / Tag facets read. A term's own dcterms:type (LCSH heading vs
+            // tag) drives the Type facet, so this one corpus covers both. Research
+            // items and publications both reference them via dcterms:subject; two
+            // reverse counts (items + publications).
+            'research_subjects' => [
+                'label'       => 'Subjects & tags', // @translate
+                'placeholder' => 'Search subjects & tags…', // @translate
+                'collection'  => 'dre_subjects_current',
+                'kind'        => 'term',
+                'template_id' => null,
+                'item_set_id' => 1852,
+                'query_by'    => 'title',
+                'date'        => ['mode' => 'none'],
+
+                'facets' => [
+                    'type_s' => ['property' => 'dcterms:type', 'label' => 'Type', 'array' => false],
+                ],
+
+                'display_fields' => [
+                    'item_count'        => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
+                    'publication_count' => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
+                ],
+
+                'reverse_links' => [
+                    'counts' => [
+                        'item_count'        => ['from_template' => 10,    'properties' => ['dcterms:subject'], 'public_only' => true],
+                        'publication_count' => ['from_item_set' => 29918, 'properties' => ['dcterms:subject'], 'public_only' => true],
                     ],
                 ],
             ],

@@ -13,9 +13,11 @@ use Omeka\Api\Representation\SiteRepresentation;
 use Omeka\Site\BlockLayout\AbstractBlockLayout;
 
 /**
- * Shared page block for a faceted search over one {@see SearchProfile}. Two thin
- * subclasses bind it to a corpus — research items and research projects — each
- * appearing as its own entry in the block picker.
+ * Shared page block for a faceted search over one {@see SearchProfile}. A thin
+ * subclass per corpus binds it to a profile name (research items, projects,
+ * publications, people, sections, organisations, and the authority-term corpora —
+ * genres, languages, locations, subjects & tags), each appearing as its own entry
+ * in the block picker.
  *
  * Persisted block data (site_block.data):
  *   {
@@ -215,10 +217,18 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
         $profileName = $profile ? $profile->name() : '';
         $siteSlug = $block->page()->site()->slug();
 
+        // Corpus-specific search-box hint (e.g. "Search genres…"), so corpora that
+        // share a card kind can still read distinctly. Null → the client uses its
+        // kind-derived default.
+        $placeholder = $profile && $profile->placeholder() !== ''
+            ? (string) $view->translate($profile->placeholder())
+            : null;
+
         $bootstrap = [
             'block_id'      => (int) $block->id(),
             'profile'       => $profileName,
             'card_kind'     => $profile ? $profile->kind() : 'item',
+            'search_placeholder' => $placeholder,
             'date_mode'     => $profile ? $profile->dateMode() : 'single',
             'show_year'     => $showYear,
             'year_bounds'   => $showYear ? $this->proxy->yearBounds($profileName) : null,

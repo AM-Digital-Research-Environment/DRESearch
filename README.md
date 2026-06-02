@@ -4,7 +4,7 @@ Typesense-backed faceted search for the Africa Multiple **DRE** Omeka S instance
 (the one populated by [MongoDB2OmekaS]). It indexes content directly from the
 Omeka dashboard via MySQL — there is no external ingestion pipeline.
 
-Six search corpora ship out of the box, each as its own page block:
+Ten search corpora ship out of the box, each as its own page block:
 
 - **Research items search** — the digitised research items (resource template 10).
 - **Research projects search** — the cluster's research projects (template 5).
@@ -18,10 +18,21 @@ Six search corpora ship out of the box, each as its own page block:
 - **Organisations search** — institutions _and_ groups (template 2, one item set),
   split by a Type facet and filterable by the role each plays, with per-organisation
   project, research-item, and affiliated-people counts.
+- **Genres search** — the genre/form authority terms (item set 21), with a
+  per-genre research-item count.
+- **Languages search** — the language authority terms (item set 19), with
+  per-language research-item and publication counts.
+- **Locations search** — the place authority terms (item set 1851), split by a
+  Type facet (Country / geographic location), with a per-place research-item count.
+- **Subjects & tags search** — the subject authority terms (item set 1852), both
+  LCSH headings and tags in one corpus split by a Type facet, with per-term
+  research-item and publication counts.
 
 All are **search profiles**: independent Typesense collections + facet/index
 mappings, all config-driven. Adding a further corpus is a config block plus a
-mapper — not a rewrite.
+mapper — not a rewrite. The last four share the generic **`term`** kind (one
+`TermMapper` + one `TermCard`): an authority item set whose substance is the
+reverse count of the records that reference each term.
 
 **Typesense is optional.** With no connection configured the module installs
 cleanly and the site runs normally; the search blocks just show a quiet
@@ -67,6 +78,17 @@ don't want a search backend.
   filters.
   - Facets: **Type** (Institution / Group) and **Role** (Funder, Contributor,
     Host institution).
+- Four **authority-term** page blocks — **Genres**, **Languages**, **Locations**,
+  and **Subjects & tags** — each a searchable, paginated list of the terms applied
+  across the collection, laid out two-up on wide screens. Cards show the term, an
+  optional **Type** chip, and how many records use it; the term links to its Omeka
+  page.
+  - **Genres**: per-genre research-item count. No facets.
+  - **Languages**: per-language research-item and publication counts. No facets.
+  - **Locations**: a **Type** facet (Country / geographic location); per-place
+    research-item count.
+  - **Subjects & tags**: a **Type** facet (LCSH subject / tag); per-term
+    research-item and publication counts.
 - A dashboard **Reindex** action per corpus (Admin → DRE Search) that rebuilds
   an index as a background job, reading the Omeka database and pushing to
   Typesense in batches.
@@ -120,14 +142,17 @@ to Admin → Jobs. Re-run after significant content changes (or wire the job to 
 schedule via the Cron module). Each reindex builds a fresh, timestamped Typesense
 collection and swaps that profile's alias (`dre_research_current` /
 `dre_projects_current` / `dre_publications_current` / `dre_people_current` /
-`dre_sections_current` / `dre_organisations_current`) to it atomically, so live
-searches never hit a half-built index.
+`dre_sections_current` / `dre_organisations_current` / `dre_genres_current` /
+`dre_languages_current` / `dre_locations_current` / `dre_subjects_current`) to it
+atomically, so live searches never hit a half-built index.
 
 ## The page blocks
 
 Edit a site page → add the **Research items search**, **Research projects
 search**, **Publications search**, **People search**, **Research sections
-search**, or **Organisations search** block. All share the same options:
+search**, **Organisations search**, **Genres search**, **Languages search**,
+**Locations search**, or **Subjects & tags search** block. All share the same
+options:
 
 - **Filters to show** — which facets appear in the sidebar, including whether the
   **Year** range slider shows.
@@ -269,6 +294,33 @@ it plays. No date — sorts by name.
 | Contributor      | research item (tmpl 10) | any reference      |
 | Host institution | person (template 4)     | `dcterms:isPartOf` |
 
+### Authority terms — genres, languages, locations, subjects & tags (`term` kind)
+
+Four corpora that index a curated authority item set each. Like people and
+organisations, a term record carries only a name (and, for some, a `dcterms:type`
+sub-kind); its substance is the **reverse** count of the public records that
+reference it, computed by the reindexer from `reverse_links`. They are scoped by
+**item set alone** (`template_id: null`), have **no date** (sort by name), and use
+the same linking properties the working research-items / publications facets use.
+
+| Corpus              | Profile              | Item set | Type facet (`dcterms:type`)   | Reverse counts                                                            |
+| ------------------- | -------------------- | -------- | ----------------------------- | ------------------------------------------------------------------------- |
+| **Genres**          | `research_genres`    | 21       | —                             | research items (tmpl 10) via `dcterms:format`                             |
+| **Languages**       | `research_languages` | 19       | —                             | research items via `dcterms:language` + publications (set 29918) via same |
+| **Locations**       | `research_locations` | 1851     | Country / geographic location | research items via `dcterms:spatial`                                      |
+| **Subjects & tags** | `research_subjects`  | 1852     | LCSH subject / tag            | research items via `dcterms:subject` + publications (set 29918) via same  |
+
+Notes:
+
+- The **Type** facet is the term's _own_ `dcterms:type` linked-item title — the same
+  discriminator items the research-items mapper uses to split Subject vs Tag
+  (`3167` / `22199`) and Country vs geographic location (`3168` / `22431`).
+- The Locations corpus indexes every place term directly and **does not** roll
+  cities up to their country (unlike the research-items _Country_ facet), so both
+  "Nigeria" and "Lagos" appear with their own direct-mention counts.
+- All counts are **public records only**; the term itself appears only if it is
+  public.
+
 > **Before the first production reindex, verify these IDs against your
 > instance** — the project IDs (template 5, item set 20, authority sets 17/110,
 > `dcterms:type` target 3346), the publication item set (29918) and type set
@@ -278,10 +330,12 @@ it plays. No date — sorts by name.
 > leadership properties (`dcterms:creator` = PIs, `marcrel:spk` = spokesperson,
 > `foaf:member` = members), the organisations template (2) / item set (110) and
 > their reverse-link properties (`frapo:isFundedBy`, `dcterms:isPartOf`) plus the
-> `dcterms:type` targets that split Institution vs Group, and the item authority
-> sets / `dcterms:type` targets. They come from the MongoDB2OmekaS config; on a
-> different Omeka instance, override the `dre_search` config in
-> `config/local.config.php`.
+> `dcterms:type` targets that split Institution vs Group, the authority-term item
+> sets (genres 21, languages 19, locations 1851, subjects 1852) and their linking
+> properties (`dcterms:format`, `dcterms:language`, `dcterms:spatial`,
+> `dcterms:subject`), and the item authority sets / `dcterms:type` targets. They
+> come from the MongoDB2OmekaS config; on a different Omeka instance, override the
+> `dre_search` config in `config/local.config.php`.
 
 ## Development
 
@@ -303,8 +357,8 @@ toolchain.
   `dre_search.profiles`) holds one `SearchProfile` per corpus. The schema
   builder, paged reindexer, query builder, search proxy, and page blocks are all
   parameterised by a profile; a profile's `kind` (`item` | `project` |
-  `publication` | `person` | `section` | `organisation`) selects its indexer
-  mapper and its result card.
+  `publication` | `person` | `section` | `organisation` | `term`) selects its
+  indexer mapper and its result card.
 - **Search is server-side.** The browser calls the module's own JSON endpoints
   (`/dre-search/api/search`, `/dre-search/api/suggest`) with a `profile`; PHP
   forwards to Typesense with the server-held key and enforces `is_public:=true`.

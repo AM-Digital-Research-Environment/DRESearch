@@ -24,6 +24,8 @@ namespace DRESearch\Settings;
  *   - 'person'       : people (affiliation + reverse-link roles & association counts)
  *   - 'section'      : research sections (leaders, derived phase, project count)
  *   - 'organisation' : institutions & groups (Type facet + reverse-link roles & counts)
+ *   - 'term'         : authority terms (genres, languages, locations, subjects & tags)
+ *                      — a name + optional Type facet + reverse-link association counts
  */
 final class SearchProfile
 {
@@ -40,6 +42,7 @@ final class SearchProfile
     public function __construct(
         private readonly string $name,
         private readonly string $label,
+        private readonly string $placeholder,
         private readonly string $collection,
         private readonly string $kind,
         private readonly ?int $templateId,
@@ -96,6 +99,7 @@ final class SearchProfile
         return new self(
             $name,
             (string) ($c['label'] ?? $name),
+            (string) ($c['placeholder'] ?? ''),
             (string) ($c['collection'] ?? ($name . '_current')),
             (string) ($c['kind'] ?? 'item'),
             // null = no template filter (e.g. publications span several
@@ -119,6 +123,13 @@ final class SearchProfile
     // ── Identity ────────────────────────────────────────────────────────────
     public function name(): string { return $this->name; }
     public function label(): string { return $this->label; }
+
+    /**
+     * Optional search-box placeholder ('' = none). Lets corpora that share a card
+     * `kind` (e.g. the authority-term corpora) still show a corpus-specific hint;
+     * the client falls back to a kind-derived default when this is empty.
+     */
+    public function placeholder(): string { return $this->placeholder; }
     public function collection(): string { return $this->collection; }
     public function kind(): string { return $this->kind; }
     public function templateId(): ?int { return $this->templateId; }

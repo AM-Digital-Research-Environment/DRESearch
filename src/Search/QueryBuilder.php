@@ -45,15 +45,20 @@ final class QueryBuilder
         $perPage = max(1, min(self::PER_PAGE_MAX, $perPage));
 
         $params = [
-            'q'                => $isBrowse ? '*' : $q,
-            'query_by'         => $this->profile->queryBy(),
-            'filter_by'        => $this->buildFilter($req),
-            'facet_by'         => $this->buildFacetBy($req),
-            'max_facet_values' => 100,
-            'page'             => max(1, (int) ($req['page'] ?? 1)),
-            'per_page'         => $perPage,
-            'sort_by'          => $this->buildSort((string) ($req['sort'] ?? 'relevance'), $isBrowse),
+            'q'         => $isBrowse ? '*' : $q,
+            'query_by'  => $this->profile->queryBy(),
+            'filter_by' => $this->buildFilter($req),
+            'page'      => max(1, (int) ($req['page'] ?? 1)),
+            'per_page'  => $perPage,
+            'sort_by'   => $this->buildSort((string) ($req['sort'] ?? 'relevance'), $isBrowse),
         ];
+        // Facets are optional — a corpus may have none (e.g. genres, languages),
+        // in which case we omit facet_by entirely rather than send an empty one.
+        $facetBy = $this->buildFacetBy($req);
+        if ($facetBy !== '') {
+            $params['facet_by'] = $facetBy;
+            $params['max_facet_values'] = 100;
+        }
         if (!$isBrowse) {
             $params['highlight_full_fields'] = 'title';
         }

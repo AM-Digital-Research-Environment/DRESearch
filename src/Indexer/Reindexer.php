@@ -159,6 +159,9 @@ final class Reindexer
         if ($this->profile->kind() === 'organisation') {
             return new OrganisationMapper($this->profile);
         }
+        if ($this->profile->kind() === 'term') {
+            return new TermMapper($this->profile);
+        }
 
         $auth = new AuthorityResolver($this->connection, $this->profile);
         $auth->load();

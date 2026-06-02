@@ -11,6 +11,7 @@ const STRINGS: Record<string, string> = {
   search_placeholder_person: 'Search people…',
   search_placeholder_section: 'Search research sections…',
   search_placeholder_organisation: 'Search organisations…',
+  search_placeholder_term: 'Search terms…',
   clear_search: 'Clear search',
 
   filters: 'Filters',

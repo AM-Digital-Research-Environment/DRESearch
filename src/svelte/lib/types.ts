@@ -8,7 +8,14 @@
 export type SortKey = 'relevance' | 'newest' | 'oldest' | 'title';
 
 /** Which result card to render — selected by the profile's `kind`. */
-export type CardKind = 'item' | 'project' | 'publication' | 'person' | 'section' | 'organisation';
+export type CardKind =
+  | 'item'
+  | 'project'
+  | 'publication'
+  | 'person'
+  | 'section'
+  | 'organisation'
+  | 'term';
 
 /** Single origin year vs a start/end range. */
 export type DateMode = 'single' | 'range';
@@ -26,6 +33,8 @@ export interface Bootstrap {
   profile: string;
   /** Result card to render. */
   card_kind: CardKind;
+  /** Corpus-specific search-box placeholder; null → use the kind-derived default. */
+  search_placeholder?: string | null;
   /** Date handling for this corpus. */
   date_mode: DateMode;
   /** Whether to show the year range slider (range profiles only). */
@@ -111,6 +120,10 @@ export interface Doc {
   // are shared with the sections/projects corpora.
   /** Number of people who name this organisation as their affiliation. */
   people_count?: number;
+
+  // Authority-term fields (genres, languages, locations, subjects & tags). Reuses
+  // type_s (sub-type, e.g. Country / Tag — absent for genres & languages) and the
+  // shared item_count / publication_count association figures.
 
   // Shared.
   abstract?: string;
