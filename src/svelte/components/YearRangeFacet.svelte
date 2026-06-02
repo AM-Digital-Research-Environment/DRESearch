@@ -45,6 +45,11 @@
   const pctLo = $derived(((lo - min) / span) * 100);
   const pctHi = $derived(((hi - min) / span) * 100);
 
+  // When the handles meet, only the top one is grabbable. Keep the low handle on
+  // top when the pair sits at the ceiling (so you can drag it back down), and the
+  // high handle on top otherwise (so a pair stuck at the floor can be pulled up).
+  const loOnTop = $derived(hi >= max);
+
   let open = $state(true);
 
   function emit(): void {
@@ -58,14 +63,26 @@
   }
 
   function onLo(e: Event): void {
-    const v = Number((e.currentTarget as HTMLInputElement).value);
+    const input = e.currentTarget as HTMLInputElement;
+    const v = Number(input.value);
     lo = Math.min(v, hi);
+    // If the drag pushed past the high handle, the clamped state is unchanged,
+    // so Svelte won't re-sync the native input — snap its DOM value back here so
+    // the low thumb can never visually cross over the high one.
+    if (v !== lo) {
+      input.value = String(lo);
+    }
     emit();
   }
 
   function onHi(e: Event): void {
-    const v = Number((e.currentTarget as HTMLInputElement).value);
+    const input = e.currentTarget as HTMLInputElement;
+    const v = Number(input.value);
     hi = Math.max(v, lo);
+    // Likewise keep the high thumb from crossing below the low handle.
+    if (v !== hi) {
+      input.value = String(hi);
+    }
     emit();
   }
 </script>
@@ -95,6 +112,7 @@
           {max}
           step="1"
           value={lo}
+          style="z-index: {loOnTop ? 4 : 2}"
           aria-label={`${t('year_from')} (${min}–${max})`}
           oninput={onLo}
         />
@@ -105,6 +123,7 @@
           {max}
           step="1"
           value={hi}
+          style="z-index: {loOnTop ? 2 : 4}"
           aria-label={`${t('year_to')} (${min}–${max})`}
           oninput={onHi}
         />
@@ -219,13 +238,8 @@
     border: none;
     box-shadow: none;
   }
-  /* Keep the low handle grabbable even when both sit at the same spot. */
-  .dre-yr__input--lo {
-    z-index: 2;
-  }
-  .dre-yr__input--hi {
-    z-index: 1;
-  }
+  /* z-index is set inline (dynamic) so whichever handle needs to move stays on
+     top when the two meet — see `loOnTop`. */
   .dre-yr__input::-webkit-slider-runnable-track {
     background: none;
     border: none;

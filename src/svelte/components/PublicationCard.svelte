@@ -108,7 +108,7 @@
 
     {#if authors.length > 0}
       <p class="dre-bcard__authors">
-        {#each authors as a, i (a.name + '|' + i)}{#if i > 0}<span>, </span>{/if}{#if a.href}<a
+        {#each authors as a, i (a.name + '|' + i)}{i > 0 ? ', ' : ''}{#if a.href}<a
               class="dre-bcard__author-link"
               href={a.href}>{a.name}</a
             >{:else}<span>{a.name}</span>{/if}{/each}

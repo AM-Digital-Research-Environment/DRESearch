@@ -71,7 +71,7 @@
     {#if pis.length > 0}
       <p class="dre-pcard__pi">
         <span class="dre-pcard__pi-label">{t('pi_label')}</span>
-        {#each pis as pi, i (pi.name + '|' + i)}{#if i > 0}<span>, </span>{/if}{#if pi.href}<a
+        {#each pis as pi, i (pi.name + '|' + i)}{i > 0 ? ', ' : ''}{#if pi.href}<a
               class="dre-pcard__pi-link"
               href={pi.href}>{pi.name}</a
             >{:else}<span>{pi.name}</span>{/if}{/each}
