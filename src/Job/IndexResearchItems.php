@@ -5,6 +5,7 @@ namespace DRESearch\Job;
 
 use DRESearch\Indexer\Reindexer;
 use DRESearch\Search\TypesenseClientProvider;
+use DRESearch\Settings\FacetConfig;
 use Omeka\Job\AbstractJob;
 
 /**
@@ -28,15 +29,15 @@ class IndexResearchItems extends AbstractJob
             return;
         }
 
-        $config = $services->get('Config')['dre_search'] ?? [];
-        $templateId = (int) ($config['research_template_id'] ?? 10);
+        /** @var FacetConfig $facetConfig */
+        $facetConfig = $services->get(FacetConfig::class);
 
         $log = static function (string $message) use ($logger): void {
             $logger->info('DRESearch: ' . $message);
         };
 
         try {
-            $reindexer = new Reindexer($connection, $client, $provider->collection(), $templateId, $log);
+            $reindexer = new Reindexer($connection, $client, $provider->collection(), $facetConfig, $log);
             $stats = $reindexer->run();
             $logger->info('DRESearch: reindex complete', $stats);
         } catch (\Throwable $e) {

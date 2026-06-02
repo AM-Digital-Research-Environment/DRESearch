@@ -83,8 +83,14 @@ Edit a site page → add the **DRE Search** block. Options:
 ## Data model
 
 Research items are resource template **10**. The eight facets are resolved from
-linked authority items; the item-set IDs and `dcterms:type` discriminators live
-in a single file: [`src/Settings/FacetConfig.php`](src/Settings/FacetConfig.php).
+linked authority items. **All instance-specific mapping** — the template ID,
+authority item-set IDs, `dcterms:type` discriminators, the facet property/label
+map, and the `query_by` fields — lives in the `dre_search` block of
+[`config/module.config.php`](config/module.config.php) and is overridable, key
+by key, via Omeka's `config/local.config.php` (no module source edit). The
+Typesense field names (`type_s`, `country_ss`, …) are the stable interface; the
+Typesense schema, the SQL term list, and the block's facet picker all derive
+from that config.
 
 | Facet | Omeka property | Authority set |
 |---|---|---|
@@ -99,8 +105,8 @@ in a single file: [`src/Settings/FacetConfig.php`](src/Settings/FacetConfig.php)
 
 > **Before the first production reindex, verify these IDs against your
 > instance** (item-set IDs and the `dcterms:type` target items used to split
-> subject/tag and country/city). Porting to a different Omeka instance is a
-> matter of editing `FacetConfig.php`.
+> subject/tag and country/city). On a different Omeka instance, override the
+> `dre_search` config in `config/local.config.php`.
 
 ## Development
 

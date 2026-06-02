@@ -16,9 +16,11 @@ final class SearchProxy
 {
     private readonly QueryBuilder $queryBuilder;
 
-    public function __construct(private readonly TypesenseClientProvider $provider)
-    {
-        $this->queryBuilder = new QueryBuilder();
+    public function __construct(
+        private readonly TypesenseClientProvider $provider,
+        private readonly FacetConfig $facetConfig,
+    ) {
+        $this->queryBuilder = new QueryBuilder($facetConfig);
     }
 
     public function isAvailable(): bool
@@ -98,7 +100,7 @@ final class SearchProxy
             }
             $facets[] = [
                 'field'  => $field,
-                'label'  => FacetConfig::label($field),
+                'label'  => $this->facetConfig->label($field),
                 'counts' => $counts,
             ];
         }

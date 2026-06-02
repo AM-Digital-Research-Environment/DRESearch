@@ -10,6 +10,11 @@ use DRESearch\Settings\FacetConfig;
  * values — into a Typesense document, resolving the eight linked-resource
  * facets (including the three shared-property cases) via {@see AuthorityResolver}.
  *
+ * Which Omeka property feeds each facet, and the authority IDs used to
+ * disambiguate, all come from {@see FacetConfig} (config-driven). The
+ * resolution *logic* keys on the stable facet field names (type_s, subject_ss,
+ * country_ss, …).
+ *
  * The $values shape is term => list of:
  *   ['vrid' => ?int, 'value' => ?string, 'title' => ?string]
  * where vrid/title come from a value_resource link and value is the literal.
@@ -22,8 +27,10 @@ final class ResearchItemMapper
     /** Date properties tried in order for the "origin date". */
     private const DATE_TERMS = ['dcterms:issued', 'dcterms:created', 'dcterms:date'];
 
-    public function __construct(private readonly AuthorityResolver $auth)
-    {
+    public function __construct(
+        private readonly AuthorityResolver $auth,
+        private readonly FacetConfig $facetConfig,
+    ) {
     }
 
     /**
@@ -32,6 +39,21 @@ final class ResearchItemMapper
      */
     public function map(array $item, array $values, ?string $thumbnailUrl): array
     {
+        // Facet → Omeka property (config-driven). '' if a facet is unmapped,
+        // which simply yields no values from $values.
+        $pType     = $this->facetConfig->property('type_s') ?? '';
+        $pProject  = $this->facetConfig->property('project_s') ?? '';
+        $pCountry  = $this->facetConfig->property('country_ss') ?? '';
+        $pLanguage = $this->facetConfig->property('language_ss') ?? '';
+        $pSubject  = $this->facetConfig->property('subject_ss') ?? ''; // shared with tag_ss
+        $pAudience = $this->facetConfig->property('audience_ss') ?? '';
+        $pFormat   = $this->facetConfig->property('digitisation_ss') ?? '';
+
+        $setProject  = $this->facetConfig->itemSet('project');
+        $setDigital  = $this->facetConfig->itemSet('digital');
+        $itemTag     = $this->facetConfig->typeItem('tag');
+        $itemCountry = $this->facetConfig->typeItem('country');
+
         $doc = [
             'id'        => (string) $item['id'],
             'is_public' => $item['is_public'],
@@ -45,19 +67,19 @@ final class ResearchItemMapper
             $doc['description'] = $description;
         }
 
-        // type_s — single linked authority (item set 1).
-        foreach ($values['dcterms:type'] ?? [] as $v) {
+        // type_s — single linked authority.
+        foreach ($values[$pType] ?? [] as $v) {
             if ($v['vrid'] !== null && ($v['title'] ?? '') !== '') {
                 $doc['type_s'] = $v['title'];
                 break;
             }
         }
 
-        // project_s — single dcterms:isPartOf target that is a project (set 20).
+        // project_s — single dcterms:isPartOf target that is a project (set).
         // (isPartOf is reused for inter-item relations, so the set check matters.)
-        foreach ($values['dcterms:isPartOf'] ?? [] as $v) {
+        foreach ($values[$pProject] ?? [] as $v) {
             if ($v['vrid'] !== null
-                && $this->auth->inSet($v['vrid'], FacetConfig::ITEM_SET_PROJECT)
+                && $this->auth->inSet($v['vrid'], $setProject)
                 && ($v['title'] ?? '') !== ''
             ) {
                 $doc['project_s'] = $v['title'];
@@ -66,8 +88,8 @@ final class ResearchItemMapper
         }
 
         // language_ss, audience_ss — direct linked titles.
-        $this->addMulti($doc, $values, 'dcterms:language', 'language_ss');
-        $this->addMulti($doc, $values, 'dcterms:audience', 'audience_ss');
+        $this->addMulti($doc, $values, $pLanguage, 'language_ss');
+        $this->addMulti($doc, $values, $pAudience, 'audience_ss');
 
         // creator_ss — union across role properties.
         $creators = [];
@@ -85,11 +107,11 @@ final class ResearchItemMapper
 
         // subject_ss vs tag_ss — same property, split by the target's dcterms:type.
         $subjects = $tags = [];
-        foreach ($values['dcterms:subject'] ?? [] as $v) {
+        foreach ($values[$pSubject] ?? [] as $v) {
             if ($v['vrid'] === null || ($v['title'] ?? '') === '') {
                 continue;
             }
-            if ($this->auth->typeItemId($v['vrid']) === FacetConfig::TYPE_ITEM_TAG) {
+            if ($itemTag !== null && $this->auth->typeItemId($v['vrid']) === $itemTag) {
                 $tags[] = $v['title'];
             } else {
                 $subjects[] = $v['title']; // default to subject (LCSH)
@@ -105,14 +127,14 @@ final class ResearchItemMapper
         // country_ss — spatial that is a country directly, else the city/region's
         // parent country via dcterms:isPartOf.
         $countries = [];
-        foreach ($values['dcterms:spatial'] ?? [] as $v) {
+        foreach ($values[$pCountry] ?? [] as $v) {
             if ($v['vrid'] === null) {
                 if (($v['value'] ?? '') !== '') {
                     $countries[] = $v['value']; // rare literal region
                 }
                 continue;
             }
-            if ($this->auth->typeItemId($v['vrid']) === FacetConfig::TYPE_ITEM_COUNTRY) {
+            if ($itemCountry !== null && $this->auth->typeItemId($v['vrid']) === $itemCountry) {
                 $countries[] = $v['title'] ?? $this->auth->title($v['vrid']);
             } else {
                 $parentId = $this->auth->partOfId($v['vrid']);
@@ -130,9 +152,9 @@ final class ResearchItemMapper
         // digitisation_ss — dcterms:format targets in the digital/technical set
         // only (genres, also on dcterms:format, are excluded).
         $digitisation = [];
-        foreach ($values['dcterms:format'] ?? [] as $v) {
+        foreach ($values[$pFormat] ?? [] as $v) {
             if ($v['vrid'] !== null
-                && $this->auth->inSet($v['vrid'], FacetConfig::ITEM_SET_DIGITAL)
+                && $this->auth->inSet($v['vrid'], $setDigital)
                 && ($v['title'] ?? '') !== ''
             ) {
                 $digitisation[] = $v['title'];
@@ -161,6 +183,9 @@ final class ResearchItemMapper
     /** @param array<string, list<array{vrid:?int, value:?string, title:?string}>> $values */
     private function addMulti(array &$doc, array $values, string $term, string $field): void
     {
+        if ($term === '') {
+            return;
+        }
         $out = [];
         foreach ($values[$term] ?? [] as $v) {
             $label = ($v['title'] ?? '') !== '' ? $v['title'] : ($v['value'] ?? '');

@@ -37,8 +37,10 @@ class DreSearchBlock extends AbstractBlockLayout
         'title'     => 'Title (A–Z)',     // @translate
     ];
 
-    public function __construct(private readonly SearchProxy $proxy)
-    {
+    public function __construct(
+        private readonly SearchProxy $proxy,
+        private readonly FacetConfig $facetConfig,
+    ) {
     }
 
     public function getLabel()
@@ -55,7 +57,7 @@ class DreSearchBlock extends AbstractBlockLayout
         $data = $block ? $block->data() : [];
         $title        = (string) ($data['title'] ?? '');
         $introHtml    = (string) ($data['intro_html'] ?? '');
-        $facets       = $data['facets'] ?? FacetConfig::fieldNames();
+        $facets       = $data['facets'] ?? $this->facetConfig->fieldNames();
         $defaultSort  = (string) ($data['default_sort'] ?? 'relevance');
         $perPage      = (int) ($data['results_per_page'] ?? 20);
         $lockedFilter = (string) ($data['locked_filter'] ?? '');
@@ -94,7 +96,7 @@ class DreSearchBlock extends AbstractBlockLayout
                 <div class="field-description"><?= $esc($t('Which facets appear in the sidebar.')) ?></div>
             </div>
             <div class="inputs">
-                <?php foreach (FacetConfig::all() as $field => $def): ?>
+                <?php foreach ($this->facetConfig->all() as $field => $def): ?>
                     <label style="display:block;">
                         <input type="checkbox"
                                name="<?= $escAttr($prefix) ?>[facets][]"
@@ -167,11 +169,11 @@ class DreSearchBlock extends AbstractBlockLayout
 
         // Sanitise the configured facet list against the known fields.
         $facets = array_values(array_intersect(
-            FacetConfig::fieldNames(),
-            (array) ($data['facets'] ?? FacetConfig::fieldNames())
+            $this->facetConfig->fieldNames(),
+            (array) ($data['facets'] ?? $this->facetConfig->fieldNames())
         ));
         if ($facets === []) {
-            $facets = FacetConfig::fieldNames();
+            $facets = $this->facetConfig->fieldNames();
         }
 
         $defaultSort  = (string) ($data['default_sort'] ?? 'relevance');
@@ -181,7 +183,7 @@ class DreSearchBlock extends AbstractBlockLayout
 
         $facetLabels = [];
         foreach ($facets as $field) {
-            $facetLabels[$field] = (string) $view->translate(FacetConfig::label($field));
+            $facetLabels[$field] = (string) $view->translate($this->facetConfig->label($field));
         }
 
         $siteSlug = $block->page()->site()->slug();

@@ -8,8 +8,8 @@ use DRESearch\Settings\FacetConfig;
 
 /**
  * Loads, once per reindex, a compact lookup of every authority item that backs
- * a facet (the items in the tracked item sets). For each authority id it keeps
- * what the mapper needs to disambiguate the shared-property facets:
+ * a facet (the items in the configured item sets). For each authority id it
+ * keeps what the mapper needs to disambiguate the shared-property facets:
  *
  *   - title       : the authority's display title
  *   - sets        : which tracked item sets it belongs to (project vs other
@@ -25,24 +25,20 @@ final class AuthorityResolver
     /** @var array<int, array{title:string, sets:array<int,bool>, typeItemId:?int, partOfId:?int}> */
     private array $byId = [];
 
-    public function __construct(private readonly Connection $connection)
-    {
+    public function __construct(
+        private readonly Connection $connection,
+        private readonly FacetConfig $facetConfig,
+    ) {
     }
 
     public function load(): void
     {
         $this->byId = [];
 
-        $sets = [
-            FacetConfig::ITEM_SET_TYPE,
-            FacetConfig::ITEM_SET_LANGUAGE,
-            FacetConfig::ITEM_SET_PROJECT,
-            FacetConfig::ITEM_SET_LOCATION,
-            FacetConfig::ITEM_SET_SUBJECT,
-            FacetConfig::ITEM_SET_AUDIENCE,
-            FacetConfig::ITEM_SET_DIGITAL,
-            FacetConfig::ITEM_SET_GENRE,
-        ];
+        $sets = $this->facetConfig->allItemSets();
+        if (!$sets) {
+            return;
+        }
         $setList = implode(',', array_map('intval', $sets));
 
         // 1. Item-set membership.
@@ -99,9 +95,9 @@ final class AuthorityResolver
         return $t !== '' ? $t : null;
     }
 
-    public function inSet(int $id, int $setId): bool
+    public function inSet(int $id, ?int $setId): bool
     {
-        return !empty($this->byId[$id]['sets'][$setId]);
+        return $setId !== null && !empty($this->byId[$id]['sets'][$setId]);
     }
 
     public function typeItemId(int $id): ?int

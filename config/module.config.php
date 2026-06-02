@@ -21,6 +21,10 @@ return [
             // Server-side search: forwards queries to Typesense, forcing
             // is_public:=true, and normalises the response for the client.
             Search\SearchProxy::class => Service\SearchProxyFactory::class,
+            // Facet / index mapping, built from the 'dre_search' config below.
+            // A reuser overrides item-set IDs, facets, query fields, etc. via
+            // config/local.config.php — no module source edits needed.
+            Settings\FacetConfig::class => Service\FacetConfigFactory::class,
         ],
     ],
 
@@ -131,23 +135,70 @@ return [
         ],
     ],
 
-    // Module-level defaults — read by the client provider factory and the
-    // indexer. Settings (admin form) and env vars override the connection bits.
+    // ── Module configuration ────────────────────────────────────────────
+    // Everything instance-specific lives here and is overridable, key by key,
+    // via config/local.config.php — porting DRESearch to another Omeka instance
+    // means a config override, not a source edit. The Typesense field names
+    // (type_s, country_ss, …) are the stable interface; what backs each one on
+    // the Omeka side is what you change.
+    //
+    // Connection bits are additionally overridable by the admin settings form
+    // and by environment variables (see TypesenseClientProviderFactory).
     'dre_search' => [
         'typesense' => [
             'host'       => 'typesense',
             'port'       => 8108,
             'protocol'   => 'http',
             // Alias that always points at the live collection; the reindexer
-            // builds dre_research_v1_<timestamp> and swaps the alias atomically.
+            // builds dre_research_<timestamp> and swaps the alias atomically.
             'collection' => 'dre_research_current',
         ],
         'public_search' => [
             // Hard filter appended to every public query, enforced server-side.
             'filter_by' => 'is_public:=true',
         ],
+
         // The resource template whose items are indexed as "research items".
         // (MongoDB2OmekaS writes research items with template id 10.)
         'research_template_id' => 10,
+
+        // Full-text fields Typesense searches (query_by), in priority order.
+        'query_by' => 'title,abstract,description,subject_ss,tag_ss,creator_ss',
+
+        // Authority item sets backing the facets (DRE instance defaults).
+        'authority_item_sets' => [
+            'type'     => 1,
+            'language' => 19,
+            'project'  => 20,
+            'location' => 1851,
+            'subject'  => 1852,
+            'audience' => 3169,
+            'digital'  => 7438,
+            'genre'    => 21, // also on dcterms:format — excluded from digitisation
+        ],
+
+        // dcterms:type discriminator target items, used to split the
+        // shared-property facets (see ResearchItemMapper).
+        'type_items' => [
+            'lcsh'         => 3167,
+            'tag'          => 22199,
+            'country'      => 3168,
+            'geo_location' => 22431,
+        ],
+
+        // The facets: Typesense field => { Omeka property, UI label,
+        // multi-valued? }. Order here is the display order. Add/remove a facet
+        // by editing this map (then reindex); the schema, the SQL term list,
+        // and the block's facet picker all derive from it.
+        'facets' => [
+            'type_s'          => ['property' => 'dcterms:type',     'label' => 'Type',                'array' => false],
+            'project_s'       => ['property' => 'dcterms:isPartOf', 'label' => 'Project',             'array' => false],
+            'country_ss'      => ['property' => 'dcterms:spatial',  'label' => 'Country',             'array' => true],
+            'language_ss'     => ['property' => 'dcterms:language', 'label' => 'Language',            'array' => true],
+            'subject_ss'      => ['property' => 'dcterms:subject',  'label' => 'Subject',             'array' => true],
+            'tag_ss'          => ['property' => 'dcterms:subject',  'label' => 'Tag',                 'array' => true],
+            'audience_ss'     => ['property' => 'dcterms:audience', 'label' => 'Target audience',     'array' => true],
+            'digitisation_ss' => ['property' => 'dcterms:format',   'label' => 'Digitisation method', 'array' => true],
+        ],
     ],
 ];

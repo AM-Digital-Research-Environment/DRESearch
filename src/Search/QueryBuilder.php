@@ -3,13 +3,15 @@ declare(strict_types=1);
 
 namespace DRESearch\Search;
 
-use DRESearch\Indexer\SchemaProvider;
 use DRESearch\Settings\FacetConfig;
 
 /**
  * Translates a structured search request from the client into Typesense search
  * parameters. The is_public:=true constraint is hard-coded here (not taken from
  * the request), so a crafted client payload can never widen visibility.
+ *
+ * The searchable fields (query_by) and the valid facet fields come from
+ * {@see FacetConfig}, so this stays correct when the facet set is overridden.
  *
  * Expected request keys (all optional):
  *   q             string  full-text query ('' = browse everything)
@@ -27,6 +29,10 @@ final class QueryBuilder
     private const PER_PAGE_DEFAULT = 20;
     private const PER_PAGE_MAX = 50;
 
+    public function __construct(private readonly FacetConfig $facetConfig)
+    {
+    }
+
     /** @param array<string,mixed> $req */
     public function search(array $req): array
     {
@@ -38,7 +44,7 @@ final class QueryBuilder
 
         $params = [
             'q'                => $isBrowse ? '*' : $q,
-            'query_by'         => SchemaProvider::QUERY_BY,
+            'query_by'         => $this->facetConfig->queryBy(),
             'filter_by'        => $this->buildFilter($req),
             'facet_by'         => $this->buildFacetBy($req),
             'max_facet_values' => 100,
@@ -54,15 +60,17 @@ final class QueryBuilder
 
     public function suggest(string $q): array
     {
+        // Only request fields that exist in the schema (id/title/year + facets).
+        $include = array_merge(['id', 'title', 'year'], $this->facetConfig->fieldNames());
         return [
-            'q'             => $q,
-            'query_by'      => 'title',
-            'prefix'        => true,
-            'filter_by'     => 'is_public:=true',
-            'sort_by'       => '_text_match:desc',
-            'page'          => 1,
-            'per_page'      => 6,
-            'include_fields' => 'id,title,type_s,project_s,year',
+            'q'              => $q,
+            'query_by'       => 'title',
+            'prefix'         => true,
+            'filter_by'      => 'is_public:=true',
+            'sort_by'        => '_text_match:desc',
+            'page'           => 1,
+            'per_page'       => 6,
+            'include_fields' => implode(',', $include),
         ];
     }
 
@@ -79,7 +87,7 @@ final class QueryBuilder
 
         $filters = $req['filters'] ?? [];
         if (is_array($filters)) {
-            foreach (FacetConfig::fieldNames() as $field) {
+            foreach ($this->facetConfig->fieldNames() as $field) {
                 $values = $filters[$field] ?? null;
                 if (!is_array($values) || $values === []) {
                     continue;
@@ -108,7 +116,7 @@ final class QueryBuilder
     /** @param array<string,mixed> $req */
     private function buildFacetBy(array $req): string
     {
-        $allowed = FacetConfig::fieldNames();
+        $allowed = $this->facetConfig->fieldNames();
         $requested = $req['facets'] ?? null;
         if (is_array($requested) && $requested !== []) {
             $fields = array_values(array_intersect($allowed, array_map('strval', $requested)));
