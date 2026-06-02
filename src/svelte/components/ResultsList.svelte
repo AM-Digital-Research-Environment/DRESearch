@@ -3,6 +3,8 @@
   import ResultItem from './ResultItem.svelte';
   import ProjectCard from './ProjectCard.svelte';
   import PublicationCard from './PublicationCard.svelte';
+  import PersonCard from './PersonCard.svelte';
+  import SectionCard from './SectionCard.svelte';
 
   interface Props {
     hits: Doc[];
@@ -49,6 +51,10 @@
         <ProjectCard {doc} {itemUrlBase} {onAddFilter} />
       {:else if cardKind === 'publication'}
         <PublicationCard {doc} {itemUrlBase} {onAddFilter} />
+      {:else if cardKind === 'person'}
+        <PersonCard {doc} {itemUrlBase} {onAddFilter} />
+      {:else if cardKind === 'section'}
+        <SectionCard {doc} {itemUrlBase} {onAddFilter} />
       {:else}
         <ResultItem {doc} {itemUrlBase} />
       {/if}

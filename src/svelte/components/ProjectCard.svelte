@@ -32,16 +32,9 @@
   const abstract = $derived((doc.abstract ?? '').trim());
   const itemCount = $derived(doc.item_count ?? 0);
 
-  // PI names paired with a link to their person page (when the PI is a linked
-  // resource; unreconciled literal names have no id and render as plain text).
-  const pis = $derived.by(() => {
-    const names = doc.pi_ss ?? [];
-    const ids = doc.pi_ids ?? [];
-    return names.map((name, i) => {
-      const id = ids[i] ?? '';
-      return { name, href: id ? `${itemUrlBase}/${encodeURIComponent(id)}` : null };
-    });
-  });
+  // PI names. Clicking one adds it as an "Associated people" (people_ss) filter,
+  // so you can pivot to every project that person is involved in.
+  const pis = $derived(doc.pi_ss ?? []);
 
   const yearRange = $derived.by(() => {
     const s = doc.year_start;
@@ -71,10 +64,11 @@
     {#if pis.length > 0}
       <p class="dre-pcard__pi">
         <span class="dre-pcard__pi-label">{t('pi_label')}</span>
-        {#each pis as pi, i (pi.name + '|' + i)}{i > 0 ? ', ' : ''}{#if pi.href}<a
-              class="dre-pcard__pi-link"
-              href={pi.href}>{pi.name}</a
-            >{:else}<span>{pi.name}</span>{/if}{/each}
+        {#each pis as pi, i (pi + '|' + i)}{i > 0 ? ', ' : ''}<button
+            type="button"
+            class="dre-pcard__pi-link"
+            onclick={() => onAddFilter('people_ss', pi)}>{pi}</button
+          >{/each}
       </p>
     {/if}
 
@@ -190,6 +184,11 @@
     margin-inline-end: 0.15rem;
   }
   .dre-pcard__pi-link {
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    cursor: pointer;
     color: inherit;
     text-decoration: underline;
     text-underline-offset: 2px;
@@ -198,6 +197,11 @@
   .dre-pcard__pi-link:hover {
     color: var(--primary, #2a4d8f);
     text-decoration-color: currentColor;
+  }
+  .dre-pcard__pi-link:focus-visible {
+    outline: none;
+    border-radius: var(--radius-sm, 0.375rem);
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(42, 77, 143, 0.3));
   }
   .dre-pcard__snippet {
     margin: var(--space-xs, 0.25rem) 0 0;

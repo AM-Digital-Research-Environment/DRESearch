@@ -32,6 +32,7 @@ final class SearchProfile
      * @param array{mode:string,property:?string,label:string} $date
      * @param list<string> $readProperties
      * @param array{from_template:int,property:string,public_only:bool}|null $itemLink
+     * @param array{counts?:array<string,array<string,mixed>>,roles?:list<array<string,mixed>>}|null $personLinks
      */
     public function __construct(
         private readonly string $name,
@@ -48,6 +49,7 @@ final class SearchProfile
         private readonly array $date,
         private readonly array $readProperties,
         private readonly ?array $itemLink,
+        private readonly ?array $personLinks,
     ) {
     }
 
@@ -76,7 +78,9 @@ final class SearchProfile
             ];
         }
 
-        $date = $c['date'] ?? [];
+        // mode 'none' = the corpus has no date at all (e.g. people); 'single' is
+        // the back-compat default when a date block is present but unspecified.
+        $date = $c['date'] ?? ['mode' => 'none'];
         $date = [
             'mode'     => (string) ($date['mode'] ?? 'single'),
             'property' => $date['property'] ?? null,
@@ -103,6 +107,7 @@ final class SearchProfile
             $date,
             array_values($c['read_properties'] ?? []),
             $c['item_link'] ?? null,
+            $c['person_links'] ?? null,
         );
     }
 
@@ -195,6 +200,12 @@ final class SearchProfile
     public function dateLabel(): string { return $this->date['label']; }
     public function isRangeDate(): bool { return $this->date['mode'] === 'range'; }
 
+    /** Whether this corpus has any date at all (single or range). */
+    public function hasDate(): bool
+    {
+        return $this->date['mode'] === 'single' || $this->date['mode'] === 'range';
+    }
+
     /** Whether this profile exposes a year range slider (config: date.facet). */
     public function hasYearFacet(): bool
     {
@@ -258,5 +269,24 @@ final class SearchProfile
     public function itemLink(): ?array
     {
         return $this->itemLink;
+    }
+
+    /**
+     * Reverse person-link config (person kind): how to count the records that
+     * reference each indexed person, and which relationships to surface as roles.
+     *
+     *   counts: field => { from_template?:int, from_item_set?:int, public_only:bool }
+     *   roles:  list of { label:string, properties?:?list<string>, from_template?:int,
+     *                     from_item_set?:int, public_only?:bool }
+     *
+     * A role's `properties` null = any reference (e.g. "contributed to a research
+     * item"); otherwise only references via those properties (e.g. dcterms:creator
+     * on a project = "Principal investigator").
+     *
+     * @return array{counts?:array<string,array<string,mixed>>,roles?:list<array<string,mixed>>}|null
+     */
+    public function personLinks(): ?array
+    {
+        return $this->personLinks;
     }
 }

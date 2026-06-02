@@ -62,6 +62,7 @@ final class Reindexer
         $templateId = $this->profile->templateId();
         $itemSetId = $this->profile->itemSetId();
         $itemLink = $this->profile->itemLink();
+        $personLinks = $this->profile->personLinks();
         $total = 0;
         $lastId = 0;
         $batch = [];
@@ -96,6 +97,9 @@ final class Reindexer
             $valuesByItem = $this->loadValues($ids);
             $thumbnails = $this->loadThumbnails($ids);
             $counts = $itemLink !== null ? $this->loadItemCounts($ids, $itemLink) : [];
+            [$personCounts, $personRoles] = $personLinks !== null
+                ? $this->loadPersonLinks($ids, $personLinks)
+                : [[], []];
 
             foreach ($rows as $r) {
                 $id = (int) $r['id'];
@@ -106,6 +110,13 @@ final class Reindexer
                 ];
                 if ($itemLink !== null) {
                     $item['item_count'] = $counts[$id] ?? 0;
+                }
+                if ($personLinks !== null) {
+                    $item['counts'] = [];
+                    foreach ($personCounts as $field => $map) {
+                        $item['counts'][$field] = $map[$id] ?? 0;
+                    }
+                    $item['roles'] = $personRoles[$id] ?? [];
                 }
                 $batch[] = $mapper->map($item, $valuesByItem[$id] ?? [], $thumbnails[$id] ?? null);
                 if (count($batch) >= self::BATCH) {
@@ -138,6 +149,12 @@ final class Reindexer
         }
         if ($this->profile->kind() === 'publication') {
             return new PublicationMapper($this->profile);
+        }
+        if ($this->profile->kind() === 'person') {
+            return new PersonMapper($this->profile);
+        }
+        if ($this->profile->kind() === 'section') {
+            return new SectionMapper($this->profile);
         }
 
         $auth = new AuthorityResolver($this->connection, $this->profile);
@@ -194,9 +211,8 @@ final class Reindexer
     }
 
     /**
-     * Count, per linked target id, the resources of `from_template` whose
-     * `property` points at it — i.e. how many research items belong to each
-     * project. One query per page.
+     * Project item-count: how many research items belong to each project
+     * (a single reverse-link rule). Thin wrapper over {@see reverseCount}.
      *
      * @param list<int> $ids
      * @param array{from_template:int,property:string,public_only:bool} $itemLink
@@ -204,27 +220,105 @@ final class Reindexer
      */
     private function loadItemCounts(array $ids, array $itemLink): array
     {
+        return $this->reverseCount($ids, [
+            'properties'    => [$itemLink['property']],
+            'from_template' => $itemLink['from_template'],
+            'public_only'   => !empty($itemLink['public_only']),
+        ]);
+    }
+
+    /**
+     * Person reverse-links: for the person corpus, compute (a) per-bucket counts
+     * of the records that reference each person and (b) the set of role labels a
+     * person earns from the relationships configured in `person_links`. Each
+     * count bucket / role rule is one {@see reverseCount} query.
+     *
+     * @param list<int> $ids
+     * @param array{counts?:array<string,array<string,mixed>>,roles?:list<array<string,mixed>>} $links
+     * @return array{0:array<string,array<int,int>>, 1:array<int,list<string>>}
+     *         [ field => [personId => count], personId => [role labels] ]
+     */
+    private function loadPersonLinks(array $ids, array $links): array
+    {
+        $counts = [];
+        foreach (($links['counts'] ?? []) as $field => $rule) {
+            $counts[(string) $field] = $this->reverseCount($ids, $rule);
+        }
+
+        $roleSets = [];
+        foreach (($links['roles'] ?? []) as $rule) {
+            $label = (string) ($rule['label'] ?? '');
+            if ($label === '') {
+                continue;
+            }
+            foreach ($this->reverseCount($ids, $rule) as $pid => $cnt) {
+                if ($cnt > 0) {
+                    $roleSets[$pid][$label] = true; // set semantics — dedupe shared labels
+                }
+            }
+        }
+        $roles = [];
+        foreach ($roleSets as $pid => $labelSet) {
+            $roles[$pid] = array_keys($labelSet);
+        }
+
+        return [$counts, $roles];
+    }
+
+    /**
+     * Count, per referenced target id, the DISTINCT source resources that point
+     * at it — optionally narrowed to specific properties and/or a source template
+     * or item set, and to public sources only. The reverse-link primitive behind
+     * both the project item-count and the person counts/roles. One query per rule.
+     *
+     * @param list<int> $ids
+     * @param array{properties?:?list<string>, from_template?:?int, from_item_set?:?int, public_only?:bool} $rule
+     * @return array<int, int>
+     */
+    private function reverseCount(array $ids, array $rule): array
+    {
         $idList = implode(',', array_map('intval', $ids));
-        $propId = $this->propertyId($itemLink['property']);
-        if ($idList === '' || $propId === null) {
+        if ($idList === '') {
             return [];
         }
 
-        $publicClause = !empty($itemLink['public_only']) ? ' AND r.is_public = 1' : '';
+        $where = ["v.value_resource_id IN ($idList)"];
+        $params = [];
+
+        $props = $rule['properties'] ?? null;
+        if (is_array($props) && $props !== []) {
+            $propIds = [];
+            foreach ($props as $term) {
+                $pid = $this->propertyId($term);
+                if ($pid !== null) {
+                    $propIds[] = $pid;
+                }
+            }
+            if ($propIds === []) {
+                return []; // none of the rule's properties exist on this instance
+            }
+            $where[] = 'v.property_id IN (' . implode(',', $propIds) . ')';
+        }
+        if (!empty($rule['from_template'])) {
+            $where[] = 'r.resource_template_id = :tpl';
+            $params['tpl'] = (int) $rule['from_template'];
+        }
+        if (!empty($rule['from_item_set'])) {
+            $where[] = 'r.id IN (SELECT item_id FROM item_item_set WHERE item_set_id = :setId)';
+            $params['setId'] = (int) $rule['from_item_set'];
+        }
+        if (!empty($rule['public_only'])) {
+            $where[] = 'r.is_public = 1';
+        }
+
         $sql = 'SELECT v.value_resource_id AS pid, COUNT(DISTINCT v.resource_id) AS cnt'
             . ' FROM value v'
             . ' JOIN resource r ON v.resource_id = r.id'
-            . ' WHERE v.property_id = :pid AND r.resource_template_id = :tpl'
-            . $publicClause
-            . " AND v.value_resource_id IN ($idList)"
+            . ' WHERE ' . implode(' AND ', $where)
             . ' GROUP BY v.value_resource_id';
 
         $out = [];
-        $result = $this->connection->executeQuery(
-            $sql,
-            ['pid' => $propId, 'tpl' => (int) $itemLink['from_template']],
-        );
-        foreach ($result->fetchAllAssociative() as $row) {
+        foreach ($this->connection->executeQuery($sql, $params)->fetchAllAssociative() as $row) {
             $out[(int) $row['pid']] = (int) $row['cnt'];
         }
         return $out;

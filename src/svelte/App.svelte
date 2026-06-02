@@ -31,7 +31,11 @@
       ? t('search_placeholder_project')
       : bootstrap.card_kind === 'publication'
         ? t('search_placeholder_publication')
-        : t('search_placeholder'),
+        : bootstrap.card_kind === 'person'
+          ? t('search_placeholder_person')
+          : bootstrap.card_kind === 'section'
+            ? t('search_placeholder_section')
+            : t('search_placeholder'),
   );
 
   // svelte-ignore state_referenced_locally

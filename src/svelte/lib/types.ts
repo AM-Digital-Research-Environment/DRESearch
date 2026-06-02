@@ -8,7 +8,7 @@
 export type SortKey = 'relevance' | 'newest' | 'oldest' | 'title';
 
 /** Which result card to render — selected by the profile's `kind`. */
-export type CardKind = 'item' | 'project' | 'publication';
+export type CardKind = 'item' | 'project' | 'publication' | 'person' | 'section';
 
 /** Single origin year vs a start/end range. */
 export type DateMode = 'single' | 'range';
@@ -92,6 +92,19 @@ export interface Doc {
   pages_s?: string;
   /** Resolvable DOI link, e.g. "https://doi.org/10.1163/…". */
   doi_s?: string;
+
+  // Person fields.
+  affiliation_ss?: string[];
+  roles_ss?: string[];
+  /** Number of publications the person authored/edited. */
+  publication_count?: number;
+
+  // Research-section fields.
+  /** "Phase 1" / "Phase 2" (absent for the External section). */
+  phase_s?: string;
+  spokesperson_ss?: string[];
+  member_count?: number;
+  project_count?: number;
 
   // Shared.
   abstract?: string;

@@ -53,6 +53,8 @@ return [
             'dreSearch'             => Service\BlockLayout\ResearchItemsSearchBlockFactory::class,
             'dreSearchProjects'     => Service\BlockLayout\ResearchProjectsSearchBlockFactory::class,
             'dreSearchPublications' => Service\BlockLayout\ResearchPublicationsSearchBlockFactory::class,
+            'dreSearchPeople'       => Service\BlockLayout\ResearchPeopleSearchBlockFactory::class,
+            'dreSearchSections'     => Service\BlockLayout\ResearchSectionsSearchBlockFactory::class,
         ],
     ],
 
@@ -326,6 +328,98 @@ return [
                     'bibo:abstract',
                     'bibo:pages', 'bibo:pageStart', 'bibo:pageEnd', 'bibo:numPages',
                     'bibo:doi',
+                ],
+            ],
+
+            // People — resource template 4, item set 18. A person record carries
+            // only a name + affiliation (dcterms:isPartOf → linked Institution);
+            // everything else lives in the *reverse* direction. `person_links`
+            // tells the reindexer how to count the records that reference each
+            // person (research items, publications) and which relationships to
+            // surface as roles. No date — the corpus sorts by name.
+            'research_people' => [
+                'label'       => 'People', // @translate
+                'collection'  => 'dre_people_current',
+                'kind'        => 'person',
+                'template_id' => 4,
+                'item_set_id' => 18,
+                'query_by'    => 'title,affiliation_ss,roles_ss',
+                'date'        => ['mode' => 'none'],
+
+                'facets' => [
+                    'affiliation_ss' => ['property' => 'dcterms:isPartOf', 'label' => 'Affiliation', 'array' => true],
+                    // Derived from the reverse relationships below.
+                    'roles_ss'       => ['property' => null, 'label' => 'Role', 'array' => true, 'derived' => true],
+                ],
+
+                // Card figures — association counts (mapper-emitted, sortable).
+                'display_fields' => [
+                    'item_count'        => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
+                    'publication_count' => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
+                ],
+
+                // Reverse links: how many records reference each person, and the
+                // roles they earn. Counts = DISTINCT public records of that corpus
+                // referencing the person (any property). Roles = presence of a
+                // reference via the given properties (null = any). Public only.
+                'person_links' => [
+                    'counts' => [
+                        'item_count'        => ['from_template' => 10,    'public_only' => true],
+                        'publication_count' => ['from_item_set' => 29918, 'public_only' => true],
+                    ],
+                    'roles' => [
+                        ['label' => 'Principal investigator', 'from_template' => 5,     'properties' => ['dcterms:creator'], 'public_only' => true],
+                        ['label' => 'Project member',         'from_template' => 5,     'properties' => ['foaf:member'],     'public_only' => true],
+                        ['label' => 'Author',                 'from_item_set' => 29918, 'properties' => ['bibo:authorList'], 'public_only' => true],
+                        ['label' => 'Editor',                 'from_item_set' => 29918, 'properties' => ['bibo:editorList'], 'public_only' => true],
+                        // Any contribution to a research item (author, photographer,
+                        // interviewer, …) — properties null = any reference.
+                        ['label' => 'Research contributor',   'from_template' => 10,    'properties' => null,                'public_only' => true],
+                    ],
+                ],
+            ],
+
+            // Research sections — resource template 7, item set 17 (the cluster's
+            // 13 thematic sections incl. the synthetic "External"). A section names
+            // its leaders + members and an abstract; the project count is the
+            // reverse count of projects (template 5) linking via dcterms:isPartOf
+            // (the same `item_link` mechanism the projects corpus uses). Phase is
+            // *not* stored — it's derived from which leadership property is present
+            // (PIs = Phase 1, spokesperson = Phase 2; External has neither).
+            'research_sections' => [
+                'label'       => 'Research sections', // @translate
+                'collection'  => 'dre_sections_current',
+                'kind'        => 'section',
+                'template_id' => 7,
+                'item_set_id' => 17,
+                'query_by'    => 'title,abstract,pi_ss,spokesperson_ss,people_ss',
+                'date'        => ['mode' => 'none'],
+
+                'facets' => [
+                    // Derived (mapper-built): "Phase 1" (has PIs) / "Phase 2" (has
+                    // spokesperson); External has neither, so no phase value.
+                    'phase_s'   => ['property' => null, 'label' => 'Phase', 'array' => false, 'derived' => true],
+                    // Derived union of PIs + spokesperson + members.
+                    'people_ss' => ['property' => null, 'label' => 'Associated persons', 'array' => true, 'derived' => true],
+                ],
+
+                // Leaders (linked person titles) + the two card figures. member_count
+                // is counted from foaf:member; project_count comes from item_link.
+                'display_fields' => [
+                    'pi_ss'           => ['property' => 'dcterms:creator', 'type' => 'string[]', 'facet' => false],
+                    'spokesperson_ss' => ['property' => 'marcrel:spk',    'type' => 'string[]', 'facet' => false],
+                    'member_count'    => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
+                    'project_count'   => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
+                ],
+
+                'read_properties' => ['dcterms:abstract', 'foaf:member', 'dcterms:creator', 'marcrel:spk'],
+
+                // project_count: count public projects (template 5) that link to
+                // each section via dcterms:isPartOf.
+                'item_link' => [
+                    'from_template' => 5,
+                    'property'      => 'dcterms:isPartOf',
+                    'public_only'   => true,
                 ],
             ],
         ],

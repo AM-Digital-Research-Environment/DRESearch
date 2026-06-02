@@ -4,12 +4,17 @@ Typesense-backed faceted search for the Africa Multiple **DRE** Omeka S instance
 (the one populated by [MongoDB2OmekaS]). It indexes content directly from the
 Omeka dashboard via MySQL — there is no external ingestion pipeline.
 
-Three search corpora ship out of the box, each as its own page block:
+Five search corpora ship out of the box, each as its own page block:
 
 - **Research items search** — the digitised research items (resource template 10).
 - **Research projects search** — the cluster's research projects (template 5).
 - **Publications search** — the cluster bibliography (journal articles, books,
   chapters, theses, … — one item set across several templates).
+- **People search** — researchers and contributors (template 4), filterable by
+  affiliation and role, with per-person research-item and publication counts.
+- **Research sections search** — the cluster's thematic sections (template 7),
+  filterable by phase and associated person, with per-section project and member
+  counts.
 
 All are **search profiles**: independent Typesense collections + facet/index
 mappings, all config-driven. Adding a further corpus is a config block plus a
@@ -32,11 +37,25 @@ don't want a search backend.
   and the number of associated research items.
   - Facets: a **Year** range slider, **Institution**, **Research section**, and
     **Has research items** (yes/no).
+  - On a card, the **research-section**, **institution**, and **PI** are
+    clickable — each adds that value as a filter (a PI filters by **Associated
+    people**, so you can pivot to every project that person is involved in).
 - A **Publications search** page block: cards show a formatted bibliographic
   reference — title, authors (linked to their person pages), venue (journal or
   book + series), volume/issue, pages, publisher, year, abstract, and a DOI link.
   - Facets: a **Year** range slider, **Type, Author, Journal / Book, Publisher,
     Keyword, Language**.
+- A **People search** page block: cards show the person's name, affiliation(s),
+  role chips, and how many research items and publications they're associated
+  with.
+  - Facets: **Affiliation** and **Role** (Principal investigator, Project member,
+    Author, Editor, Research contributor).
+- A **Research sections search** page block: cards show the section name, its
+  phase, the project count, the leaders (PIs or spokesperson), the member count,
+  and the abstract — including the **External** section. The phase and each
+  leader are clickable filters.
+  - Facets: **Phase** (1 / 2) and **Associated person** (PIs, spokesperson, or
+    members).
 - A dashboard **Reindex** action per corpus (Admin → DRE Search) that rebuilds
   an index as a background job, reading the Omeka database and pushing to
   Typesense in batches.
@@ -89,13 +108,15 @@ Admin → **DRE Search** → **Reindex**: one button per corpus. Progress is log
 to Admin → Jobs. Re-run after significant content changes (or wire the job to a
 schedule via the Cron module). Each reindex builds a fresh, timestamped Typesense
 collection and swaps that profile's alias (`dre_research_current` /
-`dre_projects_current` / `dre_publications_current`) to it atomically, so live
-searches never hit a half-built index.
+`dre_projects_current` / `dre_publications_current` / `dre_people_current` /
+`dre_sections_current`) to it atomically, so live searches never hit a half-built
+index.
 
 ## The page blocks
 
 Edit a site page → add the **Research items search**, **Research projects
-search**, or **Publications search** block. All share the same options:
+search**, **Publications search**, **People search**, or **Research sections
+search** block. All share the same options:
 
 - **Filters to show** — which facets appear in the sidebar, including whether the
   **Year** range slider shows.
@@ -133,14 +154,14 @@ list, and each block's facet picker all derive from the profile config.
 
 ### Research projects (`research_projects`) — resource template 5, item set 20
 
-| Field                      | Omeka property     | Notes                                                                         |
-| -------------------------- | ------------------ | ----------------------------------------------------------------------------- |
-| Institution (facet)        | `frapo:isFundedBy` | linked institution titles (set 110)                                           |
-| Research section (facet)   | `dcterms:isPartOf` | linked research-section titles (set 17)                                       |
-| Year (range slider)        | `dcterms:temporal` | `numeric:interval` → `year_start` / `year_end`                                |
-| Has research items (facet) | — derived —        | from the count below                                                          |
-| PI(s) (card)               | `dcterms:creator`  | linked person titles                                                          |
-| Associated items (card)    | — derived —        | research items (template 10) linking back via `dcterms:isPartOf`, public only |
+| Field                      | Omeka property     | Notes                                                                            |
+| -------------------------- | ------------------ | -------------------------------------------------------------------------------- |
+| Institution (facet)        | `frapo:isFundedBy` | linked institution titles (set 110)                                              |
+| Research section (facet)   | `dcterms:isPartOf` | linked research-section titles (set 17)                                          |
+| Year (range slider)        | `dcterms:temporal` | `numeric:interval` → `year_start` / `year_end`                                   |
+| Has research items (facet) | — derived —        | from the count below                                                             |
+| PI(s) (card)               | `dcterms:creator`  | linked person titles; clickable → adds an Associated-people (`people_ss`) filter |
+| Associated items (card)    | — derived —        | research items (template 10) linking back via `dcterms:isPartOf`, public only    |
 
 ### Publications (`research_publications`) — item set 29918
 
@@ -165,12 +186,58 @@ thesis, …) but share one item set, so this profile scopes by **`item_set_id`
 `bibo:numPages` (the pipeline splits them by publication kind) and are recombined
 into one display string — `141–165`, a lone start, or `121 pp.`.
 
+### People (`research_people`) — resource template 4, item set 18
+
+A person record carries only a name and affiliation; the roles and counts come
+from the **reverse** direction — the records that point _at_ the person. The
+reindexer computes these per person from the profile's `person_links` config
+(one grouped query per count bucket / role rule per page). This corpus has **no
+date** — it sorts by name.
+
+| Field                 | Source                                                            | Notes                                                 |
+| --------------------- | ----------------------------------------------------------------- | ----------------------------------------------------- |
+| Affiliation (facet)   | `dcterms:isPartOf` on the person                                  | linked Institution titles (set 110), literal fallback |
+| Role (facet)          | — derived (reverse) —                                             | see the role rules below                              |
+| Research items (card) | research items (template 10) referencing the person, public only  | `item_count`                                          |
+| Publications (card)   | publications (item set 29918) referencing the person, public only | `publication_count`                                   |
+
+**Role rules** (a person earns a role if a public record references them so):
+
+| Role                   | Source corpus           | Property          |
+| ---------------------- | ----------------------- | ----------------- |
+| Principal investigator | project (template 5)    | `dcterms:creator` |
+| Project member         | project (template 5)    | `foaf:member`     |
+| Author                 | publication (set 29918) | `bibo:authorList` |
+| Editor                 | publication (set 29918) | `bibo:editorList` |
+| Research contributor   | research item (tmpl 10) | any reference     |
+
+### Research sections (`research_sections`) — resource template 7, item set 17
+
+The cluster's 13 thematic sections, including the synthetic **External** section
+(item 25135 — it exists in the data, so it appears as a card with its project
+count). **Phase is not stored** — it's derived from which leadership property the
+section carries. No date — sorts by name.
+
+| Field                     | Source                    | Notes                                                                       |
+| ------------------------- | ------------------------- | --------------------------------------------------------------------------- |
+| Phase (facet)             | — derived —               | PIs present → **Phase 1**; spokesperson → **Phase 2**; External has neither |
+| Associated person (facet) | — derived —               | union of PIs + spokesperson + members                                       |
+| PIs (card)                | `dcterms:creator`         | linked person titles (Phase 1 sections)                                     |
+| Spokesperson (card)       | `marcrel:spk`             | linked person title (Phase 2 sections)                                      |
+| Members (card)            | `foaf:member`             | counted → `member_count`                                                    |
+| Projects (card)           | — derived (`item_link`) — | public projects (template 5) linking via `dcterms:isPartOf`                 |
+| Abstract (card)           | `dcterms:abstract`        |                                                                             |
+
 > **Before the first production reindex, verify these IDs against your
 > instance** — the project IDs (template 5, item set 20, authority sets 17/110,
 > `dcterms:type` target 3346), the publication item set (29918) and type set
-> (30613), and the item authority sets / `dcterms:type` targets. They come from
-> the MongoDB2OmekaS config; on a different Omeka instance, override the
-> `dre_search` config in `config/local.config.php`.
+> (30613), the people template (4) / item set (18) and their reverse person-link
+> properties (`dcterms:creator`, `foaf:member`, `bibo:authorList`,
+> `bibo:editorList`), the research-sections template (7) / item set (17) and their
+> leadership properties (`dcterms:creator` = PIs, `marcrel:spk` = spokesperson,
+> `foaf:member` = members), and the item authority sets / `dcterms:type` targets.
+> They come from the MongoDB2OmekaS config; on a different Omeka instance, override
+> the `dre_search` config in `config/local.config.php`.
 
 ## Development
 

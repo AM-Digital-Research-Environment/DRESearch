@@ -8,6 +8,8 @@ const STRINGS: Record<string, string> = {
   search_placeholder: 'Search research items…',
   search_placeholder_project: 'Search research projects…',
   search_placeholder_publication: 'Search publications…',
+  search_placeholder_person: 'Search people…',
+  search_placeholder_section: 'Search research sections…',
   clear_search: 'Clear search',
 
   filters: 'Filters',
@@ -59,6 +61,18 @@ const STRINGS: Record<string, string> = {
   no_short: 'no.',
   pp_short: 'pp.',
   doi_label: 'DOI',
+
+  // Person card.
+  publications_one: '{n} publication',
+  publications_other: '{n} publications',
+
+  // Research-section card.
+  pis_label: 'PIs',
+  spokesperson_label: 'Spokesperson',
+  members_one: '{n} member',
+  members_other: '{n} members',
+  projects_one: '{n} project',
+  projects_other: '{n} projects',
 };
 
 export function t(key: string, vars?: Record<string, string | number>): string {
@@ -74,4 +88,19 @@ export function t(key: string, vars?: Record<string, string | number>): string {
 /** Pluralised "{n} research items". */
 export function researchItemsLabel(n: number): string {
   return t(n === 1 ? 'research_items_one' : 'research_items_other', { n: n.toLocaleString() });
+}
+
+/** Pluralised "{n} publications". */
+export function publicationsLabel(n: number): string {
+  return t(n === 1 ? 'publications_one' : 'publications_other', { n: n.toLocaleString() });
+}
+
+/** Pluralised "{n} members". */
+export function membersLabel(n: number): string {
+  return t(n === 1 ? 'members_one' : 'members_other', { n: n.toLocaleString() });
+}
+
+/** Pluralised "{n} projects". */
+export function projectsLabel(n: number): string {
+  return t(n === 1 ? 'projects_one' : 'projects_other', { n: n.toLocaleString() });
 }

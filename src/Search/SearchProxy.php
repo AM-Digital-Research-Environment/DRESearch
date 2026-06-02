@@ -166,6 +166,11 @@ final class SearchProxy
         } elseif ($profile->kind() === 'publication') {
             $author = $doc['author_ss'][0] ?? ($doc['type_s'] ?? null);
             $parts = [$author, isset($doc['year']) ? (string) $doc['year'] : null];
+        } elseif ($profile->kind() === 'person') {
+            $parts = [$doc['affiliation_ss'][0] ?? null, $doc['roles_ss'][0] ?? null];
+        } elseif ($profile->kind() === 'section') {
+            $leader = $doc['pi_ss'][0] ?? ($doc['spokesperson_ss'][0] ?? null);
+            $parts = [$doc['phase_s'] ?? null, $leader];
         } else {
             $parts = [$doc['type_s'] ?? null, isset($doc['year']) ? (string) $doc['year'] : null];
         }

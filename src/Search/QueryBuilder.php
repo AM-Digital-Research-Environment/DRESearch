@@ -64,9 +64,12 @@ final class QueryBuilder
     {
         // Request only fields the suggestion subtitle might use (id/title + the
         // date field(s) + facets + display fields), so the payload stays small.
+        $dateFields = $this->profile->hasDate()
+            ? ($this->profile->isRangeDate() ? ['year_start', 'year_end'] : ['year'])
+            : [];
         $include = array_merge(
             ['id', 'title'],
-            $this->profile->isRangeDate() ? ['year_start', 'year_end'] : ['year'],
+            $dateFields,
             $this->profile->fieldNames(),
             array_keys($this->profile->displayFields()),
         );
@@ -145,6 +148,9 @@ final class QueryBuilder
      */
     private function appendYearFilter(array &$clauses, array $req): void
     {
+        if (!$this->profile->hasDate()) {
+            return; // no year field to filter on
+        }
         $hasFrom = isset($req['year_from']) && is_numeric($req['year_from']);
         $hasTo = isset($req['year_to']) && is_numeric($req['year_to']);
         if (!$hasFrom && !$hasTo) {
@@ -186,6 +192,10 @@ final class QueryBuilder
 
     private function buildSort(string $sort, bool $isBrowse): string
     {
+        // Date-less corpora (e.g. people) can't sort by year — fall back to name.
+        if (!$this->profile->hasDate()) {
+            return $sort === 'title' || $isBrowse ? 'title:asc' : '_text_match:desc';
+        }
         $yearField = $this->profile->sortYearField();
         return match ($sort) {
             'newest' => $yearField . ':desc',

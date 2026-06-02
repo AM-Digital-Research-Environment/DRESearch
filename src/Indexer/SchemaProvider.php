@@ -63,13 +63,16 @@ final class SchemaProvider
             $add($f);
         }
 
-        // Origin date(s) — single year, or a start/end range.
-        if ($profile->isRangeDate()) {
-            $add(['name' => 'year_start', 'type' => 'int32', 'facet' => true, 'sort' => true, 'optional' => true]);
-            $add(['name' => 'year_end', 'type' => 'int32', 'facet' => true, 'sort' => true, 'optional' => true]);
-        } else {
-            $add(['name' => 'year', 'type' => 'int32', 'facet' => true, 'sort' => true, 'optional' => true]);
-            $add(['name' => 'date', 'type' => 'int64', 'sort' => true, 'optional' => true]);
+        // Origin date(s) — single year, or a start/end range. A corpus may have
+        // no date at all (e.g. people), in which case no year field is added.
+        if ($profile->hasDate()) {
+            if ($profile->isRangeDate()) {
+                $add(['name' => 'year_start', 'type' => 'int32', 'facet' => true, 'sort' => true, 'optional' => true]);
+                $add(['name' => 'year_end', 'type' => 'int32', 'facet' => true, 'sort' => true, 'optional' => true]);
+            } else {
+                $add(['name' => 'year', 'type' => 'int32', 'facet' => true, 'sort' => true, 'optional' => true]);
+                $add(['name' => 'date', 'type' => 'int64', 'sort' => true, 'optional' => true]);
+            }
         }
 
         $add(['name' => 'thumbnail_url', 'type' => 'string', 'index' => false, 'optional' => true]);
