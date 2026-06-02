@@ -156,6 +156,10 @@
     page = 1;
   }
 
+  function handleAddFilter(field: string, value: string): void {
+    handleFacetToggle(field, value, true);
+  }
+
   function handlePageChange(next: number): void {
     page = next;
   }
@@ -251,6 +255,7 @@
             itemUrlBase={bootstrap.item_url_base}
             cardKind={bootstrap.card_kind}
             onPageChange={handlePageChange}
+            onAddFilter={handleAddFilter}
           />
         {/if}
       </div>

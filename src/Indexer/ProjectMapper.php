@@ -50,11 +50,24 @@ final class ProjectMapper implements MapperInterface
             }
         }
 
-        // Display fields with a backing property (pi_ss → dcterms:creator,
-        // member_ss → foaf:member).
-        foreach ($this->profile->displayFields() as $field => $def) {
-            if (!empty($def['property'])) {
-                $this->addLinkedTitles($doc, $values, $def['property'], $field);
+        // PIs (dcterms:creator) and members (foaf:member). PIs keep their person
+        // item ids alongside the names so the card can link each one.
+        $df = $this->profile->displayFields();
+        [$piNames, $piIds] = $this->collectPeople($values, $df['pi_ss']['property'] ?? null);
+        if ($piNames) {
+            $doc['pi_ss'] = $piNames;
+            $doc['pi_ids'] = $piIds;
+        }
+        [$memberNames] = $this->collectPeople($values, $df['member_ss']['property'] ?? null);
+        if ($memberNames) {
+            $doc['member_ss'] = $memberNames;
+        }
+
+        // Associated-people facet — union of PIs and members.
+        if ($this->profile->hasFacet('people_ss')) {
+            $people = array_values(array_unique(array_merge($piNames, $memberNames)));
+            if ($people) {
+                $doc['people_ss'] = $people;
             }
         }
 
@@ -99,6 +112,34 @@ final class ProjectMapper implements MapperInterface
         if ($out) {
             $doc[$field] = array_values(array_unique($out));
         }
+    }
+
+    /**
+     * Collect a person property's display names and their matching resource ids
+     * (empty string where a value is a literal rather than a link), deduped by
+     * name and kept parallel so pi_ss[i] ↔ pi_ids[i].
+     *
+     * @param array<string, list<array{vrid:?int, value:?string, title:?string}>> $values
+     * @return array{0:list<string>, 1:list<string>}
+     */
+    private function collectPeople(array $values, ?string $term): array
+    {
+        $names = [];
+        $ids = [];
+        $seen = [];
+        if ($term === null) {
+            return [$names, $ids];
+        }
+        foreach ($values[$term] ?? [] as $v) {
+            $name = ($v['title'] ?? '') !== '' ? $v['title'] : ($v['value'] ?? '');
+            if ($name === null || $name === '' || isset($seen[$name])) {
+                continue;
+            }
+            $seen[$name] = true;
+            $names[] = $name;
+            $ids[] = $v['vrid'] !== null ? (string) $v['vrid'] : '';
+        }
+        return [$names, $ids];
     }
 
     /** @param array<string, list<array{vrid:?int, value:?string, title:?string}>> $values */

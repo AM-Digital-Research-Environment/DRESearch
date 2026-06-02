@@ -24,7 +24,7 @@ final class SearchProfile
 {
     /**
      * @param array<string,array{property:?string,label:string,array:bool,derived:bool}> $facets
-     * @param array<string,array{property:?string,type:string,facet:bool,sort:bool}> $displayFields
+     * @param array<string,array{property:?string,type:string,facet:bool,sort:bool,index:bool}> $displayFields
      * @param array<string,int> $itemSets
      * @param array<string,int> $typeItems
      * @param array{mode:string,property:?string,label:string} $date
@@ -69,6 +69,8 @@ final class SearchProfile
                 'type'     => (string) ($def['type'] ?? 'string'),
                 'facet'    => (bool) ($def['facet'] ?? false),
                 'sort'     => (bool) ($def['sort'] ?? false),
+                // index:false for display-only fields (e.g. id lists for links).
+                'index'    => array_key_exists('index', $def) ? (bool) $def['index'] : true,
             ];
         }
 
@@ -177,7 +179,7 @@ final class SearchProfile
     }
 
     // ── Display (non-facet) fields ────────────────────────────────────────────
-    /** @return array<string,array{property:?string,type:string,facet:bool,sort:bool}> */
+    /** @return array<string,array{property:?string,type:string,facet:bool,sort:bool,index:bool}> */
     public function displayFields(): array
     {
         return $this->displayFields;

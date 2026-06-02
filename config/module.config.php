@@ -244,20 +244,26 @@ return [
                 'kind'        => 'project',
                 'template_id' => 5,
                 'item_set_id' => 20,
-                'query_by'    => 'title,abstract,pi_ss,institution_ss,section_ss',
+                'query_by'    => 'title,abstract,pi_ss,member_ss,institution_ss,section_ss',
                 // mode 'range' = start/end years; facet => a year range slider.
                 'date'        => ['mode' => 'range', 'property' => 'dcterms:temporal', 'label' => 'Year', 'facet' => true],
 
                 'facets' => [
                     'institution_ss' => ['property' => 'frapo:isFundedBy', 'label' => 'Institution',       'array' => true],
                     'section_ss'     => ['property' => 'dcterms:isPartOf',  'label' => 'Research section',   'array' => true],
+                    // Derived (mapper-built) facet: union of PIs + members, so a
+                    // project is findable by anyone associated with it.
+                    'people_ss'      => ['property' => null, 'label' => 'Associated people', 'array' => true, 'derived' => true],
                     'has_items'      => ['property' => null, 'label' => 'Has research items', 'array' => false, 'derived' => true],
                 ],
 
                 // pi_ss / member_ss are linked-title fields the mapper fills from
-                // their property; item_count is the reverse-count figure.
+                // their property; pi_ids carries the matching person item ids (so
+                // the card can link each PI to its Omeka page); item_count is the
+                // reverse-count figure.
                 'display_fields' => [
                     'pi_ss'      => ['property' => 'dcterms:creator', 'type' => 'string[]', 'facet' => false],
+                    'pi_ids'     => ['property' => null, 'type' => 'string[]', 'facet' => false, 'index' => false],
                     'member_ss'  => ['property' => 'foaf:member',     'type' => 'string[]', 'facet' => false],
                     'item_count' => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
                 ],

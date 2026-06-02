@@ -8,26 +8,40 @@
    *   ┌────────────────────────────────────────────────┐
    *   │ 2020 – 2023                     182 research items│
    *   │ Project title                                    │
-   *   │ PI  Vierke, Ulf                                  │
+   *   │ PI  Vierke, Ulf  (links to the person's page)    │
    *   │ Short abstract…                                  │
-   *   │ Arts & Aesthetics · University of Bayreuth       │
+   *   │ [Arts & Aesthetics] [University of Bayreuth]      │  ← click to filter
    *   └────────────────────────────────────────────────┘
+   *
+   * PI names link to the person's Omeka page; the section / institution chips
+   * are buttons that add that value as a facet filter (onAddFilter).
    */
 
   interface Props {
     doc: Doc;
     itemUrlBase: string;
+    onAddFilter: (field: string, value: string) => void;
   }
 
-  const { doc, itemUrlBase }: Props = $props();
+  const { doc, itemUrlBase, onAddFilter }: Props = $props();
 
   const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
   const title = $derived(doc.title || t('untitled'));
   const sections = $derived(doc.section_ss ?? []);
   const institutions = $derived(doc.institution_ss ?? []);
-  const pis = $derived(doc.pi_ss ?? []);
   const abstract = $derived((doc.abstract ?? '').trim());
   const itemCount = $derived(doc.item_count ?? 0);
+
+  // PI names paired with a link to their person page (when the PI is a linked
+  // resource; unreconciled literal names have no id and render as plain text).
+  const pis = $derived.by(() => {
+    const names = doc.pi_ss ?? [];
+    const ids = doc.pi_ids ?? [];
+    return names.map((name, i) => {
+      const id = ids[i] ?? '';
+      return { name, href: id ? `${itemUrlBase}/${encodeURIComponent(id)}` : null };
+    });
+  });
 
   const yearRange = $derived.by(() => {
     const s = doc.year_start;
@@ -57,7 +71,10 @@
     {#if pis.length > 0}
       <p class="dre-pcard__pi">
         <span class="dre-pcard__pi-label">{t('pi_label')}</span>
-        {pis.join(', ')}
+        {#each pis as pi, i (pi.name + '|' + i)}{#if i > 0}<span>, </span>{/if}{#if pi.href}<a
+              class="dre-pcard__pi-link"
+              href={pi.href}>{pi.name}</a
+            >{:else}<span>{pi.name}</span>{/if}{/each}
       </p>
     {/if}
 
@@ -68,10 +85,26 @@
     {#if sections.length > 0 || institutions.length > 0}
       <ul class="dre-pcard__chips">
         {#each sections as s (s)}
-          <li class="dre-pcard__chip dre-pcard__chip--section">{s}</li>
+          <li>
+            <button
+              type="button"
+              class="dre-pcard__chip dre-pcard__chip--section"
+              onclick={() => onAddFilter('section_ss', s)}
+            >
+              {s}
+            </button>
+          </li>
         {/each}
         {#each institutions as inst (inst)}
-          <li class="dre-pcard__chip">{inst}</li>
+          <li>
+            <button
+              type="button"
+              class="dre-pcard__chip"
+              onclick={() => onAddFilter('institution_ss', inst)}
+            >
+              {inst}
+            </button>
+          </li>
         {/each}
       </ul>
     {/if}
@@ -156,6 +189,16 @@
     color: var(--muted, #666);
     margin-inline-end: 0.15rem;
   }
+  .dre-pcard__pi-link {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  }
+  .dre-pcard__pi-link:hover {
+    color: var(--primary, #2a4d8f);
+    text-decoration-color: currentColor;
+  }
   .dre-pcard__snippet {
     margin: var(--space-xs, 0.25rem) 0 0;
     font-size: var(--text-sm, 0.9rem);
@@ -181,13 +224,31 @@
     padding: 0.1rem 0.5rem;
     background: var(--surface-sunken, #f5f5f5);
     color: var(--ink-light, var(--ink, #444));
+    border: none;
     border-radius: var(--radius-sm, 0.375rem);
+    font-family: inherit;
     font-size: var(--text-xs, 0.75rem);
     font-weight: 500;
+    line-height: 1.5;
+    cursor: pointer;
+    transition:
+      background var(--transition-fast, 150ms ease),
+      color var(--transition-fast, 150ms ease);
+  }
+  .dre-pcard__chip:hover {
+    background: color-mix(in srgb, var(--primary, #2a4d8f) 18%, var(--surface, #fff));
+    color: var(--ink-strong, var(--ink, #222));
+  }
+  .dre-pcard__chip:focus-visible {
+    outline: none;
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(42, 77, 143, 0.3));
   }
   .dre-pcard__chip--section {
     background: color-mix(in srgb, var(--accent, #d57912) 16%, var(--surface, #fff));
     color: var(--ink-strong, var(--ink, #222));
     font-weight: 600;
+  }
+  .dre-pcard__chip--section:hover {
+    background: color-mix(in srgb, var(--accent, #d57912) 30%, var(--surface, #fff));
   }
 </style>

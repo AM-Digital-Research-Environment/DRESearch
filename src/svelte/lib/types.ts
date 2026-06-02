@@ -68,7 +68,10 @@ export interface Doc {
   institution_ss?: string[];
   section_ss?: string[];
   pi_ss?: string[];
+  /** Person item ids, parallel to pi_ss ("" where the PI is an unlinked literal). */
+  pi_ids?: string[];
   member_ss?: string[];
+  people_ss?: string[];
   year_start?: number;
   year_end?: number;
   item_count?: number;

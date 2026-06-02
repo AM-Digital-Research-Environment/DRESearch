@@ -48,15 +48,19 @@ final class SchemaProvider
             ]);
         }
 
-        // Extra display / query fields (e.g. creator_ss, pi_ss, member_ss, item_count).
+        // Extra display / query fields (e.g. creator_ss, pi_ss, pi_ids, member_ss, item_count).
         foreach ($profile->displayFields() as $field => $def) {
-            $add([
+            $f = [
                 'name'     => $field,
                 'type'     => $def['type'],
                 'facet'    => $def['facet'],
                 'sort'     => $def['sort'],
                 'optional' => true,
-            ]);
+            ];
+            if (($def['index'] ?? true) === false) {
+                $f['index'] = false; // display-only (e.g. id lists for links)
+            }
+            $add($f);
         }
 
         // Origin date(s) — single year, or a start/end range.

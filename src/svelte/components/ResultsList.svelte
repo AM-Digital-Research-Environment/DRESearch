@@ -11,9 +11,11 @@
     itemUrlBase: string;
     cardKind: CardKind;
     onPageChange: (next: number) => void;
+    onAddFilter: (field: string, value: string) => void;
   }
 
-  const { hits, found, page, perPage, itemUrlBase, cardKind, onPageChange }: Props = $props();
+  const { hits, found, page, perPage, itemUrlBase, cardKind, onPageChange, onAddFilter }: Props =
+    $props();
 
   // Cap at 100 pages — deep pagination past that is rarely useful and keeps
   // the pager bounded.
@@ -43,7 +45,7 @@
   {#each hits as doc (doc.id)}
     <li class="dre-results__item">
       {#if cardKind === 'project'}
-        <ProjectCard {doc} {itemUrlBase} />
+        <ProjectCard {doc} {itemUrlBase} {onAddFilter} />
       {:else}
         <ResultItem {doc} {itemUrlBase} />
       {/if}
