@@ -27,8 +27,6 @@ final class Reindexer
     private const PAGE = 500;
     /** Documents per Typesense import call. */
     private const BATCH = 100;
-    /** Versioned collection prefix; the alias points at the newest one. */
-    private const BASE = 'dre_research_';
 
     /** Non-facet property terms always read (display, dates, creator roles). */
     private const FIXED_TERMS = [
@@ -63,7 +61,8 @@ final class Reindexer
         ($this->log)(sprintf('Authority lookup: %d items', $auth->count()));
         $mapper = new ResearchItemMapper($auth, $this->facetConfig);
 
-        $collection = self::BASE . gmdate('YmdHis');
+        $base = $this->collectionBase();
+        $collection = $base . gmdate('YmdHis');
         $this->client->collections->create((new SchemaProvider())->collection($collection, $this->facetConfig));
         ($this->log)(sprintf('Created collection %s', $collection));
 
@@ -113,10 +112,23 @@ final class Reindexer
         $this->client->aliases->upsert($this->alias, ['collection_name' => $collection]);
         ($this->log)(sprintf("Alias '%s' → '%s'", $this->alias, $collection));
 
-        $this->dropOldCollections($collection);
+        $this->dropOldCollections($collection, $base);
         ($this->log)(sprintf('Done — %d documents indexed.', $total));
 
         return ['documents' => $total, 'collection' => $collection];
+    }
+
+    /**
+     * Versioned-collection prefix, derived from the alias so renaming the
+     * collection in config keeps versioning + cleanup consistent. Alias
+     * "foo_current" → prefix "foo_"; an alias without that suffix → "<alias>_".
+     */
+    private function collectionBase(): string
+    {
+        if (str_ends_with($this->alias, '_current')) {
+            return substr($this->alias, 0, -strlen('current'));
+        }
+        return $this->alias . '_';
     }
 
     /**
@@ -200,7 +212,7 @@ final class Reindexer
         }
     }
 
-    private function dropOldCollections(string $keep): void
+    private function dropOldCollections(string $keep, string $base): void
     {
         try {
             $collections = $this->client->collections->retrieve();
@@ -211,7 +223,7 @@ final class Reindexer
 
         foreach ($collections as $collection) {
             $name = is_array($collection) ? (string) ($collection['name'] ?? '') : '';
-            if ($name === '' || $name === $keep || !str_starts_with($name, self::BASE)) {
+            if ($name === '' || $name === $keep || !str_starts_with($name, $base)) {
                 continue;
             }
             try {
