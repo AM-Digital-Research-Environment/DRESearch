@@ -199,10 +199,25 @@
     width: 100%;
     height: 100%;
     margin: 0;
+    /* Neutralise the host theme's generic form-control box: DRE-theme styles
+       `input[type=range]` with a border, padding and radius, which would draw
+       an input-field outline around the slider and inset the native track. */
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
     background: none;
     pointer-events: none;
     -webkit-appearance: none;
     appearance: none;
+  }
+  /* Theme also adds a focus border + ring on the input itself; keep focus on
+     the thumb only. */
+  .dre-yr__input:focus,
+  .dre-yr__input:focus-visible {
+    outline: none;
+    border: none;
+    box-shadow: none;
   }
   /* Keep the low handle grabbable even when both sit at the same spot. */
   .dre-yr__input--lo {
