@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { FacetCount } from '../lib/types';
   import { t } from '../lib/i18n';
+  import { foldAccents } from '../lib/text';
 
   interface Props {
     field: string;
@@ -21,12 +22,14 @@
   const searchable = $derived(counts.length > COLLAPSED);
 
   const searching = $derived(query.trim() !== '');
+  // Match accent-insensitively (fold diacritics + lowercase on both sides), so
+  // "Rudiger" finds "Rüdiger" — same behaviour as the server-side search bar.
   const visible = $derived.by(() => {
-    const q = query.trim().toLowerCase();
+    const q = foldAccents(query.trim());
     if (q === '') {
       return counts;
     }
-    return counts.filter((c) => c.value.toLowerCase().includes(q));
+    return counts.filter((c) => foldAccents(c.value).includes(q));
   });
 </script>
 

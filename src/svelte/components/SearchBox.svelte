@@ -8,8 +8,10 @@
    *
    * - Typing (250 ms still) calls onQueryChange → the parent runs a search.
    * - In parallel it fetches title suggestions from /suggest (abortable).
-   * - A suggestion is a shortcut straight to that item's page; Enter with no
-   *   active suggestion just lets the running query stand.
+   * - A suggestion is a shortcut straight to that item's page. Pressing Enter
+   *   (with no suggestion highlighted) commits the typed text as a free-text
+   *   search right away and closes the dropdown — picking a suggestion is never
+   *   required.
    */
 
   interface Props {
@@ -95,26 +97,42 @@
     window.location.href = itemUrl(suggestion.id);
   }
 
-  function handleKeydown(e: KeyboardEvent): void {
-    if (!open || suggestions.length === 0) {
-      if (e.key === 'Escape') {
-        open = false;
-      }
-      return;
+  /**
+   * Commit the typed text as a free-text search now — skip the pending debounce
+   * and close the dropdown — so Enter searches what you typed without forcing a
+   * suggestion to be selected.
+   */
+  function submitQuery(): void {
+    if (timer !== null) {
+      clearTimeout(timer);
+      timer = null;
     }
+    open = false;
+    activeIndex = -1;
+    onQueryChange(local);
+  }
+
+  function handleKeydown(e: KeyboardEvent): void {
+    const hasSuggestions = open && suggestions.length > 0;
     switch (e.key) {
       case 'ArrowDown':
-        e.preventDefault();
-        activeIndex = (activeIndex + 1) % suggestions.length;
+        if (hasSuggestions) {
+          e.preventDefault();
+          activeIndex = (activeIndex + 1) % suggestions.length;
+        }
         break;
       case 'ArrowUp':
-        e.preventDefault();
-        activeIndex = (activeIndex - 1 + suggestions.length) % suggestions.length;
+        if (hasSuggestions) {
+          e.preventDefault();
+          activeIndex = (activeIndex - 1 + suggestions.length) % suggestions.length;
+        }
         break;
       case 'Enter':
-        if (activeIndex >= 0 && activeIndex < suggestions.length) {
-          e.preventDefault();
-          go(suggestions[activeIndex]);
+        e.preventDefault();
+        if (hasSuggestions && activeIndex >= 0 && activeIndex < suggestions.length) {
+          go(suggestions[activeIndex]); // jump to the highlighted item's page
+        } else {
+          submitQuery(); // search the typed text
         }
         break;
       case 'Escape':
@@ -227,6 +245,13 @@
   .dre-search-box__clear {
     position: absolute;
     inset-inline-end: var(--space-sm, 0.5rem);
+    /* Centre against the input's full height regardless of control sizes — the
+       button is positioned absolutely, so the wrap's flex alignment can't do it. */
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: var(--size-control-sm, 2.25rem);
     height: var(--size-control-sm, 2.25rem);
     padding: 0;
@@ -241,6 +266,10 @@
   .dre-search-box__clear:hover {
     background: var(--surface-sunken, #f0f0f0);
     color: var(--ink, #222);
+  }
+  .dre-search-box__clear:focus-visible {
+    outline: none;
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.1));
   }
 
   .dre-search-box__suggest {
