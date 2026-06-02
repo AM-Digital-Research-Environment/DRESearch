@@ -242,34 +242,47 @@
     border-color: var(--primary, #2a4d8f);
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.1));
   }
+  /*
+   * The host theme styles every <button> (and its :hover) as a primary button —
+   * a green fill, a lift transform, and a glow — via a rule whose specificity
+   * (e.g. `button:hover:not(.disabled):not(:disabled)`) beats a scoped class. So
+   * guard the exact properties that rule would hijack — background, transform,
+   * box-shadow — with !important, keeping the clear control a quiet, centred ×
+   * (transparent, with only a faint neutral hover) on any theme.
+   */
   .dre-search-box__clear {
     position: absolute;
     inset-inline-end: var(--space-sm, 0.5rem);
-    /* Centre against the input's full height regardless of control sizes — the
-       button is positioned absolutely, so the wrap's flex alignment can't do it. */
     top: 50%;
-    transform: translateY(-50%);
+    transform: translateY(-50%) !important;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: var(--size-control-sm, 2.25rem);
-    height: var(--size-control-sm, 2.25rem);
+    width: 2rem;
+    height: 2rem;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
     padding: 0;
-    border: none;
-    background: transparent;
-    color: var(--muted, #666);
-    font-size: var(--text-xl, 1.5rem);
+    border: 0;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: var(--muted, #888);
+    font-size: 1.25rem;
     line-height: 1;
     cursor: pointer;
     border-radius: var(--radius-full, 9999px);
+    -webkit-appearance: none;
+    appearance: none;
   }
   .dre-search-box__clear:hover {
-    background: var(--surface-sunken, #f0f0f0);
+    /* Faint neutral wash from the icon's own colour — never the theme's green. */
+    background: color-mix(in srgb, currentColor 16%, transparent) !important;
     color: var(--ink, #222);
   }
   .dre-search-box__clear:focus-visible {
     outline: none;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.1));
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.15)) !important;
   }
 
   .dre-search-box__suggest {
