@@ -82,11 +82,13 @@ don't want a search backend.
   and **Subjects & tags** — each a searchable, paginated list of the terms applied
   across the collection, laid out two-up on wide screens. Cards show the term, an
   optional **Type** chip, and how many records use it; the term links to its Omeka
-  page.
+  page. They sort by **Most research items** by default (also Relevance / Title);
+  being date-less, they offer no Newest/Oldest.
   - **Genres**: per-genre research-item count. No facets.
   - **Languages**: per-language research-item and publication counts. No facets.
-  - **Locations**: a **Type** facet (Country / geographic location); per-place
-    research-item count.
+  - **Locations**: a **Type** facet (Country / geographic location) and a
+    **Relationship** facet — **Place of origin** (`dcterms:spatial`) vs **Current
+    location** (`dcterms:provenance`); per-place research-item count.
   - **Subjects & tags**: a **Type** facet (LCSH subject / tag); per-term
     research-item and publication counts.
 - A dashboard **Reindex** action per corpus (Admin → DRE Search) that rebuilds
@@ -156,7 +158,11 @@ options:
 
 - **Filters to show** — which facets appear in the sidebar, including whether the
   **Year** range slider shows.
-- **Default sort** — Relevance / Newest / Oldest / Title.
+- **Default sort** — the choices depend on the corpus: Relevance and Title
+  always; **Newest / Oldest** only for corpora with a date; **Most research
+  items** (count) for the authority-term corpora. (Date-less corpora — people,
+  sections, organisations, and the four term corpora — no longer offer the
+  meaningless Newest/Oldest.)
 - **Results per page**.
 - **Locked filter** — an optional raw Typesense `filter_by` to scope the block,
   e.g. pin items to one project (`project_s`) or projects to one research section
@@ -300,21 +306,29 @@ Four corpora that index a curated authority item set each. Like people and
 organisations, a term record carries only a name (and, for some, a `dcterms:type`
 sub-kind); its substance is the **reverse** count of the public records that
 reference it, computed by the reindexer from `reverse_links`. They are scoped by
-**item set alone** (`template_id: null`), have **no date** (sort by name), and use
-the same linking properties the working research-items / publications facets use.
+**item set alone** (`template_id: null`), have **no date**, default to the **Most
+research items** sort (count desc, name tie-break), and use the same linking
+properties the working research-items / publications facets use.
 
-| Corpus              | Profile              | Item set | Type facet (`dcterms:type`)   | Reverse counts                                                            |
-| ------------------- | -------------------- | -------- | ----------------------------- | ------------------------------------------------------------------------- |
-| **Genres**          | `research_genres`    | 21       | —                             | research items (tmpl 10) via `dcterms:format`                             |
-| **Languages**       | `research_languages` | 19       | —                             | research items via `dcterms:language` + publications (set 29918) via same |
-| **Locations**       | `research_locations` | 1851     | Country / geographic location | research items via `dcterms:spatial`                                      |
-| **Subjects & tags** | `research_subjects`  | 1852     | LCSH subject / tag            | research items via `dcterms:subject` + publications (set 29918) via same  |
+| Corpus              | Profile              | Item set | Facets             | Reverse counts                                                            |
+| ------------------- | -------------------- | -------- | ------------------ | ------------------------------------------------------------------------- |
+| **Genres**          | `research_genres`    | 21       | —                  | research items (tmpl 10) via `dcterms:format`                             |
+| **Languages**       | `research_languages` | 19       | —                  | research items via `dcterms:language` + publications (set 29918) via same |
+| **Locations**       | `research_locations` | 1851     | Type, Relationship | research items via `dcterms:spatial` **and** `dcterms:provenance`         |
+| **Subjects & tags** | `research_subjects`  | 1852     | Type               | research items via `dcterms:subject` + publications (set 29918) via same  |
 
 Notes:
 
 - The **Type** facet is the term's _own_ `dcterms:type` linked-item title — the same
   discriminator items the research-items mapper uses to split Subject vs Tag
   (`3167` / `22199`) and Country vs geographic location (`3168` / `22431`).
+- The Locations **Relationship** facet is derived (reverse) from _how_ a record
+  references the place: **Place of origin** (`dcterms:spatial`, from
+  `location.origin`) vs **Current location** (`dcterms:provenance`, from
+  `location.current`). Its `item_count` counts research items referencing the place
+  either way (deduped). Note `dcterms:provenance` also targets repository
+  **institutions** (in the organisations corpus, set 110) — those simply aren't
+  matched here, since this corpus only indexes set 1851.
 - The Locations corpus indexes every place term directly and **does not** roll
   cities up to their country (unlike the research-items _Country_ facet), so both
   "Nigeria" and "Lagos" appear with their own direct-mention counts.
@@ -332,8 +346,9 @@ Notes:
 > their reverse-link properties (`frapo:isFundedBy`, `dcterms:isPartOf`) plus the
 > `dcterms:type` targets that split Institution vs Group, the authority-term item
 > sets (genres 21, languages 19, locations 1851, subjects 1852) and their linking
-> properties (`dcterms:format`, `dcterms:language`, `dcterms:spatial`,
-> `dcterms:subject`), and the item authority sets / `dcterms:type` targets. They
+> properties (`dcterms:format`, `dcterms:language`, `dcterms:spatial` = place of
+> origin + `dcterms:provenance` = current location, `dcterms:subject`), and the
+> item authority sets / `dcterms:type` targets. They
 > come from the MongoDB2OmekaS config; on a different Omeka instance, override the
 > `dre_search` config in `config/local.config.php`.
 

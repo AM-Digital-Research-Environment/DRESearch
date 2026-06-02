@@ -1,20 +1,15 @@
 <script lang="ts">
-  import type { SortKey } from '../lib/types';
+  import type { SortKey, SortOption } from '../lib/types';
   import { t } from '../lib/i18n';
 
   interface Props {
     value: SortKey;
+    /** Sort choices for this corpus (server-built; labels already translated). */
+    options: SortOption[];
     onChange: (next: SortKey) => void;
   }
 
-  const { value, onChange }: Props = $props();
-
-  const options: { key: SortKey; label: string }[] = [
-    { key: 'relevance', label: t('sort_relevance') },
-    { key: 'newest', label: t('sort_newest') },
-    { key: 'oldest', label: t('sort_oldest') },
-    { key: 'title', label: t('sort_title') },
-  ];
+  const { value, options, onChange }: Props = $props();
 </script>
 
 <label class="dre-sort">
@@ -24,8 +19,8 @@
     {value}
     onchange={(e) => onChange((e.currentTarget as HTMLSelectElement).value as SortKey)}
   >
-    {#each options as o (o.key)}
-      <option value={o.key}>{o.label}</option>
+    {#each options as o (o.value)}
+      <option value={o.value}>{o.label}</option>
     {/each}
   </select>
 </label>

@@ -197,6 +197,12 @@ final class QueryBuilder
 
     private function buildSort(string $sort, bool $isBrowse): string
     {
+        // Count sort (e.g. "most research items") — works regardless of date.
+        // Tie-break by title so equal-count rows have a stable order.
+        $countField = $this->profile->sortCountField();
+        if ($sort === 'count' && $countField !== null) {
+            return $countField . ':desc,title:asc';
+        }
         // Date-less corpora (e.g. people) can't sort by year — fall back to name.
         if (!$this->profile->hasDate()) {
             return $sort === 'title' || $isBrowse ? 'title:asc' : '_text_match:desc';

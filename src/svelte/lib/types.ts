@@ -5,7 +5,13 @@
  *   - Suggestion    : one row from SearchProxy::suggest()
  */
 
-export type SortKey = 'relevance' | 'newest' | 'oldest' | 'title';
+export type SortKey = 'relevance' | 'newest' | 'oldest' | 'title' | 'count';
+
+/** One sort choice offered for a corpus (server-built, label already translated). */
+export interface SortOption {
+  value: SortKey;
+  label: string;
+}
 
 /** Which result card to render — selected by the profile's `kind`. */
 export type CardKind =
@@ -46,6 +52,8 @@ export interface Bootstrap {
   /** field => translated label (so the client needs no hardcoded strings). */
   facet_labels: Record<string, string>;
   default_sort: SortKey;
+  /** Sort choices to show, in order (varies by corpus — e.g. no year sorts when date-less). */
+  sort_options?: SortOption[];
   per_page: number;
   /** Admin-authored raw Typesense filter_by; echoed back on every request. */
   locked_filter: string;

@@ -56,6 +56,8 @@ final class SearchProfile
         private readonly array $readProperties,
         private readonly ?array $itemLink,
         private readonly ?array $reverseLinks,
+        private readonly string $defaultSort,
+        private readonly ?array $sortCount,
     ) {
     }
 
@@ -117,6 +119,11 @@ final class SearchProfile
             // `reverse_links` is the current key; `person_links` is accepted as a
             // back-compat alias (the mechanism was first built for the people corpus).
             $c['reverse_links'] ?? $c['person_links'] ?? null,
+            (string) ($c['default_sort'] ?? 'relevance'),
+            // sort_count: {field, label} exposes a "most <X>" sort over a sortable
+            // int32 display field (e.g. item_count) — the term corpora sort by how
+            // many records reference each term.
+            isset($c['sort_count']) && is_array($c['sort_count']) ? $c['sort_count'] : null,
         );
     }
 
@@ -243,6 +250,47 @@ final class SearchProfile
     public function yearStatFields(): array
     {
         return $this->isRangeDate() ? ['year_start', 'year_end'] : ['year'];
+    }
+
+    // ── Sorting ─────────────────────────────────────────────────────────────
+    /** Default sort key for blocks of this corpus that don't override it. */
+    public function defaultSort(): string
+    {
+        return $this->defaultSort;
+    }
+
+    /** Typesense int field for the "most <X>" sort, or null if not offered. */
+    public function sortCountField(): ?string
+    {
+        $field = $this->sortCount['field'] ?? null;
+        return is_string($field) && $field !== '' ? $field : null;
+    }
+
+    /** Label for the count sort option (e.g. "Most research items"). */
+    public function sortCountLabel(): string
+    {
+        return (string) ($this->sortCount['label'] ?? 'Most results'); // @translate
+    }
+
+    /**
+     * Ordered sort keys this corpus offers: always relevance + title; a count
+     * sort when configured; newest/oldest only when the corpus has a date (so a
+     * date-less corpus never shows the meaningless year sorts).
+     *
+     * @return list<string>
+     */
+    public function sortOptionValues(): array
+    {
+        $values = ['relevance'];
+        if ($this->sortCountField() !== null) {
+            $values[] = 'count';
+        }
+        if ($this->hasDate()) {
+            $values[] = 'newest';
+            $values[] = 'oldest';
+        }
+        $values[] = 'title';
+        return $values;
     }
 
     // ── Reindex ─────────────────────────────────────────────────────────────

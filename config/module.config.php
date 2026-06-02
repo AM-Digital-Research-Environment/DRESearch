@@ -517,6 +517,11 @@ return [
                 'item_set_id' => 21,
                 'query_by'    => 'title',
                 'date'        => ['mode' => 'none'],
+                'default_sort' => 'count',
+                'sort_count'  => [
+                    'field' => 'item_count',
+                    'label' => 'Most research items', // @translate
+                ],
 
                 'facets' => [],
 
@@ -543,6 +548,11 @@ return [
                 'item_set_id' => 19,
                 'query_by'    => 'title',
                 'date'        => ['mode' => 'none'],
+                'default_sort' => 'count',
+                'sort_count'  => [
+                    'field' => 'item_count',
+                    'label' => 'Most research items', // @translate
+                ],
 
                 'facets' => [],
 
@@ -559,12 +569,17 @@ return [
                 ],
             ],
 
-            // Locations — item set 1851. A location's own dcterms:type splits the
-            // corpus (Country vs the geographic-location / city kind) into the Type
-            // facet. Research items reference a location via dcterms:spatial; one
-            // reverse count per term. Unlike the research-items Country facet, this
-            // corpus does NOT roll cities up to their country — each place term shows
-            // its own direct mention count, so both "Nigeria" and "Lagos" are findable.
+            // Locations — item set 1851. Two facets: the place's own dcterms:type
+            // (Country vs geographic location / city), and a derived Relationship
+            // facet for HOW records reference the place — Place of origin
+            // (dcterms:spatial, from location.origin) vs Current location
+            // (dcterms:provenance, from location.current). item_count counts the
+            // research items referencing the place either way. Unlike the
+            // research-items Country facet, this corpus does NOT roll cities up to
+            // their country — each place term shows its own direct mention count, so
+            // both "Nigeria" and "Lagos" are findable. (dcterms:provenance also
+            // targets repository institutions, which live in the organisations
+            // corpus, not here, so they are simply not matched.)
             'research_locations' => [
                 'label'       => 'Locations', // @translate
                 'placeholder' => 'Search locations…', // @translate
@@ -574,9 +589,16 @@ return [
                 'item_set_id' => 1851,
                 'query_by'    => 'title',
                 'date'        => ['mode' => 'none'],
+                'default_sort' => 'count',
+                'sort_count'  => [
+                    'field' => 'item_count',
+                    'label' => 'Most research items', // @translate
+                ],
 
                 'facets' => [
-                    'type_s' => ['property' => 'dcterms:type', 'label' => 'Type', 'array' => false],
+                    'type_s'   => ['property' => 'dcterms:type', 'label' => 'Type', 'array' => false],
+                    // Derived from the reverse relationships below.
+                    'roles_ss' => ['property' => null, 'label' => 'Relationship', 'array' => true, 'derived' => true],
                 ],
 
                 'display_fields' => [
@@ -585,7 +607,13 @@ return [
 
                 'reverse_links' => [
                     'counts' => [
-                        'item_count' => ['from_template' => 10, 'properties' => ['dcterms:spatial'], 'public_only' => true],
+                        // Research items referencing the place as origin OR current
+                        // location (deduped — an item counted once even if both).
+                        'item_count' => ['from_template' => 10, 'properties' => ['dcterms:spatial', 'dcterms:provenance'], 'public_only' => true],
+                    ],
+                    'roles' => [
+                        ['label' => 'Place of origin',  'from_template' => 10, 'properties' => ['dcterms:spatial'],    'public_only' => true],
+                        ['label' => 'Current location', 'from_template' => 10, 'properties' => ['dcterms:provenance'], 'public_only' => true],
                     ],
                 ],
             ],
@@ -604,6 +632,11 @@ return [
                 'item_set_id' => 1852,
                 'query_by'    => 'title',
                 'date'        => ['mode' => 'none'],
+                'default_sort' => 'count',
+                'sort_count'  => [
+                    'field' => 'item_count',
+                    'label' => 'Most research items', // @translate
+                ],
 
                 'facets' => [
                     'type_s' => ['property' => 'dcterms:type', 'label' => 'Type', 'array' => false],

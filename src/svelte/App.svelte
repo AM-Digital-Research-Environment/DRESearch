@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ActiveFilters, Bootstrap, SearchResponse, SortKey } from './lib/types';
+  import type { ActiveFilters, Bootstrap, SearchResponse, SortKey, SortOption } from './lib/types';
   import { SearchApi } from './lib/api';
   import { t } from './lib/i18n';
   import SearchBox from './components/SearchBox.svelte';
@@ -131,6 +131,18 @@
   });
 
   const facets = $derived(response?.facets ?? []);
+
+  // Sort choices come from the server (they vary by corpus). Fall back to a
+  // minimal set for any older bootstrap blob that predates sort_options.
+  const sortOptions = $derived<SortOption[]>(
+    bootstrap.sort_options && bootstrap.sort_options.length > 0
+      ? bootstrap.sort_options
+      : [
+          { value: 'relevance', label: t('sort_relevance') },
+          { value: 'title', label: t('sort_title') },
+        ],
+  );
+
   const activeCount = $derived(
     Object.values(filters).reduce((n, values) => n + (values?.length ?? 0), 0) +
       (yearFrom != null || yearTo != null ? 1 : 0),
@@ -277,7 +289,7 @@
                 {t('no_results_title')}
               {/if}
             </span>
-            <SortSelect value={sort} onChange={handleSortChange} />
+            <SortSelect value={sort} options={sortOptions} onChange={handleSortChange} />
           </header>
         {/if}
 

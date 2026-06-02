@@ -57,6 +57,20 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
         return $this->registry->get($this->profileName());
     }
 
+    /**
+     * Human label for a sort key. Built-ins come from SORT_OPTIONS; the `count`
+     * key uses the profile's configured label (e.g. "Most research items").
+     *
+     * @param callable(string):string $t
+     */
+    private function sortLabel(?SearchProfile $profile, string $value, callable $t): string
+    {
+        if ($value === 'count' && $profile !== null) {
+            return $t($profile->sortCountLabel());
+        }
+        return $t(self::SORT_OPTIONS[$value] ?? $value);
+    }
+
     public function form(
         PhpRenderer $view,
         SiteRepresentation $site,
@@ -72,7 +86,11 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
         $introHtml    = (string) ($data['intro_html'] ?? '');
         $facets       = $data['facets'] ?? array_keys($allFacets);
         $showYear     = !$block || (bool) ($data['show_year'] ?? true);
-        $defaultSort  = (string) ($data['default_sort'] ?? 'relevance');
+        $sortValues   = $profile ? $profile->sortOptionValues() : array_keys(self::SORT_OPTIONS);
+        $defaultSort  = (string) ($data['default_sort'] ?? ($profile ? $profile->defaultSort() : 'relevance'));
+        if (!in_array($defaultSort, $sortValues, true)) {
+            $defaultSort = $sortValues[0] ?? 'relevance';
+        }
         $perPage      = (int) ($data['results_per_page'] ?? 20);
         $lockedFilter = (string) ($data['locked_filter'] ?? '');
 
@@ -138,9 +156,9 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
             </div>
             <div class="inputs">
                 <select id="dre-search-sort" name="<?= $escAttr($prefix) ?>[default_sort]">
-                    <?php foreach (self::SORT_OPTIONS as $key => $label): ?>
+                    <?php foreach ($sortValues as $key): ?>
                         <option value="<?= $escAttr($key) ?>"<?= $key === $defaultSort ? ' selected' : '' ?>>
-                            <?= $esc($t($label)) ?>
+                            <?= $esc($this->sortLabel($profile, $key, $t)) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -204,7 +222,21 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
 
         $hasYearFacet = $profile && $profile->hasYearFacet();
         $showYear     = $hasYearFacet && (bool) ($data['show_year'] ?? true);
-        $defaultSort  = (string) ($data['default_sort'] ?? 'relevance');
+
+        // Sort options for this corpus (drops year sorts on date-less corpora,
+        // adds the count sort where configured). default_sort is validated against
+        // them so a stale/invalid saved value can't reach the client.
+        $t           = fn(string $s): string => (string) $view->translate($s);
+        $sortValues  = $profile ? $profile->sortOptionValues() : array_keys(self::SORT_OPTIONS);
+        $defaultSort = (string) ($data['default_sort'] ?? ($profile ? $profile->defaultSort() : 'relevance'));
+        if (!in_array($defaultSort, $sortValues, true)) {
+            $defaultSort = $sortValues[0] ?? 'relevance';
+        }
+        $sortOptions = [];
+        foreach ($sortValues as $value) {
+            $sortOptions[] = ['value' => $value, 'label' => $this->sortLabel($profile, $value, $t)];
+        }
+
         $perPage      = (int) ($data['results_per_page'] ?? 20);
         $perPage      = $perPage > 0 ? $perPage : 20;
         $lockedFilter = (string) ($data['locked_filter'] ?? '');
@@ -235,6 +267,7 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
             'facets'        => $facets,
             'facet_labels'  => $facetLabels,
             'default_sort'  => $defaultSort,
+            'sort_options'  => $sortOptions,
             'per_page'      => $perPage,
             'locked_filter' => $lockedFilter,
             // Client builds result links as `${item_url_base}/${id}`.

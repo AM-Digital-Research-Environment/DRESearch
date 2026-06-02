@@ -7,12 +7,14 @@
    *
    *   ┌──────────────────────────────────────────────────┐
    *   │ Lagos                                       Country │  ← type chip (if any), click to filter
+   *   │ [Place of origin] [Current location]                │  ← relationship chips (locations), click to filter
    *   │ 142 research items · 8 publications                  │  ← association counts
    *   └──────────────────────────────────────────────────┘
    *
    * Name links to the term's Omeka page; the type chip (present only for corpora
-   * with a sub-type, e.g. locations and subjects) is a button that adds that value
-   * as a facet filter (onAddFilter). Genres and languages have no type chip.
+   * with a sub-type, e.g. locations and subjects) and the relationship chips
+   * (locations: how the place is referenced) are buttons that add that value as a
+   * facet filter (onAddFilter). Genres and languages have neither.
    */
 
   interface Props {
@@ -26,6 +28,7 @@
   const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
   const name = $derived(doc.title || t('untitled'));
   const type = $derived((doc.type_s ?? '').trim());
+  const roles = $derived(doc.roles_ss ?? []);
 
   // Association counts — show only the non-zero ones, joined with "·".
   const counts = $derived.by(() => {
@@ -51,6 +54,22 @@
       </button>
     {/if}
   </div>
+
+  {#if roles.length > 0}
+    <ul class="dre-term__chips">
+      {#each roles as role (role)}
+        <li>
+          <button
+            type="button"
+            class="dre-term__chip"
+            onclick={() => onAddFilter('roles_ss', role)}
+          >
+            {role}
+          </button>
+        </li>
+      {/each}
+    </ul>
+  {/if}
 
   {#if counts.length > 0}
     <p class="dre-term__counts">{counts.join(' · ')}</p>
@@ -120,6 +139,36 @@
     background: color-mix(in srgb, var(--accent, #d57912) 30%, var(--surface, #fff));
   }
   .dre-term__type:focus-visible {
+    outline: none;
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(42, 77, 143, 0.3));
+  }
+  .dre-term__chips {
+    list-style: none;
+    margin: var(--space-xs, 0.25rem) 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs, 0.25rem);
+  }
+  .dre-term__chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.5rem;
+    background: color-mix(in srgb, var(--primary, #2a4d8f) 14%, var(--surface, #fff));
+    color: var(--ink-strong, var(--ink, #222));
+    border: none;
+    border-radius: var(--radius-sm, 0.375rem);
+    font-family: inherit;
+    font-size: var(--text-xs, 0.75rem);
+    font-weight: 600;
+    line-height: 1.5;
+    cursor: pointer;
+    transition: background var(--transition-fast, 150ms ease);
+  }
+  .dre-term__chip:hover {
+    background: color-mix(in srgb, var(--primary, #2a4d8f) 28%, var(--surface, #fff));
+  }
+  .dre-term__chip:focus-visible {
     outline: none;
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(42, 77, 143, 0.3));
   }
