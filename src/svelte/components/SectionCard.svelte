@@ -138,6 +138,9 @@
   }
   .dre-scard__phase:hover {
     background: color-mix(in srgb, var(--primary, #2a4d8f) 28%, var(--surface, #fff));
+    /* Suppress the host primary-button hover lift + green glow (chips are flat). */
+    box-shadow: none !important;
+    transform: none !important;
   }
   .dre-scard__phase:focus-visible {
     outline: none;
@@ -183,7 +186,12 @@
   .dre-scard__person {
     padding: 0;
     border: none;
-    background: none;
+    /* Host theme styles every <button> as a filled primary button; without
+       these the leader name turns into a green pill on hover. !important beats
+       the host's higher-specificity :hover/:active states in one place. */
+    background: none !important;
+    box-shadow: none !important;
+    transform: none !important;
     font: inherit;
     cursor: pointer;
     color: inherit;
@@ -192,13 +200,13 @@
     text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
   }
   .dre-scard__person:hover {
-    color: var(--primary, #2a4d8f);
+    color: var(--primary, #2a4d8f) !important;
     text-decoration-color: currentColor;
   }
   .dre-scard__person:focus-visible {
     outline: none;
     border-radius: var(--radius-sm, 0.375rem);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(42, 77, 143, 0.3));
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(42, 77, 143, 0.3)) !important;
   }
   .dre-scard__members {
     margin: 0;

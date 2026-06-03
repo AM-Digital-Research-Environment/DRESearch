@@ -108,21 +108,30 @@
   }
   .dre-facets__heading {
     margin: 0;
+    /* It's an <h2>, so the host theme would render it in the display serif;
+       force the body face so it reads as a UI eyebrow, like the facet-group
+       labels below it (Spectral caps at 13px look out of place here). */
+    font-family: var(--font-body, system-ui, sans-serif);
     font-size: var(--text-xs, 0.75rem);
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--ink-strong, var(--ink, #222));
   }
   .dre-facets__clear-all {
-    background: none;
+    /* Host theme styles every <button> as a filled primary button; keep this a
+       plain text link (!important beats the host's higher-specificity states). */
+    background: none !important;
     border: none;
+    box-shadow: none !important;
+    transform: none !important;
     color: var(--primary, #2a4d8f);
     cursor: pointer;
     font-size: var(--text-xs, 0.75rem);
     padding: 0;
   }
   .dre-facets__clear-all:hover {
+    color: var(--primary, #2a4d8f) !important;
     text-decoration: underline;
   }
 
@@ -149,6 +158,10 @@
     font: inherit;
     font-size: var(--text-xs, 0.75rem);
     color: var(--ink, #222);
+    /* Suppress the host primary-button hover lift + green glow (the fill on
+       hover below is intentional). */
+    box-shadow: none !important;
+    transform: none !important;
   }
   .dre-facets__chip:hover {
     background: var(--primary, #2a4d8f);

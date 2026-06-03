@@ -367,10 +367,15 @@
     font-size: var(--text-sm, 0.9rem);
     font-weight: 600;
     cursor: pointer;
+    /* Host theme styles every <button> as a filled primary button. */
+    box-shadow: none !important;
+    transform: none !important;
   }
   .dre-search__facets-toggle:hover {
     border-color: var(--primary, #2a4d8f);
-    color: var(--primary, #2a4d8f);
+    /* Stay an outline button — the host would fill it green with a white label. */
+    background: var(--surface, #fff) !important;
+    color: var(--primary, #2a4d8f) !important;
   }
   .dre-search__facets-toggle-badge {
     display: inline-flex;
@@ -393,7 +398,9 @@
     max-height: calc(100vh - var(--space-xl, 2rem));
     overflow-y: auto;
     scrollbar-width: thin;
-    padding-inline-end: var(--space-md, 1rem);
+    /* A left gutter so the rail's controls aren't glued to the page edge; it
+       lands the headings on the search box's text edge (both = --space-md). */
+    padding-inline: var(--space-md, 1rem);
     border-inline-end: 1px solid var(--border-light, #eee);
   }
 
@@ -484,6 +491,9 @@
     font-size: var(--text-sm, 0.9rem);
     cursor: pointer;
     margin-top: var(--space-xs, 0.25rem);
+    /* Suppress the host primary-button hover lift + glow (the fill is intended). */
+    box-shadow: none !important;
+    transform: none !important;
   }
   .dre-search__clear-link:hover {
     background: var(--primary, #2a4d8f);
@@ -504,7 +514,7 @@
       position: static;
       max-height: none;
       overflow: visible;
-      padding-inline-end: 0;
+      padding-inline: 0;
       border-inline-end: none;
       border-bottom: 1px solid var(--border-light, #eee);
       padding-block-end: var(--space-md, 1rem);
