@@ -62,8 +62,10 @@ don't want a search backend.
 - A **People search** page block: cards show the person's name, affiliation(s),
   role chips, and how many research items and publications they're associated
   with (laid out two-up on wide screens, since the cards are compact).
-  - Facets: **Affiliation** and **Role** (Principal investigator, Project member,
-    Author, Editor, Research contributor).
+  - Facets: **Affiliation** and **Role** — Principal investigator, Project member,
+    Author, Editor, plus the specific contributor role each person plays on a
+    research item (Author, Photographer, Interviewee, Translator, Collector, … —
+    one per `marcrel:*` relator actually in use).
 - A **Research sections search** page block: cards show the section name, its
   phase, the project count, the leaders (PIs or spokesperson), the member count,
   and the abstract — including the **External** section. The phase and each
@@ -290,13 +292,21 @@ date** — it sorts by name.
 
 **Role rules** (a person earns a role if a public record references them so):
 
-| Role                   | Source corpus           | Property          |
-| ---------------------- | ----------------------- | ----------------- |
-| Principal investigator | project (template 5)    | `dcterms:creator` |
-| Project member         | project (template 5)    | `foaf:member`     |
-| Author                 | publication (set 29918) | `bibo:authorList` |
-| Editor                 | publication (set 29918) | `bibo:editorList` |
-| Research contributor   | research item (tmpl 10) | any reference     |
+| Role                      | Source corpus           | Property                                         |
+| ------------------------- | ----------------------- | ------------------------------------------------ |
+| Principal investigator    | project (template 5)    | `dcterms:creator`                                |
+| Project member            | project (template 5)    | `foaf:member`                                    |
+| Author                    | publication (set 29918) | `bibo:authorList`                                |
+| Editor                    | publication (set 29918) | `bibo:editorList`                                |
+| _the specific MARC roles_ | research item (tmpl 10) | each `marcrel:*` relator in use (`per_property`) |
+
+The last rule uses `per_property`: rather than collapsing every research-item
+credit into a single "Research contributor" value, it emits **one role per
+`marcrel:*` relator** the person actually holds (Author, Photographer,
+Interviewee, Translator, Collector, …), labelling each from that property's
+template-10 alternate label. Only relators present in the data appear, so the
+facet lists exactly the roles in use. Labels that coincide with a publication
+role (Author, Editor) merge into one facet value.
 
 ### Research sections (`research_sections`) — resource template 7, item set 17
 

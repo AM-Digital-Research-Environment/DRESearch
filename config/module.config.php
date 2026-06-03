@@ -425,8 +425,11 @@ return [
                 // Reverse links: how many records reference each person, and the
                 // roles they earn. Counts = DISTINCT public records of that corpus
                 // referencing the person (any property). Roles = presence of a
-                // reference via the given properties (null = any). Public only.
-                // (The same generic mechanism powers the organisations corpus.)
+                // reference via the given properties: a fixed label per rule, or —
+                // with `per_property` — one label per distinct property the person
+                // is referenced by, taken from that property's template alternate
+                // label. Public only. (The same generic mechanism powers the
+                // organisations corpus.)
                 'reverse_links' => [
                     'counts' => [
                         'item_count'        => ['from_template' => 10,    'public_only' => true],
@@ -437,9 +440,14 @@ return [
                         ['label' => 'Project member',         'from_template' => 5,     'properties' => ['foaf:member'],     'public_only' => true],
                         ['label' => 'Author',                 'from_item_set' => 29918, 'properties' => ['bibo:authorList'], 'public_only' => true],
                         ['label' => 'Editor',                 'from_item_set' => 29918, 'properties' => ['bibo:editorList'], 'public_only' => true],
-                        // Any contribution to a research item (author, photographer,
-                        // interviewer, …) — properties null = any reference.
-                        ['label' => 'Research contributor',   'from_template' => 10,    'properties' => null,                'public_only' => true],
+                        // Every specific contributor role a person holds on a research
+                        // item, as its own facet value — one per marcrel:* relator in
+                        // use (Author, Photographer, Interviewee, Translator, Collector,
+                        // …), labelled by that role's template-10 alternate label. This
+                        // `per_property` rule expands the whole marcrel vocabulary in a
+                        // single query, replacing the former catch-all "Research
+                        // contributor" bucket that hid which role each person played.
+                        ['per_property' => true, 'from_template' => 10, 'vocabulary' => 'marcrel', 'public_only' => true],
                     ],
                 ],
             ],

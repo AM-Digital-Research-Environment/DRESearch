@@ -237,7 +237,9 @@ final class Reindexer
      * Reverse-links (person & organisation corpora): compute (a) per-bucket counts
      * of the records that reference each indexed entity and (b) the set of role
      * labels it earns from the relationships configured in `reverse_links`. Each
-     * count bucket / role rule is one {@see reverseCount} query.
+     * fixed-label role rule (and each count bucket) is one {@see reverseCount}
+     * query; a `per_property` role rule is one {@see reverseRolesPerProperty} query
+     * that fans out into one label per relator property in use.
      *
      * @param list<int> $ids
      * @param array{counts?:array<string,array<string,mixed>>,roles?:list<array<string,mixed>>} $links
@@ -253,6 +255,18 @@ final class Reindexer
 
         $roleSets = [];
         foreach (($links['roles'] ?? []) as $rule) {
+            // Per-property rule: one role per DISTINCT property referencing the
+            // entity (e.g. every marcrel:* relator a person holds on research
+            // items), labelled by the source template's alternate label — instead
+            // of collapsing them into a single fixed-label bucket.
+            if (!empty($rule['per_property'])) {
+                foreach ($this->reverseRolesPerProperty($ids, $rule) as $pid => $labels) {
+                    foreach ($labels as $label) {
+                        $roleSets[$pid][$label] = true; // set semantics — dedupe shared labels
+                    }
+                }
+                continue;
+            }
             $label = (string) ($rule['label'] ?? '');
             if ($label === '') {
                 continue;
@@ -326,6 +340,99 @@ final class Reindexer
         $out = [];
         foreach ($this->connection->executeQuery($sql, $params)->fetchAllAssociative() as $row) {
             $out[(int) $row['pid']] = (int) $row['cnt'];
+        }
+        return $out;
+    }
+
+    /**
+     * Per-property reverse roles. Like {@see reverseCount}, but instead of one
+     * fixed label for the whole rule it emits one role label PER distinct property
+     * that references the entity — so a person credited on research items surfaces
+     * every marcrel relator they actually hold (Author, Photographer, Interviewee,
+     * Translator, …), not a single "contributor" bucket. Only properties in use
+     * yield a label (an empty relator simply produces no row), so the role facet
+     * lists exactly the roles present in the data.
+     *
+     * Each role label is the source template's alternate label for the property
+     * (the curator-facing role name), falling back to the property's own label,
+     * then its local name. The rule narrows the same way {@see reverseCount} does —
+     * by `vocabulary` (prefix, e.g. all marcrel:* roles) and/or an explicit
+     * `properties` allowlist, an optional `from_template` / `from_item_set`, and
+     * `public_only`. One query for the whole page.
+     *
+     * @param list<int> $ids
+     * @param array{vocabulary?:string, properties?:?list<string>, from_template?:?int, from_item_set?:?int, public_only?:bool} $rule
+     * @return array<int, list<string>> entityId => role labels (alphabetical)
+     */
+    private function reverseRolesPerProperty(array $ids, array $rule): array
+    {
+        $idList = implode(',', array_map('intval', $ids));
+        if ($idList === '') {
+            return [];
+        }
+
+        $where = ["v.value_resource_id IN ($idList)"];
+        $params = [];
+
+        // Narrow to a whole vocabulary (e.g. the marcrel contributor-role family) …
+        if (!empty($rule['vocabulary'])) {
+            $where[] = 'vo.prefix = :vocab';
+            $params['vocab'] = (string) $rule['vocabulary'];
+        }
+        // … and/or to an explicit property allowlist.
+        $props = $rule['properties'] ?? null;
+        if (is_array($props) && $props !== []) {
+            $propIds = [];
+            foreach ($props as $term) {
+                $pid = $this->propertyId($term);
+                if ($pid !== null) {
+                    $propIds[] = $pid;
+                }
+            }
+            if ($propIds === []) {
+                return []; // none of the rule's properties exist on this instance
+            }
+            $where[] = 'v.property_id IN (' . implode(',', $propIds) . ')';
+        }
+        // from_template is a validated int, inlined (so it can also drive the
+        // alternate-label join without colliding on a reused named parameter).
+        $tpl = !empty($rule['from_template']) ? (int) $rule['from_template'] : null;
+        if ($tpl !== null) {
+            $where[] = 'r.resource_template_id = ' . $tpl;
+        }
+        if (!empty($rule['from_item_set'])) {
+            $where[] = 'r.id IN (SELECT item_id FROM item_item_set WHERE item_set_id = :setId)';
+            $params['setId'] = (int) $rule['from_item_set'];
+        }
+        if (!empty($rule['public_only'])) {
+            $where[] = 'r.is_public = 1';
+        }
+
+        // Curator-facing role label: the source template's alternate label for the
+        // property, else the property's own label, else its local name.
+        $altJoin = $tpl !== null
+            ? ' LEFT JOIN resource_template_property rtp'
+                . ' ON rtp.resource_template_id = ' . $tpl . ' AND rtp.property_id = v.property_id'
+            : '';
+        $labelExpr = 'COALESCE('
+            . ($tpl !== null ? "NULLIF(rtp.alternate_label, ''), " : '')
+            . "NULLIF(p.label, ''), p.local_name)";
+
+        $sql = "SELECT DISTINCT v.value_resource_id AS pid, $labelExpr AS lbl"
+            . ' FROM value v'
+            . ' JOIN resource r ON v.resource_id = r.id'
+            . ' JOIN property p ON v.property_id = p.id'
+            . ' JOIN vocabulary vo ON p.vocabulary_id = vo.id'
+            . $altJoin
+            . ' WHERE ' . implode(' AND ', $where)
+            . ' ORDER BY lbl';
+
+        $out = [];
+        foreach ($this->connection->executeQuery($sql, $params)->fetchAllAssociative() as $row) {
+            $label = trim((string) ($row['lbl'] ?? ''));
+            if ($label !== '') {
+                $out[(int) $row['pid']][] = $label;
+            }
         }
         return $out;
     }

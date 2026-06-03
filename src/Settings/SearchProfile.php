@@ -346,10 +346,17 @@ final class SearchProfile
      *                      from_item_set?:int, public_only:bool }
      *   roles:  list of { label:string, properties?:?list<string>, from_template?:int,
      *                     from_item_set?:int, public_only?:bool }
+     *           OR        { per_property:true, vocabulary?:string,
+     *                     properties?:?list<string>, from_template?:int,
+     *                     from_item_set?:int, public_only?:bool }
      *
-     * A rule's `properties` null = any reference (e.g. "contributed to a research
-     * item"); otherwise only references via those properties (e.g. dcterms:creator
-     * on a project = "Principal investigator").
+     * A fixed-label rule's `properties` null = any reference (e.g. "contributed to
+     * a research item"); otherwise only references via those properties (e.g.
+     * dcterms:creator on a project = "Principal investigator"). A `per_property`
+     * rule instead derives one label per distinct property the entity is referenced
+     * by — narrowed to a `vocabulary` (prefix) and/or `properties` list — taking the
+     * label from the property's `from_template` alternate label (so each marcrel:*
+     * relator a person holds surfaces as its own role).
      *
      * @return array{counts?:array<string,array<string,mixed>>,roles?:list<array<string,mixed>>}|null
      */
