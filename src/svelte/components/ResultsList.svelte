@@ -48,9 +48,8 @@
 
 <ol
   class="dre-results"
-  class:dre-results--two-col={cardKind === 'person' ||
-    cardKind === 'organisation' ||
-    cardKind === 'term'}
+  class:dre-results--masonry={cardKind === 'person' || cardKind === 'organisation'}
+  class:dre-results--two-col={cardKind === 'term'}
 >
   {#each hits as doc (doc.id)}
     <li class="dre-results__item">
@@ -128,8 +127,8 @@
     flex-direction: column;
     gap: var(--space-md, 1rem);
   }
-  /* Compact cards (people, organisations, authority terms) are sparse, so pack
-     them two-up on wider screens. */
+  /* Authority-term cards are uniform height, so a plain two-up grid packs them
+     cleanly and keeps their count-ranked order reading row-by-row. */
   .dre-results--two-col {
     display: grid;
     grid-template-columns: 1fr;
@@ -138,6 +137,27 @@
     .dre-results--two-col {
       grid-template-columns: 1fr 1fr;
     }
+  }
+  /* People & organisation cards vary a lot in height (a name alone, or several
+     role chips), so a grid leaves ragged gaps where the next row waits on the
+     tallest card. Pack them with a CSS multi-column "masonry": each card keeps
+     its natural height and the following card rises to fill the space. Columns
+     fill top-to-bottom then left-to-right, so the name/relevance order still
+     reads in sequence column-by-column. Pure CSS — no JS, no layout thrash. */
+  .dre-results--masonry {
+    display: block;
+    column-count: 1;
+    column-gap: var(--space-md, 1rem);
+  }
+  @media (min-width: 60rem) {
+    .dre-results--masonry {
+      column-count: 2;
+    }
+  }
+  .dre-results--masonry .dre-results__item {
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid; /* older WebKit */
+    margin-bottom: var(--space-md, 1rem);
   }
 
   .dre-pager {
