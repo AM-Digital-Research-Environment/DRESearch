@@ -259,6 +259,16 @@
         role="listbox"
         aria-label={t('suggestions')}
       >
+        {#if local.trim() !== ''}
+          <a
+            class="dre-search-bar__see-all"
+            href={resultsUrl(local.trim())}
+            onmousedown={(e) => e.preventDefault()}
+          >
+            {t('see_all_results', { q: local.trim() })}
+          </a>
+        {/if}
+
         {#each groups as g, gi (g.profile)}
           <div class="dre-search-bar__group" role="group" aria-label={g.label}>
             <div class="dre-search-bar__group-label" aria-hidden="true">{g.label}</div>
@@ -285,16 +295,6 @@
             {/each}
           </div>
         {/each}
-
-        {#if local.trim() !== ''}
-          <a
-            class="dre-search-bar__see-all"
-            href={resultsUrl(local.trim())}
-            onmousedown={(e) => e.preventDefault()}
-          >
-            {t('see_all_results', { q: local.trim() })}
-          </a>
-        {/if}
       </div>
     {/if}
   {/if}
@@ -474,18 +474,20 @@
     font-size: var(--text-xs, 0.75rem);
     color: var(--muted, #666);
   }
+  /* Pinned at the top of the dropdown so it's always reachable without scrolling
+     past the grouped suggestions. */
   .dre-search-bar__see-all {
     display: block;
-    margin-top: 0.15rem;
+    margin-bottom: 0.15rem;
     padding: var(--space-sm, 0.5rem);
-    border-top: 1px solid var(--border-light, #eee);
+    border-bottom: 1px solid var(--border-light, #eee);
     color: var(--primary, #2a4d8f);
     font-size: var(--text-sm, 0.85rem);
     font-weight: 600;
     text-decoration: none;
+    border-radius: var(--radius-sm, 0.375rem) var(--radius-sm, 0.375rem) 0 0;
   }
   .dre-search-bar__see-all:hover {
     background: var(--surface-sunken, #f3f3f3);
-    border-radius: 0 0 var(--radius-sm, 0.375rem) var(--radius-sm, 0.375rem);
   }
 </style>
