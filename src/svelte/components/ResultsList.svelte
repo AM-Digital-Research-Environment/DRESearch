@@ -15,12 +15,23 @@
     perPage: number;
     itemUrlBase: string;
     cardKind: CardKind;
+    /** Pack the compact two-up cards as a masonry instead of a row-aligned grid. */
+    masonry?: boolean;
     onPageChange: (next: number) => void;
     onAddFilter: (field: string, value: string) => void;
   }
 
-  const { hits, found, page, perPage, itemUrlBase, cardKind, onPageChange, onAddFilter }: Props =
-    $props();
+  const {
+    hits,
+    found,
+    page,
+    perPage,
+    itemUrlBase,
+    cardKind,
+    masonry = false,
+    onPageChange,
+    onAddFilter,
+  }: Props = $props();
 
   // Cap at 100 pages — deep pagination past that is rarely useful and keeps
   // the pager bounded.
@@ -48,8 +59,8 @@
 
 <ol
   class="dre-results"
-  class:dre-results--masonry={cardKind === 'person' || cardKind === 'organisation'}
-  class:dre-results--two-col={cardKind === 'term'}
+  class:dre-results--masonry={masonry}
+  class:dre-results--two-col={cardKind === 'term' && !masonry}
 >
   {#each hits as doc (doc.id)}
     <li class="dre-results__item">
@@ -127,8 +138,9 @@
     flex-direction: column;
     gap: var(--space-md, 1rem);
   }
-  /* Authority-term cards are uniform height, so a plain two-up grid packs them
-     cleanly and keeps their count-ranked order reading row-by-row. */
+  /* Facet-less authority-term cards (genres, languages) are uniform height — name
+     and a count — so a plain two-up grid packs them cleanly and keeps their
+     count-ranked order reading row-by-row. */
   .dre-results--two-col {
     display: grid;
     grid-template-columns: 1fr;
@@ -138,12 +150,13 @@
       grid-template-columns: 1fr 1fr;
     }
   }
-  /* People & organisation cards vary a lot in height (a name alone, or several
-     role chips), so a grid leaves ragged gaps where the next row waits on the
-     tallest card. Pack them with a CSS multi-column "masonry": each card keeps
-     its natural height and the following card rises to fill the space. Columns
-     fill top-to-bottom then left-to-right, so the name/relevance order still
-     reads in sequence column-by-column. Pure CSS — no JS, no layout thrash. */
+  /* Compact cards whose height varies — people & organisations (a name alone, or
+     several role chips) and the faceted authority terms (locations, subjects:
+     Type/role chips and long wrapping headings) — leave ragged gaps in a grid,
+     where each row waits on its tallest card. Pack them with a CSS multi-column
+     "masonry" instead: each card keeps its natural height and the following card
+     rises to fill the space. Columns fill top-to-bottom then left-to-right, so the
+     order still reads in sequence column-by-column. Pure CSS — no JS, no thrash. */
   .dre-results--masonry {
     display: block;
     column-count: 1;

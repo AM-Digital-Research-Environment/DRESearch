@@ -28,6 +28,18 @@
   // Year range slider (range profiles only). null at either end = no constraint.
   const showYear = $derived(bootstrap.show_year && bootstrap.year_bounds != null);
   const hasSidebar = $derived(bootstrap.facets.length > 0 || showYear);
+
+  // Compact two-up corpora whose cards vary in height pack better as a masonry
+  // than a row-aligned grid (which leaves ragged gaps under short cards). People
+  // and organisations always qualify (their role/affiliation chips vary); a term
+  // corpus qualifies when it has facets — those Type/role chips are what render on
+  // the card, so faceted terms (locations, subjects) are ragged while facet-less
+  // ones (genres, languages) are uniform and stay on the grid.
+  const masonryLayout = $derived(
+    bootstrap.card_kind === 'person' ||
+      bootstrap.card_kind === 'organisation' ||
+      (bootstrap.card_kind === 'term' && bootstrap.facets.length > 0),
+  );
   // A corpus may set its own placeholder (e.g. the authority-term corpora, which
   // share a card kind); otherwise fall back to a kind-derived default.
   const placeholder = $derived(
@@ -322,6 +334,7 @@
             perPage={bootstrap.per_page}
             itemUrlBase={bootstrap.item_url_base}
             cardKind={bootstrap.card_kind}
+            masonry={masonryLayout}
             onPageChange={handlePageChange}
             onAddFilter={handleAddFilter}
           />
