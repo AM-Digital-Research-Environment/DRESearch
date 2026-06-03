@@ -1,46 +1,79 @@
 /**
- * Auto-mount entry point.
+ * Auto-mount entry point for all three DRE Search surfaces:
+ *   - [data-dre-search-root]    → App          (a per-page faceted search block)
+ *   - [data-dre-search-bar]     → SearchBar    (the theme header federated bar)
+ *   - [data-dre-federated-root] → FederatedApp (the grouped-by-type results page)
  *
- * Walks every [data-dre-search-root] element, reads its sibling JSON state
- * script (#dre-search-state-{blockId}), and mounts an App into it. Multiple
- * blocks per page each get their own bootstrap + state. Idempotent against a
- * double load (defer + manual call) via the data-dre-mounted guard.
- *
- * Mount contract — kept in sync with view/common/block-layout/dre-search-block.phtml.
+ * Each root carries an id attribute and has a sibling JSON <script> holding its
+ * bootstrap (see the matching PHP: block template, SearchBar / FederatedSearch
+ * view helpers). Idempotent against a double load via the data-dre-mounted guard.
  */
 
 import { mount } from 'svelte';
 import App from './App.svelte';
-import type { Bootstrap } from './lib/types';
+import SearchBar from './components/SearchBar.svelte';
+import FederatedApp from './components/FederatedApp.svelte';
+import type { Bootstrap, FederatedBootstrap, SearchBarBootstrap } from './lib/types';
 
-function readBootstrap(root: HTMLElement): Bootstrap | null {
-  const blockId = root.getAttribute('data-dre-block-id') ?? '';
-  const stateEl = document.getElementById(`dre-search-state-${blockId}`);
-  if (!stateEl?.textContent) {
-    console.error('[dre-search] no state script for block', blockId);
-    return null;
-  }
-  try {
-    return JSON.parse(stateEl.textContent) as Bootstrap;
-  } catch (err) {
-    console.error('[dre-search] malformed state JSON for block', blockId, err);
-    return null;
-  }
-}
-
-function mountAll(): void {
-  document.querySelectorAll<HTMLElement>('[data-dre-search-root]').forEach((root) => {
+/**
+ * Walk every not-yet-mounted root matching `selector`, read its sibling state
+ * script (`${statePrefix}${root[idAttr]}`), clear the skeleton, and hand the
+ * parsed bootstrap to `mountInto`.
+ */
+function mountRoots(
+  selector: string,
+  idAttr: string,
+  statePrefix: string,
+  mountInto: (root: HTMLElement, bootstrap: unknown) => void,
+): void {
+  document.querySelectorAll<HTMLElement>(selector).forEach((root) => {
     if (root.dataset.dreMounted === '1') {
       return;
     }
-    const bootstrap = readBootstrap(root);
-    if (!bootstrap) {
+    const id = root.getAttribute(idAttr) ?? '';
+    const stateEl = document.getElementById(`${statePrefix}${id}`);
+    if (!stateEl?.textContent) {
+      console.error('[dre-search] no state script for', selector, id);
+      return;
+    }
+    let bootstrap: unknown;
+    try {
+      bootstrap = JSON.parse(stateEl.textContent);
+    } catch (err) {
+      console.error('[dre-search] malformed state JSON for', selector, id, err);
       return;
     }
     root.innerHTML = ''; // drop the server-rendered skeleton
     root.dataset.dreMounted = '1';
-    mount(App, { target: root, props: { bootstrap } });
+    mountInto(root, bootstrap);
   });
+}
+
+function mountAll(): void {
+  mountRoots(
+    '[data-dre-search-root]',
+    'data-dre-block-id',
+    'dre-search-state-',
+    (root, bootstrap) => {
+      mount(App, { target: root, props: { bootstrap: bootstrap as Bootstrap } });
+    },
+  );
+  mountRoots(
+    '[data-dre-search-bar]',
+    'data-dre-bar-id',
+    'dre-search-bar-state-',
+    (root, bootstrap) => {
+      mount(SearchBar, { target: root, props: { bootstrap: bootstrap as SearchBarBootstrap } });
+    },
+  );
+  mountRoots(
+    '[data-dre-federated-root]',
+    'data-dre-fed-id',
+    'dre-federated-state-',
+    (root, bootstrap) => {
+      mount(FederatedApp, { target: root, props: { bootstrap: bootstrap as FederatedBootstrap } });
+    },
+  );
 }
 
 if (document.readyState === 'loading') {

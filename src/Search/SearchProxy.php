@@ -74,6 +74,114 @@ final class SearchProxy
     }
 
     /**
+     * Federated autocomplete across every profile in one Typesense `multi_search`
+     * round-trip. Returns suggestions grouped by corpus, each group tagged with
+     * the profile's translated label + kind so the client can show a type badge.
+     * Empty corpora are dropped. Null-safe: no client → available:false, empty
+     * groups; a thrown multi_search → available:false. `is_public:=true` is
+     * enforced per search by {@see QueryBuilder::suggest()}.
+     *
+     * @param callable(string):string|null $translate translates the profile label (defaults to identity)
+     * @return array{available:bool, groups:list<array{profile:string,label:string,kind:string,suggestions:list<array{id:string,title:string,subtitle:?string}>}>}
+     */
+    public function suggestAll(string $q, ?callable $translate = null): array
+    {
+        $q = trim($q);
+        $client = $this->provider->getClient();
+        if ($client === null || $q === '') {
+            return ['available' => $client !== null, 'groups' => []];
+        }
+        $translate ??= static fn(string $s): string => $s;
+
+        $profiles = array_values($this->registry->all());
+        $searches = [];
+        foreach ($profiles as $profile) {
+            $searches[] = (new QueryBuilder($profile))->suggestSearch($q);
+        }
+
+        try {
+            $response = $client->multiSearch->perform(['searches' => $searches]);
+        } catch (\Throwable $e) {
+            return ['available' => false, 'groups' => []];
+        }
+
+        // multi_search preserves request order; a per-search failure (e.g. a
+        // not-yet-indexed collection) yields an entry with no 'hits' → skipped.
+        $results = $response['results'] ?? [];
+        $groups = [];
+        foreach ($profiles as $i => $profile) {
+            $hits = $results[$i]['hits'] ?? [];
+            if ($hits === []) {
+                continue;
+            }
+            $suggestions = [];
+            foreach ($hits as $hit) {
+                $doc = $hit['document'] ?? [];
+                $suggestions[] = [
+                    'id'       => (string) ($doc['id'] ?? ''),
+                    'title'    => (string) ($doc['title'] ?? ''),
+                    'subtitle' => $this->subtitle($profile, $doc),
+                ];
+            }
+            $groups[] = [
+                'profile'     => $profile->name(),
+                'label'       => $translate($profile->label()),
+                'kind'        => $profile->kind(),
+                'suggestions' => $suggestions,
+            ];
+        }
+        return ['available' => true, 'groups' => $groups];
+    }
+
+    /**
+     * Federated results-page search: a per-corpus match COUNT for every profile
+     * (the type tabs) in one `multi_search`, plus the focused corpus's full
+     * faceted response (reusing {@see search()}). Counts use only the shared
+     * free-text + optional year window, NOT per-corpus facet filters, so each tab
+     * shows how many records match the query regardless of the active corpus's
+     * sidebar selections. Counts are non-fatal — on failure the tabs just lack a
+     * number; the active search still runs and drives `available`.
+     *
+     * @param array<string,mixed> $req shared: q, year_from, year_to; focused: page, sort, filters, facets, per_page, locked_filter
+     * @return array{available:bool, counts:array<string,int>, active:array<string,mixed>}
+     */
+    public function searchAll(string $activeProfile, array $req): array
+    {
+        $client = $this->provider->getClient();
+        if ($client === null) {
+            return ['available' => false, 'counts' => [], 'active' => $this->unavailable()];
+        }
+
+        $profiles = array_values($this->registry->all());
+        $countReq = [
+            'q'         => (string) ($req['q'] ?? ''),
+            'year_from' => $req['year_from'] ?? null,
+            'year_to'   => $req['year_to'] ?? null,
+        ];
+        $searches = [];
+        foreach ($profiles as $profile) {
+            $searches[] = (new QueryBuilder($profile))->countOnly($countReq);
+        }
+
+        $counts = [];
+        try {
+            $response = $client->multiSearch->perform(['searches' => $searches]);
+            foreach ($profiles as $i => $profile) {
+                $counts[$profile->name()] = (int) ($response['results'][$i]['found'] ?? 0);
+            }
+        } catch (\Throwable $e) {
+            $counts = []; // counts are non-fatal; the active search still runs
+        }
+
+        $active = $this->search($activeProfile, $req);
+        return [
+            'available' => (bool) ($active['available'] ?? false),
+            'counts'    => $counts,
+            'active'    => $active,
+        ];
+    }
+
+    /**
      * Global year span for the slider bounds, from the profile's date field(s)
      * (`year`, or the `year_start`/`year_end` pair). Null when the profile has
      * no year facet or Typesense is unavailable.

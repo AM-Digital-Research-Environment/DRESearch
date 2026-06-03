@@ -6,12 +6,19 @@ namespace DRESearch\Controller;
 use DRESearch\Search\SearchProxy;
 use Laminas\Http\Response;
 use Laminas\Mvc\Controller\AbstractActionController;
+use Laminas\View\Model\ViewModel;
 
 /**
- * Public JSON proxy in front of Typesense. The page block's Svelte client posts
- * search + autocomplete requests here; the Typesense key stays server-side and
- * is_public:=true is enforced by the QueryBuilder. Both actions emit a Response
- * directly (no view), so they don't depend on a JSON view strategy.
+ * Public JSON proxy in front of Typesense, plus the federated results page.
+ *
+ * - apiSearch / apiSuggest      : per-corpus search + autocomplete (the blocks).
+ * - apiSuggestAll / apiSearchAll: federated across every corpus (the header bar
+ *                                 + the grouped-by-type results page).
+ * - results                     : the federated results page (a site route).
+ *
+ * The Typesense key stays server-side and is_public:=true is enforced by the
+ * QueryBuilder. The api* actions emit a Response directly (no view), so they
+ * don't depend on a JSON view strategy; results returns a ViewModel.
  */
 class SearchController extends AbstractActionController
 {
@@ -31,6 +38,44 @@ class SearchController extends AbstractActionController
         $profile = (string) ($this->params()->fromQuery('profile') ?? $this->params()->fromPost('profile') ?? '');
         $q = (string) ($this->params()->fromQuery('q') ?? $this->params()->fromPost('q') ?? '');
         return $this->json($this->proxy->suggest($profile, $q));
+    }
+
+    /**
+     * Federated autocomplete across every corpus (the header search bar). Labels
+     * are translated server-side via the controller's translate plugin so the
+     * type badge reads in the site language.
+     */
+    public function apiSuggestAllAction(): Response
+    {
+        $q = (string) ($this->params()->fromQuery('q') ?? $this->params()->fromPost('q') ?? '');
+        return $this->json($this->proxy->suggestAll(
+            $q,
+            fn(string $s): string => (string) $this->translate($s),
+        ));
+    }
+
+    /**
+     * Federated search for the results page: per-corpus counts (tabs) plus the
+     * focused corpus's full faceted response. The focused corpus is the `profile`
+     * key in the JSON body (falls back to the default profile in SearchProxy).
+     */
+    public function apiSearchAllAction(): Response
+    {
+        $body = $this->readBody();
+        $profile = (string) ($body['profile'] ?? '');
+        return $this->json($this->proxy->searchAll($profile, $body));
+    }
+
+    /**
+     * The federated results page (site/dre-search). Renders within the active
+     * site theme layout; the dreFederatedSearch view helper builds the bootstrap
+     * and mounts the Svelte client. Seeds the initial query from ?q=.
+     */
+    public function resultsAction(): ViewModel
+    {
+        $view = new ViewModel(['query' => (string) $this->params()->fromQuery('q', '')]);
+        $view->setTemplate('dre-search/federated');
+        return $view;
     }
 
     /**

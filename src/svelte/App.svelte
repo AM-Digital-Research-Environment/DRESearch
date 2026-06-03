@@ -17,9 +17,11 @@
 
   interface Props {
     bootstrap: Bootstrap;
+    /** Hide the built-in search box (the federated page owns a shared box). */
+    showSearchBox?: boolean;
   }
 
-  const { bootstrap }: Props = $props();
+  const { bootstrap, showSearchBox = true }: Props = $props();
 
   const api = $derived.by(() => new SearchApi(bootstrap.endpoints, bootstrap.profile));
 
@@ -52,7 +54,8 @@
       ? bootstrap.initial_response
       : null;
 
-  let query = $state('');
+  // svelte-ignore state_referenced_locally
+  let query = $state(bootstrap.initial_query ?? '');
   let page = $state(1);
   // svelte-ignore state_referenced_locally
   let sort = $state<SortKey>(bootstrap.default_sort ?? 'relevance');
@@ -209,13 +212,15 @@
 </script>
 
 <div class="dre-search" bind:this={rootEl}>
-  <SearchBox
-    value={query}
-    {placeholder}
-    {api}
-    itemUrlBase={bootstrap.item_url_base}
-    onQueryChange={handleQueryChange}
-  />
+  {#if showSearchBox}
+    <SearchBox
+      value={query}
+      {placeholder}
+      {api}
+      itemUrlBase={bootstrap.item_url_base}
+      onQueryChange={handleQueryChange}
+    />
+  {/if}
 
   {#if error}
     <div class="dre-search__error" role="alert">

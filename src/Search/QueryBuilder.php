@@ -91,6 +91,44 @@ final class QueryBuilder
     }
 
     /**
+     * One entry of a federated `multi_search` autocomplete: the per-profile
+     * {@see suggest()} params plus this profile's `collection` (each multi_search
+     * search targets its own collection). A smaller default per_page than the
+     * single-corpus suggest keeps the combined dropdown bounded across all corpora.
+     *
+     * @return array<string,mixed>
+     */
+    public function suggestSearch(string $q, int $perPage = 5): array
+    {
+        $params = $this->suggest($q);
+        $params['collection'] = $this->profile->collection();
+        $params['per_page'] = max(1, $perPage);
+        return $params;
+    }
+
+    /**
+     * One entry of a federated `multi_search` whose only job is the match COUNT
+     * for a corpus (the type tabs on the federated results page): the normal
+     * {@see search()} filter/sort/year logic, scoped to this profile's
+     * `collection`, but returning no facets/highlights and a single hit (we read
+     * `found`, not the documents — `include_fields:id` keeps the payload tiny).
+     *
+     * @param array<string,mixed> $req shared query bits: q, year_from, year_to
+     * @return array<string,mixed>
+     */
+    public function countOnly(array $req): array
+    {
+        $params = $this->search($req);
+        $params['collection'] = $this->profile->collection();
+        // per_page 1 (not 0) is accepted by every Typesense build; `found` is the
+        // total regardless, and include_fields:id avoids shipping document bodies.
+        $params['per_page'] = 1;
+        $params['include_fields'] = 'id';
+        unset($params['facet_by'], $params['max_facet_values'], $params['highlight_full_fields']);
+        return $params;
+    }
+
+    /**
      * Minimal query for the year facet stats (slider bounds). facet_stats
      * (min/max) are computed over all matches regardless of per_page, so we ask
      * for a single hit (per_page 1 is always valid) and read the stats.

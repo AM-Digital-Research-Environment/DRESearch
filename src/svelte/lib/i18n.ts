@@ -45,6 +45,12 @@ const STRINGS: Record<string, string> = {
   search_unavailable: 'Search is unavailable',
   search_unavailable_hint: 'The search service is not reachable right now.',
 
+  // Federated header bar + results page.
+  search_all_placeholder: 'Search everything…',
+  see_all_results: 'See all results for “{q}”',
+  no_matches_anywhere: 'No matches in any collection.',
+  search_results_for: 'Results for “{q}”',
+
   untitled: 'Untitled',
   project_label: 'Project',
   suggestions: 'Suggestions',

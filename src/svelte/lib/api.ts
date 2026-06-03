@@ -4,7 +4,16 @@
  * shuttles JSON. The active profile (corpus) is injected into every request.
  */
 
-import type { Bootstrap, SearchRequest, SearchResponse, Suggestion } from './types';
+import type {
+  Bootstrap,
+  SearchAllRequest,
+  SearchAllResponse,
+  SearchRequest,
+  SearchResponse,
+  SuggestAllResponse,
+  SuggestGroup,
+  Suggestion,
+} from './types';
 
 export class SearchApi {
   constructor(
@@ -40,4 +49,46 @@ export class SearchApi {
       return [];
     }
   }
+}
+
+/**
+ * Federated autocomplete across every corpus (the header search bar). Returns
+ * grouped, type-tagged suggestions. Errors/aborts yield an empty group list so
+ * the input keeps working.
+ */
+export async function suggestAll(
+  endpoint: string,
+  q: string,
+  signal?: AbortSignal,
+): Promise<SuggestGroup[]> {
+  const url = `${endpoint}?q=${encodeURIComponent(q)}`;
+  try {
+    const res = await fetch(url, { headers: { Accept: 'application/json' }, signal });
+    if (!res.ok) {
+      return [];
+    }
+    const data = (await res.json()) as SuggestAllResponse;
+    return data.groups ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Federated search for the results page: per-corpus counts (tab badges) plus the
+ * focused corpus's full faceted response.
+ */
+export async function searchAll(
+  endpoint: string,
+  req: SearchAllRequest,
+): Promise<SearchAllResponse> {
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) {
+    throw new Error(`Federated search failed (HTTP ${res.status})`);
+  }
+  return (await res.json()) as SearchAllResponse;
 }

@@ -68,6 +68,17 @@ return [
             // Serialises the per-block bootstrap blob with consistent,
             // injection-safe JSON flags (JSON_HEX_TAG).
             'dreBootstrapJson' => View\Helper\DreBootstrapJson::class,
+            // Injects the Svelte bundle into <head>; the theme calls it early in
+            // layout.phtml so the header search bar (layout chrome) gets the bundle.
+            'dreSearchAssets'  => View\Helper\SearchAssets::class,
+        ],
+        'factories' => [
+            // Theme header search bar (federated autocomplete). The theme calls
+            // it guarded by getHelperPluginManager()->has('dreSearchBar'), so it
+            // degrades to the core search form when this module is absent.
+            'dreSearchBar'       => Service\View\Helper\SearchBarFactory::class,
+            // The federated results page surface (one tab per corpus).
+            'dreFederatedSearch' => Service\View\Helper\FederatedSearchFactory::class,
         ],
     ],
 
@@ -93,6 +104,50 @@ return [
                     'defaults' => [
                         'controller' => Controller\SearchController::class,
                         'action'     => 'apiSuggest',
+                    ],
+                ],
+            ],
+            // Federated autocomplete across every corpus (the theme header bar).
+            'dre-search-api-suggest-all' => [
+                'type'    => \Laminas\Router\Http\Literal::class,
+                'options' => [
+                    'route'    => '/dre-search/api/suggest-all',
+                    'defaults' => [
+                        'controller' => Controller\SearchController::class,
+                        'action'     => 'apiSuggestAll',
+                    ],
+                ],
+            ],
+            // Federated search (per-corpus counts + the focused corpus's results)
+            // — backs the grouped-by-type results page.
+            'dre-search-api-search-all' => [
+                'type'    => \Laminas\Router\Http\Literal::class,
+                'options' => [
+                    'route'    => '/dre-search/api/search-all',
+                    'defaults' => [
+                        'controller' => Controller\SearchController::class,
+                        'action'     => 'apiSearchAll',
+                    ],
+                ],
+            ],
+
+            // Federated results page, site-scoped so Omeka wraps it in the active
+            // theme layout and currentSite() resolves. Child of the core `site`
+            // route → /s/{site-slug}/dre-search. Mirrors the admin child route
+            // pattern below (own __NAMESPACE__ + FQCN controller); __SITE__ is
+            // inherited from the parent route, so site context is preserved.
+            'site' => [
+                'child_routes' => [
+                    'dre-search' => [
+                        'type'    => \Laminas\Router\Http\Literal::class,
+                        'options' => [
+                            'route'    => '/dre-search',
+                            'defaults' => [
+                                '__NAMESPACE__' => 'DRESearch\Controller',
+                                'controller'    => Controller\SearchController::class,
+                                'action'        => 'results',
+                            ],
+                        ],
                     ],
                 ],
             ],

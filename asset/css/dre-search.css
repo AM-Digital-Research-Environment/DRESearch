@@ -63,3 +63,60 @@
         animation: none;
     }
 }
+
+/* ── Header search bar (the dreSearchBar helper mount) ──────────────────────
+ * Baseline only — position:relative anchors the component's absolutely-placed
+ * suggestions dropdown; the host theme handles header-cluster sizing/placement.
+ */
+.main-header__search-bar {
+    position: relative;
+    /* Width is owned by the host theme per breakpoint (the desktop input gets a
+     * fixed width in the utilities cluster; the mobile toggle is intrinsic). */
+}
+
+.dre-search-bar__skeleton {
+    height: var(--size-control-md, 2.5rem);
+    border-radius: var(--radius-md, 0.5rem);
+    background: var(--surface-sunken, #ececec);
+}
+
+/* ── Federated results page (route: /s/{slug}/dre-search) ───────────────────── */
+.dre-federated-page {
+    margin-block: var(--space-lg, 1.5rem);
+}
+
+.dre-federated-page__title {
+    font-family: var(--font-display, Georgia, "Times New Roman", serif);
+    font-size: var(--text-2xl, 1.875rem);
+    color: var(--ink-strong, #1a1a1a);
+    margin-block: 0 var(--space-4, 1rem);
+}
+
+.dre-federated {
+    min-height: 12rem;
+}
+
+.dre-federated__skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4, 1rem);
+}
+
+.dre-federated__skeleton-tabs {
+    height: 2.5rem;
+    border-radius: var(--radius-md, 0.5rem);
+    background: var(--surface-sunken, #ececec);
+}
+
+.dre-federated__skeleton-row {
+    height: 4.5rem;
+    border-radius: var(--radius-md, 0.5rem);
+    background: var(--surface-sunken, #ececec);
+    animation: dre-search-pulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dre-federated__skeleton-row {
+        animation: none;
+    }
+}

@@ -62,6 +62,8 @@ export interface Bootstrap {
   endpoints: { search: string; suggest: string };
   /** Server-rendered first page, so the block paints without a round-trip. */
   initial_response?: SearchResponse;
+  /** Seed query (federated results page reuses App per corpus with a shared query). */
+  initial_query?: string;
 }
 
 /** A Typesense document, trimmed to the fields the cards render. */
@@ -182,6 +184,82 @@ export interface SearchRequest {
   facets: string[];
   locked_filter: string;
   /** Year bounds — null means "no constraint at that end". */
+  year_from?: number | null;
+  year_to?: number | null;
+}
+
+// ── Federated search (header bar + grouped results page) ─────────────────────
+
+/** One corpus's suggestions in the federated autocomplete, tagged for a badge. */
+export interface SuggestGroup {
+  profile: string;
+  label: string;
+  kind: CardKind;
+  suggestions: Suggestion[];
+}
+
+export interface SuggestAllResponse {
+  available: boolean;
+  groups: SuggestGroup[];
+}
+
+/** Per-corpus metadata the federated page needs to render a tab + its App. */
+export interface ProfileMeta {
+  name: string;
+  label: string;
+  kind: CardKind;
+  date_mode: DateMode;
+  show_year: boolean;
+  year_bounds: YearBounds | null;
+  facets: string[];
+  facet_labels: Record<string, string>;
+  default_sort: SortKey;
+  sort_options: SortOption[];
+  per_page: number;
+  placeholder?: string | null;
+}
+
+/** Bootstrap for the theme header search bar (variant 'bar'). */
+export interface SearchBarBootstrap {
+  variant: 'bar';
+  available: boolean;
+  /** Suggestion links are built as `${item_url_base}/${id}`. */
+  item_url_base: string;
+  /** Where a full search (Enter / "see all") navigates: `${results_url}?q=…`. */
+  results_url: string;
+  placeholder: string;
+  /** Mobile: render as a toggle button that expands the input. */
+  collapsible?: boolean;
+  endpoints: { suggest_all: string };
+}
+
+/** Bootstrap for the federated results page (variant 'federated'). */
+export interface FederatedBootstrap {
+  variant: 'federated';
+  available: boolean;
+  item_url_base: string;
+  initial_query: string;
+  default_profile: string;
+  profiles: ProfileMeta[];
+  endpoints: { search: string; search_all: string; suggest: string; suggest_all: string };
+}
+
+export interface SearchAllResponse {
+  available: boolean;
+  /** profile name => total matches for the shared query (tab badges). */
+  counts: Record<string, number>;
+  active: SearchResponse;
+}
+
+/** Shared request for the federated search: free-text + optional year only. */
+export interface SearchAllRequest {
+  profile: string;
+  q: string;
+  page?: number;
+  per_page?: number;
+  sort?: SortKey;
+  filters?: ActiveFilters;
+  facets?: string[];
   year_from?: number | null;
   year_to?: number | null;
 }

@@ -1,0 +1,24 @@
+<?php
+/**
+ * Federated search results page (route: site/dre-search → /s/{slug}/dre-search).
+ *
+ * @var \Laminas\View\Renderer\PhpRenderer $this
+ * @var string $query  Initial query from ?q= (may be empty).
+ *
+ * The dreFederatedSearch helper injects the Svelte bundle, builds the bootstrap
+ * (metadata for every corpus + endpoints + the initial query) and renders the
+ * mount node + sibling state script that src/svelte/main.ts hydrates into a
+ * FederatedApp (a type-tab per corpus, reusing the per-corpus search UI).
+ */
+$query = isset($query) ? (string) $query : '';
+$this->headTitle($this->translate('Search'));
+?>
+<section class="dre-federated-page">
+    <h1 class="dre-federated-page__title"><?= $this->escapeHtml($this->translate('Search')) ?></h1>
+
+    <noscript>
+        <p><?= $this->translate('Search requires JavaScript to be enabled.') ?></p>
+    </noscript>
+
+    <?= $this->dreFederatedSearch($query) ?>
+</section>

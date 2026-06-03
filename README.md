@@ -95,6 +95,46 @@ don't want a search backend.
   an index as a background job, reading the Omeka database and pushing to
   Typesense in batches.
 
+## Global (federated) search — header bar + results page
+
+Beyond the per-corpus blocks, the module exposes a **site-wide search** across
+**all** corpora at once, designed to replace a theme's header search:
+
+- A **header search bar** (a `dreSearchBar` view helper the theme drops into its
+  header) with a **federated autocomplete**: one Typesense `multi_search` over
+  every corpus, suggestions **grouped by type** (Research item / Person / Project
+  / Location / …). Picking a suggestion jumps straight to that record's page;
+  pressing Enter / "See all results" goes to the results page.
+- A **federated results page** at **`/s/{site-slug}/dre-search`** (`?q=…`):
+  results **grouped by type**, one **tab per corpus** with its hit count.
+  Selecting a tab reveals **that corpus's own facets, cards, sorting and
+  paging** — it reuses the same per-corpus search UI as the blocks.
+
+Two server endpoints back it (top-level, anonymous, `is_public:=true` enforced):
+`/dre-search/api/suggest-all` (grouped autocomplete) and
+`/dre-search/api/search-all` (per-corpus counts + the focused corpus's results).
+
+**Theme integration** is one guarded helper call — the theme degrades to its own
+search form when the module is absent:
+
+```php
+<?php // near the top of layout.phtml, before <head> is rendered: ?>
+<?php if ($this->getHelperPluginManager()->has('dreSearchAssets')): ?>
+    <?php echo $this->dreSearchAssets(); // inject the bundle into <head> ?>
+<?php endif; ?>
+
+<?php // in the header markup: ?>
+<?php if ($this->getHelperPluginManager()->has('dreSearchBar')): ?>
+    <?php echo $this->dreSearchBar('header-desktop', 'd-none d-xl-block'); // always-visible ?>
+    <?php echo $this->dreSearchBar('header-mobile', 'd-block d-xl-none', true); // collapsible ?>
+<?php endif; ?>
+```
+
+(The early `dreSearchAssets` call is needed because the header renders as layout
+chrome — after `<head>` is already emitted — so the bundle must be injected
+before then. Search blocks self-inject, so a page with a block needs only the
+header calls; `headScript`/`headLink` dedupe by URL.)
+
 ## Requirements
 
 - Omeka S `^4.2`
@@ -375,17 +415,22 @@ toolchain.
   `publication` | `person` | `section` | `organisation` | `term`) selects its
   indexer mapper and its result card.
 - **Search is server-side.** The browser calls the module's own JSON endpoints
-  (`/dre-search/api/search`, `/dre-search/api/suggest`) with a `profile`; PHP
-  forwards to Typesense with the server-held key and enforces `is_public:=true`.
-  The key never reaches the browser, so there are no scoped keys or nginx changes
-  — and "optional" is trivial (no key → no search).
+  (`/dre-search/api/search`, `/dre-search/api/suggest` per corpus;
+  `/dre-search/api/suggest-all`, `/dre-search/api/search-all` federated) with a
+  `profile`; PHP forwards to Typesense with the server-held key and enforces
+  `is_public:=true`. The key never reaches the browser, so there are no scoped
+  keys or nginx changes — and "optional" is trivial (no key → no search). The
+  federated endpoints use one Typesense `multi_search` across all collections.
 - **PHP**: `src/Search` (proxy, query builder, lazy client provider),
   `src/Indexer` (schema, authority resolver, item/project mappers, paged
   reindexer), `src/Job` (background reindex), `src/Site/BlockLayout` (the blocks),
-  `src/Controller` (public proxy + admin maintenance), `src/Settings`
-  (`SearchProfile`, `ProfileRegistry`).
-- **JS**: `src/svelte` — Svelte 5, one IIFE bundle, styled with DRE-theme
-  design tokens (so it inherits the theme's light/dark palette automatically).
+  `src/Controller` (public proxy + federated results page + admin maintenance),
+  `src/View/Helper` (the `dreSearchBar` / `dreFederatedSearch` / `dreSearchAssets`
+  surfaces), `src/Settings` (`SearchProfile`, `ProfileRegistry`, `SortOptions`).
+- **JS**: `src/svelte` — Svelte 5, one IIFE bundle that auto-mounts three
+  surfaces (per-corpus `App`, header `SearchBar`, `FederatedApp`); the federated
+  page reuses `App` per type-tab. Styled with DRE-theme design tokens (so it
+  inherits the theme's light/dark palette automatically).
 - **Keyword search only** (no embedding model) to keep Typesense lean on a
   modest host. The reindexer is paged + batched, so memory stays flat.
 
