@@ -185,10 +185,10 @@
     min-width: 2.25rem;
     height: 2.25rem;
     padding: 0 0.5rem;
-    border: 1px solid var(--border, #ccc);
+    border: 1px solid var(--border, #dcd6cb);
     border-radius: var(--radius-md, 0.5rem);
-    background: var(--surface, #fff);
-    color: var(--ink, #222);
+    background: var(--surface, #fdfcfa);
+    color: var(--ink, #33291f);
     font: inherit;
     font-variant-numeric: tabular-nums;
     cursor: pointer;
@@ -203,14 +203,14 @@
   /* Exclude the active page: the host's `button:hover` would otherwise fill an
      inactive button green (and its primary text would vanish on the green). */
   .dre-pager__btn:hover:not(:disabled):not(.dre-pager__btn--active) {
-    border-color: var(--primary, #2a4d8f);
-    color: var(--primary, #2a4d8f);
-    background: var(--surface, #fff);
+    border-color: var(--primary, #007a50);
+    color: var(--primary, #007a50);
+    background: var(--surface, #fdfcfa);
   }
   .dre-pager__btn--active {
-    background: var(--primary, #2a4d8f);
-    border-color: var(--primary, #2a4d8f);
-    color: var(--primary-contrast, #fff);
+    background: var(--primary, #007a50);
+    border-color: var(--primary, #007a50);
+    color: var(--primary-contrast, #fdfcfa);
     font-weight: 600;
   }
   .dre-pager__btn:disabled {
@@ -222,7 +222,7 @@
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.1)) !important;
   }
   .dre-pager__gap {
-    color: var(--muted, #888);
+    color: var(--muted, #938979);
     padding-inline: 0.25rem;
   }
 </style>

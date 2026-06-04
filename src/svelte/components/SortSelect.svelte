@@ -32,7 +32,7 @@
     align-items: center;
     gap: var(--space-sm, 0.5rem);
     font-size: var(--text-sm, 0.9rem);
-    color: var(--muted, #666);
+    color: var(--muted, #7a7164);
   }
   .dre-sort__select {
     height: var(--size-control-md, 2.5rem);
@@ -42,12 +42,12 @@
     padding-block: 0;
     padding-inline: var(--space-sm, 0.5rem) 1.9rem;
     font: inherit;
-    color: var(--ink, #222);
+    color: var(--ink, #33291f);
     /* background-color (not the `background` shorthand) so we don't blow away
        the chevron drawn on .dre-sort::after; also drop the host's arrow asset. */
-    background-color: var(--surface, #fff);
+    background-color: var(--surface, #fdfcfa);
     background-image: none;
-    border: 1px solid var(--border, #ccc);
+    border: 1px solid var(--border, #dcd6cb);
     border-radius: var(--radius-md, 0.5rem);
     cursor: pointer;
     -webkit-appearance: none;
@@ -63,7 +63,7 @@
     width: 0.7rem;
     height: 0.7rem;
     transform: translateY(-50%);
-    background-color: var(--muted, #666);
+    background-color: var(--muted, #7a7164);
     pointer-events: none;
     --dre-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%23000' stroke-width='2'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E");
     -webkit-mask: var(--dre-chevron) center / contain no-repeat;
@@ -71,7 +71,7 @@
   }
   .dre-sort__select:focus-visible {
     outline: none;
-    border-color: var(--primary, #2a4d8f);
+    border-color: var(--primary, #007a50);
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.1));
   }
 </style>

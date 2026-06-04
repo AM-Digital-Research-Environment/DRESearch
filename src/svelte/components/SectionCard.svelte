@@ -105,8 +105,8 @@
 <style>
   .dre-scard {
     padding: var(--space-md, 1rem);
-    background: var(--surface, #fff);
-    border: 1px solid var(--border-light, #eee);
+    background: var(--surface, #fdfcfa);
+    border: 1px solid var(--border-light, #eae5dd);
     border-radius: var(--radius-lg, 0.75rem);
     box-shadow: var(--shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.04));
     transition:
@@ -114,7 +114,7 @@
       box-shadow var(--transition-base, 200ms ease);
   }
   .dre-scard:hover {
-    border-color: color-mix(in srgb, var(--primary, #2a4d8f) 40%, var(--border, #ccc));
+    border-color: color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dcd6cb));
     box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.08));
   }
 
@@ -135,8 +135,8 @@
     display: inline-flex;
     align-items: center;
     padding: 0.1rem 0.55rem;
-    background: color-mix(in srgb, var(--primary, #2a4d8f) 14%, var(--surface, #fff));
-    color: var(--ink-strong, var(--ink, #222));
+    background: color-mix(in srgb, var(--primary, #007a50) 14%, var(--surface, #fdfcfa));
+    color: var(--ink-strong, var(--ink, #33291f));
     border: none;
     border-radius: var(--radius-full, 9999px);
     font: inherit;
@@ -149,17 +149,17 @@
     transition: background var(--transition-fast, 150ms ease);
   }
   .dre-scard__phase:hover {
-    background: color-mix(in srgb, var(--primary, #2a4d8f) 28%, var(--surface, #fff));
+    background: color-mix(in srgb, var(--primary, #007a50) 28%, var(--surface, #fdfcfa));
     /* Suppress the host primary-button hover lift + green glow (chips are flat). */
     box-shadow: none !important;
     transform: none !important;
   }
   .dre-scard__phase:focus-visible {
     outline: none;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(42, 77, 143, 0.3));
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3));
   }
   .dre-scard__count {
-    color: var(--muted, #666);
+    color: var(--muted, #7a7164);
     font-size: var(--text-xs, 0.75rem);
     font-weight: 600;
     letter-spacing: 0.04em;
@@ -171,28 +171,28 @@
     font-size: var(--text-lg, 1.125rem);
     line-height: 1.35;
     font-family: var(--font-display, Georgia, serif);
-    color: var(--ink-strong, var(--ink, #222));
+    color: var(--ink-strong, var(--ink, #33291f));
   }
   .dre-scard__title a {
     color: inherit;
     text-decoration: none;
   }
   .dre-scard__title a:hover {
-    color: var(--primary, #2a4d8f);
+    color: var(--primary, #007a50);
     text-decoration: underline;
     text-underline-offset: 2px;
   }
   .dre-scard__leaders {
     margin: 0;
     font-size: var(--text-sm, 0.9rem);
-    color: var(--ink-light, var(--ink, #444));
+    color: var(--ink-light, var(--ink, #5f5648));
   }
   .dre-scard__leaders-label {
     font-weight: 700;
     font-size: var(--text-xs, 0.72rem);
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: var(--muted, #666);
+    color: var(--muted, #7a7164);
     margin-inline-end: 0.3rem;
   }
   .dre-scard__person {
@@ -212,24 +212,24 @@
     text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
   }
   .dre-scard__person:hover {
-    color: var(--primary, #2a4d8f) !important;
+    color: var(--primary, #007a50) !important;
     text-decoration-color: currentColor;
   }
   .dre-scard__person:focus-visible {
     outline: none;
     border-radius: var(--radius-sm, 0.375rem);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(42, 77, 143, 0.3)) !important;
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3)) !important;
   }
   .dre-scard__members {
     margin: 0;
     font-size: var(--text-xs, 0.78rem);
-    color: var(--muted, #666);
+    color: var(--muted, #7a7164);
     font-variant-numeric: tabular-nums;
   }
   .dre-scard__snippet {
     margin: var(--space-xs, 0.25rem) 0 0;
     font-size: var(--text-sm, 0.9rem);
-    color: var(--ink-light, var(--ink, #444));
+    color: var(--ink-light, var(--ink, #5f5648));
     line-height: 1.5;
     display: -webkit-box;
     -webkit-line-clamp: 3;

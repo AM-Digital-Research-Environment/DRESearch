@@ -86,7 +86,7 @@
 <style>
   .dre-facet {
     padding-block: var(--space-md, 1rem);
-    border-bottom: 1px solid var(--border-light, #eee);
+    border-bottom: 1px solid var(--border-light, #eae5dd);
   }
   .dre-facet:last-child {
     border-bottom: none;
@@ -106,7 +106,7 @@
     border: none;
     cursor: pointer;
     font: inherit;
-    color: var(--ink-strong, var(--ink, #222));
+    color: var(--ink-strong, var(--ink, #33291f));
     font-size: var(--text-xs, 0.75rem);
     font-weight: 700;
     letter-spacing: 0.06em;
@@ -114,14 +114,14 @@
     text-align: start;
   }
   .dre-facet__heading:hover {
-    color: var(--primary, #2a4d8f) !important;
+    color: var(--primary, #007a50) !important;
   }
   .dre-facet__label {
     flex: 1;
   }
   .dre-facet__badge {
-    background: var(--primary, #2a4d8f);
-    color: var(--primary-contrast, #fff);
+    background: var(--primary, #007a50);
+    color: var(--primary-contrast, #fdfcfa);
     border-radius: var(--radius-full, 9999px);
     min-width: 1.25rem;
     height: 1.25rem;
@@ -134,7 +134,7 @@
     letter-spacing: 0;
   }
   .dre-facet__chevron {
-    color: var(--muted, #888);
+    color: var(--muted, #938979);
     font-size: var(--text-xs, 0.75rem);
   }
 
@@ -147,10 +147,10 @@
     width: 100%;
     margin: 0;
     padding: 0.3rem 0.5rem;
-    border: 1px solid var(--border, #ccc);
+    border: 1px solid var(--border, #dcd6cb);
     border-radius: var(--radius-sm, 0.375rem);
-    background: var(--surface, #fff);
-    color: var(--ink, #222);
+    background: var(--surface, #fdfcfa);
+    color: var(--ink, #33291f);
     font: inherit;
     font-size: var(--text-sm, 0.85rem);
     box-shadow: none;
@@ -158,13 +158,13 @@
     appearance: none;
   }
   .dre-facet__search-input::placeholder {
-    color: var(--muted, #999);
+    color: var(--muted, #a39a8c);
   }
   .dre-facet__search-input:focus,
   .dre-facet__search-input:focus-visible {
     outline: none;
-    border-color: var(--primary, #2a4d8f);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(42, 77, 143, 0.18));
+    border-color: var(--primary, #007a50);
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.18));
   }
 
   .dre-facet__list {
@@ -187,10 +187,10 @@
     border-radius: var(--radius-sm, 0.375rem);
     cursor: pointer;
     font-size: var(--text-sm, 0.9rem);
-    color: var(--ink, #222);
+    color: var(--ink, #33291f);
   }
   .dre-facet__option:hover {
-    background: var(--surface-sunken, #f3f3f3);
+    background: var(--surface-sunken, #f1ede6);
   }
   .dre-facet__value {
     flex: 1;
@@ -199,14 +199,14 @@
     white-space: nowrap;
   }
   .dre-facet__count {
-    color: var(--muted, #888);
+    color: var(--muted, #938979);
     font-size: var(--text-xs, 0.75rem);
     font-variant-numeric: tabular-nums;
   }
   .dre-facet__nomatch {
     margin: var(--space-sm, 0.5rem) 0 0;
     padding: 0.2rem 0.25rem;
-    color: var(--muted, #888);
+    color: var(--muted, #938979);
     font-size: var(--text-sm, 0.85rem);
   }
 </style>

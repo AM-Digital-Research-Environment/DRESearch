@@ -135,7 +135,7 @@
 <style>
   .dre-yr {
     padding-block: var(--space-md, 1rem);
-    border-bottom: 1px solid var(--border-light, #eee);
+    border-bottom: 1px solid var(--border-light, #eae5dd);
   }
   .dre-yr__heading {
     display: flex;
@@ -151,7 +151,7 @@
     border: none;
     cursor: pointer;
     font: inherit;
-    color: var(--ink-strong, var(--ink, #222));
+    color: var(--ink-strong, var(--ink, #33291f));
     font-size: var(--text-xs, 0.75rem);
     font-weight: 700;
     letter-spacing: 0.06em;
@@ -159,14 +159,14 @@
     text-align: start;
   }
   .dre-yr__heading:hover {
-    color: var(--primary, #2a4d8f) !important;
+    color: var(--primary, #007a50) !important;
   }
   .dre-yr__label {
     flex: 1;
   }
   .dre-yr__badge {
-    background: var(--primary, #2a4d8f);
-    color: var(--primary-contrast, #fff);
+    background: var(--primary, #007a50);
+    color: var(--primary-contrast, #fdfcfa);
     border-radius: var(--radius-full, 9999px);
     padding: 0 0.45rem;
     height: 1.25rem;
@@ -178,7 +178,7 @@
     font-variant-numeric: tabular-nums;
   }
   .dre-yr__chevron {
-    color: var(--muted, #888);
+    color: var(--muted, #938979);
     font-size: var(--text-xs, 0.75rem);
   }
 
@@ -188,7 +188,7 @@
   .dre-yr__values {
     display: flex;
     justify-content: space-between;
-    color: var(--muted, #666);
+    color: var(--muted, #7a7164);
     font-size: var(--text-xs, 0.75rem);
     font-variant-numeric: tabular-nums;
     margin-bottom: 0.25rem;
@@ -209,10 +209,10 @@
   .dre-yr__track {
     left: 0;
     right: 0;
-    background: var(--border, #ccc);
+    background: var(--border, #dcd6cb);
   }
   .dre-yr__fill {
-    background: var(--primary, #2a4d8f);
+    background: var(--primary, #007a50);
   }
 
   .dre-yr__input {
@@ -259,8 +259,8 @@
     width: 1rem;
     height: 1rem;
     border-radius: 50%;
-    background: var(--surface, #fff);
-    border: 2px solid var(--primary, #2a4d8f);
+    background: var(--surface, #fdfcfa);
+    border: 2px solid var(--primary, #007a50);
     cursor: pointer;
     margin-top: -0.375rem;
   }
@@ -269,14 +269,14 @@
     width: 1rem;
     height: 1rem;
     border-radius: 50%;
-    background: var(--surface, #fff);
-    border: 2px solid var(--primary, #2a4d8f);
+    background: var(--surface, #fdfcfa);
+    border: 2px solid var(--primary, #007a50);
     cursor: pointer;
   }
   .dre-yr__input:focus-visible::-webkit-slider-thumb {
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(42, 77, 143, 0.3));
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3));
   }
   .dre-yr__input:focus-visible::-moz-range-thumb {
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(42, 77, 143, 0.3));
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3));
   }
 </style>

@@ -107,7 +107,7 @@
     justify-content: space-between;
     gap: var(--space-sm, 0.5rem);
     padding-block: var(--space-xs, 0.25rem) var(--space-sm, 0.5rem);
-    border-bottom: 1px solid var(--border, #ccc);
+    border-bottom: 1px solid var(--border, #dcd6cb);
   }
   .dre-facets__heading {
     margin: 0;
@@ -119,7 +119,7 @@
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--ink-strong, var(--ink, #222));
+    color: var(--ink-strong, var(--ink, #33291f));
   }
   .dre-facets__clear-all {
     /* Host theme styles every <button> as a filled primary button; keep this a
@@ -128,13 +128,13 @@
     border: none;
     box-shadow: none !important;
     transform: none !important;
-    color: var(--primary, #2a4d8f);
+    color: var(--primary, #007a50);
     cursor: pointer;
     font-size: var(--text-xs, 0.75rem);
     padding: 0;
   }
   .dre-facets__clear-all:hover {
-    color: var(--primary, #2a4d8f) !important;
+    color: var(--primary, #007a50) !important;
     text-decoration: underline;
   }
 
@@ -154,25 +154,25 @@
     align-items: center;
     gap: var(--space-xs, 0.25rem);
     padding: 0.2rem 0.55rem;
-    background: var(--surface, #fff);
-    border: 1px solid color-mix(in srgb, var(--primary, #2a4d8f) 40%, var(--border, #ccc));
+    background: var(--surface, #fdfcfa);
+    border: 1px solid color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dcd6cb));
     border-radius: var(--radius-full, 9999px);
     cursor: pointer;
     font: inherit;
     font-size: var(--text-xs, 0.75rem);
-    color: var(--ink, #222);
+    color: var(--ink, #33291f);
     /* Suppress the host primary-button hover lift + green glow (the fill on
        hover below is intentional). */
     box-shadow: none !important;
     transform: none !important;
   }
   .dre-facets__chip:hover {
-    background: var(--primary, #2a4d8f);
-    border-color: var(--primary, #2a4d8f);
-    color: var(--primary-contrast, #fff);
+    background: var(--primary, #007a50);
+    border-color: var(--primary, #007a50);
+    color: var(--primary-contrast, #fdfcfa);
   }
   .dre-facets__chip-field {
-    color: var(--muted, #666);
+    color: var(--muted, #7a7164);
   }
   .dre-facets__chip:hover .dre-facets__chip-field {
     color: inherit;
@@ -192,7 +192,7 @@
   }
   .dre-facets__empty {
     padding-block: var(--space-md, 1rem);
-    color: var(--muted, #888);
+    color: var(--muted, #938979);
     font-size: var(--text-sm, 0.9rem);
     margin: 0;
   }

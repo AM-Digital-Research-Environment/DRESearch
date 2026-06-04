@@ -318,14 +318,14 @@
     border: 0;
     background: transparent !important;
     box-shadow: none !important;
-    color: var(--ink, #222) !important;
+    color: var(--ink, #33291f) !important;
     cursor: pointer;
     border-radius: var(--radius-full, 9999px);
     transform: none !important;
   }
   .dre-search-bar__toggle:hover {
     background: color-mix(in srgb, currentColor 12%, transparent) !important;
-    color: var(--ink-strong, var(--ink, #222)) !important;
+    color: var(--ink-strong, var(--ink, #33291f)) !important;
   }
   .dre-search-bar__toggle:focus-visible {
     outline: none;
@@ -352,7 +352,7 @@
     position: absolute;
     inset-inline-start: var(--space-sm, 0.5rem);
     display: inline-flex;
-    color: var(--muted, #888);
+    color: var(--muted, #938979);
     pointer-events: none;
   }
   .dre-search-bar__input {
@@ -362,9 +362,9 @@
     padding-inline: 2.1rem 2.1rem;
     margin: 0;
     font-size: var(--text-sm, 0.95rem);
-    color: var(--ink, #222);
-    background: var(--surface, #fff);
-    border: 1px solid var(--border, #ccc);
+    color: var(--ink, #33291f);
+    background: var(--surface, #fdfcfa);
+    border: 1px solid var(--border, #dcd6cb);
     border-radius: var(--radius-full, 9999px);
     box-shadow: var(--shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.04));
     transition:
@@ -372,7 +372,7 @@
       box-shadow var(--transition-fast, 150ms ease);
   }
   .dre-search-bar__input::placeholder {
-    color: var(--muted, #888);
+    color: var(--muted, #938979);
   }
   .dre-search-bar__input::-webkit-search-cancel-button {
     -webkit-appearance: none;
@@ -381,7 +381,7 @@
   }
   .dre-search-bar__input:focus {
     outline: none;
-    border-color: var(--primary, #2a4d8f);
+    border-color: var(--primary, #007a50);
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.1));
   }
 
@@ -406,7 +406,7 @@
     border: 0;
     background: transparent !important;
     box-shadow: none !important;
-    color: var(--muted, #888) !important;
+    color: var(--muted, #938979) !important;
     font-size: 1.15rem;
     line-height: 1;
     cursor: pointer;
@@ -416,7 +416,7 @@
   }
   .dre-search-bar__clear:hover {
     background: color-mix(in srgb, currentColor 16%, transparent) !important;
-    color: var(--ink, #222) !important;
+    color: var(--ink, #33291f) !important;
   }
   .dre-search-bar__clear:focus-visible {
     outline: none;
@@ -432,8 +432,8 @@
     width: min(26rem, 92vw);
     margin: 0;
     padding: 0.25rem;
-    background: var(--surface, #fff);
-    border: 1px solid var(--border, #ccc);
+    background: var(--surface, #fdfcfa);
+    border: 1px solid var(--border, #dcd6cb);
     border-radius: var(--radius-md, 0.5rem);
     box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1));
     max-height: 28rem;
@@ -441,7 +441,7 @@
   }
   .dre-search-bar__group + .dre-search-bar__group {
     margin-top: 0.15rem;
-    border-top: 1px solid var(--border-light, #eee);
+    border-top: 1px solid var(--border-light, #eae5dd);
     padding-top: 0.15rem;
   }
   .dre-search-bar__group-label {
@@ -450,7 +450,7 @@
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: var(--muted, #888);
+    color: var(--muted, #938979);
   }
   .dre-search-bar__option {
     display: flex;
@@ -458,12 +458,12 @@
     gap: 0.1rem;
     padding: var(--space-xs, 0.4rem) var(--space-sm, 0.5rem);
     border-radius: var(--radius-sm, 0.375rem);
-    color: var(--ink, #222);
+    color: var(--ink, #33291f);
     text-decoration: none;
   }
   .dre-search-bar__option--active,
   .dre-search-bar__option:hover {
-    background: var(--surface-sunken, #f3f3f3);
+    background: var(--surface-sunken, #f1ede6);
   }
   .dre-search-bar__option-title {
     font-size: var(--text-sm, 0.9rem);
@@ -472,7 +472,7 @@
   }
   .dre-search-bar__option-meta {
     font-size: var(--text-xs, 0.75rem);
-    color: var(--muted, #666);
+    color: var(--muted, #7a7164);
   }
   /* Pinned at the top of the dropdown so it's always reachable without scrolling
      past the grouped suggestions. */
@@ -480,14 +480,14 @@
     display: block;
     margin-bottom: 0.15rem;
     padding: var(--space-sm, 0.5rem);
-    border-bottom: 1px solid var(--border-light, #eee);
-    color: var(--primary, #2a4d8f);
+    border-bottom: 1px solid var(--border-light, #eae5dd);
+    color: var(--primary, #007a50);
     font-size: var(--text-sm, 0.85rem);
     font-weight: 600;
     text-decoration: none;
     border-radius: var(--radius-sm, 0.375rem) var(--radius-sm, 0.375rem) 0 0;
   }
   .dre-search-bar__see-all:hover {
-    background: var(--surface-sunken, #f3f3f3);
+    background: var(--surface-sunken, #f1ede6);
   }
 </style>

@@ -254,7 +254,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-md, 1rem);
-    color: var(--ink, #222);
+    color: var(--ink, #33291f);
   }
 
   /* Shared query box. */
@@ -270,14 +270,14 @@
     padding-inline: var(--space-md, 1rem) var(--space-2xl, 3rem);
     margin: 0;
     font-size: var(--text-base, 1rem);
-    color: var(--ink, #222);
-    background: var(--surface, #fff);
-    border: 1px solid var(--border, #ccc);
+    color: var(--ink, #33291f);
+    background: var(--surface, #fdfcfa);
+    border: 1px solid var(--border, #dcd6cb);
     border-radius: var(--radius-md, 0.5rem);
   }
   .dre-fed__input:focus {
     outline: none;
-    border-color: var(--primary, #2a4d8f);
+    border-color: var(--primary, #007a50);
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.1));
   }
   .dre-fed__input::-webkit-search-cancel-button {
@@ -301,7 +301,7 @@
     border: 0;
     background: transparent !important;
     box-shadow: none !important;
-    color: var(--muted, #888) !important;
+    color: var(--muted, #938979) !important;
     font-size: 1.25rem;
     line-height: 1;
     cursor: pointer;
@@ -309,7 +309,7 @@
   }
   .dre-fed__clear:hover {
     background: color-mix(in srgb, currentColor 16%, transparent) !important;
-    color: var(--ink, #222) !important;
+    color: var(--ink, #33291f) !important;
   }
 
   /* Type tabs. */
@@ -318,7 +318,7 @@
     flex-wrap: wrap;
     gap: var(--space-xs, 0.4rem);
     padding-block-end: var(--space-sm, 0.5rem);
-    border-bottom: 1px solid var(--border-light, #eee);
+    border-bottom: 1px solid var(--border-light, #eae5dd);
   }
   /*
    * The host theme styles every <button>:hover as a green primary button. Guard
@@ -331,10 +331,10 @@
     gap: 0.4rem;
     padding: 0.4rem 0.8rem;
     margin: 0;
-    border: 1px solid var(--border, #ccc) !important;
+    border: 1px solid var(--border, #dcd6cb) !important;
     border-radius: var(--radius-full, 9999px);
-    background: var(--surface, #fff) !important;
-    color: var(--ink, #222) !important;
+    background: var(--surface, #fdfcfa) !important;
+    color: var(--ink, #33291f) !important;
     font: inherit;
     font-size: var(--text-sm, 0.9rem);
     line-height: 1.2;
@@ -343,15 +343,15 @@
     transform: none !important;
   }
   .dre-fed__tab:hover {
-    border-color: var(--primary, #2a4d8f) !important;
-    color: var(--primary, #2a4d8f) !important;
-    background: var(--surface, #fff) !important;
+    border-color: var(--primary, #007a50) !important;
+    color: var(--primary, #007a50) !important;
+    background: var(--surface, #fdfcfa) !important;
   }
   .dre-fed__tab--active,
   .dre-fed__tab--active:hover {
-    background: var(--primary, #2a4d8f) !important;
-    border-color: var(--primary, #2a4d8f) !important;
-    color: var(--primary-contrast, #fff) !important;
+    background: var(--primary, #007a50) !important;
+    border-color: var(--primary, #007a50) !important;
+    color: var(--primary-contrast, #fdfcfa) !important;
     font-weight: 600;
   }
   .dre-fed__tab--empty:not(.dre-fed__tab--active) {
@@ -368,7 +368,7 @@
   }
 
   .dre-fed__status {
-    color: var(--muted, #666);
+    color: var(--muted, #7a7164);
     font-size: var(--text-sm, 0.9rem);
     margin: 0;
   }
@@ -381,16 +381,16 @@
     gap: var(--space-xs, 0.25rem);
   }
   .dre-fed__notice {
-    background: var(--surface-sunken, #f6f6f6);
-    border: 1px dashed var(--border, #ccc);
-    color: var(--muted, #555);
+    background: var(--surface-sunken, #f1ede6);
+    border: 1px dashed var(--border, #dcd6cb);
+    color: var(--muted, #6c6357);
     text-align: center;
   }
   .dre-fed__notice p {
     margin: 0;
   }
   .dre-fed__error {
-    background: color-mix(in srgb, var(--error, #c0392b) 12%, var(--surface, #fff));
+    background: color-mix(in srgb, var(--error, #c0392b) 12%, var(--surface, #fdfcfa));
     border: 1px solid color-mix(in srgb, var(--error, #c0392b) 35%, transparent);
   }
 </style>

@@ -349,7 +349,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-md, 1rem);
-    color: var(--ink, #222);
+    color: var(--ink, #33291f);
     font-size: var(--text-base, 1rem);
   }
 
@@ -372,10 +372,10 @@
     gap: var(--space-xs, 0.5rem);
     width: 100%;
     padding: 0.6rem 0.9rem;
-    border: 1px solid var(--border, #ccc);
+    border: 1px solid var(--border, #dcd6cb);
     border-radius: var(--radius-md, 0.5rem);
-    background: var(--surface, #fff);
-    color: var(--ink-strong, var(--ink, #222));
+    background: var(--surface, #fdfcfa);
+    color: var(--ink-strong, var(--ink, #33291f));
     font: inherit;
     font-size: var(--text-sm, 0.9rem);
     font-weight: 600;
@@ -385,10 +385,10 @@
     transform: none !important;
   }
   .dre-search__facets-toggle:hover {
-    border-color: var(--primary, #2a4d8f);
+    border-color: var(--primary, #007a50);
     /* Stay an outline button — the host would fill it green with a white label. */
-    background: var(--surface, #fff) !important;
-    color: var(--primary, #2a4d8f) !important;
+    background: var(--surface, #fdfcfa) !important;
+    color: var(--primary, #007a50) !important;
   }
   .dre-search__facets-toggle-badge {
     display: inline-flex;
@@ -398,8 +398,8 @@
     height: 1.25rem;
     padding: 0 0.4rem;
     border-radius: var(--radius-full, 9999px);
-    background: var(--primary, #2a4d8f);
-    color: var(--primary-contrast, #fff);
+    background: var(--primary, #007a50);
+    color: var(--primary-contrast, #fdfcfa);
     font-size: var(--text-xs, 0.7rem);
     font-weight: 600;
   }
@@ -414,7 +414,7 @@
     /* A left gutter so the rail's controls aren't glued to the page edge; it
        lands the headings on the search box's text edge (both = --space-md). */
     padding-inline: var(--space-md, 1rem);
-    border-inline-end: 1px solid var(--border-light, #eee);
+    border-inline-end: 1px solid var(--border-light, #eae5dd);
   }
 
   .dre-search__results {
@@ -435,15 +435,15 @@
     gap: var(--space-md, 1rem);
     flex-wrap: wrap;
     padding-block-end: var(--space-sm, 0.5rem);
-    border-bottom: 1px solid var(--border-light, #eee);
+    border-bottom: 1px solid var(--border-light, #eae5dd);
   }
   .dre-search__count {
-    color: var(--muted, #666);
+    color: var(--muted, #7a7164);
     font-size: var(--text-sm, 0.9rem);
     font-variant-numeric: tabular-nums;
   }
   .dre-search__count strong {
-    color: var(--ink-strong, var(--ink, #222));
+    color: var(--ink-strong, var(--ink, #33291f));
     font-size: var(--text-lg, 1.125rem);
   }
 
@@ -456,14 +456,14 @@
     gap: var(--space-xs, 0.25rem);
   }
   .dre-search__error {
-    background: color-mix(in srgb, var(--error, #c0392b) 12%, var(--surface, #fff));
+    background: color-mix(in srgb, var(--error, #c0392b) 12%, var(--surface, #fdfcfa));
     border: 1px solid color-mix(in srgb, var(--error, #c0392b) 35%, transparent);
-    color: var(--ink-strong, var(--ink, #222));
+    color: var(--ink-strong, var(--ink, #33291f));
   }
   .dre-search__notice {
-    background: var(--surface-sunken, #f6f6f6);
-    border: 1px dashed var(--border, #ccc);
-    color: var(--muted, #555);
+    background: var(--surface-sunken, #f1ede6);
+    border: 1px dashed var(--border, #dcd6cb);
+    color: var(--muted, #6c6357);
     text-align: center;
   }
   .dre-search__notice p {
@@ -471,25 +471,25 @@
   }
 
   .dre-search__status {
-    color: var(--muted, #666);
+    color: var(--muted, #7a7164);
     font-size: var(--text-sm, 0.9rem);
     margin: 0;
   }
 
   .dre-search__empty {
-    background: var(--surface-sunken, #f9f9f9);
-    border: 1px dashed var(--border, #ccc);
+    background: var(--surface-sunken, #f6f2eb);
+    border: 1px dashed var(--border, #dcd6cb);
     border-radius: var(--radius-md, 0.5rem);
     padding: var(--space-2xl, 3rem) var(--space-lg, 1.5rem);
     text-align: center;
-    color: var(--muted, #666);
+    color: var(--muted, #7a7164);
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: var(--space-sm, 0.5rem);
   }
   .dre-search__empty strong {
-    color: var(--ink-strong, var(--ink, #222));
+    color: var(--ink-strong, var(--ink, #33291f));
     font-size: var(--text-lg, 1.125rem);
   }
   .dre-search__empty p {
@@ -497,8 +497,8 @@
   }
   .dre-search__clear-link {
     background: none;
-    border: 1px solid var(--primary, #2a4d8f);
-    color: var(--primary, #2a4d8f);
+    border: 1px solid var(--primary, #007a50);
+    color: var(--primary, #007a50);
     border-radius: var(--radius-md, 0.5rem);
     padding: 0.4rem 0.75rem;
     font-size: var(--text-sm, 0.9rem);
@@ -509,8 +509,8 @@
     transform: none !important;
   }
   .dre-search__clear-link:hover {
-    background: var(--primary, #2a4d8f);
-    color: var(--primary-contrast, #fff);
+    background: var(--primary, #007a50);
+    color: var(--primary-contrast, #fdfcfa);
   }
 
   @media (max-width: 48rem) {
@@ -529,7 +529,7 @@
       overflow: visible;
       padding-inline: 0;
       border-inline-end: none;
-      border-bottom: 1px solid var(--border-light, #eee);
+      border-bottom: 1px solid var(--border-light, #eae5dd);
       padding-block-end: var(--space-md, 1rem);
     }
     .dre-search__facets--open {

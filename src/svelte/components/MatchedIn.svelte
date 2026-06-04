@@ -47,10 +47,10 @@
     margin: var(--space-xs, 0.25rem) 0 0;
     font-size: var(--text-xs, 0.78rem);
     line-height: 1.5;
-    color: var(--ink-light, var(--ink, #444));
+    color: var(--ink-light, var(--ink, #5f5648));
   }
   .dre-match__label {
-    color: var(--muted, #666);
+    color: var(--muted, #7a7164);
     font-weight: 700;
     font-size: var(--text-xs, 0.72rem);
     letter-spacing: 0.04em;
@@ -58,10 +58,10 @@
     margin-inline-end: 0.35rem;
   }
   .dre-match__field {
-    color: var(--muted, #666);
+    color: var(--muted, #7a7164);
     font-weight: 600;
   }
   .dre-match__sep {
-    color: var(--muted, #999);
+    color: var(--muted, #a39a8c);
   }
 </style>

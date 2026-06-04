@@ -149,8 +149,8 @@
     grid-template-columns: auto 1fr;
     gap: var(--space-md, 1rem);
     padding: var(--space-md, 1rem);
-    background: var(--surface, #fff);
-    border: 1px solid var(--border-light, #eee);
+    background: var(--surface, #fdfcfa);
+    border: 1px solid var(--border-light, #eae5dd);
     border-radius: var(--radius-lg, 0.75rem);
     box-shadow: var(--shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.04));
     transition:
@@ -158,7 +158,7 @@
       box-shadow var(--transition-base, 200ms ease);
   }
   .dre-card:hover {
-    border-color: color-mix(in srgb, var(--primary, #2a4d8f) 40%, var(--border, #ccc));
+    border-color: color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dcd6cb));
     box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.08));
   }
   .dre-card--no-thumb {
@@ -171,8 +171,8 @@
     height: 6rem;
     border-radius: var(--radius-sm, 0.375rem);
     overflow: hidden;
-    background: var(--surface-sunken, #f5f5f5);
-    border: 1px solid var(--border-light, #eee);
+    background: var(--surface-sunken, #f1ede6);
+    border: 1px solid var(--border-light, #eae5dd);
   }
   .dre-card__thumb img {
     width: 100%;
@@ -195,7 +195,7 @@
     min-height: 1.1rem;
   }
   .dre-card__eyebrow {
-    color: var(--muted, #666);
+    color: var(--muted, #7a7164);
     font-size: var(--text-xs, 0.75rem);
     font-weight: 600;
     letter-spacing: 0.06em;
@@ -206,8 +206,8 @@
     display: inline-flex;
     align-items: center;
     padding: 0.1rem 0.5rem;
-    background: color-mix(in srgb, var(--primary, #2a4d8f) 14%, var(--surface, #fff));
-    color: var(--ink-strong, var(--ink, #222));
+    background: color-mix(in srgb, var(--primary, #007a50) 14%, var(--surface, #fdfcfa));
+    color: var(--ink-strong, var(--ink, #33291f));
     border-radius: var(--radius-full, 9999px);
     font-size: var(--text-xs, 0.7rem);
     font-weight: 600;
@@ -220,26 +220,26 @@
     font-size: var(--text-lg, 1.125rem);
     line-height: 1.35;
     font-family: var(--font-display, Georgia, serif);
-    color: var(--ink-strong, var(--ink, #222));
+    color: var(--ink-strong, var(--ink, #33291f));
   }
   .dre-card__title a {
     color: inherit;
     text-decoration: none;
   }
   .dre-card__title a:hover {
-    color: var(--primary, #2a4d8f);
+    color: var(--primary, #007a50);
     text-decoration: underline;
     text-underline-offset: 2px;
   }
   .dre-card__byline {
     margin: 0;
     font-size: var(--text-sm, 0.9rem);
-    color: var(--ink-light, var(--ink, #444));
+    color: var(--ink-light, var(--ink, #5f5648));
   }
   .dre-card__snippet {
     margin: var(--space-xs, 0.25rem) 0 0;
     font-size: var(--text-sm, 0.9rem);
-    color: var(--ink-light, var(--ink, #444));
+    color: var(--ink-light, var(--ink, #5f5648));
     line-height: 1.5;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -261,8 +261,8 @@
     display: inline-flex;
     align-items: center;
     padding: 0.1rem 0.5rem;
-    background: var(--surface-sunken, #f5f5f5);
-    color: var(--ink-light, var(--ink, #444));
+    background: var(--surface-sunken, #f1ede6);
+    color: var(--ink-light, var(--ink, #5f5648));
     border: none;
     border-radius: var(--radius-sm, 0.375rem);
     font-family: inherit;
@@ -275,31 +275,31 @@
       color var(--transition-fast, 150ms ease);
   }
   .dre-card__chip:hover {
-    background: color-mix(in srgb, var(--primary, #2a4d8f) 18%, var(--surface, #fff));
-    color: var(--ink-strong, var(--ink, #222));
+    background: color-mix(in srgb, var(--primary, #007a50) 18%, var(--surface, #fdfcfa));
+    color: var(--ink-strong, var(--ink, #33291f));
     box-shadow: none !important;
     transform: none !important;
   }
   .dre-card__chip:focus-visible {
     outline: none;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(42, 77, 143, 0.3));
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3));
   }
   .dre-card__chip--project {
-    background: color-mix(in srgb, var(--accent, #d57912) 16%, var(--surface, #fff));
-    color: var(--ink-strong, var(--ink, #222));
+    background: color-mix(in srgb, var(--accent, #d57912) 16%, var(--surface, #fdfcfa));
+    color: var(--ink-strong, var(--ink, #33291f));
     font-weight: 600;
   }
   .dre-card__chip--project:hover {
-    background: color-mix(in srgb, var(--accent, #d57912) 30%, var(--surface, #fff));
+    background: color-mix(in srgb, var(--accent, #d57912) 30%, var(--surface, #fdfcfa));
   }
   .dre-card__geo {
     margin: 0;
     font-size: var(--text-xs, 0.78rem);
     line-height: 1.5;
-    color: var(--ink-light, var(--ink, #444));
+    color: var(--ink-light, var(--ink, #5f5648));
   }
   .dre-card__geo-label {
-    color: var(--muted, #666);
+    color: var(--muted, #7a7164);
     font-weight: 600;
   }
   .dre-card__geo-label::after {
@@ -322,13 +322,13 @@
     text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
   }
   .dre-card__filter-link:hover {
-    color: var(--primary, #2a4d8f) !important;
+    color: var(--primary, #007a50) !important;
     text-decoration-color: currentColor;
   }
   .dre-card__filter-link:focus-visible {
     outline: none;
     border-radius: var(--radius-sm, 0.375rem);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(42, 77, 143, 0.3)) !important;
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3)) !important;
   }
 
   @media (max-width: 32rem) {
