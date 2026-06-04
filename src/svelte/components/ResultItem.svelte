@@ -5,13 +5,15 @@
   /**
    * One result card:
    *
-   *   ┌──────────────────────────────────────────────┐
-   *   │ ┌────┐  2021                          TEXT    │
-   *   │ │img │  Title of the research item            │
-   *   │ │    │  Author A, Author B                    │
-   *   │ └────┘  Short abstract / description…         │
-   *   │         Project · Bénin · Niger               │
-   *   └──────────────────────────────────────────────┘
+   *   ┌────────────────────────────────────────────────┐
+   *   │ ┌────┐  2021                            TEXT    │
+   *   │ │img │  Title of the research item              │
+   *   │ │    │  Author A, Author B                      │
+   *   │ └────┘  Short abstract / description…           │
+   *   │         [Project]                               │
+   *   │         Place of origin: Bayreuth · Lagos       │
+   *   │         Current location: University of Bayreuth │
+   *   └────────────────────────────────────────────────┘
    */
 
   interface Props {
@@ -25,7 +27,11 @@
   const title = $derived(doc.title || t('untitled'));
   const byline = $derived((doc.creator_ss ?? []).join(', '));
   const abstract = $derived((doc.abstract ?? doc.description ?? '').trim());
-  const countries = $derived(doc.country_ss ?? []);
+  // Geographic provenance: where the item is from (the specific place as recorded,
+  // e.g. "Bayreuth") vs where it is held now (specific place or repository
+  // institution). Both are the verbatim linked place — not the country roll-up.
+  const origins = $derived(doc.origin_ss ?? []);
+  const currentLocations = $derived(doc.provenance_ss ?? []);
 </script>
 
 <article class="dre-card" class:dre-card--no-thumb={!doc.thumbnail_url}>
@@ -57,15 +63,24 @@
       <p class="dre-card__snippet">{abstract}</p>
     {/if}
 
-    {#if doc.project_s || countries.length > 0}
+    {#if doc.project_s}
       <ul class="dre-card__chips">
-        {#if doc.project_s}
-          <li class="dre-card__chip dre-card__chip--project">{doc.project_s}</li>
-        {/if}
-        {#each countries as c (c)}
-          <li class="dre-card__chip">{c}</li>
-        {/each}
+        <li class="dre-card__chip dre-card__chip--project">{doc.project_s}</li>
       </ul>
+    {/if}
+
+    {#if origins.length > 0}
+      <p class="dre-card__geo">
+        <span class="dre-card__geo-label">{t('origin_label')}</span>
+        <span>{origins.join(' · ')}</span>
+      </p>
+    {/if}
+
+    {#if currentLocations.length > 0}
+      <p class="dre-card__geo">
+        <span class="dre-card__geo-label">{t('current_location_label')}</span>
+        <span>{currentLocations.join(' · ')}</span>
+      </p>
     {/if}
   </div>
 </article>
@@ -196,6 +211,19 @@
     background: color-mix(in srgb, var(--accent, #d57912) 16%, var(--surface, #fff));
     color: var(--ink-strong, var(--ink, #222));
     font-weight: 600;
+  }
+  .dre-card__geo {
+    margin: 0;
+    font-size: var(--text-xs, 0.78rem);
+    line-height: 1.5;
+    color: var(--ink-light, var(--ink, #444));
+  }
+  .dre-card__geo-label {
+    color: var(--muted, #666);
+    font-weight: 600;
+  }
+  .dre-card__geo-label::after {
+    content: ': ';
   }
 
   @media (max-width: 32rem) {

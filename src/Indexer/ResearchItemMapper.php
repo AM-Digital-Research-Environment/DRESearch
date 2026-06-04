@@ -43,6 +43,7 @@ final class ResearchItemMapper implements MapperInterface
         // which simply yields no values from $values.
         $pType       = $this->profile->property('type_s') ?? '';
         $pProject    = $this->profile->property('project_s') ?? '';
+        $pOrigin     = $this->profile->property('origin_ss') ?? '';
         $pCountry    = $this->profile->property('country_ss') ?? '';
         $pProvenance = $this->profile->property('provenance_ss') ?? '';
         $pLanguage   = $this->profile->property('language_ss') ?? '';
@@ -124,6 +125,12 @@ final class ResearchItemMapper implements MapperInterface
         if ($tags) {
             $doc['tag_ss'] = array_values(array_unique($tags));
         }
+
+        // origin_ss — the place(s) exactly as recorded on dcterms:spatial (the
+        // specific city / region / country, e.g. "Bayreuth"); the card's "Place of
+        // origin" and its facet. country_ss below rolls the same value up to its
+        // parent country for broad browsing.
+        $this->addMulti($doc, $values, $pOrigin, 'origin_ss');
 
         // country_ss — spatial that is a country directly, else the city/region's
         // parent country via dcterms:isPartOf.

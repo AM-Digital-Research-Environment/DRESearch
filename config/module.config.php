@@ -275,12 +275,15 @@ return [
                 'facets' => [
                     'type_s'          => ['property' => 'dcterms:type',       'label' => 'Type',                'array' => false],
                     'project_s'       => ['property' => 'dcterms:isPartOf',   'label' => 'Project',             'array' => false],
-                    // Geographic pair: Country = place of origin (dcterms:spatial,
-                    // rolled up to country); Current location = where the item is
-                    // held now (dcterms:provenance — a specific place OR repository
-                    // institution, NOT rolled up, so e.g. "University of Bayreuth"
-                    // is filterable). Same provenance link that feeds the Locations
-                    // corpus's "Current location" relationship.
+                    // Geographic facets. Place of origin = the exact place recorded
+                    // (dcterms:spatial, e.g. "Bayreuth"); Country = that rolled up to
+                    // the parent country (e.g. "Germany") for broad browsing; Current
+                    // location = where the item is held now (dcterms:provenance — a
+                    // specific place OR repository institution). origin_ss & country_ss
+                    // both read dcterms:spatial — the mapper fills both
+                    // (ResearchItemMapper): origin_ss keeps the linked place verbatim,
+                    // country_ss rolls a city/region up to its country.
+                    'origin_ss'       => ['property' => 'dcterms:spatial',    'label' => 'Place of origin',     'array' => true],
                     'country_ss'      => ['property' => 'dcterms:spatial',    'label' => 'Country',             'array' => true],
                     'provenance_ss'   => ['property' => 'dcterms:provenance', 'label' => 'Current location',    'array' => true],
                     'language_ss'     => ['property' => 'dcterms:language',   'label' => 'Language',            'array' => true],

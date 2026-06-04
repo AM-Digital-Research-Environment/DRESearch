@@ -74,7 +74,12 @@ export interface Doc {
   // Research-item fields.
   type_s?: string;
   project_s?: string;
+  /** Place of origin — the specific place as recorded (dcterms:spatial, e.g. "Bayreuth"). */
+  origin_ss?: string[];
+  /** Country of origin — dcterms:spatial rolled up to country (broad-browse facet). */
   country_ss?: string[];
+  /** Current location — where the item is held now (dcterms:provenance: place or institution). */
+  provenance_ss?: string[];
   language_ss?: string[];
   subject_ss?: string[];
   tag_ss?: string[];

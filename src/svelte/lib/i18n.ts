@@ -55,6 +55,10 @@ const STRINGS: Record<string, string> = {
   project_label: 'Project',
   suggestions: 'Suggestions',
 
+  // Research-item card.
+  origin_label: 'Place of origin',
+  current_location_label: 'Current location',
+
   // Year range slider.
   year_label: 'Year',
   year_from: 'From',

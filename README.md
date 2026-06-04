@@ -43,11 +43,13 @@ don't want a search backend.
 
 - A **Research items search** page block: full-text search with autocomplete,
   faceted filtering, sorting, pagination, and result cards (title, type,
-  project, origin year, thumbnail).
-  - Facets: a **Year** range slider, plus **Type, Project, Country, Current
-    location, Language, Subject, Tag, Target audience, Digitisation method**.
-    (**Country** is place of origin rolled up to country; **Current location** is
-    where the item is held now — a specific place or repository institution.)
+  project, origin year, **place of origin**, **current location**, thumbnail).
+  - Facets: a **Year** range slider, plus **Type, Project, Place of origin,
+    Country, Current location, Language, Subject, Tag, Target audience,
+    Digitisation method**.
+    (**Place of origin** is the exact place recorded; **Country** is that rolled
+    up to the country for broad browsing; **Current location** is where the item
+    is held now — a specific place or repository institution.)
 - A **Research projects search** page block: cards show the project name, year
   range, research section(s), principal investigator(s), funding institution(s),
   and the number of associated research items.
@@ -231,18 +233,19 @@ list, and each block's facet picker all derive from the profile config.
 
 ### Research items (`research_items`) — resource template 10
 
-| Facet               | Omeka property       | Authority set                                           |
-| ------------------- | -------------------- | ------------------------------------------------------- |
-| Type                | `dcterms:type`       | 1                                                       |
-| Project             | `dcterms:isPartOf`   | 20                                                      |
-| Country             | `dcterms:spatial`    | 1851 (country direct, or via city `isPartOf`)           |
-| Current location    | `dcterms:provenance` | 1851 places + 110 institutions (held-at; not rolled up) |
-| Language            | `dcterms:language`   | 19                                                      |
-| Subject             | `dcterms:subject`    | 1852 (target type = `lcsh`)                             |
-| Tag                 | `dcterms:subject`    | 1852 (target type = `tag`)                              |
-| Target audience     | `dcterms:audience`   | 3169                                                    |
-| Digitisation method | `dcterms:format`     | 7438 (genres in set 21 excluded)                        |
-| Year (range slider) | `dcterms:issued`     | single `year` (fallback `created` → `date`)             |
+| Facet               | Omeka property       | Authority set                                              |
+| ------------------- | -------------------- | ---------------------------------------------------------- |
+| Type                | `dcterms:type`       | 1                                                          |
+| Project             | `dcterms:isPartOf`   | 20                                                         |
+| Place of origin     | `dcterms:spatial`    | 1851 (the linked place verbatim — city / region / country) |
+| Country             | `dcterms:spatial`    | 1851 (rolled up to country, direct or via city `isPartOf`) |
+| Current location    | `dcterms:provenance` | 1851 places + 110 institutions (held-at; not rolled up)    |
+| Language            | `dcterms:language`   | 19                                                         |
+| Subject             | `dcterms:subject`    | 1852 (target type = `lcsh`)                                |
+| Tag                 | `dcterms:subject`    | 1852 (target type = `tag`)                                 |
+| Target audience     | `dcterms:audience`   | 3169                                                       |
+| Digitisation method | `dcterms:format`     | 7438 (genres in set 21 excluded)                           |
+| Year (range slider) | `dcterms:issued`     | single `year` (fallback `created` → `date`)                |
 
 ### Research projects (`research_projects`) — resource template 5, item set 20
 
