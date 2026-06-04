@@ -1,6 +1,9 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
   import { t, researchItemsLabel } from '../lib/i18n';
+  import { firstMarked, markedLookup } from '../lib/highlight';
+  import Highlight from './Highlight.svelte';
+  import MatchedIn from './MatchedIn.svelte';
 
   /**
    * One research-project card:
@@ -27,14 +30,19 @@
 
   const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
   const title = $derived(doc.title || t('untitled'));
+  const titleHl = $derived(doc._highlights?.title?.[0] ?? null);
   const sections = $derived(doc.section_ss ?? []);
   const institutions = $derived(doc.institution_ss ?? []);
-  const abstract = $derived((doc.abstract ?? '').trim());
+  const sectionHl = $derived(markedLookup(doc, 'section_ss'));
+  const instHl = $derived(markedLookup(doc, 'institution_ss'));
+  // Abstract: the matched window when it matched, else the plain abstract.
+  const snippet = $derived(firstMarked(doc, ['abstract']) ?? (doc.abstract ?? '').trim());
   const itemCount = $derived(doc.item_count ?? 0);
 
   // PI names. Clicking one adds it as an "Associated people" (people_ss) filter,
   // so you can pivot to every project that person is involved in.
   const pis = $derived(doc.pi_ss ?? []);
+  const piHl = $derived(markedLookup(doc, 'pi_ss'));
 
   const yearRange = $derived.by(() => {
     const s = doc.year_start;
@@ -58,7 +66,7 @@
     </header>
 
     <h3 class="dre-pcard__title">
-      <a href={url}>{title}</a>
+      <a href={url}><Highlight value={titleHl ?? title} /></a>
     </h3>
 
     {#if pis.length > 0}
@@ -67,13 +75,14 @@
         {#each pis as pi, i (pi + '|' + i)}{i > 0 ? ', ' : ''}<button
             type="button"
             class="dre-pcard__pi-link"
-            onclick={() => onAddFilter('people_ss', pi)}>{pi}</button
+            onclick={() => onAddFilter('people_ss', pi)}
+            ><Highlight value={piHl.get(pi) ?? pi} /></button
           >{/each}
       </p>
     {/if}
 
-    {#if abstract}
-      <p class="dre-pcard__snippet">{abstract}</p>
+    {#if snippet}
+      <p class="dre-pcard__snippet"><Highlight value={snippet} /></p>
     {/if}
 
     {#if sections.length > 0 || institutions.length > 0}
@@ -85,7 +94,7 @@
               class="dre-pcard__chip dre-pcard__chip--section"
               onclick={() => onAddFilter('section_ss', s)}
             >
-              {s}
+              <Highlight value={sectionHl.get(s) ?? s} />
             </button>
           </li>
         {/each}
@@ -96,12 +105,14 @@
               class="dre-pcard__chip"
               onclick={() => onAddFilter('institution_ss', inst)}
             >
-              {inst}
+              <Highlight value={instHl.get(inst) ?? inst} />
             </button>
           </li>
         {/each}
       </ul>
     {/if}
+
+    <MatchedIn {doc} exclude={['title', 'abstract', 'pi_ss', 'section_ss', 'institution_ss']} />
   </div>
 </article>
 

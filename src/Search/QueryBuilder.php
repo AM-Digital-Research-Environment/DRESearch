@@ -31,6 +31,16 @@ final class QueryBuilder
     private const PER_PAGE_DEFAULT = 20;
     private const PER_PAGE_MAX = 50;
 
+    /**
+     * Sentinels wrapped around matched tokens instead of the default <mark>.
+     * They are Unicode private-use code points, so they never collide with real
+     * content and carry no HTML meaning — the client splits on them and renders
+     * <mark> via text nodes (no HTML injection from field values). See
+     * {@see SearchProxy::normalize()} and the Svelte lib/highlight.ts.
+     */
+    public const HL_START = "\u{E000}";
+    public const HL_END = "\u{E001}";
+
     public function __construct(private readonly SearchProfile $profile)
     {
     }
@@ -60,7 +70,25 @@ final class QueryBuilder
             $params['max_facet_values'] = 100;
         }
         if (!$isBrowse) {
-            $params['highlight_full_fields'] = 'title';
+            // Mark matched terms so each card can show *where* a result matched.
+            // Short fields (title, linked-value facets, names) are highlighted in
+            // full — so a card can highlight a whole chip/byline value — while the
+            // long abstract/description return a windowed snippet centred on the
+            // match (the full text would scroll the match out of the clamped card).
+            $queryFields = array_values(array_filter(array_map(
+                'trim',
+                explode(',', $this->profile->queryBy())
+            )));
+            $fullFields = array_values(array_filter(
+                $queryFields,
+                static fn(string $f): bool => $f !== 'abstract' && $f !== 'description'
+            ));
+            $params['highlight_start_tag'] = self::HL_START;
+            $params['highlight_end_tag'] = self::HL_END;
+            $params['highlight_affix_num_tokens'] = 8;
+            if ($fullFields !== []) {
+                $params['highlight_full_fields'] = implode(',', $fullFields);
+            }
         }
         return $params;
     }
@@ -124,7 +152,14 @@ final class QueryBuilder
         // total regardless, and include_fields:id avoids shipping document bodies.
         $params['per_page'] = 1;
         $params['include_fields'] = 'id';
-        unset($params['facet_by'], $params['max_facet_values'], $params['highlight_full_fields']);
+        unset(
+            $params['facet_by'],
+            $params['max_facet_values'],
+            $params['highlight_full_fields'],
+            $params['highlight_start_tag'],
+            $params['highlight_end_tag'],
+            $params['highlight_affix_num_tokens'],
+        );
         return $params;
     }
 
@@ -159,7 +194,7 @@ final class QueryBuilder
 
         $filters = $req['filters'] ?? [];
         if (is_array($filters)) {
-            foreach ($this->profile->fieldNames() as $field) {
+            foreach ($this->profile->filterableFields() as $field) {
                 $values = $filters[$field] ?? null;
                 if (!is_array($values) || $values === []) {
                     continue;

@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import type { ActiveFilters, Facet } from '../lib/types';
-  import { t } from '../lib/i18n';
+  import { t, matchFieldLabel } from '../lib/i18n';
   import FacetGroup from './FacetGroup.svelte';
 
   interface Props {
@@ -23,7 +23,10 @@
     $props();
 
   function labelFor(field: string): string {
-    return labels[field] ?? field;
+    // Sidebar facets carry a server-translated label; a filter added from a result
+    // card may target a non-sidebar field (e.g. an author) — fall back to its
+    // friendly name so the active-filter chip never reads a raw field id.
+    return labels[field] ?? matchFieldLabel(field);
   }
 
   // Order the response facets by the configured order; drop empty ones.

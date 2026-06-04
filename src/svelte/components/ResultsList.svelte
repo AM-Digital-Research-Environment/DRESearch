@@ -77,7 +77,7 @@
       {:else if cardKind === 'term'}
         <TermCard {doc} {itemUrlBase} {onAddFilter} />
       {:else}
-        <ResultItem {doc} {itemUrlBase} />
+        <ResultItem {doc} {itemUrlBase} {onAddFilter} />
       {/if}
     </li>
   {/each}

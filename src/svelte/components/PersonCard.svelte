@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
   import { t, researchItemsLabel, publicationsLabel } from '../lib/i18n';
+  import { markedLookup } from '../lib/highlight';
+  import Highlight from './Highlight.svelte';
 
   /**
    * One person card:
@@ -26,8 +28,11 @@
 
   const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
   const name = $derived(doc.title || t('untitled'));
+  const nameHl = $derived(doc._highlights?.title?.[0] ?? null);
   const affiliations = $derived(doc.affiliation_ss ?? []);
   const roles = $derived(doc.roles_ss ?? []);
+  const affilHl = $derived(markedLookup(doc, 'affiliation_ss'));
+  const roleHl = $derived(markedLookup(doc, 'roles_ss'));
 
   // Association counts — show only the non-zero ones, joined with "·".
   const counts = $derived.by(() => {
@@ -51,11 +56,15 @@
 
   <div class="dre-person__body">
     <h3 class="dre-person__name">
-      <a href={url}>{name}</a>
+      <a href={url}><Highlight value={nameHl ?? name} /></a>
     </h3>
 
     {#if affiliations.length > 0}
-      <p class="dre-person__affil">{affiliations.join('; ')}</p>
+      <p class="dre-person__affil">
+        {#each affiliations as aff, i (aff + '|' + i)}{i > 0 ? '; ' : ''}<Highlight
+            value={affilHl.get(aff) ?? aff}
+          />{/each}
+      </p>
     {/if}
 
     {#if roles.length > 0}
@@ -67,7 +76,7 @@
               class="dre-person__chip dre-person__chip--role"
               onclick={() => onAddFilter('roles_ss', role)}
             >
-              {role}
+              <Highlight value={roleHl.get(role) ?? role} />
             </button>
           </li>
         {/each}
@@ -78,7 +87,7 @@
               class="dre-person__chip"
               onclick={() => onAddFilter('affiliation_ss', aff)}
             >
-              {aff}
+              <Highlight value={affilHl.get(aff) ?? aff} />
             </button>
           </li>
         {/each}

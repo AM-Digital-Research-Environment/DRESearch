@@ -229,8 +229,9 @@ final class SearchProxy
         $hits = [];
         foreach ($result['hits'] ?? [] as $hit) {
             $doc = $hit['document'] ?? [];
-            if (isset($hit['highlight']['title']['snippet'])) {
-                $doc['_title_highlight'] = $hit['highlight']['title']['snippet'];
+            $highlights = $this->extractHighlights($hit['highlight'] ?? []);
+            if ($highlights !== []) {
+                $doc['_highlights'] = $highlights;
             }
             $hits[] = $doc;
         }
@@ -263,6 +264,52 @@ final class SearchProxy
             'facets'         => $facets,
             'search_time_ms' => (int) ($result['search_time_ms'] ?? 0),
         ];
+    }
+
+    /**
+     * Flatten a Typesense per-hit `highlight` object into `field => list<snippet>`,
+     * keeping only fields/elements that actually matched (i.e. carry a highlight
+     * sentinel). The full highlighted value (`value`/`values`, present for fields
+     * in highlight_full_fields) is preferred over the windowed `snippet`/`snippets`
+     * so a card can highlight a complete linked value; abstract/description, which
+     * aren't full-highlighted, fall back to their centred snippet. The marks are
+     * the {@see QueryBuilder} private-use sentinels, converted to <mark> client-side.
+     *
+     * @param array<string,mixed> $highlight
+     * @return array<string,list<string>>
+     */
+    private function extractHighlights(array $highlight): array
+    {
+        $out = [];
+        foreach ($highlight as $field => $info) {
+            if (!is_string($field) || !is_array($info)) {
+                continue;
+            }
+            $candidates = [];
+            if (isset($info['value']) && is_string($info['value'])) {
+                $candidates[] = $info['value'];
+            } elseif (isset($info['snippet']) && is_string($info['snippet'])) {
+                $candidates[] = $info['snippet'];
+            }
+            foreach (['values', 'snippets'] as $key) {
+                if ($candidates === [] && isset($info[$key]) && is_array($info[$key])) {
+                    foreach ($info[$key] as $s) {
+                        if (is_string($s)) {
+                            $candidates[] = $s;
+                        }
+                    }
+                }
+            }
+            // Keep only the ones that were actually marked.
+            $marked = array_values(array_filter(
+                $candidates,
+                static fn(string $s): bool => str_contains($s, QueryBuilder::HL_START)
+            ));
+            if ($marked !== []) {
+                $out[$field] = $marked;
+            }
+        }
+        return $out;
     }
 
     /** A short "·"-joined subtitle for an autocomplete row, by profile kind. */

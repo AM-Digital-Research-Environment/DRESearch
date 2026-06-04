@@ -1,6 +1,9 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
   import { t, projectsLabel, membersLabel } from '../lib/i18n';
+  import { firstMarked, markedLookup } from '../lib/highlight';
+  import Highlight from './Highlight.svelte';
+  import MatchedIn from './MatchedIn.svelte';
 
   /**
    * One research-section card:
@@ -28,10 +31,16 @@
 
   const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
   const title = $derived(doc.title || t('untitled'));
+  const titleHl = $derived(doc._highlights?.title?.[0] ?? null);
   const phase = $derived(doc.phase_s ?? '');
   const projectCount = $derived(doc.project_count ?? 0);
   const memberCount = $derived(doc.member_count ?? 0);
-  const abstract = $derived((doc.abstract ?? '').trim());
+  // Abstract: the matched window when it matched, else the plain abstract.
+  const snippet = $derived(firstMarked(doc, ['abstract']) ?? (doc.abstract ?? '').trim());
+  // Leaders come from either pi_ss or spokesperson_ss — merge both highlight maps.
+  const leaderHl = $derived(
+    new Map([...markedLookup(doc, 'pi_ss'), ...markedLookup(doc, 'spokesperson_ss')]),
+  );
 
   // Leaders — PIs for a Phase 1 section, a spokesperson for Phase 2 (the two are
   // mutually exclusive in the source data; External has neither).
@@ -66,7 +75,7 @@
     </header>
 
     <h3 class="dre-scard__title">
-      <a href={url}>{title}</a>
+      <a href={url}><Highlight value={titleHl ?? title} /></a>
     </h3>
 
     {#if leaders}
@@ -75,7 +84,8 @@
         {#each leaders.names as nm, i (nm + '|' + i)}{i > 0 ? ', ' : ''}<button
             type="button"
             class="dre-scard__person"
-            onclick={() => onAddFilter('people_ss', nm)}>{nm}</button
+            onclick={() => onAddFilter('people_ss', nm)}
+            ><Highlight value={leaderHl.get(nm) ?? nm} /></button
           >{/each}
       </p>
     {/if}
@@ -84,9 +94,11 @@
       <p class="dre-scard__members">{membersLabel(memberCount)}</p>
     {/if}
 
-    {#if abstract}
-      <p class="dre-scard__snippet">{abstract}</p>
+    {#if snippet}
+      <p class="dre-scard__snippet"><Highlight value={snippet} /></p>
     {/if}
+
+    <MatchedIn {doc} exclude={['title', 'abstract', 'pi_ss', 'spokesperson_ss']} />
   </div>
 </article>
 

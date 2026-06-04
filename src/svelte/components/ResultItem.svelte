@@ -1,6 +1,9 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
   import { t } from '../lib/i18n';
+  import { firstMarked, markedLookup } from '../lib/highlight';
+  import Highlight from './Highlight.svelte';
+  import MatchedIn from './MatchedIn.svelte';
 
   /**
    * One result card:
@@ -13,25 +16,44 @@
    *   │         [Project]                               │
    *   │         Place of origin: Bayreuth · Lagos       │
    *   │         Current location: University of Bayreuth │
+   *   │         Language: English                        │
    *   └────────────────────────────────────────────────┘
+   *
+   * The project chip, each author, place of origin, current location and language
+   * are buttons that add that value as a facet filter (onAddFilter). Matched query
+   * terms are highlighted in the title, byline and snippet; matches in fields the
+   * card doesn't show surface in a "Matched in" line.
    */
 
   interface Props {
     doc: Doc;
     itemUrlBase: string;
+    onAddFilter: (field: string, value: string) => void;
   }
 
-  const { doc, itemUrlBase }: Props = $props();
+  const { doc, itemUrlBase, onAddFilter }: Props = $props();
 
   const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
   const title = $derived(doc.title || t('untitled'));
-  const byline = $derived((doc.creator_ss ?? []).join(', '));
-  const abstract = $derived((doc.abstract ?? doc.description ?? '').trim());
+  const titleHl = $derived(doc._highlights?.title?.[0] ?? null);
+
+  // Authors / contributors — clickable (filters creator_ss) and highlighted.
+  const creators = $derived(doc.creator_ss ?? []);
+  const creatorHl = $derived(markedLookup(doc, 'creator_ss'));
+
+  // Snippet: whichever of abstract/description matched (centred on the match),
+  // else the abstract (or description) shown plainly.
+  const snippet = $derived(
+    firstMarked(doc, ['abstract', 'description']) ?? (doc.abstract ?? doc.description ?? '').trim(),
+  );
+
+  const project = $derived(doc.project_s ?? '');
   // Geographic provenance: where the item is from (the specific place as recorded,
   // e.g. "Bayreuth") vs where it is held now (specific place or repository
   // institution). Both are the verbatim linked place — not the country roll-up.
   const origins = $derived(doc.origin_ss ?? []);
   const currentLocations = $derived(doc.provenance_ss ?? []);
+  const languages = $derived(doc.language_ss ?? []);
 </script>
 
 <article class="dre-card" class:dre-card--no-thumb={!doc.thumbnail_url}>
@@ -52,36 +74,72 @@
     </header>
 
     <h3 class="dre-card__title">
-      <a href={url}>{title}</a>
+      <a href={url}><Highlight value={titleHl ?? title} /></a>
     </h3>
 
-    {#if byline}
-      <p class="dre-card__byline">{byline}</p>
+    {#if creators.length > 0}
+      <p class="dre-card__byline">
+        {#each creators as name, i (name + '|' + i)}{i > 0 ? ', ' : ''}<button
+            type="button"
+            class="dre-card__filter-link"
+            onclick={() => onAddFilter('creator_ss', name)}
+            ><Highlight value={creatorHl.get(name) ?? name} /></button
+          >{/each}
+      </p>
     {/if}
 
-    {#if abstract}
-      <p class="dre-card__snippet">{abstract}</p>
+    {#if snippet}
+      <p class="dre-card__snippet"><Highlight value={snippet} /></p>
     {/if}
 
-    {#if doc.project_s}
+    {#if project}
       <ul class="dre-card__chips">
-        <li class="dre-card__chip dre-card__chip--project">{doc.project_s}</li>
+        <li>
+          <button
+            type="button"
+            class="dre-card__chip dre-card__chip--project"
+            onclick={() => onAddFilter('project_s', project)}
+          >
+            {project}
+          </button>
+        </li>
       </ul>
     {/if}
 
     {#if origins.length > 0}
       <p class="dre-card__geo">
         <span class="dre-card__geo-label">{t('origin_label')}</span>
-        <span>{origins.join(' · ')}</span>
+        {#each origins as o, i (o + '|' + i)}{i > 0 ? ' · ' : ''}<button
+            type="button"
+            class="dre-card__filter-link"
+            onclick={() => onAddFilter('origin_ss', o)}>{o}</button
+          >{/each}
       </p>
     {/if}
 
     {#if currentLocations.length > 0}
       <p class="dre-card__geo">
         <span class="dre-card__geo-label">{t('current_location_label')}</span>
-        <span>{currentLocations.join(' · ')}</span>
+        {#each currentLocations as c, i (c + '|' + i)}{i > 0 ? ' · ' : ''}<button
+            type="button"
+            class="dre-card__filter-link"
+            onclick={() => onAddFilter('provenance_ss', c)}>{c}</button
+          >{/each}
       </p>
     {/if}
+
+    {#if languages.length > 0}
+      <p class="dre-card__geo">
+        <span class="dre-card__geo-label">{t('language_label')}</span>
+        {#each languages as l, i (l + '|' + i)}{i > 0 ? ' · ' : ''}<button
+            type="button"
+            class="dre-card__filter-link"
+            onclick={() => onAddFilter('language_ss', l)}>{l}</button
+          >{/each}
+      </p>
+    {/if}
+
+    <MatchedIn {doc} exclude={['title', 'abstract', 'description', 'creator_ss']} />
   </div>
 </article>
 
@@ -197,20 +255,42 @@
     flex-wrap: wrap;
     gap: var(--space-xs, 0.25rem);
   }
+  /* Chips are buttons (click to filter); reset the native chrome and suppress the
+     host theme's primary-button hover lift/glow. */
   .dre-card__chip {
     display: inline-flex;
     align-items: center;
     padding: 0.1rem 0.5rem;
     background: var(--surface-sunken, #f5f5f5);
     color: var(--ink-light, var(--ink, #444));
+    border: none;
     border-radius: var(--radius-sm, 0.375rem);
+    font-family: inherit;
     font-size: var(--text-xs, 0.75rem);
     font-weight: 500;
+    line-height: 1.5;
+    cursor: pointer;
+    transition:
+      background var(--transition-fast, 150ms ease),
+      color var(--transition-fast, 150ms ease);
+  }
+  .dre-card__chip:hover {
+    background: color-mix(in srgb, var(--primary, #2a4d8f) 18%, var(--surface, #fff));
+    color: var(--ink-strong, var(--ink, #222));
+    box-shadow: none !important;
+    transform: none !important;
+  }
+  .dre-card__chip:focus-visible {
+    outline: none;
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(42, 77, 143, 0.3));
   }
   .dre-card__chip--project {
     background: color-mix(in srgb, var(--accent, #d57912) 16%, var(--surface, #fff));
     color: var(--ink-strong, var(--ink, #222));
     font-weight: 600;
+  }
+  .dre-card__chip--project:hover {
+    background: color-mix(in srgb, var(--accent, #d57912) 30%, var(--surface, #fff));
   }
   .dre-card__geo {
     margin: 0;
@@ -224,6 +304,31 @@
   }
   .dre-card__geo-label::after {
     content: ': ';
+  }
+  /* Inline "click to filter" values (authors, places, language) — a plain text
+     button, underlined, that turns brand-coloured on hover. The !important rules
+     beat the host theme, which styles every <button> as a filled primary button. */
+  .dre-card__filter-link {
+    padding: 0;
+    border: none;
+    background: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    font: inherit;
+    cursor: pointer;
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  }
+  .dre-card__filter-link:hover {
+    color: var(--primary, #2a4d8f) !important;
+    text-decoration-color: currentColor;
+  }
+  .dre-card__filter-link:focus-visible {
+    outline: none;
+    border-radius: var(--radius-sm, 0.375rem);
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(42, 77, 143, 0.3)) !important;
   }
 
   @media (max-width: 32rem) {

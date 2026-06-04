@@ -178,6 +178,25 @@ final class SearchProfile
         return isset($this->facets[$field]);
     }
 
+    /**
+     * Fields the client is allowed to filter on: every sidebar facet, plus any
+     * faceted display field (e.g. creator_ss) so a card can make a non-sidebar
+     * value like an author name clickable-to-filter. index:false display fields
+     * are excluded (they aren't queryable in Typesense).
+     *
+     * @return list<string>
+     */
+    public function filterableFields(): array
+    {
+        $fields = $this->fieldNames();
+        foreach ($this->displayFields as $name => $def) {
+            if (($def['facet'] ?? false) && (($def['index'] ?? true) !== false)) {
+                $fields[] = $name;
+            }
+        }
+        return array_values(array_unique($fields));
+    }
+
     public function facetLabel(string $field): string
     {
         return $this->facets[$field]['label'] ?? $field;

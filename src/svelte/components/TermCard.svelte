@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
   import { t, researchItemsLabel, publicationsLabel } from '../lib/i18n';
+  import Highlight from './Highlight.svelte';
 
   /**
    * One authority-term card — a genre, language, location, or subject/tag:
@@ -27,6 +28,7 @@
 
   const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
   const name = $derived(doc.title || t('untitled'));
+  const nameHl = $derived(doc._highlights?.title?.[0] ?? null);
   const type = $derived((doc.type_s ?? '').trim());
   const roles = $derived(doc.roles_ss ?? []);
 
@@ -46,7 +48,7 @@
 <article class="dre-term">
   <div class="dre-term__head">
     <h3 class="dre-term__name">
-      <a href={url}>{name}</a>
+      <a href={url}><Highlight value={nameHl ?? name} /></a>
     </h3>
     {#if type}
       <button type="button" class="dre-term__type" onclick={() => onAddFilter('type_s', type)}>

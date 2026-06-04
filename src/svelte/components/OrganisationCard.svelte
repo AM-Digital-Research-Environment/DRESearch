@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
   import { t, researchItemsLabel, projectsLabel, peopleLabel } from '../lib/i18n';
+  import Highlight from './Highlight.svelte';
 
   /**
    * One organisation card (institution or group):
@@ -25,6 +26,7 @@
 
   const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
   const name = $derived(doc.title || t('untitled'));
+  const nameHl = $derived(doc._highlights?.title?.[0] ?? null);
   const type = $derived((doc.type_s ?? '').trim());
   const roles = $derived(doc.roles_ss ?? []);
 
@@ -55,7 +57,7 @@
   <div class="dre-org__body">
     <div class="dre-org__head">
       <h3 class="dre-org__name">
-        <a href={url}>{name}</a>
+        <a href={url}><Highlight value={nameHl ?? name} /></a>
       </h3>
       {#if type}
         <button type="button" class="dre-org__type" onclick={() => onAddFilter('type_s', type)}>

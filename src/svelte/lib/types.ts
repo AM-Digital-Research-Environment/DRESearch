@@ -144,8 +144,13 @@ export interface Doc {
   abstract?: string;
   description?: string;
   thumbnail_url?: string;
-  /** Highlighted title snippet (contains literal <mark> tags only). */
-  _title_highlight?: string;
+  /**
+   * Per-field match highlights for the current query: field name => one or more
+   * snippets with matched tokens wrapped in private-use sentinels (NOT HTML).
+   * Only present for fields that actually matched. The client renders these as
+   * text + <mark> via lib/highlight.ts. Empty/absent on a browse (no query).
+   */
+  _highlights?: Record<string, string[]>;
 }
 
 export interface FacetCount {

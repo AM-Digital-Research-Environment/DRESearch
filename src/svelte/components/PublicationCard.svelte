@@ -1,6 +1,9 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
   import { t } from '../lib/i18n';
+  import { firstMarked, markedLookup } from '../lib/highlight';
+  import Highlight from './Highlight.svelte';
+  import MatchedIn from './MatchedIn.svelte';
 
   /**
    * One publication card — a bibliographic reference:
@@ -30,12 +33,15 @@
 
   const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
   const title = $derived(doc.title || t('untitled'));
+  const titleHl = $derived(doc._highlights?.title?.[0] ?? null);
   const type = $derived(doc.type_s ?? '');
   const year = $derived(doc.year);
-  const abstract = $derived((doc.abstract ?? '').trim());
+  // Abstract: the matched window when it matched, else the plain abstract.
+  const snippet = $derived(firstMarked(doc, ['abstract']) ?? (doc.abstract ?? '').trim());
   // Cap chips so a heavily-tagged publication doesn't blow out the card; the
   // Keyword facet still exposes the full list.
   const keywords = $derived((doc.keyword_ss ?? []).slice(0, 8));
+  const keywordHl = $derived(markedLookup(doc, 'keyword_ss'));
   const doi = $derived(doc.doi_s ?? '');
 
   // Authors paired with a link to their person page (unreconciled literals have
@@ -48,9 +54,11 @@
       return { name, href: id ? `${itemUrlBase}/${encodeURIComponent(id)}` : null };
     });
   });
+  const authorHl = $derived(markedLookup(doc, 'author_ss'));
 
   const editors = $derived(doc.editor_ss ?? []);
   const container = $derived(doc.container_ss?.[0] ?? '');
+  const containerHl = $derived(markedLookup(doc, 'container_ss'));
   const publisher = $derived(doc.publisher_ss?.[0] ?? '');
 
   // "In: Editors (eds.), " — only for edited volumes (a container with editors).
@@ -103,26 +111,28 @@
     </header>
 
     <h3 class="dre-bcard__title">
-      <a href={url}>{title}</a>
+      <a href={url}><Highlight value={titleHl ?? title} /></a>
     </h3>
 
     {#if authors.length > 0}
       <p class="dre-bcard__authors">
         {#each authors as a, i (a.name + '|' + i)}{i > 0 ? ', ' : ''}{#if a.href}<a
               class="dre-bcard__author-link"
-              href={a.href}>{a.name}</a
-            >{:else}<span>{a.name}</span>{/if}{/each}
+              href={a.href}><Highlight value={authorHl.get(a.name) ?? a.name} /></a
+            >{:else}<span><Highlight value={authorHl.get(a.name) ?? a.name} /></span>{/if}{/each}
       </p>
     {/if}
 
     {#if hasReference}
       <p class="dre-bcard__ref">
-        {editorsPrefix}{#if container}<cite class="dre-bcard__venue">{container}</cite>{/if}{tail}
+        {editorsPrefix}{#if container}<cite class="dre-bcard__venue"
+            ><Highlight value={containerHl.get(container) ?? container} /></cite
+          >{/if}{tail}
       </p>
     {/if}
 
-    {#if abstract}
-      <p class="dre-bcard__snippet">{abstract}</p>
+    {#if snippet}
+      <p class="dre-bcard__snippet"><Highlight value={snippet} /></p>
     {/if}
 
     {#if keywords.length > 0 || doi}
@@ -136,7 +146,7 @@
                   class="dre-bcard__chip"
                   onclick={() => onAddFilter('keyword_ss', kw)}
                 >
-                  {kw}
+                  <Highlight value={keywordHl.get(kw) ?? kw} />
                 </button>
               </li>
             {/each}
@@ -149,6 +159,8 @@
         {/if}
       </div>
     {/if}
+
+    <MatchedIn {doc} exclude={['title', 'abstract', 'author_ss', 'container_ss', 'keyword_ss']} />
   </div>
 </article>
 

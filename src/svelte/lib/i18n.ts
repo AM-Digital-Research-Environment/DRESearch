@@ -55,9 +55,13 @@ const STRINGS: Record<string, string> = {
   project_label: 'Project',
   suggestions: 'Suggestions',
 
+  // Match highlighting — prefix for matches in a field the card doesn't show.
+  matched_in: 'Matched in',
+
   // Research-item card.
   origin_label: 'Place of origin',
   current_location_label: 'Current location',
+  language_label: 'Language',
 
   // Year range slider.
   year_label: 'Year',
@@ -94,6 +98,41 @@ const STRINGS: Record<string, string> = {
   people_one: '{n} person',
   people_other: '{n} people',
 };
+
+/**
+ * Friendly label for a searchable/filterable field, by its Typesense field name.
+ * Used for the "Matched in" line and as a fallback label for active-filter chips
+ * whose field isn't a sidebar facet (e.g. an author clicked on a result card).
+ */
+const MATCH_FIELD_LABELS: Record<string, string> = {
+  title: 'Title',
+  abstract: 'Abstract',
+  description: 'Description',
+  subject_ss: 'Subject',
+  tag_ss: 'Tag',
+  creator_ss: 'Author',
+  author_ss: 'Author',
+  editor_ss: 'Editor',
+  container_ss: 'In',
+  publisher_ss: 'Publisher',
+  keyword_ss: 'Keyword',
+  pi_ss: 'Principal investigator',
+  member_ss: 'Member',
+  institution_ss: 'Institution',
+  section_ss: 'Research section',
+  people_ss: 'Associated people',
+  spokesperson_ss: 'Spokesperson',
+  affiliation_ss: 'Affiliation',
+  roles_ss: 'Role',
+  language_ss: 'Language',
+  origin_ss: 'Place of origin',
+  provenance_ss: 'Current location',
+  project_s: 'Project',
+};
+
+export function matchFieldLabel(field: string): string {
+  return MATCH_FIELD_LABELS[field] ?? field;
+}
 
 export function t(key: string, vars?: Record<string, string | number>): string {
   let str = STRINGS[key] ?? key;
