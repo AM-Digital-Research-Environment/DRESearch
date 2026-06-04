@@ -41,13 +41,14 @@ final class ResearchItemMapper implements MapperInterface
     {
         // Facet → Omeka property (config-driven). '' if a facet is unmapped,
         // which simply yields no values from $values.
-        $pType     = $this->profile->property('type_s') ?? '';
-        $pProject  = $this->profile->property('project_s') ?? '';
-        $pCountry  = $this->profile->property('country_ss') ?? '';
-        $pLanguage = $this->profile->property('language_ss') ?? '';
-        $pSubject  = $this->profile->property('subject_ss') ?? ''; // shared with tag_ss
-        $pAudience = $this->profile->property('audience_ss') ?? '';
-        $pFormat   = $this->profile->property('digitisation_ss') ?? '';
+        $pType       = $this->profile->property('type_s') ?? '';
+        $pProject    = $this->profile->property('project_s') ?? '';
+        $pCountry    = $this->profile->property('country_ss') ?? '';
+        $pProvenance = $this->profile->property('provenance_ss') ?? '';
+        $pLanguage   = $this->profile->property('language_ss') ?? '';
+        $pSubject    = $this->profile->property('subject_ss') ?? ''; // shared with tag_ss
+        $pAudience   = $this->profile->property('audience_ss') ?? '';
+        $pFormat     = $this->profile->property('digitisation_ss') ?? '';
 
         $setProject  = $this->profile->itemSet('project');
         $setDigital  = $this->profile->itemSet('digital');
@@ -148,6 +149,12 @@ final class ResearchItemMapper implements MapperInterface
         if ($countries) {
             $doc['country_ss'] = $countries;
         }
+
+        // provenance_ss ("Current location") — where the item is held now: the
+        // direct linked place OR repository institution. No country roll-up (unlike
+        // country_ss), so a specific repository like "University of Bayreuth" is
+        // filterable. The current-location counterpart to country_ss (origin).
+        $this->addMulti($doc, $values, $pProvenance, 'provenance_ss');
 
         // digitisation_ss — dcterms:format targets in the digital/technical set
         // only (genres, also on dcterms:format, are excluded).

@@ -58,6 +58,7 @@ final class SearchProfile
         private readonly ?array $reverseLinks,
         private readonly string $defaultSort,
         private readonly ?array $sortCount,
+        private readonly array $extraSources,
     ) {
     }
 
@@ -98,6 +99,21 @@ final class SearchProfile
             'facet'    => (bool) ($date['facet'] ?? false),
         ];
 
+        // Extra source resources folded into the corpus beyond the primary
+        // template/item-set (e.g. the Locations corpus also indexes geocoded
+        // institutions). Each entry widens the reindex source query.
+        $extraSources = [];
+        foreach (($c['extra_sources'] ?? []) as $src) {
+            if (!is_array($src)) {
+                continue;
+            }
+            $extraSources[] = [
+                'template_id'      => isset($src['template_id']) && $src['template_id'] !== null ? (int) $src['template_id'] : null,
+                'item_set_id'      => isset($src['item_set_id']) && $src['item_set_id'] !== null ? (int) $src['item_set_id'] : null,
+                'require_property' => isset($src['require_property']) && $src['require_property'] !== '' ? (string) $src['require_property'] : null,
+            ];
+        }
+
         return new self(
             $name,
             (string) ($c['label'] ?? $name),
@@ -124,6 +140,7 @@ final class SearchProfile
             // int32 display field (e.g. item_count) — the term corpora sort by how
             // many records reference each term.
             isset($c['sort_count']) && is_array($c['sort_count']) ? $c['sort_count'] : null,
+            $extraSources,
         );
     }
 
@@ -322,6 +339,23 @@ final class SearchProfile
             }
         }
         return array_keys($terms);
+    }
+
+    /**
+     * Extra source resources folded into this corpus beyond the primary
+     * template/item-set. Each entry widens the reindex source query with an
+     * OR-group: resources of `template_id` (and/or in `item_set_id`) that carry a
+     * value for `require_property`. The Locations corpus uses this to index
+     * geocoded institutions (template 2 with geo:lat) alongside the place
+     * authority — they surface as a new Type ("Institution"), and the existing
+     * dcterms:provenance reverse-link gives each its held-items count and
+     * "Current location" relationship. Every other corpus omits the key → [].
+     *
+     * @return list<array{template_id:?int,item_set_id:?int,require_property:?string}>
+     */
+    public function extraSources(): array
+    {
+        return $this->extraSources;
     }
 
     /**

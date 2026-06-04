@@ -44,8 +44,10 @@ don't want a search backend.
 - A **Research items search** page block: full-text search with autocomplete,
   faceted filtering, sorting, pagination, and result cards (title, type,
   project, origin year, thumbnail).
-  - Facets: a **Year** range slider, plus **Type, Project, Country, Language,
-    Subject, Tag, Target audience, Digitisation method**.
+  - Facets: a **Year** range slider, plus **Type, Project, Country, Current
+    location, Language, Subject, Tag, Target audience, Digitisation method**.
+    (**Country** is place of origin rolled up to country; **Current location** is
+    where the item is held now — a specific place or repository institution.)
 - A **Research projects search** page block: cards show the project name, year
   range, research section(s), principal investigator(s), funding institution(s),
   and the number of associated research items.
@@ -229,17 +231,18 @@ list, and each block's facet picker all derive from the profile config.
 
 ### Research items (`research_items`) — resource template 10
 
-| Facet               | Omeka property     | Authority set                                 |
-| ------------------- | ------------------ | --------------------------------------------- |
-| Type                | `dcterms:type`     | 1                                             |
-| Project             | `dcterms:isPartOf` | 20                                            |
-| Country             | `dcterms:spatial`  | 1851 (country direct, or via city `isPartOf`) |
-| Language            | `dcterms:language` | 19                                            |
-| Subject             | `dcterms:subject`  | 1852 (target type = `lcsh`)                   |
-| Tag                 | `dcterms:subject`  | 1852 (target type = `tag`)                    |
-| Target audience     | `dcterms:audience` | 3169                                          |
-| Digitisation method | `dcterms:format`   | 7438 (genres in set 21 excluded)              |
-| Year (range slider) | `dcterms:issued`   | single `year` (fallback `created` → `date`)   |
+| Facet               | Omeka property       | Authority set                                           |
+| ------------------- | -------------------- | ------------------------------------------------------- |
+| Type                | `dcterms:type`       | 1                                                       |
+| Project             | `dcterms:isPartOf`   | 20                                                      |
+| Country             | `dcterms:spatial`    | 1851 (country direct, or via city `isPartOf`)           |
+| Current location    | `dcterms:provenance` | 1851 places + 110 institutions (held-at; not rolled up) |
+| Language            | `dcterms:language`   | 19                                                      |
+| Subject             | `dcterms:subject`    | 1852 (target type = `lcsh`)                             |
+| Tag                 | `dcterms:subject`    | 1852 (target type = `tag`)                              |
+| Target audience     | `dcterms:audience`   | 3169                                                    |
+| Digitisation method | `dcterms:format`     | 7438 (genres in set 21 excluded)                        |
+| Year (range slider) | `dcterms:issued`     | single `year` (fallback `created` → `date`)             |
 
 ### Research projects (`research_projects`) — resource template 5, item set 20
 
@@ -360,12 +363,12 @@ reference it, computed by the reindexer from `reverse_links`. They are scoped by
 research items** sort (count desc, name tie-break), and use the same linking
 properties the working research-items / publications facets use.
 
-| Corpus              | Profile              | Item set | Facets             | Reverse counts                                                            |
-| ------------------- | -------------------- | -------- | ------------------ | ------------------------------------------------------------------------- |
-| **Genres**          | `research_genres`    | 21       | —                  | research items (tmpl 10) via `dcterms:format`                             |
-| **Languages**       | `research_languages` | 19       | —                  | research items via `dcterms:language` + publications (set 29918) via same |
-| **Locations**       | `research_locations` | 1851     | Type, Relationship | research items via `dcterms:spatial` **and** `dcterms:provenance`         |
-| **Subjects & tags** | `research_subjects`  | 1852     | Type               | research items via `dcterms:subject` + publications (set 29918) via same  |
+| Corpus              | Profile              | Item set       | Facets             | Reverse counts                                                            |
+| ------------------- | -------------------- | -------------- | ------------------ | ------------------------------------------------------------------------- |
+| **Genres**          | `research_genres`    | 21             | —                  | research items (tmpl 10) via `dcterms:format`                             |
+| **Languages**       | `research_languages` | 19             | —                  | research items via `dcterms:language` + publications (set 29918) via same |
+| **Locations**       | `research_locations` | 1851 + tmpl 2† | Type, Relationship | research items via `dcterms:spatial` **and** `dcterms:provenance`         |
+| **Subjects & tags** | `research_subjects`  | 1852           | Type               | research items via `dcterms:subject` + publications (set 29918) via same  |
 
 Notes:
 
@@ -376,9 +379,15 @@ Notes:
   references the place: **Place of origin** (`dcterms:spatial`, from
   `location.origin`) vs **Current location** (`dcterms:provenance`, from
   `location.current`). Its `item_count` counts research items referencing the place
-  either way (deduped). Note `dcterms:provenance` also targets repository
-  **institutions** (in the organisations corpus, set 110) — those simply aren't
-  matched here, since this corpus only indexes set 1851.
+  either way (deduped).
+- **†** `dcterms:provenance` also targets repository **institutions**. The
+  geocoded ones (resource template **2** in set 110 that carry `geo:lat`/`geo:long`
+  — the repositories holding research items) are **folded into this corpus** via the
+  profile's `extra_sources`, so they appear alongside places as a new **Type
+  "Institution"** (their own `dcterms:type`) with a **Current location**
+  relationship and a held-items count. `extra_sources` is the generic multi-source
+  mechanism (an OR-group in the reindex source query); other corpora omit it. The
+  inclusion filter is "has coordinates", so un-geocoded institutions stay out.
 - The Locations corpus indexes every place term directly and **does not** roll
   cities up to their country (unlike the research-items _Country_ facet), so both
   "Nigeria" and "Lagos" appear with their own direct-mention counts.

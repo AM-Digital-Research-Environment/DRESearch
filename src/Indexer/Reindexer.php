@@ -59,29 +59,22 @@ final class Reindexer
         $this->client->collections->create((new SchemaProvider())->collection($collection, $this->profile));
         ($this->log)(sprintf('Created collection %s', $collection));
 
-        $templateId = $this->profile->templateId();
-        $itemSetId = $this->profile->itemSetId();
         $itemLink = $this->profile->itemLink();
         $reverseLinks = $this->profile->reverseLinks();
         $total = 0;
         $lastId = 0;
         $batch = [];
 
+        // Source scope: the profile's base template/item-set, plus any extra
+        // sources OR'd in (e.g. Locations also pulls geocoded institutions). The
+        // predicate inlines validated ints, so :rt and :lastId stay the only
+        // bound params and keyset pagination is unchanged.
+        $predicate = $this->sourcePredicate();
         $sql = 'SELECT id, title, is_public FROM resource'
-            . ' WHERE resource_type = :rt AND id > :lastId';
+            . ' WHERE resource_type = :rt AND id > :lastId'
+            . ($predicate !== '' ? ' AND ' . $predicate : '')
+            . ' ORDER BY id ASC LIMIT ' . self::PAGE;
         $params = ['rt' => Item::class];
-        // A profile may scope by template, by item set, or both. Publications
-        // span several templates but share one item set, so template_id is null
-        // there and the set alone defines the corpus.
-        if ($templateId !== null) {
-            $sql .= ' AND resource_template_id = :tid';
-            $params['tid'] = $templateId;
-        }
-        if ($itemSetId !== null) {
-            $sql .= ' AND id IN (SELECT item_id FROM item_item_set WHERE item_set_id = :setId)';
-            $params['setId'] = $itemSetId;
-        }
-        $sql .= ' ORDER BY id ASC LIMIT ' . self::PAGE;
 
         while (true) {
             $rows = $this->connection
@@ -140,6 +133,72 @@ final class Reindexer
         ($this->log)(sprintf('Done — %d documents indexed.', $total));
 
         return ['documents' => $total, 'collection' => $collection];
+    }
+
+    /**
+     * The source-resource WHERE predicate for {@see run()}: the profile's base
+     * template/item-set scope, plus each configured `extra_sources` entry OR'd
+     * in. Returns '' when the corpus has no scope at all (index every item).
+     *
+     * Validated integers (template ids, item-set ids, resolved property ids) are
+     * inlined — as in {@see reverseRolesPerProperty()} — so the paged source
+     * query keeps :rt and :lastId as its only bound parameters. An extra source
+     * whose `require_property` is unknown on this instance is skipped, so the
+     * corpus still indexes its primary set. Places and the geocoded institutions
+     * are disjoint, and a single SELECT over `(A OR B)` returns each id once, so
+     * no de-duplication is needed.
+     */
+    private function sourcePredicate(): string
+    {
+        $groups = [];
+
+        $base = $this->scopeClause($this->profile->templateId(), $this->profile->itemSetId(), null);
+        if ($base !== '') {
+            $groups[] = $base;
+        }
+
+        foreach ($this->profile->extraSources() as $src) {
+            $propId = null;
+            if (($src['require_property'] ?? null) !== null) {
+                $propId = $this->propertyId((string) $src['require_property']);
+                if ($propId === null) {
+                    continue; // property absent here — don't fold this source in
+                }
+            }
+            $clause = $this->scopeClause($src['template_id'] ?? null, $src['item_set_id'] ?? null, $propId);
+            if ($clause !== '') {
+                $groups[] = $clause;
+            }
+        }
+
+        if ($groups === []) {
+            return '';
+        }
+        return count($groups) === 1 ? $groups[0] : '(' . implode(' OR ', $groups) . ')';
+    }
+
+    /**
+     * One source group as an AND-combined SQL fragment with every integer inlined:
+     * an optional resource_template_id, an optional item-set membership, and an
+     * optional "has a value for property P" requirement. Returns '' if nothing is
+     * constrained; parenthesised when it has >1 part so it composes safely under OR.
+     */
+    private function scopeClause(?int $templateId, ?int $itemSetId, ?int $requirePropId): string
+    {
+        $parts = [];
+        if ($templateId !== null) {
+            $parts[] = 'resource_template_id = ' . $templateId;
+        }
+        if ($itemSetId !== null) {
+            $parts[] = 'id IN (SELECT item_id FROM item_item_set WHERE item_set_id = ' . $itemSetId . ')';
+        }
+        if ($requirePropId !== null) {
+            $parts[] = 'id IN (SELECT resource_id FROM value WHERE property_id = ' . $requirePropId . ')';
+        }
+        if ($parts === []) {
+            return '';
+        }
+        return count($parts) === 1 ? $parts[0] : '(' . implode(' AND ', $parts) . ')';
     }
 
     private function buildMapper(): MapperInterface

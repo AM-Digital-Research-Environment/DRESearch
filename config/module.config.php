@@ -273,10 +273,17 @@ return [
                 // Facets: Typesense field => { Omeka property, UI label,
                 // multi-valued? }. Order here is the display order.
                 'facets' => [
-                    'type_s'          => ['property' => 'dcterms:type',     'label' => 'Type',                'array' => false],
-                    'project_s'       => ['property' => 'dcterms:isPartOf', 'label' => 'Project',             'array' => false],
-                    'country_ss'      => ['property' => 'dcterms:spatial',  'label' => 'Country',             'array' => true],
-                    'language_ss'     => ['property' => 'dcterms:language', 'label' => 'Language',            'array' => true],
+                    'type_s'          => ['property' => 'dcterms:type',       'label' => 'Type',                'array' => false],
+                    'project_s'       => ['property' => 'dcterms:isPartOf',   'label' => 'Project',             'array' => false],
+                    // Geographic pair: Country = place of origin (dcterms:spatial,
+                    // rolled up to country); Current location = where the item is
+                    // held now (dcterms:provenance — a specific place OR repository
+                    // institution, NOT rolled up, so e.g. "University of Bayreuth"
+                    // is filterable). Same provenance link that feeds the Locations
+                    // corpus's "Current location" relationship.
+                    'country_ss'      => ['property' => 'dcterms:spatial',    'label' => 'Country',             'array' => true],
+                    'provenance_ss'   => ['property' => 'dcterms:provenance', 'label' => 'Current location',    'array' => true],
+                    'language_ss'     => ['property' => 'dcterms:language',   'label' => 'Language',            'array' => true],
                     'subject_ss'      => ['property' => 'dcterms:subject',  'label' => 'Subject',             'array' => true],
                     'tag_ss'          => ['property' => 'dcterms:subject',  'label' => 'Tag',                 'array' => true],
                     'audience_ss'     => ['property' => 'dcterms:audience', 'label' => 'Target audience',     'array' => true],
@@ -640,9 +647,10 @@ return [
             // research items referencing the place either way. Unlike the
             // research-items Country facet, this corpus does NOT roll cities up to
             // their country — each place term shows its own direct mention count, so
-            // both "Nigeria" and "Lagos" are findable. (dcterms:provenance also
-            // targets repository institutions, which live in the organisations
-            // corpus, not here, so they are simply not matched.)
+            // both "Nigeria" and "Lagos" are findable. dcterms:provenance also
+            // targets repository institutions; the geocoded ones (template 2 with
+            // geo:lat/geo:long) are folded in via extra_sources below, surfacing as
+            // a new Type "Institution" with a "Current location" relationship.
             'research_locations' => [
                 'label'       => 'Locations', // @translate
                 'placeholder' => 'Search locations…', // @translate
@@ -652,6 +660,21 @@ return [
                 'item_set_id' => 1851,
                 'query_by'    => 'title',
                 'date'        => ['mode' => 'none'],
+
+                // Fold geocoded organisations (template 2, set 110) into this
+                // corpus alongside the place authority: the repository institutions
+                // used as a research item's Current Location (dcterms:provenance)
+                // that now carry geo:lat/geo:long. require_property keeps it to the
+                // geocoded ones; their own dcterms:type ("Institution") flows into
+                // the Type facet, and the dcterms:provenance reverse-link below
+                // gives each its held-items count + "Current location" role.
+                'extra_sources' => [
+                    [
+                        'template_id'      => 2,
+                        'item_set_id'      => 110,
+                        'require_property' => 'geo:lat',
+                    ],
+                ],
                 'default_sort' => 'count',
                 'sort_count'  => [
                     'field' => 'item_count',
