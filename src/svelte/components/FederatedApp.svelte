@@ -184,6 +184,7 @@
 <div class="dre-fed">
   <div class="dre-fed__search">
     <input
+      name="q"
       class="dre-fed__input"
       type="search"
       autocomplete="off"

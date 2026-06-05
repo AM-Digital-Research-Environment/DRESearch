@@ -146,6 +146,7 @@
 <div class="dre-search-box">
   <div class="dre-search-box__input-wrap">
     <input
+      name="q"
       class="dre-search-box__input"
       type="search"
       autocomplete="off"

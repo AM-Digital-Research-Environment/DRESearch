@@ -1,3 +1,15 @@
+<script module lang="ts">
+  // Per-instance id seed. The theme header mounts this bar more than once
+  // (a collapsible mobile one + the desktop one), so every generated id must be
+  // unique per instance — otherwise the suggestions listbox and its options
+  // collide on duplicate ids and aria-controls/activedescendant break.
+  let instanceSeq = 0;
+  function nextInstanceId(): number {
+    instanceSeq += 1;
+    return instanceSeq;
+  }
+</script>
+
 <script lang="ts">
   import type { SearchBarBootstrap, SuggestGroup } from '../lib/types';
   import { suggestAll } from '../lib/api';
@@ -54,7 +66,11 @@
     return `${bootstrap.results_url}${sep}q=${encodeURIComponent(q)}`;
   }
 
-  const optionId = (i: number): string => `dre-bar-opt-${i}`;
+  // Unique per-instance id namespace (see the module script above).
+  const uid = `dre-bar-${nextInstanceId()}`;
+  const inputId = `${uid}-input`;
+  const suggestId = `${uid}-suggest`;
+  const optionId = (i: number): string => `${uid}-opt-${i}`;
 
   async function fetchSuggestions(q: string): Promise<void> {
     if (q.trim().length < 2) {
@@ -222,6 +238,8 @@
       </span>
       <input
         bind:this={inputEl}
+        id={inputId}
+        name="q"
         class="dre-search-bar__input"
         type="search"
         autocomplete="off"
@@ -232,7 +250,7 @@
         aria-label={bootstrap.placeholder || t('search_all_placeholder')}
         aria-autocomplete="list"
         aria-expanded={open}
-        aria-controls="dre-bar-suggest"
+        aria-controls={suggestId}
         aria-activedescendant={open && activeIndex >= 0 ? optionId(activeIndex) : undefined}
         placeholder={bootstrap.placeholder || t('search_all_placeholder')}
         value={local}
@@ -255,7 +273,7 @@
     {#if open && groups.length > 0}
       <div
         class="dre-search-bar__suggest"
-        id="dre-bar-suggest"
+        id={suggestId}
         role="listbox"
         aria-label={t('suggestions')}
       >
