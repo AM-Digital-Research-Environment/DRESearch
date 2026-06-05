@@ -69,19 +69,29 @@ final class QueryBuilder
             $params['facet_by'] = $facetBy;
             $params['max_facet_values'] = 100;
         }
+        // Search-only fields (e.g. a podcast transcript) are indexed for query_by but
+        // dropped from the returned documents so a large value never bloats every hit.
+        // Typesense still returns their highlighted snippet, so a transcript match
+        // still surfaces in the card's "Matched in" line.
+        $searchOnly = $this->profile->searchOnlyFields();
+        if ($searchOnly !== []) {
+            $params['exclude_fields'] = implode(',', $searchOnly);
+        }
         if (!$isBrowse) {
             // Mark matched terms so each card can show *where* a result matched.
             // Short fields (title, linked-value facets, names) are highlighted in
             // full — so a card can highlight a whole chip/byline value — while the
-            // long abstract/description return a windowed snippet centred on the
-            // match (the full text would scroll the match out of the clamped card).
+            // long free-text fields (abstract, description, transcript) return a
+            // windowed snippet centred on the match (the full text would scroll the
+            // match out of the clamped card, or dump a whole transcript into a line).
+            $longTextFields = ['abstract', 'description', 'transcript'];
             $queryFields = array_values(array_filter(array_map(
                 'trim',
                 explode(',', $this->profile->queryBy())
             )));
             $fullFields = array_values(array_filter(
                 $queryFields,
-                static fn(string $f): bool => $f !== 'abstract' && $f !== 'description'
+                static fn(string $f): bool => !in_array($f, $longTextFields, true)
             ));
             $params['highlight_start_tag'] = self::HL_START;
             $params['highlight_end_tag'] = self::HL_END;
@@ -100,11 +110,18 @@ final class QueryBuilder
         $dateFields = $this->profile->hasDate()
             ? ($this->profile->isRangeDate() ? ['year_start', 'year_end'] : ['year'])
             : [];
+        // Display fields, minus the search-only ones (e.g. a transcript) — a
+        // suggestion row never needs the heavy text.
+        $searchOnly = array_flip($this->profile->searchOnlyFields());
+        $displayFields = array_values(array_filter(
+            array_keys($this->profile->displayFields()),
+            static fn(string $f): bool => !isset($searchOnly[$f])
+        ));
         $include = array_merge(
             ['id', 'title'],
             $dateFields,
             $this->profile->fieldNames(),
-            array_keys($this->profile->displayFields()),
+            $displayFields,
         );
         return [
             'q'              => $q,
@@ -155,6 +172,7 @@ final class QueryBuilder
         unset(
             $params['facet_by'],
             $params['max_facet_values'],
+            $params['exclude_fields'],
             $params['highlight_full_fields'],
             $params['highlight_start_tag'],
             $params['highlight_end_tag'],
@@ -270,6 +288,12 @@ final class QueryBuilder
 
     private function buildSort(string $sort, bool $isBrowse): string
     {
+        // Config-defined numeric sort (e.g. podcasts by episode number) — works
+        // regardless of date, even on a query. Tie-break by title for stability.
+        $spec = $this->profile->sortFieldSpec($sort);
+        if ($spec !== null) {
+            return $spec['field'] . ':' . $spec['dir'] . ',title:asc';
+        }
         // Count sort (e.g. "most research items") — works regardless of date.
         // Tie-break by title so equal-count rows have a stable order.
         $countField = $this->profile->sortCountField();

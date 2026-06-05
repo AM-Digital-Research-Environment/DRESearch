@@ -4,12 +4,16 @@ Typesense-backed faceted search for the Africa Multiple **DRE** Omeka S instance
 (the one populated by [MongoDB2OmekaS]). It indexes content directly from the
 Omeka dashboard via MySQL — there is no external ingestion pipeline.
 
-Ten search corpora ship out of the box, each as its own page block:
+Eleven search corpora ship out of the box, each as its own page block:
 
 - **Research items search** — the digitised research items (resource template 10).
 - **Research projects search** — the cluster's research projects (template 5).
 - **Publications search** — the cluster bibliography (journal articles, books,
   chapters, theses, … — one item set across several templates).
+- **Podcasts search** — the cluster's podcast episodes (template 21, item set
+  39095), filterable by series, the people in each episode (hosts + guests), and
+  language; sortable by episode number or date. Cards show the series logo as the
+  thumbnail, the abstract, and a "Listen" link.
 - **People search** — researchers and contributors (template 4), filterable by
   affiliation and role, with per-person research-item and publication counts.
 - **Research sections search** — the cluster's thematic sections (template 7),
@@ -63,6 +67,15 @@ don't want a search backend.
   book + series), volume/issue, pages, publisher, year, abstract, and a DOI link.
   - Facets: a **Year** range slider, **Type, Author, Journal / Book, Publisher,
     Keyword, Language**.
+- A **Podcasts search** page block: cards show the podcast **series logo** as the
+  thumbnail (every episode of a series shares it), the episode number and date, the
+  title, a series chip, the hosts, guests and sound engineer (linked to their person
+  pages), the language, the abstract, a **Transcript** badge when the episode is
+  full-text searchable, and a **Listen** link to the audio / episode page.
+  - Facets: **Series**, **People** (a union of hosts and guests), and **Language**.
+  - Sort: **Episode number** (default — newest episode first) or **Newest / Oldest**
+    by date, plus Relevance / Title.
+  - Search covers the title, abstract, transcript, and the people in each episode.
 - A **People search** page block: cards show the person's name, affiliation(s),
   role chips, and how many research items and publications they're associated
   with (laid out two-up on wide screens, since the cards are compact).
@@ -189,26 +202,27 @@ Admin → **DRE Search** → **Reindex**: one button per corpus. Progress is log
 to Admin → Jobs. Re-run after significant content changes (or wire the job to a
 schedule via the Cron module). Each reindex builds a fresh, timestamped Typesense
 collection and swaps that profile's alias (`dre_research_current` /
-`dre_projects_current` / `dre_publications_current` / `dre_people_current` /
-`dre_sections_current` / `dre_organisations_current` / `dre_genres_current` /
-`dre_languages_current` / `dre_locations_current` / `dre_subjects_current`) to it
-atomically, so live searches never hit a half-built index.
+`dre_projects_current` / `dre_publications_current` / `dre_podcasts_current` /
+`dre_people_current` / `dre_sections_current` / `dre_organisations_current` /
+`dre_genres_current` / `dre_languages_current` / `dre_locations_current` /
+`dre_subjects_current`) to it atomically, so live searches never hit a half-built
+index.
 
 ## The page blocks
 
 Edit a site page → add the **Research items search**, **Research projects
-search**, **Publications search**, **People search**, **Research sections
-search**, **Organisations search**, **Genres search**, **Languages search**,
-**Locations search**, or **Subjects & tags search** block. All share the same
-options:
+search**, **Publications search**, **Podcasts search**, **People search**,
+**Research sections search**, **Organisations search**, **Genres search**,
+**Languages search**, **Locations search**, or **Subjects & tags search** block.
+All share the same options:
 
 - **Filters to show** — which facets appear in the sidebar, including whether the
   **Year** range slider shows.
 - **Default sort** — the choices depend on the corpus: Relevance and Title
   always; **Newest / Oldest** only for corpora with a date; **Most research
-  items** (count) for the authority-term corpora. (Date-less corpora — people,
-  sections, organisations, and the four term corpora — no longer offer the
-  meaningless Newest/Oldest.)
+  items** (count) for the authority-term corpora; **Episode number** for podcasts.
+  (Date-less corpora — people, sections, organisations, and the four term corpora —
+  no longer offer the meaningless Newest/Oldest.)
 - **Results per page**.
 - **Locked filter** — an optional raw Typesense `filter_by` to scope the block,
   e.g. pin items to one project (`project_s`) or projects to one research section
@@ -280,6 +294,42 @@ thesis, …) but share one item set, so this profile scopes by **`item_set_id`
 \* Pages come from `bibo:pages` / `bibo:pageStart` / `bibo:pageEnd` /
 `bibo:numPages` (the pipeline splits them by publication kind) and are recombined
 into one display string — `141–165`, a lone start, or `121 pp.`.
+
+### Podcasts (`research_podcasts`) — resource template 21, item set 39095
+
+The cluster's podcast episodes, **hand-curated in Omeka** (not from the
+MongoDB2OmekaS pipeline), so they get a dedicated corpus rather than being folded
+into publications — their links differ (`marcrel:hst`/`spk` contributors,
+`dcterms:abstract`, a series link, an episode number, a transcript).
+
+| Field                 | Omeka property     | Notes                                                                                                                                                                                                                                                                      |
+| --------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Series (facet)        | `dcterms:isPartOf` | linked series title (single-valued); `series_id` links the chip                                                                                                                                                                                                            |
+| People (facet)        | —                  | derived union of hosts + guests (`people_ss`)                                                                                                                                                                                                                              |
+| Language (facet)      | `dcterms:language` | linked language (set 19), literal fallback                                                                                                                                                                                                                                 |
+| Host (card)           | `marcrel:hst`      | linked person titles (set 18); `host_ids` link the card                                                                                                                                                                                                                    |
+| Guest (card)          | `marcrel:spk`      | linked person titles (set 18); `guest_ids` link the card                                                                                                                                                                                                                   |
+| Sound engineer (card) | `marcrel:sde`      | optional credit line; `engineer_ids` link the card (display-only)                                                                                                                                                                                                          |
+| Episode number (sort) | `bibo:number`      | `numeric:integer` → sortable `episode` (the default sort)                                                                                                                                                                                                                  |
+| Date (sort + card)    | `dcterms:date`     | `date_s` shown verbatim; the 4-digit `year` drives Newest/Oldest                                                                                                                                                                                                           |
+| Listen link (card)    | `fabio:hasURL`     | the URI value's `@id` — opens the audio / episode page                                                                                                                                                                                                                     |
+| Abstract (card)       | `dcterms:abstract` | podcasts use `dcterms:abstract` (unlike publications' `bibo:abstract`)                                                                                                                                                                                                     |
+| Transcript (search)   | `bibo:content`     | full-text search payload (often empty today); `search_only` — indexed for query_by but excluded from result payloads, so a long transcript never bloats a hit (matches still surface as a highlighted snippet). `has_transcript` drives a **Transcript** badge on the card |
+| Thumbnail (card)      | `dcterms:isPartOf` | the **series item's** logo, via `thumbnail_property` (see below)                                                                                                                                                                                                           |
+
+The episode's own media is the audio file, so the card thumbnail is resolved by
+**hopping** `dcterms:isPartOf` to the series item and using _its_ first thumbnailed
+media (`thumbnail_property` → `Reindexer::loadThumbnailsVia()`). Sorts: **Episode
+number** (default) is a config-defined numeric sort (`sort_fields` — the generic
+form of the term corpora's count sort) over the sortable `episode` field; the date
+sorts use `year`. There is **no year slider** (the corpus is small and ordered by
+episode). The People facet unions hosts and guests, while the card keeps them
+separate so each is labelled by role.
+
+> Data note: the template carries Host, Sound engineer, Language and Transcript,
+> but most episodes today fill only guest, series, episode number, date and
+> abstract — the facets and fields are built for the whole template and fill in as
+> the corpus grows.
 
 ### People (`research_people`) — resource template 4, item set 18
 
@@ -434,8 +484,8 @@ toolchain.
   `dre_search.profiles`) holds one `SearchProfile` per corpus. The schema
   builder, paged reindexer, query builder, search proxy, and page blocks are all
   parameterised by a profile; a profile's `kind` (`item` | `project` |
-  `publication` | `person` | `section` | `organisation` | `term`) selects its
-  indexer mapper and its result card.
+  `publication` | `podcast` | `person` | `section` | `organisation` | `term`)
+  selects its indexer mapper and its result card.
 - **Search is server-side.** The browser calls the module's own JSON endpoints
   (`/dre-search/api/search`, `/dre-search/api/suggest` per corpus;
   `/dre-search/api/suggest-all`, `/dre-search/api/search-all` federated) with a

@@ -209,6 +209,9 @@ final class Reindexer
         if ($this->profile->kind() === 'publication') {
             return new PublicationMapper($this->profile);
         }
+        if ($this->profile->kind() === 'podcast') {
+            return new PodcastMapper($this->profile);
+        }
         if ($this->profile->kind() === 'person') {
             return new PersonMapper($this->profile);
         }
@@ -512,12 +515,33 @@ final class Reindexer
     }
 
     /**
-     * First thumbnailed media per item → a relative derivative URL.
+     * Thumbnail derivative URL per source item. By default the item's own first
+     * thumbnailed media; when the profile sets `thumbnail_property`, the thumbnail
+     * is taken from the resource that property links to instead (podcasts hop
+     * dcterms:isPartOf → the series item, whose image is the episode's logo, since
+     * the episode's own media is the audio file).
      *
      * @param list<int> $ids
      * @return array<int, string>
      */
     private function loadThumbnails(array $ids): array
+    {
+        $via = $this->profile->thumbnailFromProperty();
+        if ($via !== null) {
+            return $this->loadThumbnailsVia($ids, $via);
+        }
+        return $this->mediaThumbnails($ids);
+    }
+
+    /**
+     * First thumbnailed media per item → a relative derivative URL, for the given
+     * item ids. The shared primitive behind both the direct and the linked-resource
+     * thumbnail paths.
+     *
+     * @param list<int> $ids
+     * @return array<int, string>
+     */
+    private function mediaThumbnails(array $ids): array
     {
         $idList = implode(',', array_map('intval', $ids));
         if ($idList === '') {
@@ -536,6 +560,55 @@ final class Reindexer
             $sid = (string) ($row['sid'] ?? '');
             if ($sid !== '') {
                 $out[$iid] = '/files/medium/' . $sid . '.jpg';
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Resolve each source item's thumbnail from the resource its `$term` property
+     * links to (its first linked target), using that target's own first thumbnailed
+     * media. Used by the podcasts corpus to show the series logo on every episode.
+     * The property id is a validated int, inlined like the other source predicates.
+     *
+     * @param list<int> $ids
+     * @return array<int, string>
+     */
+    private function loadThumbnailsVia(array $ids, string $term): array
+    {
+        $propId = $this->propertyId($term);
+        if ($propId === null) {
+            return [];
+        }
+        $idList = implode(',', array_map('intval', $ids));
+        if ($idList === '') {
+            return [];
+        }
+
+        // Each source item → its first linked target (lowest value id).
+        $sql = 'SELECT resource_id AS rid, value_resource_id AS vrid FROM value'
+            . " WHERE resource_id IN ($idList) AND property_id = $propId"
+            . ' AND value_resource_id IS NOT NULL'
+            . ' ORDER BY resource_id ASC, id ASC';
+
+        $targetByItem = [];
+        foreach ($this->connection->executeQuery($sql)->fetchAllAssociative() as $row) {
+            $rid = (int) $row['rid'];
+            if (isset($targetByItem[$rid])) {
+                continue; // keep the first linked target only
+            }
+            $targetByItem[$rid] = (int) $row['vrid'];
+        }
+        if ($targetByItem === []) {
+            return [];
+        }
+
+        $targetThumbs = $this->mediaThumbnails(array_values(array_unique($targetByItem)));
+
+        $out = [];
+        foreach ($targetByItem as $rid => $tid) {
+            if (isset($targetThumbs[$tid])) {
+                $out[$rid] = $targetThumbs[$tid];
             }
         }
         return $out;

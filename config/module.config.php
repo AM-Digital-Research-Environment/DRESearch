@@ -53,6 +53,7 @@ return [
             'dreSearch'             => Service\BlockLayout\ResearchItemsSearchBlockFactory::class,
             'dreSearchProjects'     => Service\BlockLayout\ResearchProjectsSearchBlockFactory::class,
             'dreSearchPublications'  => Service\BlockLayout\ResearchPublicationsSearchBlockFactory::class,
+            'dreSearchPodcasts'      => Service\BlockLayout\ResearchPodcastsSearchBlockFactory::class,
             'dreSearchPeople'        => Service\BlockLayout\ResearchPeopleSearchBlockFactory::class,
             'dreSearchSections'      => Service\BlockLayout\ResearchSectionsSearchBlockFactory::class,
             'dreSearchOrganisations' => Service\BlockLayout\ResearchOrganisationsSearchBlockFactory::class,
@@ -403,6 +404,87 @@ return [
                     'bibo:pages', 'bibo:pageStart', 'bibo:pageEnd', 'bibo:numPages',
                     'bibo:doi',
                 ],
+            ],
+
+            // Podcasts — resource template 21, item set 39095. The cluster's podcast
+            // episodes, hand-curated in Omeka (NOT from the MongoDB2OmekaS pipeline),
+            // so they get their own corpus rather than being folded into publications
+            // (their fields differ: marcrel:hst/spk contributors, dcterms:abstract,
+            // a series link, an episode number, a transcript). Each episode belongs to
+            // a podcast SERIES (dcterms:isPartOf → a series authority item that carries
+            // the series logo as its image); that logo is used as the episode's card
+            // thumbnail, resolved by hopping through dcterms:isPartOf (the episode's
+            // own media is the audio file) — see thumbnail_property + Reindexer.
+            // Findable by title, abstract, transcript (the eventual full-text payoff),
+            // and the people in each episode. Sorts by episode number (default) or date.
+            'research_podcasts' => [
+                'label'       => 'Podcasts', // @translate
+                'placeholder' => 'Search podcasts…', // @translate
+                'collection'  => 'dre_podcasts_current',
+                'kind'        => 'podcast',
+                'template_id' => 21,
+                'item_set_id' => 39095,
+                'query_by'    => 'title,abstract,transcript,host_ss,guest_ss',
+                // A single publication date → newest/oldest sorts. No year slider:
+                // the corpus is small and naturally ordered by episode number.
+                'date'        => ['mode' => 'single', 'property' => 'dcterms:date', 'label' => 'Year', 'facet' => false],
+
+                // Series logo as the episode thumbnail: hop dcterms:isPartOf → the
+                // series item and use ITS first thumbnailed media (the episode's own
+                // media is the audio file). See Reindexer::loadThumbnailsVia().
+                'thumbnail_property' => 'dcterms:isPartOf',
+
+                // Default to episode order (newest episode first); a date sort is also
+                // offered. `sort_fields` is the generic "extra numeric sort" mechanism
+                // (a sortable int32 field + a label) — see SearchProfile::sortFields().
+                'default_sort' => 'episode',
+                'sort_fields'  => [
+                    'episode' => ['field' => 'episode', 'dir' => 'desc', 'label' => 'Episode number'], // @translate
+                ],
+
+                'facets' => [
+                    // One episode → one series (single-valued). Currently one series
+                    // ("Cluster Conversations"); the facet grows with the corpus.
+                    'series_s'    => ['property' => 'dcterms:isPartOf', 'label' => 'Series',   'array' => false],
+                    // Derived union of hosts (marcrel:hst) + guests (marcrel:spk); the
+                    // card still labels each person by their role. property = null.
+                    'people_ss'   => ['property' => null,               'label' => 'People',   'array' => true, 'derived' => true],
+                    'language_ss' => ['property' => 'dcterms:language',  'label' => 'Language', 'array' => true],
+                ],
+
+                // Display / search fields. host_ss/guest_ss are searchable (query_by)
+                // and carry parallel *_ids so the card links each person to their page;
+                // episode is the sortable episode number; url_s the external "Listen"
+                // link; date_s the display date; series_id links the series; transcript
+                // is the (currently sparse) full-text search payload.
+                'display_fields' => [
+                    'episode'        => ['property' => 'bibo:number',  'type' => 'int32',    'facet' => false, 'sort' => true],
+                    'host_ss'        => ['property' => 'marcrel:hst',  'type' => 'string[]', 'facet' => false],
+                    'host_ids'       => ['property' => null,           'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'guest_ss'       => ['property' => 'marcrel:spk',  'type' => 'string[]', 'facet' => false],
+                    'guest_ids'      => ['property' => null,           'type' => 'string[]', 'facet' => false, 'index' => false],
+                    // Sound engineer (marcrel:sde) — an optional credit line on the
+                    // card; display-only (not searched), with parallel person ids.
+                    'engineer_ss'    => ['property' => 'marcrel:sde',  'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'engineer_ids'   => ['property' => null,           'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'series_id'      => ['property' => null,           'type' => 'string',   'facet' => false, 'index' => false],
+                    'url_s'          => ['property' => 'fabio:hasURL', 'type' => 'string',   'facet' => false, 'index' => false],
+                    'date_s'         => ['property' => null,           'type' => 'string',   'facet' => false, 'index' => false],
+                    // Whether the episode has a transcript — drives a "Transcript"
+                    // badge on the card (the full text itself is search_only below,
+                    // so the card can flag availability without shipping the text).
+                    'has_transcript' => ['property' => null,           'type' => 'bool',     'facet' => false, 'index' => false],
+                    // Transcript full text — indexed for query_by, but `search_only`:
+                    // excluded from result payloads (a transcript can be huge), so
+                    // it's never shipped to the client. Matches still surface as a
+                    // highlighted snippet, which Typesense returns even for fields in
+                    // exclude_fields (see QueryBuilder::search()).
+                    'transcript'     => ['property' => 'bibo:content', 'type' => 'string',   'facet' => false, 'search_only' => true],
+                ],
+
+                // The abstract (dcterms:abstract) isn't a facet/display property, so
+                // declare it for the reindexer to SELECT.
+                'read_properties' => ['dcterms:abstract'],
             ],
 
             // People — resource template 4, item set 18. A person record carries

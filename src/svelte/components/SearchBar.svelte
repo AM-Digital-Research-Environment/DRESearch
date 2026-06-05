@@ -96,7 +96,26 @@
     }, 250);
   }
 
+  // The desktop bar lives inside the theme's position:sticky header. Browsers
+  // scroll a focused / typed-in field "into view" using its in-flow position
+  // (near the top of the document), which yanks the page upward on focus and on
+  // each keystroke once the visitor has scrolled down. The collapsible (mobile)
+  // bar is an absolute overlay, so it is unaffected. Pin the scroll position
+  // across these interactions — restore it on the next frame if the browser
+  // moved us.
+  function pinScroll(): void {
+    if (bootstrap.collapsible) return;
+    const x = window.scrollX;
+    const y = window.scrollY;
+    requestAnimationFrame(() => {
+      if (Math.abs(window.scrollX - x) > 1 || Math.abs(window.scrollY - y) > 1) {
+        window.scrollTo({ left: x, top: y, behavior: 'instant' });
+      }
+    });
+  }
+
   function handleInput(e: Event): void {
+    pinScroll();
     local = (e.target as HTMLInputElement).value;
     schedule(local);
   }
@@ -157,7 +176,18 @@
     }
   }
 
+  // A native click on the in-flow desktop field both focuses it and scrolls it
+  // "into view" inside the sticky header, yanking the page upward. Focus it
+  // ourselves with `preventScroll` instead (flicker-free). Skip when it is
+  // already focused so a click to reposition the caret still behaves normally.
+  function handlePointerDown(e: PointerEvent): void {
+    if (bootstrap.collapsible || document.activeElement === inputEl) return;
+    e.preventDefault();
+    inputEl?.focus({ preventScroll: true });
+  }
+
   function handleFocus(): void {
+    pinScroll();
     focused = true;
     if (flat.length > 0) {
       open = true;
@@ -255,6 +285,7 @@
         placeholder={bootstrap.placeholder || t('search_all_placeholder')}
         value={local}
         oninput={handleInput}
+        onpointerdown={handlePointerDown}
         onfocus={handleFocus}
         onblur={handleBlur}
         onkeydown={handleKeydown}

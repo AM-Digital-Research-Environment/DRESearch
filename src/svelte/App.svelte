@@ -49,15 +49,17 @@
         ? t('search_placeholder_project')
         : bootstrap.card_kind === 'publication'
           ? t('search_placeholder_publication')
-          : bootstrap.card_kind === 'person'
-            ? t('search_placeholder_person')
-            : bootstrap.card_kind === 'section'
-              ? t('search_placeholder_section')
-              : bootstrap.card_kind === 'organisation'
-                ? t('search_placeholder_organisation')
-                : bootstrap.card_kind === 'term'
-                  ? t('search_placeholder_term')
-                  : t('search_placeholder'),
+          : bootstrap.card_kind === 'podcast'
+            ? t('search_placeholder_podcast')
+            : bootstrap.card_kind === 'person'
+              ? t('search_placeholder_person')
+              : bootstrap.card_kind === 'section'
+                ? t('search_placeholder_section')
+                : bootstrap.card_kind === 'organisation'
+                  ? t('search_placeholder_organisation')
+                  : bootstrap.card_kind === 'term'
+                    ? t('search_placeholder_term')
+                    : t('search_placeholder'),
   );
 
   // svelte-ignore state_referenced_locally

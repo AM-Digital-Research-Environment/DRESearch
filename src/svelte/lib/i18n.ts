@@ -8,6 +8,7 @@ const STRINGS: Record<string, string> = {
   search_placeholder: 'Search research items…',
   search_placeholder_project: 'Search research projects…',
   search_placeholder_publication: 'Search publications…',
+  search_placeholder_podcast: 'Search podcasts…',
   search_placeholder_person: 'Search people…',
   search_placeholder_section: 'Search research sections…',
   search_placeholder_organisation: 'Search organisations…',
@@ -82,6 +83,14 @@ const STRINGS: Record<string, string> = {
   pp_short: 'pp.',
   doi_label: 'DOI',
 
+  // Podcast card.
+  episode_label: 'Episode {n}',
+  host_label: 'Host',
+  guest_label: 'Guest',
+  engineer_label: 'Sound engineer',
+  listen_label: 'Listen',
+  transcript_label: 'Transcript',
+
   // Person card.
   publications_one: '{n} publication',
   publications_other: '{n} publications',
@@ -116,6 +125,11 @@ const MATCH_FIELD_LABELS: Record<string, string> = {
   container_ss: 'In',
   publisher_ss: 'Publisher',
   keyword_ss: 'Keyword',
+  host_ss: 'Host',
+  guest_ss: 'Guest',
+  engineer_ss: 'Sound engineer',
+  series_s: 'Series',
+  transcript: 'Transcript',
   pi_ss: 'Principal investigator',
   member_ss: 'Member',
   institution_ss: 'Institution',

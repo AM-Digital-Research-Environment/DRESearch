@@ -21,6 +21,8 @@ namespace DRESearch\Settings;
  *                      reverse count of associated research items)
  *   - 'publication'  : bibliographic references (linked authors + literal venue/
  *                      publisher, a single year, and a formatted reference card)
+ *   - 'podcast'      : podcast episodes (series + host/guest people, an episode
+ *                      number, the series logo as the thumbnail, a "Listen" link)
  *   - 'person'       : people (affiliation + reverse-link roles & association counts)
  *   - 'section'      : research sections (leaders, derived phase, project count)
  *   - 'organisation' : institutions & groups (Type facet + reverse-link roles & counts)
@@ -59,6 +61,8 @@ final class SearchProfile
         private readonly string $defaultSort,
         private readonly ?array $sortCount,
         private readonly array $extraSources,
+        private readonly array $sortFields,
+        private readonly ?string $thumbnailProperty,
     ) {
     }
 
@@ -84,6 +88,9 @@ final class SearchProfile
                 'sort'     => (bool) ($def['sort'] ?? false),
                 // index:false for display-only fields (e.g. id lists for links).
                 'index'    => array_key_exists('index', $def) ? (bool) $def['index'] : true,
+                // search_only: indexed for query_by but excluded from result payloads
+                // (e.g. a podcast transcript — searchable, never shipped to the card).
+                'search_only' => (bool) ($def['search_only'] ?? false),
             ];
         }
 
@@ -114,6 +121,22 @@ final class SearchProfile
             ];
         }
 
+        // Extra numeric sorts: sort key => { field, dir, label }. Each exposes a
+        // sortable int field as its own sort option (e.g. podcasts by episode
+        // number) — the generalisation of the single-field `sort_count`.
+        $sortFields = [];
+        foreach (($c['sort_fields'] ?? []) as $key => $def) {
+            if (!is_array($def) || empty($def['field'])) {
+                continue;
+            }
+            $dir = strtolower((string) ($def['dir'] ?? 'desc'));
+            $sortFields[(string) $key] = [
+                'field' => (string) $def['field'],
+                'dir'   => $dir === 'asc' ? 'asc' : 'desc',
+                'label' => (string) ($def['label'] ?? $key),
+            ];
+        }
+
         return new self(
             $name,
             (string) ($c['label'] ?? $name),
@@ -141,6 +164,10 @@ final class SearchProfile
             // many records reference each term.
             isset($c['sort_count']) && is_array($c['sort_count']) ? $c['sort_count'] : null,
             $extraSources,
+            $sortFields,
+            // Resolve the episode thumbnail from a linked resource (e.g. the podcast
+            // series item's image) instead of the item's own media. '' / unset → own.
+            isset($c['thumbnail_property']) && $c['thumbnail_property'] !== '' ? (string) $c['thumbnail_property'] : null,
         );
     }
 
@@ -247,10 +274,30 @@ final class SearchProfile
     }
 
     // ── Display (non-facet) fields ────────────────────────────────────────────
-    /** @return array<string,array{property:?string,type:string,facet:bool,sort:bool,index:bool}> */
+    /** @return array<string,array{property:?string,type:string,facet:bool,sort:bool,index:bool,search_only:bool}> */
     public function displayFields(): array
     {
         return $this->displayFields;
+    }
+
+    /**
+     * Fields indexed for search (query_by) but excluded from result payloads — the
+     * `search_only` display fields (e.g. a podcast transcript). The reindexer still
+     * stores them so Typesense can match + snippet-highlight them; the query
+     * (see {@see \DRESearch\Search\QueryBuilder}) drops them from the returned
+     * documents so a large value never bloats every hit.
+     *
+     * @return list<string>
+     */
+    public function searchOnlyFields(): array
+    {
+        $out = [];
+        foreach ($this->displayFields as $name => $def) {
+            if (!empty($def['search_only'])) {
+                $out[] = $name;
+            }
+        }
+        return $out;
     }
 
     // ── Dates ─────────────────────────────────────────────────────────────────
@@ -318,6 +365,10 @@ final class SearchProfile
     public function sortOptionValues(): array
     {
         $values = ['relevance'];
+        // Config-defined numeric sorts (e.g. podcasts by episode number).
+        foreach (array_keys($this->sortFields) as $key) {
+            $values[] = $key;
+        }
         if ($this->sortCountField() !== null) {
             $values[] = 'count';
         }
@@ -327,6 +378,45 @@ final class SearchProfile
         }
         $values[] = 'title';
         return $values;
+    }
+
+    /**
+     * Config-defined extra numeric sorts: sort key => { field, dir, label }. Each
+     * sorts by a sortable int field (with a title tiebreak) under its own option;
+     * the generic form of {@see sortCountField()}. Empty for most corpora.
+     *
+     * @return array<string,array{field:string,dir:string,label:string}>
+     */
+    public function sortFields(): array
+    {
+        return $this->sortFields;
+    }
+
+    /**
+     * The {field,dir} spec for a custom sort key, or null if it isn't one (so
+     * {@see \DRESearch\Search\QueryBuilder} can build its sort_by) .
+     *
+     * @return array{field:string,dir:string,label:string}|null
+     */
+    public function sortFieldSpec(string $key): ?array
+    {
+        return $this->sortFields[$key] ?? null;
+    }
+
+    /** Label for a custom sort key (e.g. "Episode number"), or null if not one. */
+    public function sortFieldLabel(string $key): ?string
+    {
+        return $this->sortFields[$key]['label'] ?? null;
+    }
+
+    /**
+     * Property term to resolve the thumbnail FROM a linked resource instead of the
+     * item's own media (e.g. podcasts use the series item's logo via
+     * dcterms:isPartOf), or null to use the item's own first thumbnailed media.
+     */
+    public function thumbnailFromProperty(): ?string
+    {
+        return $this->thumbnailProperty;
     }
 
     // ── Reindex ─────────────────────────────────────────────────────────────

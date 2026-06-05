@@ -68,6 +68,10 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
         if ($value === 'count' && $profile !== null) {
             return $t($profile->sortCountLabel());
         }
+        // Config-defined numeric sort (e.g. podcasts' "Episode number").
+        if ($profile !== null && ($custom = $profile->sortFieldLabel($value)) !== null) {
+            return $t($custom);
+        }
         return $t(self::SORT_OPTIONS[$value] ?? $value);
     }
 

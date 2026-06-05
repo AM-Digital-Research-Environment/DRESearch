@@ -5,7 +5,7 @@
  *   - Suggestion    : one row from SearchProxy::suggest()
  */
 
-export type SortKey = 'relevance' | 'newest' | 'oldest' | 'title' | 'count';
+export type SortKey = 'relevance' | 'newest' | 'oldest' | 'title' | 'count' | 'episode';
 
 /** One sort choice offered for a corpus (server-built, label already translated). */
 export interface SortOption {
@@ -18,6 +18,7 @@ export type CardKind =
   | 'item'
   | 'project'
   | 'publication'
+  | 'podcast'
   | 'person'
   | 'section'
   | 'organisation'
@@ -116,6 +117,31 @@ export interface Doc {
   pages_s?: string;
   /** Resolvable DOI link, e.g. "https://doi.org/10.1163/…". */
   doi_s?: string;
+
+  // Podcast fields. people_ss (union of hosts + guests) and language_ss are shared
+  // with the corpora above; series_s is single-valued.
+  /** Podcast series, e.g. "Cluster Conversations". */
+  series_s?: string;
+  /** Series item id, so the card links the series to its Omeka page. */
+  series_id?: string;
+  /** Episode number (the default sort). */
+  episode?: number;
+  host_ss?: string[];
+  /** Person item ids, parallel to host_ss ("" where the host is unlinked). */
+  host_ids?: string[];
+  guest_ss?: string[];
+  /** Person item ids, parallel to guest_ss ("" where the guest is unlinked). */
+  guest_ids?: string[];
+  /** Sound engineer(s) — an optional production credit line. */
+  engineer_ss?: string[];
+  /** Person item ids, parallel to engineer_ss ("" where unlinked). */
+  engineer_ids?: string[];
+  /** External "Listen" link (audio / streaming / episode page). */
+  url_s?: string;
+  /** Publication date, shown verbatim on the card (e.g. "2026-01-28"). */
+  date_s?: string;
+  /** Whether the episode has a transcript (the full text isn't shipped). */
+  has_transcript?: boolean;
 
   // Person fields.
   affiliation_ss?: string[];

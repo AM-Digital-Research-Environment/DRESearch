@@ -30,10 +30,15 @@ final class SortOptions
     {
         $options = [];
         foreach ($profile->sortOptionValues() as $value) {
-            // The `count` key (e.g. "Most research items") carries a per-profile label.
-            $label = $value === 'count'
-                ? $translate($profile->sortCountLabel())
-                : $translate(self::LABELS[$value] ?? $value);
+            // The `count` key (e.g. "Most research items") and config-defined sorts
+            // (e.g. "Episode number") carry a per-profile label.
+            if ($value === 'count') {
+                $label = $translate($profile->sortCountLabel());
+            } elseif (($custom = $profile->sortFieldLabel($value)) !== null) {
+                $label = $translate($custom);
+            } else {
+                $label = $translate(self::LABELS[$value] ?? $value);
+            }
             $options[] = ['value' => $value, 'label' => $label];
         }
         return $options;

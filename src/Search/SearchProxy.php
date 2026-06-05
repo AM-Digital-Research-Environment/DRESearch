@@ -321,6 +321,9 @@ final class SearchProxy
         } elseif ($profile->kind() === 'publication') {
             $author = $doc['author_ss'][0] ?? ($doc['type_s'] ?? null);
             $parts = [$author, isset($doc['year']) ? (string) $doc['year'] : null];
+        } elseif ($profile->kind() === 'podcast') {
+            // Series + year (episodes have no type_s; the series gives context).
+            $parts = [$doc['series_s'] ?? null, isset($doc['year']) ? (string) $doc['year'] : null];
         } elseif ($profile->kind() === 'person') {
             $parts = [$doc['affiliation_ss'][0] ?? null, $doc['roles_ss'][0] ?? null];
         } elseif ($profile->kind() === 'section') {
