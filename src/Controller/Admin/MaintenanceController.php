@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace DRESearch\Controller\Admin;
 
 use DRESearch\Form\MaintenanceForm;
+use DRESearch\Job\IndexAllSearchProfiles;
 use DRESearch\Job\IndexSearchProfile;
 use DRESearch\Search\TypesenseClientProvider;
 use DRESearch\Settings\ProfileRegistry;
@@ -50,6 +51,23 @@ class MaintenanceController extends AbstractActionController
 
         if (!$this->provider->isConfigured()) {
             $this->messenger()->addError('Typesense is not configured. Set the connection under Modules → DRE Search → Configure.'); // @translate
+            return $this->redirect()->toRoute('admin/dre-search');
+        }
+
+        // "Reindex all" — one background job that rebuilds every corpus in turn
+        // (gentler on the host than dispatching one job per corpus, and a single
+        // entry to track in Admin → Jobs).
+        if ($this->params()->fromPost('reindex_all')) {
+            $job = $this->jobDispatcher()->dispatch(IndexAllSearchProfiles::class);
+            $jobUrl = $this->url()->fromRoute('admin/id', ['controller' => 'job', 'id' => $job->getId()]);
+            $message = new Message(
+                'Reindex of all corpora queued. Track progress in %1$sjob #%2$s%3$s.', // @translate
+                sprintf('<a href="%s">', htmlspecialchars($jobUrl, ENT_QUOTES, 'UTF-8')),
+                $job->getId(),
+                '</a>'
+            );
+            $message->setEscapeHtml(false);
+            $this->messenger()->addSuccess($message);
             return $this->redirect()->toRoute('admin/dre-search');
         }
 

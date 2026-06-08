@@ -56,6 +56,16 @@ $form->prepare();
 <?php if ($configured): ?>
     <?= $this->form()->openTag($form) ?>
     <?= $this->formHidden($form->get('csrf')) ?>
+    <p class="dre-search-reindex-all">
+        <button type="submit" class="button" name="reindex_all" value="1">
+            <?= $this->translate('Reindex all corpora') ?>
+        </button>
+        <span class="dre-search-reindex-all__hint" style="margin-inline-start:.5rem; color:#6c6357; font-size:.9em;">
+            <?= $this->translate('Rebuilds every index in one background job, one corpus at a time.') ?>
+        </span>
+    </p>
+
+    <h3><?= $this->translate('Or reindex a single corpus') ?></h3>
     <div class="dre-search-reindex-buttons">
         <?php foreach ($profiles as $p): ?>
             <button type="submit" class="button" name="profile" value="<?= $this->escapeHtmlAttr($p['name']) ?>">
