@@ -71,7 +71,7 @@
                 onchange={(e) =>
                   onToggle(field, c.value, (e.currentTarget as HTMLInputElement).checked)}
               />
-              <span class="dre-facet__value">{c.value}</span>
+              <span class="dre-facet__value" title={c.value}>{c.value}</span>
               <span class="dre-facet__count">{c.count.toLocaleString()}</span>
             </label>
           </li>
@@ -194,6 +194,12 @@
   }
   .dre-facet__value {
     flex: 1;
+    /* min-width:0 is what lets the ellipsis below actually fire: a flex item's
+       default min-width is `auto` (≈ its content's min-content width), so a long
+       unbreakable label would otherwise refuse to shrink and push the whole rail
+       past the viewport on mobile (where the column is an uncapped 1fr). The full
+       value stays available via the `title` tooltip. */
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

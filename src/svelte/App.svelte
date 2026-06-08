@@ -359,7 +359,10 @@
 
   .dre-search__layout {
     display: grid;
-    grid-template-columns: minmax(14rem, 17rem) 1fr;
+    /* The min track on each column is 0, not the default `auto` (≈ content
+       min-content): without it a long facet label or a wide result card would
+       expand its track and overflow the page horizontally. */
+    grid-template-columns: minmax(14rem, 17rem) minmax(0, 1fr);
     gap: var(--space-xl, 2rem);
     align-items: start;
   }
@@ -412,6 +415,9 @@
     position: sticky;
     top: var(--space-md, 1rem);
     align-self: start;
+    /* Let the grid item shrink below its content's min-content width so its
+       contents (which truncate internally) can never widen the column. */
+    min-width: 0;
     max-height: calc(100vh - var(--space-xl, 2rem));
     overflow-y: auto;
     scrollbar-width: thin;
@@ -519,7 +525,9 @@
 
   @media (max-width: 48rem) {
     .dre-search__layout {
-      grid-template-columns: 1fr;
+      /* minmax(0, …) again here — the single mobile column must be allowed to
+         shrink below content width, or the facet panel overflows the screen. */
+      grid-template-columns: minmax(0, 1fr);
       gap: var(--space-md, 1rem);
     }
     .dre-search__facets-toggle {

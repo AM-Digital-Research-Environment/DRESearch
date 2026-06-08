@@ -153,6 +153,10 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-xs, 0.25rem);
+    /* A long selected value (e.g. a full project title) must wrap within the
+       rail, never widen it. */
+    max-width: 100%;
+    min-width: 0;
     padding: 0.2rem 0.55rem;
     background: var(--surface, #fdfcfa);
     border: 1px solid color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dcd6cb));
@@ -180,6 +184,8 @@
   }
   .dre-facets__chip-value {
     font-weight: 600;
+    /* Break even an unbroken token so a spaceless value can't overflow the rail. */
+    overflow-wrap: anywhere;
   }
   .dre-facets__chip-x {
     font-size: var(--text-sm, 0.9rem);
