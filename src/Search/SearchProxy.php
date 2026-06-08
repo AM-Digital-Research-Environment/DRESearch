@@ -324,6 +324,9 @@ final class SearchProxy
         } elseif ($profile->kind() === 'podcast') {
             // Series + year (episodes have no type_s; the series gives context).
             $parts = [$doc['series_s'] ?? null, isset($doc['year']) ? (string) $doc['year'] : null];
+        } elseif ($profile->kind() === 'video') {
+            // Playlist + year (videos have no type_s; the playlist gives context).
+            $parts = [$doc['playlist_s'] ?? null, isset($doc['year']) ? (string) $doc['year'] : null];
         } elseif ($profile->kind() === 'person') {
             $parts = [$doc['affiliation_ss'][0] ?? null, $doc['roles_ss'][0] ?? null];
         } elseif ($profile->kind() === 'section') {

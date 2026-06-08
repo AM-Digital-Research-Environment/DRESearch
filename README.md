@@ -4,7 +4,7 @@ Typesense-backed faceted search for the Africa Multiple **DRE** Omeka S instance
 (the one populated by [MongoDB2OmekaS]). It indexes content directly from the
 Omeka dashboard via MySQL — there is no external ingestion pipeline.
 
-Eleven search corpora ship out of the box, each as its own page block:
+Twelve search corpora ship out of the box, each as its own page block:
 
 - **Research items search** — the digitised research items (resource template 10).
 - **Research projects search** — the cluster's research projects (template 5).
@@ -14,6 +14,11 @@ Eleven search corpora ship out of the box, each as its own page block:
   39095), filterable by series, the people in each episode (hosts + guests), and
   language; sortable by episode number or date. Cards show the series logo as the
   thumbnail, the abstract, and a "Listen" link.
+- **YouTube videos search** — the cluster's recorded talks, interviews, panels and
+  screenings on YouTube (template 22, item set 39192), filterable by playlist,
+  speaker, and language, with a year slider. Cards show the video thumbnail, the
+  abstract, the speakers, a "Transcript" badge, and a "Watch" link; search covers
+  the transcript.
 - **People search** — researchers and contributors (template 4), filterable by
   affiliation and role, with per-person research-item and publication counts.
 - **Research sections search** — the cluster's thematic sections (template 7),
@@ -76,6 +81,14 @@ don't want a search backend.
   - Sort: **Episode number** (default — newest episode first) or **Newest / Oldest**
     by date, plus Relevance / Title.
   - Search covers the title, abstract, transcript, and the people in each episode.
+- A **YouTube videos search** page block: cards show the video's own poster-frame
+  thumbnail, the date, the title, a playlist chip, the speakers (linked to their
+  person pages), the language, the abstract, a **Transcript** badge when the video
+  is full-text searchable, and a **Watch** link to YouTube.
+  - Facets: a **Year** range slider, **Playlist**, **Speaker**, and **Language**.
+  - Sort: **Newest / Oldest** by date (newest first by default), plus Relevance /
+    Title.
+  - Search covers the title, abstract, transcript, and the speakers in each video.
 - A **People search** page block: cards show the person's name, affiliation(s),
   role chips, and how many research items and publications they're associated
   with (laid out two-up on wide screens, since the cards are compact).

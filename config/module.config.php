@@ -54,6 +54,7 @@ return [
             'dreSearchProjects'     => Service\BlockLayout\ResearchProjectsSearchBlockFactory::class,
             'dreSearchPublications'  => Service\BlockLayout\ResearchPublicationsSearchBlockFactory::class,
             'dreSearchPodcasts'      => Service\BlockLayout\ResearchPodcastsSearchBlockFactory::class,
+            'dreSearchVideos'        => Service\BlockLayout\ResearchVideosSearchBlockFactory::class,
             'dreSearchPeople'        => Service\BlockLayout\ResearchPeopleSearchBlockFactory::class,
             'dreSearchSections'      => Service\BlockLayout\ResearchSectionsSearchBlockFactory::class,
             'dreSearchOrganisations' => Service\BlockLayout\ResearchOrganisationsSearchBlockFactory::class,
@@ -479,6 +480,58 @@ return [
                     // it's never shipped to the client. Matches still surface as a
                     // highlighted snippet, which Typesense returns even for fields in
                     // exclude_fields (see QueryBuilder::search()).
+                    'transcript'     => ['property' => 'bibo:content', 'type' => 'string',   'facet' => false, 'search_only' => true],
+                ],
+
+                // The abstract (dcterms:abstract) isn't a facet/display property, so
+                // declare it for the reindexer to SELECT.
+                'read_properties' => ['dcterms:abstract'],
+            ],
+
+            // YouTube videos — resource template 22, item set 39192. The cluster's
+            // recorded talks, interviews, panels and screenings published on YouTube.
+            // Structurally a near-twin of the podcasts corpus (see VideoMapper): each
+            // video belongs to a YouTube PLAYLIST (dcterms:isPartOf → a playlist item,
+            // alt-labelled "YouTube playlist"), credits SPEAKERS (marcrel:spk → Person
+            // items — sparse today but growing), a language, and links out to YouTube
+            // (fabio:hasURL). The bibo:content TRANSCRIPT is the full-text search payoff
+            // (already populated). Unlike podcasts (whose own media is the audio file),
+            // a video's own first media is its poster-frame thumbnail, so the card uses
+            // the item's own thumbnail — no thumbnail_property hop. Findable by title,
+            // abstract, transcript and speaker; a Year slider + newest/oldest sort.
+            'research_videos' => [
+                'label'       => 'YouTube videos', // @translate
+                'placeholder' => 'Search YouTube videos…', // @translate
+                'collection'  => 'dre_videos_current',
+                'kind'        => 'video',
+                'template_id' => 22,
+                'item_set_id' => 39192,
+                'query_by'    => 'title,abstract,transcript,speaker_ss',
+                // A single publication date → newest/oldest sorts + a year slider.
+                'date'        => ['mode' => 'single', 'property' => 'dcterms:date', 'label' => 'Year', 'facet' => true],
+                'default_sort' => 'newest',
+
+                'facets' => [
+                    // One video → one playlist (single-valued), straight from the
+                    // linked playlist title (e.g. "Cinema Africa 2024/25").
+                    'playlist_s'  => ['property' => 'dcterms:isPartOf', 'label' => 'Playlist', 'array' => false],
+                    // Speakers (marcrel:spk). Searchable (query_by) and carrying
+                    // parallel *_ids so the card links each person — see VideoMapper.
+                    'speaker_ss'  => ['property' => 'marcrel:spk',     'label' => 'Speaker',  'array' => true],
+                    'language_ss' => ['property' => 'dcterms:language', 'label' => 'Language', 'array' => true],
+                ],
+
+                // Display / search fields. speaker_ids parallels speaker_ss; playlist_id
+                // links the playlist chip; url_s the external "Watch" link; date_s the
+                // display date; has_transcript flags the badge; transcript is the
+                // (already populated) full-text search payload, search_only so it's
+                // never shipped to the card.
+                'display_fields' => [
+                    'speaker_ids'    => ['property' => null,           'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'playlist_id'    => ['property' => null,           'type' => 'string',   'facet' => false, 'index' => false],
+                    'url_s'          => ['property' => 'fabio:hasURL', 'type' => 'string',   'facet' => false, 'index' => false],
+                    'date_s'         => ['property' => null,           'type' => 'string',   'facet' => false, 'index' => false],
+                    'has_transcript' => ['property' => null,           'type' => 'bool',     'facet' => false, 'index' => false],
                     'transcript'     => ['property' => 'bibo:content', 'type' => 'string',   'facet' => false, 'search_only' => true],
                 ],
 

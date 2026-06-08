@@ -23,6 +23,8 @@ namespace DRESearch\Settings;
  *                      publisher, a single year, and a formatted reference card)
  *   - 'podcast'      : podcast episodes (series + host/guest people, an episode
  *                      number, the series logo as the thumbnail, a "Listen" link)
+ *   - 'video'        : YouTube videos (playlist + speaker people, the video's own
+ *                      poster thumbnail, a transcript, a "Watch" link)
  *   - 'person'       : people (affiliation + reverse-link roles & association counts)
  *   - 'section'      : research sections (leaders, derived phase, project count)
  *   - 'organisation' : institutions & groups (Type facet + reverse-link roles & counts)

@@ -4,6 +4,7 @@
   import ProjectCard from './ProjectCard.svelte';
   import PublicationCard from './PublicationCard.svelte';
   import PodcastCard from './PodcastCard.svelte';
+  import VideoCard from './VideoCard.svelte';
   import PersonCard from './PersonCard.svelte';
   import SectionCard from './SectionCard.svelte';
   import OrganisationCard from './OrganisationCard.svelte';
@@ -71,6 +72,8 @@
         <PublicationCard {doc} {itemUrlBase} {onAddFilter} />
       {:else if cardKind === 'podcast'}
         <PodcastCard {doc} {itemUrlBase} {onAddFilter} />
+      {:else if cardKind === 'video'}
+        <VideoCard {doc} {itemUrlBase} {onAddFilter} />
       {:else if cardKind === 'person'}
         <PersonCard {doc} {itemUrlBase} {onAddFilter} />
       {:else if cardKind === 'section'}

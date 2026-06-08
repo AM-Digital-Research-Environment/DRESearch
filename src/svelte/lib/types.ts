@@ -19,6 +19,7 @@ export type CardKind =
   | 'project'
   | 'publication'
   | 'podcast'
+  | 'video'
   | 'person'
   | 'section'
   | 'organisation'
@@ -136,12 +137,23 @@ export interface Doc {
   engineer_ss?: string[];
   /** Person item ids, parallel to engineer_ss ("" where unlinked). */
   engineer_ids?: string[];
-  /** External "Listen" link (audio / streaming / episode page). */
+  /** External "Listen" / "Watch" link (audio / streaming / episode / YouTube page). */
   url_s?: string;
   /** Publication date, shown verbatim on the card (e.g. "2026-01-28"). */
   date_s?: string;
-  /** Whether the episode has a transcript (the full text isn't shipped). */
+  /** Whether the episode / video has a transcript (the full text isn't shipped). */
   has_transcript?: boolean;
+
+  // YouTube-video fields. language_ss, url_s, date_s, has_transcript, year and the
+  // transcript (search_only, never shipped) are shared with the podcast fields above.
+  /** YouTube playlist, e.g. "Cinema Africa 2024/25" (single-valued). */
+  playlist_s?: string;
+  /** Playlist item id, so the card links the playlist chip to its Omeka page. */
+  playlist_id?: string;
+  /** Speakers credited on the video (marcrel:spk). */
+  speaker_ss?: string[];
+  /** Person item ids, parallel to speaker_ss ("" where the speaker is unlinked). */
+  speaker_ids?: string[];
 
   // Person fields.
   affiliation_ss?: string[];

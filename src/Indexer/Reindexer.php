@@ -212,6 +212,9 @@ final class Reindexer
         if ($this->profile->kind() === 'podcast') {
             return new PodcastMapper($this->profile);
         }
+        if ($this->profile->kind() === 'video') {
+            return new VideoMapper($this->profile);
+        }
         if ($this->profile->kind() === 'person') {
             return new PersonMapper($this->profile);
         }

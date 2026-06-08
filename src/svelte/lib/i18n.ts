@@ -9,6 +9,7 @@ const STRINGS: Record<string, string> = {
   search_placeholder_project: 'Search research projects…',
   search_placeholder_publication: 'Search publications…',
   search_placeholder_podcast: 'Search podcasts…',
+  search_placeholder_video: 'Search YouTube videos…',
   search_placeholder_person: 'Search people…',
   search_placeholder_section: 'Search research sections…',
   search_placeholder_organisation: 'Search organisations…',
@@ -91,6 +92,10 @@ const STRINGS: Record<string, string> = {
   listen_label: 'Listen',
   transcript_label: 'Transcript',
 
+  // YouTube-video card.
+  speaker_label: 'Speaker',
+  watch_label: 'Watch',
+
   // Person card.
   publications_one: '{n} publication',
   publications_other: '{n} publications',
@@ -129,6 +134,8 @@ const MATCH_FIELD_LABELS: Record<string, string> = {
   guest_ss: 'Guest',
   engineer_ss: 'Sound engineer',
   series_s: 'Series',
+  speaker_ss: 'Speaker',
+  playlist_s: 'Playlist',
   transcript: 'Transcript',
   pi_ss: 'Principal investigator',
   member_ss: 'Member',
