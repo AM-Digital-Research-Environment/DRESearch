@@ -136,6 +136,104 @@ final class Reindexer
     }
 
     /**
+     * Incremental path: re-map ONE source item and upsert it straight into the
+     * live collection (the alias), reusing the same per-item loaders + mapper as
+     * {@see run()}. The production {@see run()} path is untouched.
+     *
+     * Returns false when the id isn't a source resource of THIS profile (so the
+     * caller can try the next profile); true after a successful upsert.
+     *
+     * Scope note: this refreshes the saved item's OWN document. The reverse-link
+     * aggregates it contributes to on OTHER records (e.g. a person's item_count
+     * when a research item that credits them is edited) are corpus-wide and are
+     * left to drift until the next full reindex — the same trade-off the bulk
+     * reindexer implies.
+     *
+     * Throws on a Typesense import failure so the caller can log it; never blocks
+     * the Omeka save (the IncrementalIndexer wraps this in try/catch).
+     */
+    public function indexOne(int $id): bool
+    {
+        if ($id <= 0) {
+            return false;
+        }
+
+        // In scope for this profile? Same predicate as run(), narrowed to one id.
+        $predicate = $this->sourcePredicate();
+        $sql = 'SELECT id, title, is_public FROM resource'
+            . ' WHERE resource_type = :rt AND id = :id'
+            . ($predicate !== '' ? ' AND ' . $predicate : '');
+        $row = $this->connection
+            ->executeQuery($sql, ['rt' => Item::class, 'id' => $id])
+            ->fetchAssociative();
+        if ($row === false) {
+            return false; // not a source resource of this corpus
+        }
+
+        $doc = $this->buildDoc($row, $this->buildMapper());
+
+        $results = $this->client->collections[$this->alias]->documents->import([$doc], ['action' => 'upsert']);
+        foreach ($results as $result) {
+            if (is_array($result) && ($result['success'] ?? true) === false) {
+                throw new \RuntimeException('Typesense upsert failed: ' . (string) ($result['error'] ?? 'unknown error'));
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Incremental path: remove one document from the live collection by id.
+     * Idempotent on the Typesense side; the caller swallows a 404 (the item was
+     * never indexed, or already cleared by a reindex).
+     */
+    public function deleteOne(int $id): void
+    {
+        $this->client->collections[$this->alias]->documents[(string) $id]->delete();
+    }
+
+    /**
+     * Build one Typesense document from a source `resource` row, loading just
+     * that item's values / thumbnail / reverse-link figures. The single-item
+     * counterpart to {@see run()}'s page loop; kept separate so run() keeps its
+     * page-level batch loading (loading per-item there would be N× the queries).
+     *
+     * @param array{id:int|string, title:?string, is_public:int|bool} $row
+     * @return array<string,mixed>
+     */
+    private function buildDoc(array $row, MapperInterface $mapper): array
+    {
+        $id = (int) $row['id'];
+        $ids = [$id];
+
+        $valuesByItem = $this->loadValues($ids);
+        $thumbnails   = $this->loadThumbnails($ids);
+        $itemLink     = $this->profile->itemLink();
+        $reverseLinks = $this->profile->reverseLinks();
+        $counts = $itemLink !== null ? $this->loadItemCounts($ids, $itemLink) : [];
+        [$reverseCounts, $reverseRoles] = $reverseLinks !== null
+            ? $this->loadReverseLinks($ids, $reverseLinks)
+            : [[], []];
+
+        $item = [
+            'id'        => $id,
+            'title'     => (string) ($row['title'] ?? ''),
+            'is_public' => (bool) $row['is_public'],
+        ];
+        if ($itemLink !== null) {
+            $item['item_count'] = $counts[$id] ?? 0;
+        }
+        if ($reverseLinks !== null) {
+            $item['counts'] = [];
+            foreach ($reverseCounts as $field => $map) {
+                $item['counts'][$field] = $map[$id] ?? 0;
+            }
+            $item['roles'] = $reverseRoles[$id] ?? [];
+        }
+
+        return $mapper->map($item, $valuesByItem[$id] ?? [], $thumbnails[$id] ?? null);
+    }
+
+    /**
      * The source-resource WHERE predicate for {@see run()}: the profile's base
      * template/item-set scope, plus each configured `extra_sources` entry OR'd
      * in. Returns '' when the corpus has no scope at all (index every item).

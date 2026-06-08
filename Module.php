@@ -23,6 +23,7 @@ namespace DRESearch;
 // runs. Matches the ImageServer / IiifServer / IwacSearch pattern.
 require_once __DIR__ . '/vendor/autoload.php';
 
+use Laminas\EventManager\SharedEventManagerInterface;
 use Laminas\Mvc\Controller\AbstractController;
 use Laminas\Mvc\MvcEvent;
 use Laminas\View\Renderer\PhpRenderer;
@@ -68,6 +69,59 @@ class Module extends AbstractModule
             [Controller\Admin\MaintenanceController::class],
             ['index', 'reindex']
         );
+    }
+
+    /**
+     * Live incremental indexing: re-map (create/update) or remove (delete) a
+     * single item in its matching profile collection(s) when Omeka commits an
+     * item save. Handler bodies live in Indexer\ItemEventListener so the logic
+     * stays testable and Module.php keeps to lifecycle concerns. Typesense stays
+     * optional — with no client configured every handler is a no-op, and any
+     * Typesense error is swallowed inside the indexer so a save never fails.
+     */
+    public function attachListeners(SharedEventManagerInterface $sharedEventManager): void
+    {
+        $listener = $this->resolveItemEventListener();
+        if ($listener === null) {
+            return;
+        }
+
+        $sharedEventManager->attach(
+            \Omeka\Api\Adapter\ItemAdapter::class,
+            'api.create.post',
+            [$listener, 'onItemCreate']
+        );
+        $sharedEventManager->attach(
+            \Omeka\Api\Adapter\ItemAdapter::class,
+            'api.update.post',
+            [$listener, 'onItemUpdate']
+        );
+        $sharedEventManager->attach(
+            \Omeka\Api\Adapter\ItemAdapter::class,
+            'api.delete.post',
+            [$listener, 'onItemDelete']
+        );
+    }
+
+    /**
+     * Resolve the ItemEventListener from the service manager, returning null if
+     * the SL isn't available yet (extreme bootstrap edge cases). attachListeners
+     * runs after the SL is built, so in normal operation this returns a real
+     * listener; the null branch is defensive — a missing SL means we can't attach.
+     */
+    private function resolveItemEventListener(): ?Indexer\ItemEventListener
+    {
+        try {
+            $sl = $this->getServiceLocator();
+            if ($sl === null) {
+                return null;
+            }
+            /** @var Indexer\ItemEventListener $listener */
+            $listener = $sl->get(Indexer\ItemEventListener::class);
+            return $listener;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

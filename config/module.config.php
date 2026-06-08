@@ -5,8 +5,8 @@ declare(strict_types=1);
  * DRESearch module configuration.
  *
  * Wires the public search proxy, the admin maintenance page, the dreSearch
- * page block, services, and view templates. Deliberately lean — no browse
- * tables, no scoped-key endpoints, no event listeners.
+ * page block, services, view templates, and the api.*.post listeners that drive
+ * incremental indexing. Lean — no browse tables, no scoped-key endpoints.
  */
 
 namespace DRESearch;
@@ -26,6 +26,12 @@ return [
             // overrides templates, item sets, facets, query fields, etc. via
             // config/local.config.php — no module source edits needed.
             Settings\ProfileRegistry::class => Service\ProfileRegistryFactory::class,
+            // Live incremental indexing — re-maps a single item into its
+            // matching profile collection(s) on api.*.post (Module::attachListeners).
+            Indexer\IncrementalIndexer::class => Service\Indexer\IncrementalIndexerFactory::class,
+            // Event-handler class that owns the api.*.post bodies, kept out of
+            // Module.php so the listener logic stays testable.
+            Indexer\ItemEventListener::class => Service\Indexer\ItemEventListenerFactory::class,
         ],
     ],
 
