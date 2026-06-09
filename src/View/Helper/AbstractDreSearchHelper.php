@@ -20,8 +20,20 @@ abstract class AbstractDreSearchHelper extends AbstractHelper
     protected function injectBundle(): void
     {
         $view = $this->getView();
+        // Skeleton + bar-shell styles: the server-rendered placeholder is above
+        // the fold, so these must be present at first paint — keep render-blocking.
         $view->headLink()->appendStylesheet($view->assetUrl('css/dre-search.css', 'DRESearch'));
-        $view->headLink()->appendStylesheet($view->assetUrl('dist/dre-search.css', 'DRESearch'));
+        // Compiled Svelte component styles (~63 KiB): only needed once the deferred
+        // bundle below hydrates the bar, so load them non-render-blocking via the
+        // media="print"→"all" swap to keep them off the critical render path. The
+        // skeleton stays styled meanwhile (its rules live in css/dre-search.css).
+        $distCss = json_encode($view->assetUrl('dist/dre-search.css', 'DRESearch'), JSON_UNESCAPED_SLASHES);
+        $view->headScript()->appendScript(
+            '(function(){var l=document.createElement("link");l.rel="stylesheet";'
+            . 'l.media="print";l.href=' . $distCss . ';'
+            . 'l.onload=function(){this.onload=null;this.media="all";};'
+            . 'document.head.appendChild(l);})();'
+        );
         $view->headScript()->appendFile(
             $view->assetUrl('dist/dre-search.js', 'DRESearch'),
             'text/javascript',
