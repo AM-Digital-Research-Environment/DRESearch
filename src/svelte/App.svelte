@@ -1,12 +1,5 @@
 <script lang="ts">
-  import type {
-    ActiveFilters,
-    Bootstrap,
-    SearchResponse,
-    SortKey,
-    SortOption,
-    YearBucket,
-  } from './lib/types';
+  import type { ActiveFilters, Bootstrap, SearchResponse, SortKey, SortOption } from './lib/types';
   import { SearchApi } from './lib/api';
   import { t } from './lib/i18n';
   import SearchBox from './components/SearchBox.svelte';
@@ -85,11 +78,6 @@
   let filters = $state<ActiveFilters>({});
   let yearFrom = $state<number | null>(null);
   let yearTo = $state<number | null>(null);
-  // Year-distribution histogram for the date slider. Fetched separately from the
-  // results because it must ignore the year range to show the full span; refetched
-  // only when the query or a categorical filter changes (not on slider drag, page
-  // or sort). Empty until the first fetch resolves, and on corpora with no slider.
-  let yearDistribution = $state<YearBucket[]>([]);
 
   let response = $state<SearchResponse | null>(initialResponse);
   let isLoading = $state(false);
@@ -157,30 +145,6 @@
       .finally(() => {
         if (myId === reqId) {
           isLoading = false;
-        }
-      });
-  });
-
-  // Histogram fetch — kept out of the results effect so dragging the slider,
-  // paging or re-sorting never refetches it (it reads only query + filters).
-  let histReqId = 0;
-  $effect(() => {
-    if (!showYear) {
-      return;
-    }
-    const q = query;
-    const f = filters;
-    const myId = ++histReqId;
-    api
-      .yearHistogram({ q, filters: f, locked_filter: bootstrap.locked_filter })
-      .then((buckets) => {
-        if (myId === histReqId) {
-          yearDistribution = buckets;
-        }
-      })
-      .catch(() => {
-        if (myId === histReqId) {
-          yearDistribution = [];
         }
       });
   });
@@ -294,7 +258,6 @@
           max={bootstrap.year_bounds.max}
           from={yearFrom ?? bootstrap.year_bounds.min}
           to={yearTo ?? bootstrap.year_bounds.max}
-          distribution={yearDistribution}
           onChange={handleYearChange}
         />
       {/if}

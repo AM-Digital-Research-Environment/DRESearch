@@ -238,50 +238,6 @@ final class SearchProxy
         return ['min' => $min, 'max' => $max];
     }
 
-    /**
-     * Per-year document counts for the histogram drawn above the date slider,
-     * scoped to the current query + categorical filters but NOT the year range (so
-     * the bars show the full span). Returns ascending-by-year buckets; [] when the
-     * profile has no year facet, Typesense is unavailable, or anything fails — the
-     * histogram is a progressive enhancement and must never break the block.
-     *
-     * @param array<string,mixed> $req
-     * @return list<array{year:int,count:int}>
-     */
-    public function yearDistribution(string $profileName, array $req): array
-    {
-        $profile = $this->registry->get($profileName);
-        $client = $this->provider->getClient();
-        if ($profile === null || $client === null || !$profile->hasYearFacet()) {
-            return [];
-        }
-        try {
-            $result = $client->collections[$profile->collection()]
-                ->documents
-                ->search((new QueryBuilder($profile))->yearHistogram($req));
-        } catch (\Throwable $e) {
-            return [];
-        }
-
-        $field = $profile->sortYearField();
-        $buckets = [];
-        foreach ($result['facet_counts'] ?? [] as $facet) {
-            if (($facet['field_name'] ?? '') !== $field) {
-                continue;
-            }
-            foreach ($facet['counts'] ?? [] as $count) {
-                // Typesense returns the int facet value as a string ("2024").
-                $year = (int) ($count['value'] ?? 0);
-                $n = (int) ($count['count'] ?? 0);
-                if ($year > 0 && $n > 0) {
-                    $buckets[] = ['year' => $year, 'count' => $n];
-                }
-            }
-        }
-        usort($buckets, static fn(array $a, array $b): int => $a['year'] <=> $b['year']);
-        return $buckets;
-    }
-
     private function normalize(array $result, SearchProfile $profile): array
     {
         $hits = [];

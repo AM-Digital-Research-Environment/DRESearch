@@ -217,43 +217,8 @@ final class QueryBuilder
         ];
     }
 
-    /**
-     * Facet-only query for the year-distribution histogram drawn above the slider.
-     * Scoped to the current query + categorical filters, but deliberately NOT the
-     * year range itself, so the bars always show the full span and reveal where the
-     * current results cluster (dragging the slider just repaints which bars fall
-     * inside — no refetch). Counts only (per_page 0); facets the histogram year
-     * field with a high max_facet_values so no year is dropped. Stopwords are
-     * omitted — the histogram is an approximate visual that must never 404 on a
-     * missing set.
-     *
-     * @param array<string,mixed> $req
-     */
-    public function yearHistogram(array $req): array
-    {
-        $q = trim((string) ($req['q'] ?? ''));
-        return [
-            'q'                => $q === '' ? '*' : $q,
-            'query_by'         => $this->profile->queryBy(),
-            // buildFilter with the year clause suppressed (see the $withYear arg).
-            'filter_by'        => $this->buildFilter($req, false),
-            // Single-date corpora bucket by `year`; range corpora by `year_start`.
-            'facet_by'         => $this->profile->sortYearField(),
-            // The corpus year span fits comfortably under 200 distinct values, so
-            // every year survives into the histogram.
-            'max_facet_values' => 200,
-            'page'             => 1,
-            'per_page'         => 0,
-            'include_fields'   => 'id',
-        ];
-    }
-
-    /**
-     * @param array<string,mixed> $req
-     * @param bool $withYear Append the year-range clause (false for the year
-     *   histogram, which must ignore the selected window to show the full span).
-     */
-    private function buildFilter(array $req, bool $withYear = true): string
+    /** @param array<string,mixed> $req */
+    private function buildFilter(array $req): string
     {
         // Security invariant — always first, never client-controlled.
         $clauses = ['is_public:=true'];
@@ -281,9 +246,7 @@ final class QueryBuilder
             }
         }
 
-        if ($withYear) {
-            $this->appendYearFilter($clauses, $req);
-        }
+        $this->appendYearFilter($clauses, $req);
 
         return implode(' && ', $clauses);
     }

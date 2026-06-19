@@ -34,12 +34,6 @@ export interface YearBounds {
   max: number;
 }
 
-/** One bar of the year-distribution histogram: a year and its document count. */
-export interface YearBucket {
-  year: number;
-  count: number;
-}
-
 /** Per-block config the server inlines; read once on mount. */
 export interface Bootstrap {
   block_id: number;
@@ -67,8 +61,7 @@ export interface Bootstrap {
   locked_filter: string;
   /** Result links are built as `${item_url_base}/${doc.id}`. */
   item_url_base: string;
-  /** year_histogram is optional so an older bootstrap blob still mounts (no bars). */
-  endpoints: { search: string; suggest: string; year_histogram?: string };
+  endpoints: { search: string; suggest: string };
   /** Server-rendered first page, so the block paints without a round-trip. */
   initial_response?: SearchResponse;
   /** Seed query (federated results page reuses App per corpus with a shared query). */
@@ -296,13 +289,7 @@ export interface FederatedBootstrap {
   initial_query: string;
   default_profile: string;
   profiles: ProfileMeta[];
-  endpoints: {
-    search: string;
-    search_all: string;
-    suggest: string;
-    suggest_all: string;
-    year_histogram?: string;
-  };
+  endpoints: { search: string; search_all: string; suggest: string; suggest_all: string };
 }
 
 export interface SearchAllResponse {

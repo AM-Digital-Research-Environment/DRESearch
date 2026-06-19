@@ -5,7 +5,6 @@
  */
 
 import type {
-  ActiveFilters,
   Bootstrap,
   SearchAllRequest,
   SearchAllResponse,
@@ -14,7 +13,6 @@ import type {
   SuggestAllResponse,
   SuggestGroup,
   Suggestion,
-  YearBucket,
 } from './types';
 
 export class SearchApi {
@@ -33,38 +31,6 @@ export class SearchApi {
       throw new Error(`Search request failed (HTTP ${res.status})`);
     }
     return (await res.json()) as SearchResponse;
-  }
-
-  /**
-   * Per-year counts for the date-slider histogram, scoped to the query +
-   * categorical filters (the server ignores the year range, so the bars show the
-   * full span). Best-effort: a missing endpoint, a non-OK response, or an abort
-   * yields [] so the slider still works without bars.
-   */
-  async yearHistogram(
-    req: { q: string; filters: ActiveFilters; locked_filter: string },
-    signal?: AbortSignal,
-  ): Promise<YearBucket[]> {
-    const endpoint = this.endpoints.year_histogram;
-    if (!endpoint) {
-      return [];
-    }
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ ...req, profile: this.profile }),
-        signal,
-      });
-      if (!res.ok) {
-        return [];
-      }
-      const data = (await res.json()) as { buckets?: YearBucket[] };
-      return data.buckets ?? [];
-    } catch {
-      // Aborted or network error — the histogram is a progressive enhancement.
-      return [];
-    }
   }
 
   async suggest(q: string, signal?: AbortSignal): Promise<Suggestion[]> {

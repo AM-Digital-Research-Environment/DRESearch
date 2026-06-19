@@ -169,11 +169,7 @@
       per_page: meta.per_page,
       locked_filter: '',
       item_url_base: bootstrap.item_url_base,
-      endpoints: {
-        search: bootstrap.endpoints.search,
-        suggest: bootstrap.endpoints.suggest,
-        year_histogram: bootstrap.endpoints.year_histogram,
-      },
+      endpoints: { search: bootstrap.endpoints.search, suggest: bootstrap.endpoints.suggest },
       initial_response: activeResponse ?? undefined,
       initial_query: query,
     };
