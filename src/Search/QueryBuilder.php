@@ -41,6 +41,16 @@ final class QueryBuilder
     public const HL_START = "\u{E000}";
     public const HL_END = "\u{E001}";
 
+    /**
+     * Typesense stopword set applied to every non-browse query, so common English
+     * function words ("the", "of", "and", …) don't dilute relevance. Provisioned by
+     * {@see \DRESearch\Indexer\StopwordsSync} (data/stopwords.json) on every reindex
+     * and via the Maintenance "Sync stopwords" action. {@see SearchProxy::search()}
+     * retries without it if the set is missing on the server, so a fresh Typesense
+     * volume degrades to unfiltered search rather than failing.
+     */
+    public const STOPWORDS_SET = \DRESearch\Indexer\StopwordsSync::SET_NAME;
+
     public function __construct(private readonly SearchProfile $profile)
     {
     }
@@ -78,6 +88,10 @@ final class QueryBuilder
             $params['exclude_fields'] = implode(',', $searchOnly);
         }
         if (!$isBrowse) {
+            // Strip common FR/EN/DE function words so "le"/"the"/"der" etc. don't
+            // dilute relevance. Only on a real query — browse (q=*) ignores it, and
+            // SearchProxy drops it and retries if the set isn't on the server yet.
+            $params['stopwords'] = self::STOPWORDS_SET;
             // Mark matched terms so each card can show *where* a result matched.
             // Short fields (title, linked-value facets, names) are highlighted in
             // full — so a card can highlight a whole chip/byline value — while the
@@ -169,10 +183,14 @@ final class QueryBuilder
         // total regardless, and include_fields:id avoids shipping document bodies.
         $params['per_page'] = 1;
         $params['include_fields'] = 'id';
+        // Drop stopwords from the federated tab counts (like the highlight/facet
+        // params): a badge is an approximate count, and not referencing the set
+        // keeps the multi_search resilient if it isn't provisioned yet.
         unset(
             $params['facet_by'],
             $params['max_facet_values'],
             $params['exclude_fields'],
+            $params['stopwords'],
             $params['highlight_full_fields'],
             $params['highlight_start_tag'],
             $params['highlight_end_tag'],
@@ -199,8 +217,43 @@ final class QueryBuilder
         ];
     }
 
-    /** @param array<string,mixed> $req */
-    private function buildFilter(array $req): string
+    /**
+     * Facet-only query for the year-distribution histogram drawn above the slider.
+     * Scoped to the current query + categorical filters, but deliberately NOT the
+     * year range itself, so the bars always show the full span and reveal where the
+     * current results cluster (dragging the slider just repaints which bars fall
+     * inside — no refetch). Counts only (per_page 0); facets the histogram year
+     * field with a high max_facet_values so no year is dropped. Stopwords are
+     * omitted — the histogram is an approximate visual that must never 404 on a
+     * missing set.
+     *
+     * @param array<string,mixed> $req
+     */
+    public function yearHistogram(array $req): array
+    {
+        $q = trim((string) ($req['q'] ?? ''));
+        return [
+            'q'                => $q === '' ? '*' : $q,
+            'query_by'         => $this->profile->queryBy(),
+            // buildFilter with the year clause suppressed (see the $withYear arg).
+            'filter_by'        => $this->buildFilter($req, false),
+            // Single-date corpora bucket by `year`; range corpora by `year_start`.
+            'facet_by'         => $this->profile->sortYearField(),
+            // The corpus year span fits comfortably under 200 distinct values, so
+            // every year survives into the histogram.
+            'max_facet_values' => 200,
+            'page'             => 1,
+            'per_page'         => 0,
+            'include_fields'   => 'id',
+        ];
+    }
+
+    /**
+     * @param array<string,mixed> $req
+     * @param bool $withYear Append the year-range clause (false for the year
+     *   histogram, which must ignore the selected window to show the full span).
+     */
+    private function buildFilter(array $req, bool $withYear = true): string
     {
         // Security invariant — always first, never client-controlled.
         $clauses = ['is_public:=true'];
@@ -228,7 +281,9 @@ final class QueryBuilder
             }
         }
 
-        $this->appendYearFilter($clauses, $req);
+        if ($withYear) {
+            $this->appendYearFilter($clauses, $req);
+        }
 
         return implode(' && ', $clauses);
     }

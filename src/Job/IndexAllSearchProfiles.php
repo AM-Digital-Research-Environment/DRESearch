@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace DRESearch\Job;
 
 use DRESearch\Indexer\Reindexer;
+use DRESearch\Indexer\StopwordsSync;
 use DRESearch\Search\TypesenseClientProvider;
 use DRESearch\Settings\ProfileRegistry;
 use Omeka\Job\AbstractJob;
@@ -34,6 +35,16 @@ class IndexAllSearchProfiles extends AbstractJob
         if ($client === null) {
             $logger->warn('DRESearch: Typesense is not configured — reindex skipped. Set the connection under Modules → DRE Search.');
             return;
+        }
+
+        // Provision the English stopword set the search queries reference. A
+        // server-wide concept, so it runs once here (not per corpus); non-fatal so
+        // a stopwords hiccup never aborts the reindex.
+        try {
+            $stats = StopwordsSync::create($client)->sync();
+            $logger->info(sprintf('DRESearch: stopword set "%s" synced (%d words).', $stats['set'], $stats['count']));
+        } catch (\Throwable $e) {
+            $logger->warn('DRESearch: stopwords sync failed (search still works, unfiltered) — ' . $e->getMessage());
         }
 
         /** @var ProfileRegistry $registry */

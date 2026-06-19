@@ -56,10 +56,11 @@ class FederatedSearch extends AbstractDreSearchHelper
             'default_profile' => $default !== null ? $default->name() : '',
             'profiles'        => $profiles,
             'endpoints'       => [
-                'search'      => $view->basePath('/dre-search/api/search'),
-                'search_all'  => $view->basePath('/dre-search/api/search-all'),
-                'suggest'     => $view->basePath('/dre-search/api/suggest'),
-                'suggest_all' => $view->basePath('/dre-search/api/suggest-all'),
+                'search'         => $view->basePath('/dre-search/api/search'),
+                'search_all'     => $view->basePath('/dre-search/api/search-all'),
+                'suggest'        => $view->basePath('/dre-search/api/suggest'),
+                'suggest_all'    => $view->basePath('/dre-search/api/suggest-all'),
+                'year_histogram' => $view->basePath('/dre-search/api/year-histogram'),
             ],
         ];
 

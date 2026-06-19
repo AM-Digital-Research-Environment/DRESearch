@@ -73,6 +73,16 @@ $form->prepare();
             </button>
         <?php endforeach; ?>
     </div>
+
+    <h3><?= $this->translate('Stopwords') ?></h3>
+    <p>
+        <button type="submit" class="button" name="sync_stopwords" value="1">
+            <?= $this->translate('Sync stopwords') ?>
+        </button>
+        <span style="margin-inline-start:.5rem; color:#6c6357; font-size:.9em;">
+            <?= $this->translate('Re-uploads the English stopword set to Typesense (no reindex needed). A full reindex does this too.') ?>
+        </span>
+    </p>
     <?= $this->form()->closeTag() ?>
 <?php else: ?>
     <p class="error"><?= $this->translate('Configure the Typesense connection before reindexing.') ?></p>

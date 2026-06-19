@@ -6,6 +6,7 @@ namespace DRESearch\Controller\Admin;
 use DRESearch\Form\MaintenanceForm;
 use DRESearch\Job\IndexAllSearchProfiles;
 use DRESearch\Job\IndexSearchProfile;
+use DRESearch\Job\SyncStopwords;
 use DRESearch\Search\TypesenseClientProvider;
 use DRESearch\Settings\ProfileRegistry;
 use Laminas\Mvc\Controller\AbstractActionController;
@@ -51,6 +52,22 @@ class MaintenanceController extends AbstractActionController
 
         if (!$this->provider->isConfigured()) {
             $this->messenger()->addError('Typesense is not configured. Set the connection under Modules → DRE Search → Configure.'); // @translate
+            return $this->redirect()->toRoute('admin/dre-search');
+        }
+
+        // "Sync stopwords" — refresh the FR/EN/DE stopword set on Typesense without
+        // rebuilding any collection (e.g. after editing data/stopwords.json).
+        if ($this->params()->fromPost('sync_stopwords')) {
+            $job = $this->jobDispatcher()->dispatch(SyncStopwords::class);
+            $jobUrl = $this->url()->fromRoute('admin/id', ['controller' => 'job', 'id' => $job->getId()]);
+            $message = new Message(
+                'Stopword sync queued. Track progress in %1$sjob #%2$s%3$s.', // @translate
+                sprintf('<a href="%s">', htmlspecialchars($jobUrl, ENT_QUOTES, 'UTF-8')),
+                $job->getId(),
+                '</a>'
+            );
+            $message->setEscapeHtml(false);
+            $this->messenger()->addSuccess($message);
             return $this->redirect()->toRoute('admin/dre-search');
         }
 

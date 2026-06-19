@@ -277,8 +277,9 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
             // Client builds result links as `${item_url_base}/${id}`.
             'item_url_base' => $view->basePath('/s/' . $siteSlug . '/item'),
             'endpoints'     => [
-                'search'  => $view->basePath('/dre-search/api/search'),
-                'suggest' => $view->basePath('/dre-search/api/suggest'),
+                'search'         => $view->basePath('/dre-search/api/search'),
+                'suggest'        => $view->basePath('/dre-search/api/suggest'),
+                'year_histogram' => $view->basePath('/dre-search/api/year-histogram'),
             ],
         ];
 

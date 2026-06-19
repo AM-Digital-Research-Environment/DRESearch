@@ -115,6 +115,18 @@ return [
                     ],
                 ],
             ],
+            // Per-year counts for the date-slider histogram (scoped to the query +
+            // categorical filters, ignoring the year range itself).
+            'dre-search-api-year-histogram' => [
+                'type'    => \Laminas\Router\Http\Literal::class,
+                'options' => [
+                    'route'    => '/dre-search/api/year-histogram',
+                    'defaults' => [
+                        'controller' => Controller\SearchController::class,
+                        'action'     => 'apiYearHistogram',
+                    ],
+                ],
+            ],
             // Federated autocomplete across every corpus (the theme header bar).
             'dre-search-api-suggest-all' => [
                 'type'    => \Laminas\Router\Http\Literal::class,

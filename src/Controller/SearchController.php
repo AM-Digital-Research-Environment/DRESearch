@@ -33,6 +33,18 @@ class SearchController extends AbstractActionController
         return $this->json($this->proxy->search($profile, $body));
     }
 
+    /**
+     * Per-year document counts for the date-slider histogram. Scoped to the
+     * current query + categorical filters (the year range is ignored server-side),
+     * so the bars show where the current results cluster across the full span.
+     */
+    public function apiYearHistogramAction(): Response
+    {
+        $body = $this->readBody();
+        $profile = (string) ($body['profile'] ?? '');
+        return $this->json(['buckets' => $this->proxy->yearDistribution($profile, $body)]);
+    }
+
     public function apiSuggestAction(): Response
     {
         $profile = (string) ($this->params()->fromQuery('profile') ?? $this->params()->fromPost('profile') ?? '');

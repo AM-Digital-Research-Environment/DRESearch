@@ -35,12 +35,26 @@ final class SearchProxy
         if ($profile === null || $client === null) {
             return $this->unavailable();
         }
+        $params = (new QueryBuilder($profile))->search($req);
+        $collection = $client->collections[$profile->collection()];
         try {
-            $result = $client->collections[$profile->collection()]
-                ->documents
-                ->search((new QueryBuilder($profile))->search($req));
+            $result = $collection->documents->search($params);
         } catch (\Throwable $e) {
-            return $this->unavailable($e->getMessage());
+            // A missing stopword set (e.g. a fresh Typesense volume not yet
+            // provisioned by a reindex) would otherwise 404 the whole search.
+            // Stopwords are an enhancement, not a correctness requirement — drop
+            // them and retry once. Restore filtering with "Reindex all corpora" or
+            // the Maintenance "Sync stopwords" action.
+            if (isset($params['stopwords']) && $this->isStopwordError($e)) {
+                unset($params['stopwords']);
+                try {
+                    $result = $collection->documents->search($params);
+                } catch (\Throwable $retry) {
+                    return $this->unavailable($retry->getMessage());
+                }
+            } else {
+                return $this->unavailable($e->getMessage());
+            }
         }
         return $this->normalize($result, $profile);
     }
@@ -224,6 +238,50 @@ final class SearchProxy
         return ['min' => $min, 'max' => $max];
     }
 
+    /**
+     * Per-year document counts for the histogram drawn above the date slider,
+     * scoped to the current query + categorical filters but NOT the year range (so
+     * the bars show the full span). Returns ascending-by-year buckets; [] when the
+     * profile has no year facet, Typesense is unavailable, or anything fails — the
+     * histogram is a progressive enhancement and must never break the block.
+     *
+     * @param array<string,mixed> $req
+     * @return list<array{year:int,count:int}>
+     */
+    public function yearDistribution(string $profileName, array $req): array
+    {
+        $profile = $this->registry->get($profileName);
+        $client = $this->provider->getClient();
+        if ($profile === null || $client === null || !$profile->hasYearFacet()) {
+            return [];
+        }
+        try {
+            $result = $client->collections[$profile->collection()]
+                ->documents
+                ->search((new QueryBuilder($profile))->yearHistogram($req));
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        $field = $profile->sortYearField();
+        $buckets = [];
+        foreach ($result['facet_counts'] ?? [] as $facet) {
+            if (($facet['field_name'] ?? '') !== $field) {
+                continue;
+            }
+            foreach ($facet['counts'] ?? [] as $count) {
+                // Typesense returns the int facet value as a string ("2024").
+                $year = (int) ($count['value'] ?? 0);
+                $n = (int) ($count['count'] ?? 0);
+                if ($year > 0 && $n > 0) {
+                    $buckets[] = ['year' => $year, 'count' => $n];
+                }
+            }
+        }
+        usort($buckets, static fn(array $a, array $b): int => $a['year'] <=> $b['year']);
+        return $buckets;
+    }
+
     private function normalize(array $result, SearchProfile $profile): array
     {
         $hits = [];
@@ -353,6 +411,12 @@ final class SearchProxy
             return null;
         }
         return ($end !== null && $end !== $start) ? $start . '–' . $end : (string) $start;
+    }
+
+    /** Whether a Typesense error is a missing-stopword-set failure (message-based). */
+    private function isStopwordError(\Throwable $e): bool
+    {
+        return stripos($e->getMessage(), 'stopword') !== false;
     }
 
     private function unavailable(?string $error = null): array

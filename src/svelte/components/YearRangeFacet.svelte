@@ -1,11 +1,13 @@
 <script lang="ts">
   import { t } from '../lib/i18n';
+  import type { YearBucket } from '../lib/types';
 
   /**
    * Dual-handle year range slider, styled to sit among the facet groups.
    * Controlled: the parent owns the value (so "Clear all" can reset it); the
    * component keeps a local copy for smooth dragging and emits a debounced
-   * onChange. Dependency-free — two overlaid range inputs with a coloured fill.
+   * onChange. Dependency-free — two overlaid range inputs with a coloured fill,
+   * plus an optional mini histogram of per-year result counts above the track.
    */
 
   interface Props {
@@ -13,10 +15,16 @@
     max: number;
     from: number;
     to: number;
+    /**
+     * Per-year document counts, drawn as a mini histogram above the track so the
+     * user sees where results cluster before picking a range. Optional — an empty
+     * list renders the slider exactly as before.
+     */
+    distribution?: YearBucket[];
     onChange: (from: number, to: number) => void;
   }
 
-  const { min, max, from, to, onChange }: Props = $props();
+  const { min, max, from, to, distribution = [], onChange }: Props = $props();
 
   // svelte-ignore state_referenced_locally
   let lo = $state(from);
@@ -49,6 +57,41 @@
   // top when the pair sits at the ceiling (so you can drag it back down), and the
   // high handle on top otherwise (so a pair stuck at the floor can be pulled up).
   const loOnTop = $derived(hi >= max);
+
+  // Histogram bars — one column per year in [min, max], height ∝ document count.
+  // The data ignores the selected range (see App.yearDistribution), so the full
+  // span always shows and dragging the handles only repaints which bars fall
+  // inside them. Heights use a sqrt scale: archive years are heavily skewed (a few
+  // peak years dwarf the rest) and a linear scale would flatten the quiet years to
+  // a flat line; sqrt lifts them enough to read as a shape, with an 8% floor so a
+  // single-document year still shows a sliver. Empty years stay at 0.
+  const histBars = $derived.by(() => {
+    type Bar = { year: number; count: number; h: number };
+    const span = max - min + 1;
+    if (distribution.length === 0 || span < 1) {
+      return [] as Bar[];
+    }
+    const counts = new Array<number>(span).fill(0);
+    let maxCount = 0;
+    for (const b of distribution) {
+      if (b.year < min || b.year > max) continue;
+      counts[b.year - min] = b.count;
+      if (b.count > maxCount) maxCount = b.count;
+    }
+    if (maxCount === 0) {
+      return [] as Bar[];
+    }
+    const bars: Bar[] = [];
+    for (let i = 0; i < span; i++) {
+      const c = counts[i];
+      bars.push({
+        year: min + i,
+        count: c,
+        h: c === 0 ? 0 : Math.max(8, Math.sqrt(c / maxCount) * 100),
+      });
+    }
+    return bars;
+  });
 
   let open = $state(true);
 
@@ -102,6 +145,18 @@
         <span>{lo}</span>
         <span>{hi}</span>
       </div>
+      {#if histBars.length > 0}
+        <div class="dre-yr__hist" aria-hidden="true">
+          {#each histBars as bar (bar.year)}
+            <span
+              class="dre-yr__bar"
+              class:dre-yr__bar--in={bar.year >= lo && bar.year <= hi}
+              style="height:{bar.h}%"
+              title="{bar.year} · {bar.count}"
+            ></span>
+          {/each}
+        </div>
+      {/if}
       <div class="dre-yr__slider">
         <div class="dre-yr__track"></div>
         <div class="dre-yr__fill" style="left:{pctLo}%; right:{100 - pctHi}%"></div>
@@ -192,6 +247,37 @@
     font-size: var(--text-xs, 0.75rem);
     font-variant-numeric: tabular-nums;
     margin-bottom: 0.25rem;
+  }
+
+  /* Year-distribution histogram, sitting just above the slider track. */
+  .dre-yr__hist {
+    display: flex;
+    align-items: flex-end;
+    gap: 1px;
+    height: 2rem;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid var(--border-light, #eae5dd);
+  }
+  .dre-yr__bar {
+    flex: 1 1 0;
+    min-width: 0;
+    /* A year with documents the user hasn't selected — quiet, present. */
+    background: color-mix(in oklab, var(--muted, #938979) 30%, transparent);
+    /* Bars are only a few px wide, so the radius tokens (≥6px) would round them
+       into blobs; a 1px cap just softens the top edge. */
+    border-radius: 1px 1px 0 0;
+    transition:
+      height var(--transition-base, 200ms ease),
+      background-color var(--transition-fast, 150ms ease);
+  }
+  /* Years inside the selected range take the brand, echoing the fill bar. */
+  .dre-yr__bar--in {
+    background: color-mix(in oklab, var(--primary, #007a50) 70%, transparent);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dre-yr__bar {
+      transition: none;
+    }
   }
 
   .dre-yr__slider {
