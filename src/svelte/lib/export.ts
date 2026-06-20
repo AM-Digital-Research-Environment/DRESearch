@@ -1,5 +1,5 @@
-import type { CardKind, Doc } from './types';
-import { t } from './i18n';
+import type { ActiveFilters, CardKind, Doc } from './types';
+import { matchFieldLabel, t } from './i18n';
 
 /**
  * Client-side serializers for the result-export menu: plain text, JSON, RIS
@@ -30,6 +30,13 @@ export interface ExportMeta {
   query: string;
   /** Total matches in the result set (may exceed the exported count). */
   found: number;
+  /** Active facet filters (field => selected values) at export time. */
+  filters: ActiveFilters;
+  /** Active year-range bounds (null = unconstrained at that end). */
+  yearFrom: number | null;
+  yearTo: number | null;
+  /** field => human label, so the header reads "Type" not "type_s". */
+  facetLabels: Record<string, string>;
 }
 
 /**
@@ -185,6 +192,34 @@ function pubClass(d: Doc, kind: CardKind): PubClass {
   return container(d, kind) ? 'article' : 'other';
 }
 
+// ─── Search-context helpers (recorded in the export header) ────────────────
+
+/** Whether any facet filter is active. */
+function hasFilters(filters: ActiveFilters): boolean {
+  return Object.values(filters ?? {}).some((v) => v && v.length > 0);
+}
+
+/** Human-readable label for a year-range constraint, or '' when unbounded. */
+function yearLabel(from: number | null, to: number | null): string {
+  if (from != null && to != null) return from === to ? String(from) : `${from}–${to}`;
+  if (from != null) return `≥ ${from}`;
+  if (to != null) return `≤ ${to}`;
+  return '';
+}
+
+/** Indented "Label: v1, v2" lines for each active filter, plus the year range. */
+function filterLines(meta: ExportMeta): string[] {
+  const lines: string[] = [];
+  for (const [field, values] of Object.entries(meta.filters ?? {})) {
+    if (!values || values.length === 0) continue;
+    const label = meta.facetLabels?.[field] ?? matchFieldLabel(field);
+    lines.push(`  ${label}: ${values.join(', ')}`);
+  }
+  const yr = yearLabel(meta.yearFrom, meta.yearTo);
+  if (yr) lines.push(`  ${t('year_label')}: ${yr}`);
+  return lines;
+}
+
 // ─── Plain text ──────────────────────────────────────────────────────────
 
 function toTxt(docs: Doc[], meta: ExportMeta, kind: CardKind, base: string): string {
@@ -192,9 +227,12 @@ function toTxt(docs: Doc[], meta: ExportMeta, kind: CardKind, base: string): str
   const lines: string[] = [
     `DRE Search${origin ? ' — ' + origin : ''}`,
     meta.query ? `${t('export_query_label')}: ${meta.query}` : t('export_browse_label'),
-    `${t('export_count_label')}: ${docs.length} / ${meta.found}`,
-    '',
   ];
+  const fl = filterLines(meta);
+  if (fl.length > 0) {
+    lines.push(`${t('export_filters_label')}:`, ...fl);
+  }
+  lines.push(`${t('export_count_label')}: ${docs.length} / ${meta.found}`, '');
   for (const d of docs) {
     const parts: string[] = [];
     const authors = creators(d, kind).join(', ');
@@ -228,6 +266,9 @@ function toJson(docs: Doc[], meta: ExportMeta): string {
       site: typeof window !== 'undefined' ? window.location.origin : null,
       exported_at: new Date().toISOString(),
       query: meta.query || null,
+      filters: hasFilters(meta.filters) ? meta.filters : null,
+      year_from: meta.yearFrom ?? null,
+      year_to: meta.yearTo ?? null,
       total_found: meta.found,
       exported: docs.length,
       results: docs,

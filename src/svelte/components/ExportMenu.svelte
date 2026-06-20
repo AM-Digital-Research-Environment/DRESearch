@@ -7,7 +7,7 @@
 </script>
 
 <script lang="ts">
-  import type { CardKind, ExportResponse } from '../lib/types';
+  import type { ActiveFilters, CardKind, ExportResponse } from '../lib/types';
   import {
     download,
     exportFilename,
@@ -37,9 +37,26 @@
     kind: CardKind;
     /** Base for building each result's absolute Omeka item URL. */
     itemUrlBase: string;
+    /** Active facet filters at export time — recorded in the export header. */
+    filters: ActiveFilters;
+    /** Active year-range bounds (null = unconstrained at that end). */
+    yearFrom: number | null;
+    yearTo: number | null;
+    /** field => label, so the header reads "Type" not "type_s". */
+    facetLabels: Record<string, string>;
   }
 
-  const { fetchDocs, query, found, kind, itemUrlBase }: Props = $props();
+  const {
+    fetchDocs,
+    query,
+    found,
+    kind,
+    itemUrlBase,
+    filters,
+    yearFrom,
+    yearTo,
+    facetLabels,
+  }: Props = $props();
 
   const menuId = nextExportMenuId();
 
@@ -82,7 +99,14 @@
         error = t('export_empty');
         return;
       }
-      const meta: ExportMeta = { query: query.trim(), found: res.found };
+      const meta: ExportMeta = {
+        query: query.trim(),
+        found: res.found,
+        filters,
+        yearFrom,
+        yearTo,
+        facetLabels,
+      };
       const spec = EXPORT_FORMATS.find((f) => f.format === format)!;
       download(
         exportFilename(spec.extension),

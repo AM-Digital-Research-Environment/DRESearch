@@ -42,6 +42,7 @@ const STRINGS: Record<string, string> = {
   export: 'Export',
   exporting: 'Exporting…',
   export_results: 'Export results',
+  export_filters_label: 'Filters',
   export_txt: 'Plain text (.txt)',
   export_json: 'JSON (.json)',
   export_ris: 'RIS — Zotero, EndNote (.ris)',

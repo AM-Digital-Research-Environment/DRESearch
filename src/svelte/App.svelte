@@ -438,6 +438,10 @@
                   found={response.found}
                   kind={bootstrap.card_kind}
                   itemUrlBase={bootstrap.item_url_base}
+                  {filters}
+                  {yearFrom}
+                  {yearTo}
+                  facetLabels={bootstrap.facet_labels}
                 />
               {/if}
             </div>
