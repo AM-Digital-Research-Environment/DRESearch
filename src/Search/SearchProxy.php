@@ -59,6 +59,71 @@ final class SearchProxy
         return $this->normalize($result, $profile);
     }
 
+    /**
+     * Bulk citation pull behind the result-export menu: the CURRENT result set
+     * (same query / filters / year window / sort as the live search) paged
+     * server-side at {@see QueryBuilder::EXPORT_PER_PAGE} up to
+     * {@see QueryBuilder::EXPORT_MAX_HITS}. Returns the raw documents (citation /
+     * display fields only — no facets, no highlights, no `is_public`); the client
+     * serializes them to txt / json / ris / bibtex. Null-safe like {@see search()}:
+     * no client / unknown profile → available:false with an empty set.
+     *
+     * @param array<string,mixed> $req
+     * @return array{available:bool, found:int, docs:list<array<string,mixed>>, error?:?string}
+     */
+    public function export(string $profileName, array $req): array
+    {
+        $profile = $this->registry->get($profileName);
+        $client = $this->provider->getClient();
+        if ($profile === null || $client === null) {
+            return ['available' => false, 'found' => 0, 'docs' => [], 'error' => null];
+        }
+        $collection = $client->collections[$profile->collection()];
+        $builder = new QueryBuilder($profile);
+        $maxHits = QueryBuilder::EXPORT_MAX_HITS;
+        $pages = (int) ceil($maxHits / QueryBuilder::EXPORT_PER_PAGE);
+
+        $docs = [];
+        $found = 0;
+        // Mirror search()'s missing-stopword-set degradation: drop stopwords and
+        // retry the page once, then carry on without them.
+        $useStopwords = true;
+        for ($page = 1; $page <= $pages; $page++) {
+            $params = $builder->export($req, $page);
+            if (!$useStopwords) {
+                unset($params['stopwords']);
+            }
+            try {
+                $result = $collection->documents->search($params);
+            } catch (\Throwable $e) {
+                if ($useStopwords && isset($params['stopwords']) && $this->isStopwordError($e)) {
+                    $useStopwords = false;
+                    $page--; // retry this page without stopwords
+                    continue;
+                }
+                // Hard error with nothing collected → fail; otherwise keep the
+                // partial pull we already have rather than discarding it.
+                if ($docs === []) {
+                    return ['available' => false, 'found' => 0, 'docs' => [], 'error' => $e->getMessage()];
+                }
+                break;
+            }
+            $found = (int) ($result['found'] ?? 0);
+            foreach ($result['hits'] ?? [] as $hit) {
+                $docs[] = $hit['document'] ?? [];
+            }
+            if (count($docs) >= $found || count($docs) >= $maxHits) {
+                break;
+            }
+        }
+
+        return [
+            'available' => true,
+            'found'     => $found,
+            'docs'      => array_slice($docs, 0, $maxHits),
+        ];
+    }
+
     public function suggest(string $profileName, string $q): array
     {
         $q = trim($q);

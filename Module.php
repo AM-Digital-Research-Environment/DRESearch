@@ -61,7 +61,7 @@ class Module extends AbstractModule
         $acl->allow(
             null,
             [Controller\SearchController::class],
-            ['apiSearch', 'apiSuggest', 'apiSuggestAll', 'apiSearchAll', 'results']
+            ['apiSearch', 'apiExport', 'apiSuggest', 'apiSuggestAll', 'apiSearchAll', 'results']
         );
 
         $acl->allow(

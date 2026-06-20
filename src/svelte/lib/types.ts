@@ -61,7 +61,7 @@ export interface Bootstrap {
   locked_filter: string;
   /** Result links are built as `${item_url_base}/${doc.id}`. */
   item_url_base: string;
-  endpoints: { search: string; suggest: string };
+  endpoints: { search: string; export: string; suggest: string };
   /** Server-rendered first page, so the block paints without a round-trip. */
   initial_response?: SearchResponse;
   /** Seed query (federated results page reuses App per corpus with a shared query). */
@@ -236,6 +236,29 @@ export interface SearchRequest {
   year_to?: number | null;
 }
 
+/**
+ * Bulk-export request for the current result set. No page / per_page / facets:
+ * the server pages internally up to its export cap and ships citation fields
+ * only. Same query / filter / sort / year scope as the live search.
+ */
+export interface ExportRequest {
+  q: string;
+  sort: SortKey;
+  filters: ActiveFilters;
+  locked_filter: string;
+  year_from?: number | null;
+  year_to?: number | null;
+}
+
+export interface ExportResponse {
+  available: boolean;
+  /** Total matches (may exceed the capped `docs` length). */
+  found: number;
+  /** The exported documents (citation / display fields only). */
+  docs: Doc[];
+  error?: string | null;
+}
+
 // ── Federated search (header bar + grouped results page) ─────────────────────
 
 /** One corpus's suggestions in the federated autocomplete, tagged for a badge. */
@@ -289,7 +312,13 @@ export interface FederatedBootstrap {
   initial_query: string;
   default_profile: string;
   profiles: ProfileMeta[];
-  endpoints: { search: string; search_all: string; suggest: string; suggest_all: string };
+  endpoints: {
+    search: string;
+    export: string;
+    search_all: string;
+    suggest: string;
+    suggest_all: string;
+  };
 }
 
 export interface SearchAllResponse {

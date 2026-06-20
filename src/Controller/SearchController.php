@@ -33,6 +33,19 @@ class SearchController extends AbstractActionController
         return $this->json($this->proxy->search($profile, $body));
     }
 
+    /**
+     * Bulk citation export of the current result set. Same JSON body shape as
+     * apiSearch (profile + q + sort + filters + year window + locked_filter);
+     * returns the matching documents (capped server-side), which the client
+     * serializes to txt / json / ris / bibtex.
+     */
+    public function apiExportAction(): Response
+    {
+        $body = $this->readBody();
+        $profile = (string) ($body['profile'] ?? '');
+        return $this->json($this->proxy->export($profile, $body));
+    }
+
     public function apiSuggestAction(): Response
     {
         $profile = (string) ($this->params()->fromQuery('profile') ?? $this->params()->fromPost('profile') ?? '');

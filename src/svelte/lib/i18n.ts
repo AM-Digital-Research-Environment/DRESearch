@@ -38,6 +38,22 @@ const STRINGS: Record<string, string> = {
   result_one: 'result',
   result_other: 'results',
 
+  // Result export menu.
+  export: 'Export',
+  exporting: 'Exporting…',
+  export_results: 'Export results',
+  export_txt: 'Plain text (.txt)',
+  export_json: 'JSON (.json)',
+  export_ris: 'RIS — Zotero, EndNote (.ris)',
+  export_bibtex: 'BibTeX (.bib)',
+  export_limit: 'Exports the first {n} results of the current set.',
+  export_empty: 'No results to export.',
+  export_failed: 'Export failed: {message}',
+  // Headers inside the exported .txt file.
+  export_query_label: 'Search',
+  export_browse_label: 'Browse (no query)',
+  export_count_label: 'Exported results',
+
   no_results_title: 'No results found',
   try_removing_filter: 'Try removing a filter or broadening your search.',
   clear_all_filters: 'Clear all filters',

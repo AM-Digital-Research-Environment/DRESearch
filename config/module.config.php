@@ -105,6 +105,18 @@ return [
                     ],
                 ],
             ],
+            // Bulk citation export of the current result set (txt/json/ris/bibtex
+            // are serialized client-side from the returned documents).
+            'dre-search-api-export' => [
+                'type'    => \Laminas\Router\Http\Literal::class,
+                'options' => [
+                    'route'    => '/dre-search/api/export',
+                    'defaults' => [
+                        'controller' => Controller\SearchController::class,
+                        'action'     => 'apiExport',
+                    ],
+                ],
+            ],
             'dre-search-api-suggest' => [
                 'type'    => \Laminas\Router\Http\Literal::class,
                 'options' => [

@@ -6,6 +6,8 @@
 
 import type {
   Bootstrap,
+  ExportRequest,
+  ExportResponse,
   SearchAllRequest,
   SearchAllResponse,
   SearchRequest,
@@ -31,6 +33,23 @@ export class SearchApi {
       throw new Error(`Search request failed (HTTP ${res.status})`);
     }
     return (await res.json()) as SearchResponse;
+  }
+
+  /**
+   * Fetch the CURRENT result set (same query / filters / sort / year scope) for a
+   * client-side export. The server pages internally and caps the count, returning
+   * citation-only documents; the export menu serializes them to txt/json/ris/bibtex.
+   */
+  async export(req: ExportRequest): Promise<ExportResponse> {
+    const res = await fetch(this.endpoints.export, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ ...req, profile: this.profile }),
+    });
+    if (!res.ok) {
+      throw new Error(`Export request failed (HTTP ${res.status})`);
+    }
+    return (await res.json()) as ExportResponse;
   }
 
   async suggest(q: string, signal?: AbortSignal): Promise<Suggestion[]> {

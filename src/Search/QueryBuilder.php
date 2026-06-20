@@ -32,6 +32,16 @@ final class QueryBuilder
     private const PER_PAGE_MAX = 50;
 
     /**
+     * Export paging. The result-export menu pulls the CURRENT result set as a
+     * bulk citation dump — {@see SearchProxy::export()} pages at EXPORT_PER_PAGE
+     * (Typesense's per-request maximum) up to EXPORT_MAX_HITS total. Exports
+     * follow the live sort, so a truncated export keeps the most relevant / newest
+     * rows. Mirror EXPORT_MAX_HITS in the client (lib/export.ts) for the cap hint.
+     */
+    public const EXPORT_PER_PAGE = 250;
+    public const EXPORT_MAX_HITS = 1000;
+
+    /**
      * Sentinels wrapped around matched tokens instead of the default <mark>.
      * They are Unicode private-use code points, so they never collide with real
      * content and carry no HTML meaning — the client splits on them and renders
@@ -196,6 +206,40 @@ final class QueryBuilder
             $params['highlight_end_tag'],
             $params['highlight_affix_num_tokens'],
         );
+        return $params;
+    }
+
+    /**
+     * Params for one page of a result-export pull: the same query / filter /
+     * sort / year window as a live {@see search()}, but tuned for a bulk citation
+     * dump — a big page size, no facet counts, no highlight markup, and the
+     * internal `is_public` flag dropped from the returned documents (alongside any
+     * search-only fields such as transcripts). Stopwords are kept so the export
+     * matches what the user sees; {@see SearchProxy::export()} drops them and
+     * retries if the set isn't provisioned. Paged up to {@see EXPORT_MAX_HITS}.
+     *
+     * @param array<string,mixed> $req
+     * @return array<string,mixed>
+     */
+    public function export(array $req, int $page): array
+    {
+        $params = $this->search($req);
+        $params['page'] = max(1, $page);
+        $params['per_page'] = self::EXPORT_PER_PAGE;
+        // Citation/display fields only — no facet counts, no highlight noise.
+        unset(
+            $params['facet_by'],
+            $params['max_facet_values'],
+            $params['highlight_full_fields'],
+            $params['highlight_start_tag'],
+            $params['highlight_end_tag'],
+            $params['highlight_affix_num_tokens'],
+        );
+        $exclude = array_values(array_unique(array_merge(
+            $this->profile->searchOnlyFields(),
+            ['is_public'],
+        )));
+        $params['exclude_fields'] = implode(',', $exclude);
         return $params;
     }
 

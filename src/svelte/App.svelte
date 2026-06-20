@@ -11,6 +11,7 @@
   import { t } from './lib/i18n';
   import SearchBox from './components/SearchBox.svelte';
   import SortSelect from './components/SortSelect.svelte';
+  import ExportMenu from './components/ExportMenu.svelte';
   import FacetPanel from './components/FacetPanel.svelte';
   import YearRangeFacet from './components/YearRangeFacet.svelte';
   import ResultsList from './components/ResultsList.svelte';
@@ -282,6 +283,19 @@
     page = 1;
   }
 
+  // Export fetch: the CURRENT result set (query + filters + sort + year window),
+  // capped server-side. Handed to the ExportMenu, which serializes + downloads.
+  function handleExportFetch(): ReturnType<SearchApi['export']> {
+    return api.export({
+      q: query,
+      sort,
+      filters,
+      locked_filter: bootstrap.locked_filter,
+      year_from: yearFrom,
+      year_to: yearTo,
+    });
+  }
+
   function handleFacetToggle(field: string, value: string, checked: boolean): void {
     const current = filters[field] ?? [];
     if (checked) {
@@ -415,7 +429,18 @@
                 {t('no_results_title')}
               {/if}
             </span>
-            <SortSelect value={sort} options={sortOptions} onChange={handleSortChange} />
+            <div class="dre-search__tools">
+              <SortSelect value={sort} options={sortOptions} onChange={handleSortChange} />
+              {#if response.found > 0}
+                <ExportMenu
+                  fetchDocs={handleExportFetch}
+                  {query}
+                  found={response.found}
+                  kind={bootstrap.card_kind}
+                  itemUrlBase={bootstrap.item_url_base}
+                />
+              {/if}
+            </div>
           </header>
         {/if}
 
@@ -551,6 +576,13 @@
     flex-wrap: wrap;
     padding-block-end: var(--space-sm, 0.5rem);
     border-bottom: 1px solid var(--border-light, #eae5dd);
+  }
+  /* Right-side control cluster: sort + export, kept together as the count grows. */
+  .dre-search__tools {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm, 0.5rem);
+    flex-wrap: wrap;
   }
   .dre-search__count {
     color: var(--muted, #7a7164);
