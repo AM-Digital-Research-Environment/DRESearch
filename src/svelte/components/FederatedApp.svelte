@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Bootstrap, FederatedBootstrap, ProfileMeta, SearchResponse } from '../lib/types';
   import { searchAll } from '../lib/api';
+  import { readFederatedShell, syncFederatedShell } from '../lib/urlState';
   import { t } from '../lib/i18n';
   import App from '../App.svelte';
 
@@ -24,12 +25,21 @@
   const profiles = bootstrap.profiles;
   const metaFor = (name: string): ProfileMeta | undefined => profiles.find((p) => p.name === name);
 
+  // Hydrate the shared query + active corpus from the URL so a federated search is
+  // shareable / bookmarkable. The reused per-corpus App reads its own facets/sort/
+  // page/year from the (bare) URL; the shell owns ?q + ?profile.
+  const shell = readFederatedShell();
+  const pinnedProfile =
+    shell.profile && profiles.some((p) => p.name === shell.profile) ? shell.profile : null;
   // svelte-ignore state_referenced_locally
-  let query = $state(bootstrap.initial_query ?? '');
+  const seedQuery = shell.q || (bootstrap.initial_query ?? '');
+
+  let query = $state(seedQuery);
+  let inputValue = $state(seedQuery);
   // svelte-ignore state_referenced_locally
-  let inputValue = $state(bootstrap.initial_query ?? '');
-  // svelte-ignore state_referenced_locally
-  let activeProfile = $state(bootstrap.default_profile || (profiles[0]?.name ?? ''));
+  let activeProfile = $state(
+    pinnedProfile || bootstrap.default_profile || (profiles[0]?.name ?? ''),
+  );
   let counts = $state<Record<string, number>>({});
   let activeResponse = $state<SearchResponse | null>(null);
   let isLoading = $state(false);
@@ -40,7 +50,8 @@
   let cacheQuery: string | null = null;
   // $state because the tab count labels (countLabel) read it in the template.
   let countsQuery = $state<string | null>(null);
-  let autoSelected = false;
+  // A URL-pinned profile counts as a deliberate choice — don't auto-jump off it.
+  let autoSelected = pinnedProfile !== null;
   let reqId = 0;
   let inputTimer: number | null = null;
 
@@ -51,7 +62,7 @@
     }
     inputTimer = window.setTimeout(() => {
       inputTimer = null;
-      query = inputValue.trim();
+      commitQuery(inputValue.trim());
     }, 300);
   }
 
@@ -61,7 +72,19 @@
       inputTimer = null;
     }
     inputValue = '';
-    query = '';
+    commitQuery('');
+  }
+
+  /**
+   * Commit a new shared query. Update the URL first — which also resets the active
+   * corpus's facets/sort/page (a fresh query starts clean) — so the per-corpus App
+   * re-seeds from a clean URL when the query change remounts it. Replace, not push:
+   * typing isn't a back-button-able step.
+   */
+  function commitQuery(next: string): void {
+    if (next === query) return;
+    syncFederatedShell({ q: next, profile: activeProfile }, false);
+    query = next;
   }
 
   async function load(profile: string, q: string): Promise<void> {
@@ -132,6 +155,8 @@
       }
     }
     if (best !== activeProfile && bestN > 0) {
+      // Reflect the auto-chosen corpus in the URL (replace — not a user nav).
+      syncFederatedShell({ q: query, profile: best }, false);
       activeProfile = best; // re-triggers the effect → load(best)
     }
   }
@@ -144,11 +169,32 @@
     }
   });
 
+  // Back / forward → re-hydrate the shared query + active corpus from the URL. The
+  // per-corpus App restores its own facets (via its own popstate handler, or a
+  // remount when the query/profile changed here).
+  $effect(() => {
+    const onPop = (): void => {
+      const s = readFederatedShell();
+      const profile =
+        s.profile && profiles.some((p) => p.name === s.profile)
+          ? s.profile
+          : bootstrap.default_profile || (profiles[0]?.name ?? '');
+      query = s.q;
+      inputValue = s.q;
+      activeProfile = profile;
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  });
+
   function selectTab(name: string): void {
     if (name === activeProfile) {
       return;
     }
     autoSelected = true; // a manual choice disables the one-shot auto-jump
+    // Push a back-button-able step and reset the previous corpus's facet/sort/page
+    // (facet fields don't carry across corpora) before the remount re-seeds.
+    syncFederatedShell({ q: query, profile: name }, true);
     activeProfile = name;
   }
 
@@ -243,7 +289,13 @@
         <p class="dre-fed__status">{t('searching')}</p>
       {:else if activeMeta && activeResponse}
         {#key activeProfile + '::' + query}
-          <App bootstrap={appBootstrap(activeMeta, activeIdx)} showSearchBox={false} />
+          <App
+            bootstrap={appBootstrap(activeMeta, activeIdx)}
+            showSearchBox={false}
+            syncUrl={true}
+            urlPrefix=""
+            includeQuery={false}
+          />
         {/key}
       {/if}
     </div>

@@ -1,6 +1,13 @@
 <script lang="ts">
   import type { ActiveFilters, Bootstrap, SearchResponse, SortKey, SortOption } from './lib/types';
   import { SearchApi } from './lib/api';
+  import {
+    onUrlPop,
+    readUrlState,
+    syncToUrl,
+    type UrlSearchState,
+    type UrlSyncOptions,
+  } from './lib/urlState';
   import { t } from './lib/i18n';
   import SearchBox from './components/SearchBox.svelte';
   import SortSelect from './components/SortSelect.svelte';
@@ -10,20 +17,51 @@
 
   /**
    * One instance per mounted block. Owns the search state (query, page, sort,
-   * filters) in memory — there's no URL sync because a page may host several
-   * blocks that would otherwise fight over the address bar. Seeds from the
-   * server-rendered first page so it paints instantly.
+   * filters). Seeds from the server-rendered first page so it paints instantly,
+   * and — on surfaces that sync — mirrors its state to the URL so a search is
+   * shareable and back/forward works (see {@link syncUrl} / {@link urlOptions}).
    */
 
   interface Props {
     bootstrap: Bootstrap;
     /** Hide the built-in search box (the federated page owns a shared box). */
     showSearchBox?: boolean;
+    /**
+     * Mirror this block's state (query, sort, facets, page, year) to the URL.
+     * Defaults to on for any block that owns its search box; several blocks on a
+     * page stay clash-free by namespacing under their own `b{block_id}.` prefix.
+     * The federated page passes explicit values: it keeps its reused per-corpus
+     * App in URL sync but with a bare prefix and `includeQuery=false`, since the
+     * shell owns the shared ?q/?profile.
+     */
+    syncUrl?: boolean;
+    /** URL key namespace. Bare ('') on the federated page; `b{block_id}.` per block. */
+    urlPrefix?: string;
+    /** Whether this App owns the `q` key (false on the federated page — the shell does). */
+    includeQuery?: boolean;
   }
 
-  const { bootstrap, showSearchBox = true }: Props = $props();
+  const {
+    bootstrap,
+    showSearchBox = true,
+    syncUrl: syncUrlProp,
+    urlPrefix: urlPrefixProp,
+    includeQuery: includeQueryProp,
+  }: Props = $props();
 
   const api = $derived.by(() => new SearchApi(bootstrap.endpoints, bootstrap.profile));
+
+  // URL ↔ state sync config. A block that owns its search box syncs by default;
+  // the federated page overrides these so its reused per-corpus App writes the
+  // corpus's facets/sort/page/year while the shell keeps ?q/?profile.
+  const syncUrl = $derived(syncUrlProp ?? showSearchBox);
+  const urlPrefix = $derived(urlPrefixProp ?? `b${bootstrap.block_id}.`);
+  const includeQuery = $derived(includeQueryProp ?? true);
+  const urlOptions = $derived<UrlSyncOptions>({
+    prefix: urlPrefix,
+    defaultSort: bootstrap.default_sort ?? 'relevance',
+    includeQuery,
+  });
 
   // Year range slider (range profiles only). null at either end = no constraint.
   const showYear = $derived(bootstrap.show_year && bootstrap.year_bounds != null);
@@ -70,14 +108,32 @@
       ? bootstrap.initial_response
       : null;
 
+  // Hydrate initial state from the URL on surfaces that sync; otherwise seed from
+  // the bootstrap (the federated page passes its shared query via initial_query).
   // svelte-ignore state_referenced_locally
-  let query = $state(bootstrap.initial_query ?? '');
-  let page = $state(1);
+  const urlInitial = syncUrl ? readUrlState(window.location.href, urlOptions) : null;
   // svelte-ignore state_referenced_locally
-  let sort = $state<SortKey>(bootstrap.default_sort ?? 'relevance');
-  let filters = $state<ActiveFilters>({});
-  let yearFrom = $state<number | null>(null);
-  let yearTo = $state<number | null>(null);
+  const defaultSort: SortKey = bootstrap.default_sort ?? 'relevance';
+  // A URL-seeded sort is validated against this corpus's offered sorts so a stale
+  // or hand-edited ?sort= can't wedge the dropdown on an unsupported value.
+  // svelte-ignore state_referenced_locally
+  const validSorts = new Set((bootstrap.sort_options ?? []).map((o) => o.value));
+  // svelte-ignore state_referenced_locally
+  const seedQuery =
+    syncUrl && includeQuery
+      ? urlInitial?.q || (bootstrap.initial_query ?? '')
+      : (bootstrap.initial_query ?? '');
+  const seedSort: SortKey =
+    urlInitial && validSorts.size > 0 && validSorts.has(urlInitial.sort)
+      ? urlInitial.sort
+      : defaultSort;
+
+  let query = $state(seedQuery);
+  let page = $state(urlInitial?.page ?? 1);
+  let sort = $state<SortKey>(seedSort);
+  let filters = $state<ActiveFilters>(urlInitial?.filters ?? {});
+  let yearFrom = $state<number | null>(urlInitial?.yearFrom ?? null);
+  let yearTo = $state<number | null>(urlInitial?.yearTo ?? null);
 
   let response = $state<SearchResponse | null>(initialResponse);
   let isLoading = $state(false);
@@ -90,10 +146,59 @@
   // Root element, so paging can scroll back to the top of this block's results.
   let rootEl = $state<HTMLElement | undefined>(undefined);
 
-  // The SSR snapshot already reflects the pristine browse state, so skip the
-  // first reactive fetch when we have it.
-  let skipNextFetch = initialResponse != null && initialResponse.available;
+  // Skip the first reactive fetch only when the seed response already matches the
+  // seeded state. A URL-hydrated non-pristine state (a shared link with facets, a
+  // sort, page 2 or a year) must fetch so the user sees what they asked for, not
+  // the "browse everything" snapshot.
+  const corpusPristine =
+    (urlInitial?.page ?? 1) === 1 &&
+    seedSort === defaultSort &&
+    Object.keys(urlInitial?.filters ?? {}).length === 0 &&
+    (urlInitial?.yearFrom ?? null) === null &&
+    (urlInitial?.yearTo ?? null) === null;
+  // An own-query block's seed response was rendered for initial_query, so the
+  // query must match it too; the federated App's seed is for its shared query
+  // (includeQuery=false), which seedQuery already equals.
+  // svelte-ignore state_referenced_locally
+  const queryMatchesSeed = !includeQuery || seedQuery === (bootstrap.initial_query ?? '');
+  let skipNextFetch =
+    initialResponse != null && initialResponse.available && corpusPristine && queryMatchesSeed;
   let reqId = 0;
+
+  // Previous URL snapshot, so the sync can choose pushState vs replaceState.
+  let prevUrlState: UrlSearchState | null = null;
+
+  // Mirror state → URL whenever anything observable changes. The first run is a
+  // no-op (the URL already reflects the seeded state); pagination-only changes
+  // replace history, everything else pushes a back-button-able step.
+  $effect(() => {
+    if (!syncUrl) return;
+    const next: UrlSearchState = { q: query, page, sort, filters, yearFrom, yearTo };
+    syncToUrl(next, prevUrlState, urlOptions);
+    // Plain, proxy-free deep copy for the next diff (filters is a Svelte proxy).
+    prevUrlState = {
+      q: next.q,
+      page: next.page,
+      sort: next.sort,
+      filters: Object.fromEntries(Object.entries(next.filters).map(([k, v]) => [k, [...v]])),
+      yearFrom: next.yearFrom,
+      yearTo: next.yearTo,
+    };
+  });
+
+  // Back / forward → re-hydrate state from the URL. The federated App (includeQuery
+  // =false) leaves the shared query to the shell, which remounts it if ?q changed.
+  $effect(() => {
+    if (!syncUrl) return;
+    return onUrlPop((s) => {
+      if (includeQuery) query = s.q;
+      page = s.page;
+      sort = s.sort;
+      filters = s.filters;
+      yearFrom = s.yearFrom;
+      yearTo = s.yearTo;
+    }, urlOptions);
+  });
 
   $effect(() => {
     const q = query;
