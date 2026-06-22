@@ -186,9 +186,9 @@
 
   /*
    * Trigger mirrors the toolbar's control vocabulary (SortSelect): outlined,
-   * surface background, primary on hover. The host DRE theme paints every
-   * <button> as a filled green primary with a hover lift + glow, so the
-   * background/box-shadow/transform resets below are deliberate (!important).
+   * surface background, primary on hover. The surface background + border below
+   * override the native button chrome (the host theme no longer styles bare
+   * <button>s, so no override fight is needed).
    */
   .dre-export__trigger {
     display: inline-flex;
@@ -199,10 +199,8 @@
     padding-inline: var(--space-md, 1rem);
     border: 1px solid var(--border, #dcd6cb);
     border-radius: var(--radius-md, 0.5rem);
-    background: var(--surface, #fdfcfa) !important;
-    color: var(--ink, #33291f) !important;
-    box-shadow: none !important;
-    transform: none !important;
+    background: var(--surface, #fdfcfa);
+    color: var(--ink, #33291f);
     font: inherit;
     font-size: var(--text-sm, 0.9rem);
     font-weight: 500;
@@ -213,13 +211,13 @@
   }
   .dre-export__trigger:hover {
     border-color: var(--primary, #007a50);
-    color: var(--primary, #007a50) !important;
-    background: var(--surface, #fdfcfa) !important;
+    color: var(--primary, #007a50);
+    background: var(--surface, #fdfcfa);
   }
   .dre-export__trigger:focus-visible {
     outline: none;
     border-color: var(--primary, #007a50);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.1)) !important;
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.1));
   }
   .dre-export__trigger:disabled {
     opacity: 0.6;
@@ -251,12 +249,10 @@
     margin: 0;
     padding: var(--space-sm, 0.5rem) var(--space-md, 1rem);
     appearance: none;
-    background: transparent !important;
+    background: transparent;
     border: 0;
     border-bottom: 1px solid var(--border-light, #eae5dd);
-    box-shadow: none !important;
-    transform: none !important;
-    color: var(--ink, #33291f) !important;
+    color: var(--ink, #33291f);
     font: inherit;
     font-size: var(--text-sm, 0.9rem);
     text-align: start;
@@ -268,8 +264,8 @@
   }
   .dre-export__item:hover,
   .dre-export__item:focus-visible {
-    background: color-mix(in srgb, var(--primary, #007a50) 8%, var(--surface, #fdfcfa)) !important;
-    color: var(--ink, #33291f) !important;
+    background: color-mix(in srgb, var(--primary, #007a50) 8%, var(--surface, #fdfcfa));
+    color: var(--ink, #33291f);
     outline: none;
   }
   .dre-export__item:disabled {

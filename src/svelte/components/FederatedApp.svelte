@@ -346,7 +346,7 @@
     position: absolute;
     inset-inline-end: var(--space-sm, 0.5rem);
     top: 50%;
-    transform: translateY(-50%) !important;
+    transform: translateY(-50%);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -356,17 +356,16 @@
     margin: 0;
     padding: 0;
     border: 0;
-    background: transparent !important;
-    box-shadow: none !important;
-    color: var(--muted, #938979) !important;
+    background: transparent;
+    color: var(--muted, #938979);
     font-size: 1.25rem;
     line-height: 1;
     cursor: pointer;
     border-radius: var(--radius-full, 9999px);
   }
   .dre-fed__clear:hover {
-    background: color-mix(in srgb, currentColor 16%, transparent) !important;
-    color: var(--ink, #33291f) !important;
+    background: color-mix(in srgb, currentColor 16%, transparent);
+    color: var(--ink, #33291f);
   }
 
   /* Type tabs. */
@@ -378,9 +377,8 @@
     border-bottom: 1px solid var(--border-light, #eae5dd);
   }
   /*
-   * The host theme styles every <button>:hover as a green primary button. Guard
-   * the hijacked properties (background/color/box-shadow/transform) so tabs read
-   * as quiet chips; the active tab uses the brand colour on purpose.
+   * Tabs read as quiet chips with their own surface/border; the active tab uses
+   * the brand colour on purpose.
    */
   .dre-fed__tab {
     display: inline-flex;
@@ -388,27 +386,25 @@
     gap: 0.4rem;
     padding: 0.4rem 0.8rem;
     margin: 0;
-    border: 1px solid var(--border, #dcd6cb) !important;
+    border: 1px solid var(--border, #dcd6cb);
     border-radius: var(--radius-full, 9999px);
-    background: var(--surface, #fdfcfa) !important;
-    color: var(--ink, #33291f) !important;
+    background: var(--surface, #fdfcfa);
+    color: var(--ink, #33291f);
     font: inherit;
     font-size: var(--text-sm, 0.9rem);
     line-height: 1.2;
     cursor: pointer;
-    box-shadow: none !important;
-    transform: none !important;
   }
   .dre-fed__tab:hover {
-    border-color: var(--primary, #007a50) !important;
-    color: var(--primary, #007a50) !important;
-    background: var(--surface, #fdfcfa) !important;
+    border-color: var(--primary, #007a50);
+    color: var(--primary, #007a50);
+    background: var(--surface, #fdfcfa);
   }
   .dre-fed__tab--active,
   .dre-fed__tab--active:hover {
-    background: var(--primary, #007a50) !important;
-    border-color: var(--primary, #007a50) !important;
-    color: var(--primary-contrast, #fdfcfa) !important;
+    background: var(--primary, #007a50);
+    border-color: var(--primary, #007a50);
+    color: var(--primary-contrast, #fdfcfa);
     font-weight: 600;
   }
   .dre-fed__tab--empty:not(.dre-fed__tab--active) {
@@ -416,7 +412,7 @@
   }
   .dre-fed__tab:focus-visible {
     outline: none;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.15)) !important;
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.15));
   }
   .dre-fed__tab-count {
     font-variant-numeric: tabular-nums;

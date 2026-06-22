@@ -143,11 +143,8 @@
     gap: var(--space-xs, 0.25rem);
     width: 100%;
     padding: 0;
-    /* Host theme styles every <button> as a filled primary button; without
-       these the toggle fills with green on hover. */
-    background: none !important;
-    box-shadow: none !important;
-    transform: none !important;
+    /* Reset the native button chrome — this toggle reads as plain text. */
+    background: none;
     border: none;
     cursor: pointer;
     font: inherit;
@@ -159,7 +156,7 @@
     text-align: start;
   }
   .dre-yr__heading:hover {
-    color: var(--primary, #007a50) !important;
+    color: var(--primary, #007a50);
   }
   .dre-yr__label {
     flex: 1;

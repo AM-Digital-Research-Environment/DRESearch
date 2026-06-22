@@ -244,11 +244,8 @@
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.1));
   }
   /*
-   * The host theme styles every <button> (and its :hover) as a primary button —
-   * a green fill/lift/glow AND a white label (color: --primary-contrast) — via
-   * `button:hover:not(.disabled):not(:disabled)`, whose specificity beats a scoped
-   * class. So guard every property that rule hijacks — background, color, box-shadow,
-   * transform — with !important, keeping the clear control a quiet, transparent ×.
+   * The clear control is a quiet, transparent × — its own background/color reset
+   * the native button chrome (the host theme no longer styles bare <button>s).
    *
    * Centre on the INPUT's height, not the flex wrapper's: the theme also gives
    * inputs a bottom margin, which makes the wrapper taller than the input, so a
@@ -259,7 +256,7 @@
     position: absolute;
     inset-inline-end: var(--space-sm, 0.5rem);
     top: calc(var(--size-control-lg, 2.75rem) / 2);
-    transform: translateY(-50%) !important;
+    transform: translateY(-50%);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -270,9 +267,8 @@
     margin: 0;
     padding: 0;
     border: 0;
-    background: transparent !important;
-    box-shadow: none !important;
-    color: var(--muted, #938979) !important;
+    background: transparent;
+    color: var(--muted, #938979);
     font-size: 1.25rem;
     line-height: 1;
     cursor: pointer;
@@ -282,12 +278,12 @@
   }
   .dre-search-box__clear:hover {
     /* Faint neutral wash + a readable label — never the theme's green-on-green. */
-    background: color-mix(in srgb, currentColor 16%, transparent) !important;
-    color: var(--ink, #33291f) !important;
+    background: color-mix(in srgb, currentColor 16%, transparent);
+    color: var(--ink, #33291f);
   }
   .dre-search-box__clear:focus-visible {
     outline: none;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.15)) !important;
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.15));
   }
 
   .dre-search-box__suggest {

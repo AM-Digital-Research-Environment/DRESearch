@@ -139,9 +139,6 @@
   }
   .dre-term__type:hover {
     background: color-mix(in srgb, var(--accent, #d57912) 30%, var(--surface, #fdfcfa));
-    /* Suppress the host primary-button hover lift + green glow (chips are flat). */
-    box-shadow: none !important;
-    transform: none !important;
   }
   .dre-term__type:focus-visible {
     outline: none;
@@ -172,9 +169,6 @@
   }
   .dre-term__chip:hover {
     background: color-mix(in srgb, var(--primary, #007a50) 28%, var(--surface, #fdfcfa));
-    /* Suppress the host primary-button hover lift + green glow (chips are flat). */
-    box-shadow: none !important;
-    transform: none !important;
   }
   .dre-term__chip:focus-visible {
     outline: none;

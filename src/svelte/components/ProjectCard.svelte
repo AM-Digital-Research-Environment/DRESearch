@@ -197,12 +197,8 @@
   .dre-pcard__pi-link {
     padding: 0;
     border: none;
-    /* Host theme styles every <button> as a filled primary button; without
-       these the PI name turns into a green pill on hover. !important beats the
-       host's higher-specificity :hover/:active states in one place. */
-    background: none !important;
-    box-shadow: none !important;
-    transform: none !important;
+    /* Plain text link — reset the native button chrome. */
+    background: none;
     font: inherit;
     cursor: pointer;
     color: inherit;
@@ -211,13 +207,13 @@
     text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
   }
   .dre-pcard__pi-link:hover {
-    color: var(--primary, #007a50) !important;
+    color: var(--primary, #007a50);
     text-decoration-color: currentColor;
   }
   .dre-pcard__pi-link:focus-visible {
     outline: none;
     border-radius: var(--radius-sm, 0.375rem);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3)) !important;
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3));
   }
   .dre-pcard__snippet {
     margin: var(--space-xs, 0.25rem) 0 0;
@@ -258,9 +254,6 @@
   .dre-pcard__chip:hover {
     background: color-mix(in srgb, var(--primary, #007a50) 18%, var(--surface, #fdfcfa));
     color: var(--ink-strong, var(--ink, #33291f));
-    /* Suppress the host primary-button hover lift + green glow (chips are flat). */
-    box-shadow: none !important;
-    transform: none !important;
   }
   .dre-pcard__chip:focus-visible {
     outline: none;

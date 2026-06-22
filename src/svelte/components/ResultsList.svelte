@@ -198,16 +198,12 @@
     font: inherit;
     font-variant-numeric: tabular-nums;
     cursor: pointer;
-    /* Host theme adds a primary-button drop-shadow + hover lift/glow to every
-       <button>; pager buttons are flat, so strip it in every state. */
-    box-shadow: none !important;
-    transform: none !important;
     transition:
       border-color var(--transition-fast, 150ms ease),
       background var(--transition-fast, 150ms ease);
   }
-  /* Exclude the active page: the host's `button:hover` would otherwise fill an
-     inactive button green (and its primary text would vanish on the green). */
+  /* Exclude the active page: it carries the filled-primary green, so turning the
+     label primary on hover would put primary text on the primary fill. */
   .dre-pager__btn:hover:not(:disabled):not(.dre-pager__btn--active) {
     border-color: var(--primary, #007a50);
     color: var(--primary, #007a50);
@@ -225,7 +221,7 @@
   }
   .dre-pager__btn:focus-visible {
     outline: none;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.1)) !important;
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.1));
   }
   .dre-pager__gap {
     color: var(--muted, #938979);

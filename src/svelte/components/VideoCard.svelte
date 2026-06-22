@@ -251,8 +251,7 @@
     flex-wrap: wrap;
     gap: var(--space-xs, 0.25rem);
   }
-  /* Chip is a button (click to filter by playlist); reset native chrome and suppress
-     the host theme's primary-button hover lift/glow. */
+  /* Chip is a button (click to filter by playlist); reset the native chrome. */
   .dre-vcard__chip {
     display: inline-flex;
     align-items: center;
@@ -270,8 +269,6 @@
   }
   .dre-vcard__chip:hover {
     background: color-mix(in srgb, var(--accent, #d57912) 30%, var(--surface, #fdfcfa));
-    box-shadow: none !important;
-    transform: none !important;
   }
   .dre-vcard__chip:focus-visible {
     outline: none;
@@ -291,8 +288,7 @@
   .dre-vcard__role::after {
     content: ': ';
   }
-  /* Person links — underlined, brand-coloured on hover. The !important rules beat
-     the host theme, which styles every <button>/<a> as a filled primary button. */
+  /* Person links — underlined, brand-coloured on hover. */
   .dre-vcard__person {
     color: inherit;
     text-decoration: underline;
@@ -311,14 +307,11 @@
     color: var(--ink-light, var(--ink, #5f5648));
   }
   /* Inline "click to filter" value (language) — a plain text button, underlined,
-     brand-coloured on hover. The !important rules beat the host theme, which styles
-     every <button> as a filled primary button. */
+     brand-coloured on hover. `background: none` resets the native button chrome. */
   .dre-vcard__filter-link {
     padding: 0;
     border: none;
-    background: none !important;
-    box-shadow: none !important;
-    transform: none !important;
+    background: none;
     font: inherit;
     cursor: pointer;
     color: inherit;
@@ -327,13 +320,13 @@
     text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
   }
   .dre-vcard__filter-link:hover {
-    color: var(--primary, #007a50) !important;
+    color: var(--primary, #007a50);
     text-decoration-color: currentColor;
   }
   .dre-vcard__filter-link:focus-visible {
     outline: none;
     border-radius: var(--radius-sm, 0.375rem);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3)) !important;
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3));
   }
 
   .dre-vcard__snippet {
@@ -381,7 +374,7 @@
     mask: var(--dre-doc) center / contain no-repeat;
   }
   /* "Watch" link — a brand-coloured outline pill that fills on hover, with an
-     external-link arrow. Beats the host theme's button styling with !important. */
+     external-link arrow. */
   .dre-vcard__watch {
     display: inline-flex;
     align-items: center;

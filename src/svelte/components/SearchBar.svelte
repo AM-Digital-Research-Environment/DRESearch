@@ -365,20 +365,18 @@
     padding: 0;
     margin: 0;
     border: 0;
-    background: transparent !important;
-    box-shadow: none !important;
-    color: var(--ink, #33291f) !important;
+    background: transparent;
+    color: var(--ink, #33291f);
     cursor: pointer;
     border-radius: var(--radius-full, 9999px);
-    transform: none !important;
   }
   .dre-search-bar__toggle:hover {
-    background: color-mix(in srgb, currentColor 12%, transparent) !important;
-    color: var(--ink-strong, var(--ink, #33291f)) !important;
+    background: color-mix(in srgb, currentColor 12%, transparent);
+    color: var(--ink-strong, var(--ink, #33291f));
   }
   .dre-search-bar__toggle:focus-visible {
     outline: none;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.15)) !important;
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.15));
   }
 
   /* When collapsible & expanded, float the input as an overlay so it never
@@ -435,14 +433,14 @@
   }
 
   /*
-   * Quiet, transparent × — guarded against the host theme's primary-button
-   * styling (background/color/box-shadow/transform), exactly like SearchBox.
+   * Quiet, transparent × — its own background/color reset the native button
+   * chrome.
    */
   .dre-search-bar__clear {
     position: absolute;
     inset-inline-end: var(--space-xs, 0.35rem);
     top: 50%;
-    transform: translateY(-50%) !important;
+    transform: translateY(-50%);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -453,9 +451,8 @@
     margin: 0;
     padding: 0;
     border: 0;
-    background: transparent !important;
-    box-shadow: none !important;
-    color: var(--muted, #938979) !important;
+    background: transparent;
+    color: var(--muted, #938979);
     font-size: 1.15rem;
     line-height: 1;
     cursor: pointer;
@@ -464,12 +461,12 @@
     appearance: none;
   }
   .dre-search-bar__clear:hover {
-    background: color-mix(in srgb, currentColor 16%, transparent) !important;
-    color: var(--ink, #33291f) !important;
+    background: color-mix(in srgb, currentColor 16%, transparent);
+    color: var(--ink, #33291f);
   }
   .dre-search-bar__clear:focus-visible {
     outline: none;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.15)) !important;
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.15));
   }
 
   /* ── Suggestions dropdown ────────────────────────────────────────────────── */

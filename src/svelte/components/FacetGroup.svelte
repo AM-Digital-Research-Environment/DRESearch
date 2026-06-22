@@ -97,12 +97,8 @@
     gap: var(--space-xs, 0.25rem);
     width: 100%;
     padding: 0;
-    /* Host theme styles every <button> as a filled primary button; without
-       these the toggle fills with green on hover (!important beats the host's
-       higher-specificity :hover/:active). */
-    background: none !important;
-    box-shadow: none !important;
-    transform: none !important;
+    /* Reset the native button chrome — this toggle reads as a plain heading. */
+    background: none;
     border: none;
     cursor: pointer;
     font: inherit;
@@ -114,7 +110,7 @@
     text-align: start;
   }
   .dre-facet__heading:hover {
-    color: var(--primary, #007a50) !important;
+    color: var(--primary, #007a50);
   }
   .dre-facet__label {
     flex: 1;

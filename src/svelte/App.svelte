@@ -521,15 +521,12 @@
     font-size: var(--text-sm, 0.9rem);
     font-weight: 600;
     cursor: pointer;
-    /* Host theme styles every <button> as a filled primary button. */
-    box-shadow: none !important;
-    transform: none !important;
   }
   .dre-search__facets-toggle:hover {
     border-color: var(--primary, #007a50);
     /* Stay an outline button — the host would fill it green with a white label. */
-    background: var(--surface, #fdfcfa) !important;
-    color: var(--primary, #007a50) !important;
+    background: var(--surface, #fdfcfa);
+    color: var(--primary, #007a50);
   }
   .dre-search__facets-toggle-badge {
     display: inline-flex;
@@ -655,9 +652,6 @@
     font-size: var(--text-sm, 0.9rem);
     cursor: pointer;
     margin-top: var(--space-xs, 0.25rem);
-    /* Suppress the host primary-button hover lift + glow (the fill is intended). */
-    box-shadow: none !important;
-    transform: none !important;
   }
   .dre-search__clear-link:hover {
     background: var(--primary, #007a50);

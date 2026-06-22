@@ -255,8 +255,7 @@
     flex-wrap: wrap;
     gap: var(--space-xs, 0.25rem);
   }
-  /* Chips are buttons (click to filter); reset the native chrome and suppress the
-     host theme's primary-button hover lift/glow. */
+  /* Chips are buttons (click to filter); reset the native button chrome. */
   .dre-card__chip {
     display: inline-flex;
     align-items: center;
@@ -277,8 +276,6 @@
   .dre-card__chip:hover {
     background: color-mix(in srgb, var(--primary, #007a50) 18%, var(--surface, #fdfcfa));
     color: var(--ink-strong, var(--ink, #33291f));
-    box-shadow: none !important;
-    transform: none !important;
   }
   .dre-card__chip:focus-visible {
     outline: none;
@@ -306,14 +303,13 @@
     content: ': ';
   }
   /* Inline "click to filter" values (authors, places, language) — a plain text
-     button, underlined, that turns brand-coloured on hover. The !important rules
-     beat the host theme, which styles every <button> as a filled primary button. */
+     button, underlined, that turns brand-coloured on hover. `background: none`
+     strips the native button fill (the host theme no longer styles bare
+     <button>s, so no override fight is needed). */
   .dre-card__filter-link {
     padding: 0;
     border: none;
-    background: none !important;
-    box-shadow: none !important;
-    transform: none !important;
+    background: none;
     font: inherit;
     cursor: pointer;
     color: inherit;
@@ -322,13 +318,13 @@
     text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
   }
   .dre-card__filter-link:hover {
-    color: var(--primary, #007a50) !important;
+    color: var(--primary, #007a50);
     text-decoration-color: currentColor;
   }
   .dre-card__filter-link:focus-visible {
     outline: none;
     border-radius: var(--radius-sm, 0.375rem);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3)) !important;
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3));
   }
 
   @media (max-width: 32rem) {

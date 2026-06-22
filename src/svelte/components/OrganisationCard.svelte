@@ -175,9 +175,6 @@
   }
   .dre-org__type:hover {
     background: color-mix(in srgb, var(--accent, #d57912) 30%, var(--surface, #fdfcfa));
-    /* Suppress the host primary-button hover lift + green glow (chips are flat). */
-    box-shadow: none !important;
-    transform: none !important;
   }
   .dre-org__type:focus-visible {
     outline: none;
@@ -211,9 +208,6 @@
   .dre-org__chip:hover {
     background: color-mix(in srgb, var(--primary, #007a50) 18%, var(--surface, #fdfcfa));
     color: var(--ink-strong, var(--ink, #33291f));
-    /* Suppress the host primary-button hover lift + green glow (chips are flat). */
-    box-shadow: none !important;
-    transform: none !important;
   }
   .dre-org__chip:focus-visible {
     outline: none;

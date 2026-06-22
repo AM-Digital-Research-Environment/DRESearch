@@ -122,19 +122,16 @@
     color: var(--ink-strong, var(--ink, #33291f));
   }
   .dre-facets__clear-all {
-    /* Host theme styles every <button> as a filled primary button; keep this a
-       plain text link (!important beats the host's higher-specificity states). */
-    background: none !important;
+    /* Plain text link — reset the native button chrome. */
+    background: none;
     border: none;
-    box-shadow: none !important;
-    transform: none !important;
     color: var(--primary, #007a50);
     cursor: pointer;
     font-size: var(--text-xs, 0.75rem);
     padding: 0;
   }
   .dre-facets__clear-all:hover {
-    color: var(--primary, #007a50) !important;
+    color: var(--primary, #007a50);
     text-decoration: underline;
   }
 
@@ -165,10 +162,7 @@
     font: inherit;
     font-size: var(--text-xs, 0.75rem);
     color: var(--ink, #33291f);
-    /* Suppress the host primary-button hover lift + green glow (the fill on
-       hover below is intentional). */
-    box-shadow: none !important;
-    transform: none !important;
+    /* The hover fill (below) is intentional. */
   }
   .dre-facets__chip:hover {
     background: var(--primary, #007a50);

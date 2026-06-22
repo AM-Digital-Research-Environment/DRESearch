@@ -194,9 +194,6 @@
   .dre-person__chip:hover {
     background: color-mix(in srgb, var(--primary, #007a50) 18%, var(--surface, #fdfcfa));
     color: var(--ink-strong, var(--ink, #33291f));
-    /* Suppress the host primary-button hover lift + green glow (chips are flat). */
-    box-shadow: none !important;
-    transform: none !important;
   }
   .dre-person__chip:focus-visible {
     outline: none;
