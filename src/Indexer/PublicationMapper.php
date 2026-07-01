@@ -14,14 +14,15 @@ use DRESearch\Settings\SearchProfile;
  * by item set, not template). Their links are unambiguous — bibo:authorList is
  * always authors, dcterms:isPartOf the journal / book title, dcterms:publisher
  * the publisher — so facets resolve straight from the linked title or the literal
- * value (no AuthorityResolver). Authors keep their person item ids alongside the
- * names so the card can link each one.
+ * value (no AuthorityResolver). Authors and editors are emitted as separate
+ * display bylines (author_ss / editor_ss) and merged into one creator_ss facet —
+ * the "Author / Editor" filter — so a single filter matches either role.
  *
  * Which property feeds which field comes from {@see SearchProfile} (config-driven);
- * the stable Typesense field names (author_ss, container_ss, year, …) are the
+ * the stable Typesense field names (creator_ss, container_ss, year, …) are the
  * interface. Beyond the facets, the mapper emits the bits a bibliographic
- * reference needs — editors, volume/issue, a normalised page range, a DOI link —
- * as display-only fields.
+ * reference needs — the author/editor bylines, volume/issue, a normalised page
+ * range, a DOI link — as display-only fields.
  *
  * Publication-specific shapes:
  *   - abstract : on bibo:abstract (not dcterms:abstract).
@@ -52,21 +53,12 @@ final class PublicationMapper implements MapperInterface
 
         $df = $this->profile->displayFields();
 
-        // Facet fields. A people facet (one with a parallel "<base>_ids" display
-        // field, e.g. author_ss ↔ author_ids) is filled with names + ids kept in
-        // lockstep; others take linked titles (or literal fallback). Single-valued
-        // facets store the first title, multi-valued ones the deduped list.
+        // Facet fields — each takes its linked titles (or literal fallback). Single-
+        // valued facets store the first title, multi-valued ones the deduped list.
+        // creator_ss (the Author / Editor facet) has no property of its own; it is
+        // the author ∪ editor union built below, so the null-property guard skips it.
         foreach ($this->profile->all() as $field => $def) {
             if (empty($def['property'])) {
-                continue;
-            }
-            $idField = substr($field, -3) === '_ss' ? substr($field, 0, -3) . '_ids' : null;
-            if ($idField !== null && isset($df[$idField])) {
-                [$names, $ids] = $this->collectPeople($values, $def['property']);
-                if ($names) {
-                    $doc[$field] = $names;
-                    $doc[$idField] = $ids;
-                }
                 continue;
             }
             $titles = $this->linkedTitles($values, $def['property']);
@@ -76,10 +68,22 @@ final class PublicationMapper implements MapperInterface
             $doc[$field] = $this->profile->isMultivalued($field) ? $titles : $titles[0];
         }
 
-        // Editors (display only) — same linked-title shape.
-        $editors = $this->linkedTitles($values, $df['editor_ss']['property'] ?? null);
-        if ($editors) {
+        // People. Authors and editors are kept apart for the byline (author_ss /
+        // editor_ss, display-only — the card marks editors "(eds.)"), then merged
+        // into the creator_ss facet so one sidebar filter finds everything a person
+        // authored OR edited. Names are linked persons (literal fallback); the card
+        // filters creator_ss by the clicked name.
+        $authors = $this->linkedTitles($values, $df['author_ss']['property'] ?? 'bibo:authorList');
+        if ($authors !== []) {
+            $doc['author_ss'] = $authors;
+        }
+        $editors = $this->linkedTitles($values, $df['editor_ss']['property'] ?? 'bibo:editorList');
+        if ($editors !== []) {
             $doc['editor_ss'] = $editors;
+        }
+        $creators = array_values(array_unique(array_merge($authors, $editors)));
+        if ($creators !== []) {
+            $doc['creator_ss'] = $creators;
         }
 
         // Bibliographic-reference bits.
@@ -128,34 +132,6 @@ final class PublicationMapper implements MapperInterface
             }
         }
         return array_values(array_unique($out));
-    }
-
-    /**
-     * Collect a person property's display names and matching resource ids (empty
-     * string where a value is a literal rather than a link), deduped by name and
-     * kept parallel so author_ss[i] ↔ author_ids[i].
-     *
-     * @param array<string, list<array{vrid:?int, value:?string, uri:?string, title:?string}>> $values
-     * @return array{0:list<string>, 1:list<string>}
-     */
-    private function collectPeople(array $values, ?string $term): array
-    {
-        $names = [];
-        $ids = [];
-        $seen = [];
-        if ($term === null) {
-            return [$names, $ids];
-        }
-        foreach ($values[$term] ?? [] as $v) {
-            $name = ($v['title'] ?? '') !== '' ? $v['title'] : ($v['value'] ?? '');
-            if ($name === null || $name === '' || isset($seen[$name])) {
-                continue;
-            }
-            $seen[$name] = true;
-            $names[] = $name;
-            $ids[] = $v['vrid'] !== null ? (string) $v['vrid'] : '';
-        }
-        return [$names, $ids];
     }
 
     /** @param array<string, list<array{vrid:?int, value:?string, uri:?string, title:?string}>> $values */

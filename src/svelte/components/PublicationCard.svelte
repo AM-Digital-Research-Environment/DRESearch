@@ -11,16 +11,19 @@
    *   ┌────────────────────────────────────────────────────┐
    *   │ 2026                                        [chapter] │
    *   │ Art for Art's Sake: The Rejection of Ethical Value?   │
-   *   │ Klaeger, Florian          (authors link to persons)   │
+   *   │ Klaeger, Florian          (author → filter button)    │
    *   │ In: Ganteau, J.-M.; Onega, S. (eds.), Handbook of …,   │
    *   │   vol. 4, pp. 141–165. Brill                           │
    *   │ Abstract, clamped to a few lines…                     │
    *   │ [keyword] [keyword]                            DOI ↗   │
    *   └────────────────────────────────────────────────────┘
    *
-   * Authors link to their person page (when linked resources); the keyword chips
-   * are buttons that add that value as a facet filter (onAddFilter); the DOI opens
-   * the canonical record.
+   * Authors and editors are buttons that add the person to the "Author / Editor"
+   * facet (onAddFilter creator_ss); the venue (journal / book) and publisher filter
+   * on container_ss / publisher_ss; the keyword chips add a keyword filter; the DOI
+   * opens the canonical record. Editors render as their own byline for an edited
+   * volume (editors, no container) and inside the "In: … (eds.), <venue>" line for
+   * a chapter.
    */
 
   interface Props {
@@ -44,35 +47,30 @@
   const keywordHl = $derived(markedLookup(doc, 'keyword_ss'));
   const doi = $derived(doc.doi_s ?? '');
 
-  // Authors paired with a link to their person page (unreconciled literals have
-  // no id and render as plain text).
-  const authors = $derived.by(() => {
-    const names = doc.author_ss ?? [];
-    const ids = doc.author_ids ?? [];
-    return names.map((name, i) => {
-      const id = ids[i] ?? '';
-      return { name, href: id ? `${itemUrlBase}/${encodeURIComponent(id)}` : null };
-    });
-  });
+  // Authors — filter buttons (click adds the person to the creator_ss facet,
+  // which unifies authors + editors). Literals filter fine by name.
+  const authors = $derived(doc.author_ss ?? []);
   const authorHl = $derived(markedLookup(doc, 'author_ss'));
 
   const editors = $derived(doc.editor_ss ?? []);
+  const editorHl = $derived(markedLookup(doc, 'editor_ss'));
+  const edsLabel = $derived(editors.length > 1 ? t('eds_short') : t('ed_short'));
+
   const container = $derived(doc.container_ss?.[0] ?? '');
   const containerHl = $derived(markedLookup(doc, 'container_ss'));
   const publisher = $derived(doc.publisher_ss?.[0] ?? '');
+  const publisherHl = $derived(markedLookup(doc, 'publisher_ss'));
 
-  // "In: Editors (eds.), " — only for edited volumes (a container with editors).
-  const editorsPrefix = $derived.by(() => {
-    if (!container || editors.length === 0) {
-      return '';
-    }
-    const label = editors.length > 1 ? t('eds_short') : t('ed_short');
-    return `${t('in_prefix')} ${editors.join('; ')} (${label}), `;
-  });
+  // Where the editors render: as their own byline for an edited volume/book
+  // (editors but no container), or inside the "In: … (eds.), <venue>" reference
+  // line for a chapter (container present). Never both.
+  const editorsAsByline = $derived(editors.length > 0 && !container);
+  const editorsInRef = $derived(editors.length > 0 && container !== '');
 
-  // Everything after the venue: ", vol. X(Y), pp. Z. Publisher" — separators
-  // chosen so the line reads cleanly whether or not a venue precedes it.
-  const tail = $derived.by(() => {
+  // The reference line is three pieces — venue · metrics · publisher — of which
+  // the venue and publisher are clickable filter buttons, so only the middle
+  // (volume/issue/pages, e.g. "vol. 4(2), pp. 141–165") is a plain string here.
+  const metrics = $derived.by(() => {
     const bits: string[] = [];
     const vol = doc.volume_s ?? '';
     const issue = doc.issue_s ?? '';
@@ -86,17 +84,20 @@
     if (doc.pages_s) {
       bits.push(`${t('pp_short')} ${doc.pages_s}`);
     }
-    let s = bits.join(', ');
-    if (s && container) {
-      s = `, ${s}`;
-    }
-    if (publisher) {
-      s += `${s || container ? '. ' : ''}${publisher}`;
-    }
-    return s;
+    return bits.join(', ');
   });
 
-  const hasReference = $derived(Boolean(editorsPrefix || container || tail));
+  // Separators rendered *after* each piece (trailing, ending in a space), so any
+  // whitespace the template introduces between the buttons collapses into the
+  // separator's own space instead of surfacing as a stray space before a comma.
+  const sepAfterVenue = $derived.by(() => {
+    if (!container) return '';
+    if (metrics) return ', ';
+    return publisher ? '. ' : '';
+  });
+  const sepAfterMetrics = $derived(metrics && publisher ? '. ' : '');
+
+  const hasReference = $derived(Boolean(container || metrics || publisher));
 </script>
 
 <article class="dre-bcard">
@@ -116,18 +117,48 @@
 
     {#if authors.length > 0}
       <p class="dre-bcard__authors">
-        {#each authors as a, i (a.name + '|' + i)}{i > 0 ? ', ' : ''}{#if a.href}<a
-              class="dre-bcard__author-link"
-              href={a.href}><Highlight value={authorHl.get(a.name) ?? a.name} /></a
-            >{:else}<span><Highlight value={authorHl.get(a.name) ?? a.name} /></span>{/if}{/each}
+        {#each authors as name, i (name + '|' + i)}{i > 0 ? ', ' : ''}<button
+            type="button"
+            class="dre-bcard__person"
+            onclick={() => onAddFilter('creator_ss', name)}
+            ><Highlight value={authorHl.get(name) ?? name} /></button
+          >{/each}
+      </p>
+    {/if}
+
+    {#if editorsAsByline}
+      <p class="dre-bcard__authors">
+        {#each editors as name, i (name + '|' + i)}{i > 0 ? '; ' : ''}<button
+            type="button"
+            class="dre-bcard__person"
+            onclick={() => onAddFilter('creator_ss', name)}
+            ><Highlight value={editorHl.get(name) ?? name} /></button
+          >{/each}{` (${edsLabel})`}
       </p>
     {/if}
 
     {#if hasReference}
       <p class="dre-bcard__ref">
-        {editorsPrefix}{#if container}<cite class="dre-bcard__venue"
-            ><Highlight value={containerHl.get(container) ?? container} /></cite
-          >{/if}{tail}
+        {#if editorsInRef}{`${t('in_prefix')} `}{#each editors as name, i (name + '|' + i)}{i > 0
+              ? '; '
+              : ''}<button
+              type="button"
+              class="dre-bcard__person"
+              onclick={() => onAddFilter('creator_ss', name)}
+              ><Highlight value={editorHl.get(name) ?? name} /></button
+            >{/each}{` (${edsLabel}), `}{/if}{#if container}<button
+            type="button"
+            class="dre-bcard__person"
+            onclick={() => onAddFilter('container_ss', container)}
+            ><cite class="dre-bcard__venue"
+              ><Highlight value={containerHl.get(container) ?? container} /></cite
+            ></button
+          >{sepAfterVenue}{/if}{#if metrics}{metrics}{sepAfterMetrics}{/if}{#if publisher}<button
+            type="button"
+            class="dre-bcard__person"
+            onclick={() => onAddFilter('publisher_ss', publisher)}
+            ><Highlight value={publisherHl.get(publisher) ?? publisher} /></button
+          >{/if}
       </p>
     {/if}
 
@@ -160,7 +191,18 @@
       </div>
     {/if}
 
-    <MatchedIn {doc} exclude={['title', 'abstract', 'author_ss', 'container_ss', 'keyword_ss']} />
+    <MatchedIn
+      {doc}
+      exclude={[
+        'title',
+        'abstract',
+        'author_ss',
+        'editor_ss',
+        'creator_ss',
+        'container_ss',
+        'keyword_ss',
+      ]}
+    />
   </div>
 </article>
 
@@ -234,15 +276,28 @@
     font-size: var(--text-sm, 0.9rem);
     color: var(--ink-light, var(--ink, #5f5648));
   }
-  .dre-bcard__author-link {
+  /* Author / editor names — plain-text buttons (click to filter), underlined,
+     turning brand-coloured on hover. background:none strips the native button fill
+     (the host theme no longer styles bare <button>s, so no override fight). */
+  .dre-bcard__person {
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    cursor: pointer;
     color: inherit;
     text-decoration: underline;
     text-underline-offset: 2px;
     text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
   }
-  .dre-bcard__author-link:hover {
+  .dre-bcard__person:hover {
     color: var(--primary, #007a50);
     text-decoration-color: currentColor;
+  }
+  .dre-bcard__person:focus-visible {
+    outline: none;
+    border-radius: var(--radius-sm, 0.375rem);
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3));
   }
   .dre-bcard__ref {
     margin: 0;

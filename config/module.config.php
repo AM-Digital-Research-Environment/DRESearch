@@ -382,8 +382,10 @@ return [
             // (template_id is null). Links are unambiguous: bibo:authorList =
             // authors, dcterms:isPartOf = journal/book title, dcterms:publisher =
             // publisher; keywords + language are linked subjects/languages (literal
-            // fallback). The card shows a formatted bibliographic reference, so the
-            // mapper also emits editors, volume/issue, a page range, and a DOI link.
+            // fallback). The card shows a formatted bibliographic reference: authors
+            // and editors are separate bylines (editors marked "(eds.)") but merged
+            // into one "Author / Editor" facet (creator_ss); the mapper also emits
+            // volume/issue, a page range, and a DOI link.
             'research_publications' => [
                 'label'       => 'Publications', // @translate
                 'collection'  => 'dre_publications_current',
@@ -396,24 +398,29 @@ return [
                 'date'        => ['mode' => 'single', 'property' => 'dcterms:date', 'label' => 'Year', 'facet' => true],
 
                 'facets' => [
-                    'type_s'       => ['property' => 'dcterms:type',      'label' => 'Type',         'array' => false],
-                    'author_ss'    => ['property' => 'bibo:authorList',   'label' => 'Author',       'array' => true],
-                    'container_ss' => ['property' => 'dcterms:isPartOf',  'label' => 'Journal / Book', 'array' => true],
-                    'publisher_ss' => ['property' => 'dcterms:publisher', 'label' => 'Publisher',    'array' => true],
-                    'keyword_ss'   => ['property' => 'dcterms:subject',   'label' => 'Keyword',      'array' => true],
-                    'language_ss'  => ['property' => 'dcterms:language',  'label' => 'Language',     'array' => true],
+                    'type_s'       => ['property' => 'dcterms:type',      'label' => 'Type',            'array' => false],
+                    // Person facet — the union of authors + editors, so one filter
+                    // finds everything a person authored OR edited. Mapper-emitted
+                    // (property null) from bibo:authorList ∪ bibo:editorList; the card
+                    // filters on it when an author/editor byline name is clicked.
+                    'creator_ss'   => ['property' => null,                'label' => 'Author / Editor', 'array' => true],
+                    'container_ss' => ['property' => 'dcterms:isPartOf',  'label' => 'Journal / Book',  'array' => true],
+                    'publisher_ss' => ['property' => 'dcterms:publisher', 'label' => 'Publisher',       'array' => true],
+                    'keyword_ss'   => ['property' => 'dcterms:subject',   'label' => 'Keyword',         'array' => true],
+                    'language_ss'  => ['property' => 'dcterms:language',  'label' => 'Language',        'array' => true],
                 ],
 
-                // Display-only reference bits. author_ids carries the person item
-                // ids parallel to author_ss (so the card links each author);
-                // volume/issue/pages/doi are shown only, never searched/faceted.
+                // Display fields. author_ss / editor_ss keep the two roles apart for
+                // the byline (the card marks editors "(eds.)"); both are indexed for
+                // query_by and merged into the creator_ss facet above. volume/issue/
+                // pages/doi are shown only, never searched/faceted.
                 'display_fields' => [
-                    'author_ids' => ['property' => null,             'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'author_ss'  => ['property' => 'bibo:authorList', 'type' => 'string[]', 'facet' => false],
                     'editor_ss'  => ['property' => 'bibo:editorList', 'type' => 'string[]', 'facet' => false],
-                    'volume_s'   => ['property' => 'bibo:volume',    'type' => 'string', 'facet' => false, 'index' => false],
-                    'issue_s'    => ['property' => 'bibo:issue',     'type' => 'string', 'facet' => false, 'index' => false],
-                    'pages_s'    => ['property' => null,             'type' => 'string', 'facet' => false, 'index' => false],
-                    'doi_s'      => ['property' => null,             'type' => 'string', 'facet' => false, 'index' => false],
+                    'volume_s'   => ['property' => 'bibo:volume',     'type' => 'string', 'facet' => false, 'index' => false],
+                    'issue_s'    => ['property' => 'bibo:issue',      'type' => 'string', 'facet' => false, 'index' => false],
+                    'pages_s'    => ['property' => null,              'type' => 'string', 'facet' => false, 'index' => false],
+                    'doi_s'      => ['property' => null,              'type' => 'string', 'facet' => false, 'index' => false],
                 ],
 
                 // Properties read beyond the facet/display/date props: the abstract,

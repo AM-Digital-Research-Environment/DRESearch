@@ -398,7 +398,8 @@ final class SearchProxy
             $section = $doc['section_ss'][0] ?? null;
             $parts = [$section, $this->yearRange($doc)];
         } elseif ($profile->kind() === 'publication') {
-            $author = $doc['author_ss'][0] ?? ($doc['type_s'] ?? null);
+            // Edited volumes have no author — fall back to the first editor, then type.
+            $author = $doc['author_ss'][0] ?? ($doc['editor_ss'][0] ?? ($doc['type_s'] ?? null));
             $parts = [$author, isset($doc['year']) ? (string) $doc['year'] : null];
         } elseif ($profile->kind() === 'podcast') {
             // Series + year (episodes have no type_s; the series gives context).

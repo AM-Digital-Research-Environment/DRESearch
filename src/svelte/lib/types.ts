@@ -103,10 +103,9 @@ export interface Doc {
   item_count?: number;
   has_items?: string;
 
-  // Publication fields.
+  // Publication fields. Authors and editors are shown as separate bylines but
+  // merged into the creator_ss facet (shared with research items) for filtering.
   author_ss?: string[];
-  /** Person item ids, parallel to author_ss ("" where the author is unlinked). */
-  author_ids?: string[];
   editor_ss?: string[];
   /** Journal or book title (and any series), the venue. */
   container_ss?: string[];
