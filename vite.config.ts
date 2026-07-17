@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve } from 'node:path';
 
@@ -21,6 +21,15 @@ import { resolve } from 'node:path';
  */
 export default defineConfig({
   plugins: [svelte()],
+  resolve: {
+    conditions: ['browser'],
+  },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./tests/frontend/setup.ts'],
+    include: ['tests/frontend/**/*.test.ts'],
+    clearMocks: true,
+  },
   build: {
     outDir: 'asset/dist',
     emptyOutDir: true,

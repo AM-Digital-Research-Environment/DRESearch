@@ -1,10 +1,7 @@
-/**
- * English-only UI strings. Kept as a flat dictionary with a tiny {var}
- * interpolator so adding French/German later is just another dictionary +
- * a locale switch — no structural change.
- */
+/** Locale-aware UI dictionary. Deployments may inject translated key/value
+ * overrides as `window.dreSearchTranslations` before the deferred bundle runs. */
 
-const STRINGS: Record<string, string> = {
+const ENGLISH_STRINGS: Record<string, string> = {
   search_placeholder: 'Search research items…',
   search_placeholder_project: 'Search research projects…',
   search_placeholder_publication: 'Search publications…',
@@ -37,6 +34,9 @@ const STRINGS: Record<string, string> = {
   searching: 'Searching…',
   result_one: 'result',
   result_other: 'results',
+  pagination: 'Pagination',
+  previous_page: 'Previous page',
+  next_page: 'Next page',
 
   // Result export menu.
   export: 'Export',
@@ -69,6 +69,7 @@ const STRINGS: Record<string, string> = {
   see_all_results: 'See all results for “{q}”',
   no_matches_anywhere: 'No matches in any collection.',
   search_results_for: 'Results for “{q}”',
+  result_types: 'Result types',
 
   untitled: 'Untitled',
   project_label: 'Project',
@@ -76,6 +77,35 @@ const STRINGS: Record<string, string> = {
 
   // Match highlighting — prefix for matches in a field the card doesn't show.
   matched_in: 'Matched in',
+  field_title: 'Title',
+  field_abstract: 'Abstract',
+  field_description: 'Description',
+  field_subject: 'Subject',
+  field_tag: 'Tag',
+  field_author: 'Author',
+  field_editor: 'Editor',
+  field_container: 'In',
+  field_publisher: 'Publisher',
+  field_keyword: 'Keyword',
+  field_host: 'Host',
+  field_guest: 'Guest',
+  field_engineer: 'Sound engineer',
+  field_series: 'Series',
+  field_speaker: 'Speaker',
+  field_playlist: 'Playlist',
+  field_transcript: 'Transcript',
+  field_pi: 'Principal investigator',
+  field_member: 'Member',
+  field_institution: 'Institution',
+  field_section: 'Research section',
+  field_people: 'Associated people',
+  field_spokesperson: 'Spokesperson',
+  field_affiliation: 'Affiliation',
+  field_role: 'Role',
+  field_language: 'Language',
+  field_origin: 'Place of origin',
+  field_provenance: 'Current location',
+  field_project: 'Project',
 
   // Research-item card.
   origin_label: 'Place of origin',
@@ -130,50 +160,102 @@ const STRINGS: Record<string, string> = {
   people_other: '{n} people',
 };
 
+declare global {
+  interface Window {
+    dreSearchTranslations?: Record<string, string>;
+  }
+}
+
+let locale = typeof document !== 'undefined' ? document.documentElement.lang || 'en' : 'en';
+let strings: Record<string, string> = {
+  ...ENGLISH_STRINGS,
+  ...(typeof window !== 'undefined' ? window.dreSearchTranslations : {}),
+};
+let numberFormatter = new Intl.NumberFormat(locale);
+let pluralRules = new Intl.PluralRules(locale);
+
+export function configureI18n(nextLocale: string, overrides: Record<string, string> = {}): void {
+  locale = nextLocale.trim() || 'en';
+  strings = { ...ENGLISH_STRINGS, ...overrides };
+  numberFormatter = new Intl.NumberFormat(locale);
+  pluralRules = new Intl.PluralRules(locale);
+}
+
+export function formatNumber(value: number): string {
+  return numberFormatter.format(value);
+}
+
+/** Format ISO-like year/month/day values without applying the browser timezone. */
+export function formatDate(raw: string | undefined): string {
+  if (!raw) return '';
+  const ymd = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw);
+  if (ymd) {
+    const date = new Date(Date.UTC(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3])));
+    return new Intl.DateTimeFormat(locale, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }).format(date);
+  }
+  const ym = /^(\d{4})-(\d{2})/.exec(raw);
+  if (ym) {
+    const date = new Date(Date.UTC(Number(ym[1]), Number(ym[2]) - 1, 1));
+    return new Intl.DateTimeFormat(locale, {
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }).format(date);
+  }
+  const year = /^(\d{4})/.exec(raw);
+  return year ? year[1] : raw;
+}
+
 /**
  * Friendly label for a searchable/filterable field, by its Typesense field name.
  * Used for the "Matched in" line and as a fallback label for active-filter chips
  * whose field isn't a sidebar facet (e.g. an author clicked on a result card).
  */
-const MATCH_FIELD_LABELS: Record<string, string> = {
-  title: 'Title',
-  abstract: 'Abstract',
-  description: 'Description',
-  subject_ss: 'Subject',
-  tag_ss: 'Tag',
-  creator_ss: 'Author',
-  author_ss: 'Author',
-  editor_ss: 'Editor',
-  container_ss: 'In',
-  publisher_ss: 'Publisher',
-  keyword_ss: 'Keyword',
-  host_ss: 'Host',
-  guest_ss: 'Guest',
-  engineer_ss: 'Sound engineer',
-  series_s: 'Series',
-  speaker_ss: 'Speaker',
-  playlist_s: 'Playlist',
-  transcript: 'Transcript',
-  pi_ss: 'Principal investigator',
-  member_ss: 'Member',
-  institution_ss: 'Institution',
-  section_ss: 'Research section',
-  people_ss: 'Associated people',
-  spokesperson_ss: 'Spokesperson',
-  affiliation_ss: 'Affiliation',
-  roles_ss: 'Role',
-  language_ss: 'Language',
-  origin_ss: 'Place of origin',
-  provenance_ss: 'Current location',
-  project_s: 'Project',
+const MATCH_FIELD_KEYS: Record<string, string> = {
+  title: 'field_title',
+  abstract: 'field_abstract',
+  description: 'field_description',
+  subject_ss: 'field_subject',
+  tag_ss: 'field_tag',
+  creator_ss: 'field_author',
+  author_ss: 'field_author',
+  editor_ss: 'field_editor',
+  container_ss: 'field_container',
+  publisher_ss: 'field_publisher',
+  keyword_ss: 'field_keyword',
+  host_ss: 'field_host',
+  guest_ss: 'field_guest',
+  engineer_ss: 'field_engineer',
+  series_s: 'field_series',
+  speaker_ss: 'field_speaker',
+  playlist_s: 'field_playlist',
+  transcript: 'field_transcript',
+  pi_ss: 'field_pi',
+  member_ss: 'field_member',
+  institution_ss: 'field_institution',
+  section_ss: 'field_section',
+  people_ss: 'field_people',
+  spokesperson_ss: 'field_spokesperson',
+  affiliation_ss: 'field_affiliation',
+  roles_ss: 'field_role',
+  language_ss: 'field_language',
+  origin_ss: 'field_origin',
+  provenance_ss: 'field_provenance',
+  project_s: 'field_project',
 };
 
 export function matchFieldLabel(field: string): string {
-  return MATCH_FIELD_LABELS[field] ?? field;
+  const key = MATCH_FIELD_KEYS[field];
+  return key ? t(key) : field;
 }
 
 export function t(key: string, vars?: Record<string, string | number>): string {
-  let str = STRINGS[key] ?? key;
+  let str = strings[key] ?? key;
   if (vars) {
     for (const [name, value] of Object.entries(vars)) {
       str = str.replaceAll(`{${name}}`, String(value));
@@ -184,25 +266,33 @@ export function t(key: string, vars?: Record<string, string | number>): string {
 
 /** Pluralised "{n} research items". */
 export function researchItemsLabel(n: number): string {
-  return t(n === 1 ? 'research_items_one' : 'research_items_other', { n: n.toLocaleString() });
+  return t(pluralRules.select(n) === 'one' ? 'research_items_one' : 'research_items_other', {
+    n: formatNumber(n),
+  });
 }
 
 /** Pluralised "{n} publications". */
 export function publicationsLabel(n: number): string {
-  return t(n === 1 ? 'publications_one' : 'publications_other', { n: n.toLocaleString() });
+  return t(pluralRules.select(n) === 'one' ? 'publications_one' : 'publications_other', {
+    n: formatNumber(n),
+  });
 }
 
 /** Pluralised "{n} members". */
 export function membersLabel(n: number): string {
-  return t(n === 1 ? 'members_one' : 'members_other', { n: n.toLocaleString() });
+  return t(pluralRules.select(n) === 'one' ? 'members_one' : 'members_other', {
+    n: formatNumber(n),
+  });
 }
 
 /** Pluralised "{n} projects". */
 export function projectsLabel(n: number): string {
-  return t(n === 1 ? 'projects_one' : 'projects_other', { n: n.toLocaleString() });
+  return t(pluralRules.select(n) === 'one' ? 'projects_one' : 'projects_other', {
+    n: formatNumber(n),
+  });
 }
 
 /** Pluralised "{n} people". */
 export function peopleLabel(n: number): string {
-  return t(n === 1 ? 'people_one' : 'people_other', { n: n.toLocaleString() });
+  return t(pluralRules.select(n) === 'one' ? 'people_one' : 'people_other', { n: formatNumber(n) });
 }

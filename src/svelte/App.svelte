@@ -8,7 +8,7 @@
     type UrlSearchState,
     type UrlSyncOptions,
   } from './lib/urlState';
-  import { t } from './lib/i18n';
+  import { formatNumber, t } from './lib/i18n';
   import SearchBox from './components/SearchBox.svelte';
   import SortSelect from './components/SortSelect.svelte';
   import ExportMenu from './components/ExportMenu.svelte';
@@ -50,7 +50,9 @@
     includeQuery: includeQueryProp,
   }: Props = $props();
 
-  const api = $derived.by(() => new SearchApi(bootstrap.endpoints, bootstrap.profile));
+  const api = $derived.by(
+    () => new SearchApi(bootstrap.endpoints, bootstrap.profile, bootstrap.block_id),
+  );
 
   // URL ↔ state sync config. A block that owns its search box syncs by default;
   // the federated page overrides these so its reused per-corpus App writes the
@@ -218,25 +220,32 @@
     // selected field, so a selected value never vanishes from the sidebar.
     const facetFields = Array.from(new Set([...bootstrap.facets, ...Object.keys(f)]));
     const myId = ++reqId;
+    const controller = new AbortController();
     isLoading = true;
     error = null;
 
     api
-      .search({
-        profile: bootstrap.profile,
-        q,
-        page: p,
-        per_page: bootstrap.per_page,
-        sort: s,
-        filters: f,
-        facets: facetFields,
-        locked_filter: bootstrap.locked_filter,
-        year_from: yf,
-        year_to: yt,
-      })
+      .search(
+        {
+          q,
+          page: p,
+          per_page: bootstrap.per_page,
+          sort: s,
+          filters: f,
+          facets: facetFields,
+          year_from: yf,
+          year_to: yt,
+        },
+        controller.signal,
+      )
       .then((r) => {
         if (myId !== reqId) {
           return; // a newer search has superseded this one
+        }
+        const lastPage = Math.max(1, Math.ceil(r.found / bootstrap.per_page));
+        if (p > lastPage) {
+          page = lastPage;
+          return;
         }
         response = r;
       })
@@ -244,6 +253,7 @@
         if (myId !== reqId) {
           return;
         }
+        if (e.name === 'AbortError') return;
         console.error('[dre-search] search failed', e);
         error = e.message;
         response = null;
@@ -253,6 +263,8 @@
           isLoading = false;
         }
       });
+
+    return () => controller.abort();
   });
 
   const facets = $derived(response?.facets ?? []);
@@ -290,7 +302,6 @@
       q: query,
       sort,
       filters,
-      locked_filter: bootstrap.locked_filter,
       year_from: yearFrom,
       year_to: yearTo,
     });
@@ -344,6 +355,17 @@
       rootEl.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
     }
   }
+
+  function toggleFacets(): void {
+    facetsOpen = !facetsOpen;
+    if (facetsOpen) {
+      requestAnimationFrame(() => {
+        rootEl
+          ?.querySelector<HTMLElement>('.dre-search__facets input, .dre-search__facets button')
+          ?.focus();
+      });
+    }
+  }
 </script>
 
 <div class="dre-search" bind:this={rootEl}>
@@ -353,6 +375,7 @@
       {placeholder}
       {api}
       itemUrlBase={bootstrap.item_url_base}
+      instanceId={String(bootstrap.block_id ?? bootstrap.profile)}
       onQueryChange={handleQueryChange}
     />
   {/if}
@@ -388,7 +411,7 @@
         class="dre-search__facets-toggle"
         aria-expanded={facetsOpen}
         aria-controls="dre-facets-{bootstrap.block_id}"
-        onclick={() => (facetsOpen = !facetsOpen)}
+        onclick={toggleFacets}
       >
         <span>{facetsOpen ? t('hide_filters') : t('show_filters')}</span>
         {#if activeCount > 0}
@@ -423,7 +446,7 @@
           <header class="dre-search__toolbar" aria-live="polite">
             <span class="dre-search__count">
               {#if response.found > 0}
-                <strong>{response.found.toLocaleString()}</strong>
+                <strong>{formatNumber(response.found)}</strong>
                 {response.found === 1 ? t('result_one') : t('result_other')}
               {:else}
                 {t('no_results_title')}

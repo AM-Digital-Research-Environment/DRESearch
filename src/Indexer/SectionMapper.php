@@ -37,13 +37,14 @@ final class SectionMapper implements MapperInterface
 
     public function map(array $item, array $values, ?string $thumbnailUrl): array
     {
+        $bag = new ValueBag($values);
         $doc = [
             'id'        => (string) $item['id'],
             'is_public' => $item['is_public'],
             'title'     => $item['title'] !== '' ? $item['title'] : sprintf('[Untitled #%d]', $item['id']),
         ];
 
-        if (($abstract = $this->firstLiteral($values, 'dcterms:abstract')) !== null) {
+        if (($abstract = $bag->firstLiteral('dcterms:abstract')) !== null) {
             $doc['abstract'] = $abstract;
         }
 
@@ -51,9 +52,9 @@ final class SectionMapper implements MapperInterface
         $piTerm = $df['pi_ss']['property'] ?? null;            // dcterms:creator (Phase 1)
         $spkTerm = $df['spokesperson_ss']['property'] ?? null; // marcrel:spk (Phase 2)
 
-        $piNames = $this->linkedTitles($values, $piTerm);
-        $spkNames = $this->linkedTitles($values, $spkTerm);
-        $memberNames = $this->linkedTitles($values, self::MEMBER_TERM);
+        $piNames = $bag->labels($piTerm);
+        $spkNames = $bag->labels($spkTerm);
+        $memberNames = $bag->labels(self::MEMBER_TERM);
 
         if ($piNames) {
             $doc['pi_ss'] = $piNames;
@@ -89,36 +90,4 @@ final class SectionMapper implements MapperInterface
         return $doc;
     }
 
-    /**
-     * Linked-resource titles (literal fallback) for a property, deduped, order
-     * preserved.
-     *
-     * @param array<string, list<array{vrid:?int, value:?string, uri:?string, title:?string}>> $values
-     * @return list<string>
-     */
-    private function linkedTitles(array $values, ?string $term): array
-    {
-        if ($term === null || $term === '') {
-            return [];
-        }
-        $out = [];
-        foreach ($values[$term] ?? [] as $v) {
-            $label = ($v['title'] ?? '') !== '' ? $v['title'] : ($v['value'] ?? '');
-            if ($label !== null && $label !== '') {
-                $out[] = $label;
-            }
-        }
-        return array_values(array_unique($out));
-    }
-
-    /** @param array<string, list<array{vrid:?int, value:?string, uri:?string, title:?string}>> $values */
-    private function firstLiteral(array $values, string $term): ?string
-    {
-        foreach ($values[$term] ?? [] as $v) {
-            if (($v['value'] ?? '') !== '') {
-                return $v['value'];
-            }
-        }
-        return null;
-    }
 }

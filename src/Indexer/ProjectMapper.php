@@ -33,32 +33,36 @@ final class ProjectMapper implements MapperInterface
 
     public function map(array $item, array $values, ?string $thumbnailUrl): array
     {
+        $bag = new ValueBag($values);
         $doc = [
             'id'        => (string) $item['id'],
             'is_public' => $item['is_public'],
             'title'     => $item['title'] !== '' ? $item['title'] : sprintf('[Untitled #%d]', $item['id']),
         ];
 
-        if (($abstract = $this->firstLiteral($values, 'dcterms:abstract')) !== null) {
+        if (($abstract = $bag->firstLiteral('dcterms:abstract')) !== null) {
             $doc['abstract'] = $abstract;
         }
 
         // Facet fields — linked-resource titles (or literal fallback).
         foreach ($this->profile->all() as $field => $def) {
             if (!empty($def['property'])) {
-                $this->addLinkedTitles($doc, $values, $def['property'], $field);
+                $titles = $bag->labels($def['property']);
+                if ($titles !== []) {
+                    $doc[$field] = $titles;
+                }
             }
         }
 
         // PIs (dcterms:creator) and members (foaf:member). PIs keep their person
         // item ids alongside the names so the card can link each one.
         $df = $this->profile->displayFields();
-        [$piNames, $piIds] = $this->collectPeople($values, $df['pi_ss']['property'] ?? null);
+        [$piNames, $piIds] = $bag->people($df['pi_ss']['property'] ?? null);
         if ($piNames) {
             $doc['pi_ss'] = $piNames;
             $doc['pi_ids'] = $piIds;
         }
-        [$memberNames] = $this->collectPeople($values, $df['member_ss']['property'] ?? null);
+        [$memberNames] = $bag->people($df['member_ss']['property'] ?? null);
         if ($memberNames) {
             $doc['member_ss'] = $memberNames;
         }
@@ -72,7 +76,7 @@ final class ProjectMapper implements MapperInterface
         }
 
         // Year range from dcterms:temporal.
-        [$start, $end] = $this->resolveRange($values, $this->profile->dateProperty());
+        [$start, $end] = $bag->firstYearRange($this->profile->dateProperty());
         if ($start !== null) {
             $doc['year_start'] = $start;
         }
@@ -94,91 +98,4 @@ final class ProjectMapper implements MapperInterface
         return $doc;
     }
 
-    /**
-     * Collect a property's linked-resource titles (falling back to the literal
-     * value for unreconciled entries) into a string[] field.
-     *
-     * @param array<string, list<array{vrid:?int, value:?string, title:?string}>> $values
-     */
-    private function addLinkedTitles(array &$doc, array $values, string $term, string $field): void
-    {
-        $out = [];
-        foreach ($values[$term] ?? [] as $v) {
-            $label = ($v['title'] ?? '') !== '' ? $v['title'] : ($v['value'] ?? '');
-            if ($label !== null && $label !== '') {
-                $out[] = $label;
-            }
-        }
-        if ($out) {
-            $doc[$field] = array_values(array_unique($out));
-        }
-    }
-
-    /**
-     * Collect a person property's display names and their matching resource ids
-     * (empty string where a value is a literal rather than a link), deduped by
-     * name and kept parallel so pi_ss[i] ↔ pi_ids[i].
-     *
-     * @param array<string, list<array{vrid:?int, value:?string, title:?string}>> $values
-     * @return array{0:list<string>, 1:list<string>}
-     */
-    private function collectPeople(array $values, ?string $term): array
-    {
-        $names = [];
-        $ids = [];
-        $seen = [];
-        if ($term === null) {
-            return [$names, $ids];
-        }
-        foreach ($values[$term] ?? [] as $v) {
-            $name = ($v['title'] ?? '') !== '' ? $v['title'] : ($v['value'] ?? '');
-            if ($name === null || $name === '' || isset($seen[$name])) {
-                continue;
-            }
-            $seen[$name] = true;
-            $names[] = $name;
-            $ids[] = $v['vrid'] !== null ? (string) $v['vrid'] : '';
-        }
-        return [$names, $ids];
-    }
-
-    /** @param array<string, list<array{vrid:?int, value:?string, title:?string}>> $values */
-    private function firstLiteral(array $values, string $term): ?string
-    {
-        foreach ($values[$term] ?? [] as $v) {
-            if (($v['value'] ?? '') !== '') {
-                return $v['value'];
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Parse a dcterms:temporal interval into [startYear, endYear]. The stored
-     * value is "YYYY-MM-DD/YYYY-MM-DD" (or a single date / bare year); the first
-     * four-digit run is the start, the last is the end. End defaults to start.
-     *
-     * @param array<string, list<array{vrid:?int, value:?string, title:?string}>> $values
-     * @return array{0:?int, 1:?int}
-     */
-    private function resolveRange(array $values, ?string $term): array
-    {
-        if ($term === null) {
-            return [null, null];
-        }
-        foreach ($values[$term] ?? [] as $v) {
-            $raw = (string) ($v['value'] ?? '');
-            if ($raw === '' || !preg_match_all('/\d{4}/', $raw, $m) || $m[0] === []) {
-                continue;
-            }
-            $years = array_map('intval', $m[0]);
-            $start = $years[0];
-            $end = (int) end($years);
-            if ($end < $start) {
-                $end = $start;
-            }
-            return [$start, $end];
-        }
-        return [null, null];
-    }
 }

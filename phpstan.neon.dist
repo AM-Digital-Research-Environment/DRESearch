@@ -1,0 +1,11 @@
+parameters:
+    level: 5
+    paths:
+        - src/Indexer/ImportResult.php
+        - src/Indexer/ValueBag.php
+        - src/Search/QueryBuilder.php
+        - src/Search/SearchRequest.php
+        - src/Search/Exception
+        - src/Security
+        - src/Settings
+    tmpDir: .phpstan-cache

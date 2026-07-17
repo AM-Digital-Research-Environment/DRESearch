@@ -21,6 +21,8 @@ return [
             // Server-side search: forwards queries to Typesense, forcing
             // is_public:=true, and normalises the response for the client.
             Search\SearchProxy::class => Service\SearchProxyFactory::class,
+            Search\BlockScopeResolver::class => Service\Search\BlockScopeResolverFactory::class,
+            Search\RateLimiter::class => Service\Search\RateLimiterFactory::class,
             // The search profiles (corpora) and their facet / index mapping,
             // built from the 'dre_search.profiles' config below. A reuser
             // overrides templates, item sets, facets, query fields, etc. via
@@ -32,6 +34,7 @@ return [
             // Event-handler class that owns the api.*.post bodies, kept out of
             // Module.php so the listener logic stays testable.
             Indexer\ItemEventListener::class => Service\Indexer\ItemEventListenerFactory::class,
+            Indexer\RebuildStateStore::class => Service\Indexer\RebuildStateStoreFactory::class,
         ],
     ],
 
@@ -56,18 +59,18 @@ return [
         'factories' => [
             // Research items: keeps the original 'dreSearch' id so blocks
             // already placed on site pages keep working after the upgrade.
-            'dreSearch'             => Service\BlockLayout\ResearchItemsSearchBlockFactory::class,
-            'dreSearchProjects'     => Service\BlockLayout\ResearchProjectsSearchBlockFactory::class,
-            'dreSearchPublications'  => Service\BlockLayout\ResearchPublicationsSearchBlockFactory::class,
-            'dreSearchPodcasts'      => Service\BlockLayout\ResearchPodcastsSearchBlockFactory::class,
-            'dreSearchVideos'        => Service\BlockLayout\ResearchVideosSearchBlockFactory::class,
-            'dreSearchPeople'        => Service\BlockLayout\ResearchPeopleSearchBlockFactory::class,
-            'dreSearchSections'      => Service\BlockLayout\ResearchSectionsSearchBlockFactory::class,
-            'dreSearchOrganisations' => Service\BlockLayout\ResearchOrganisationsSearchBlockFactory::class,
-            'dreSearchGenres'        => Service\BlockLayout\ResearchGenresSearchBlockFactory::class,
-            'dreSearchLanguages'     => Service\BlockLayout\ResearchLanguagesSearchBlockFactory::class,
-            'dreSearchLocations'     => Service\BlockLayout\ResearchLocationsSearchBlockFactory::class,
-            'dreSearchSubjects'      => Service\BlockLayout\ResearchSubjectsSearchBlockFactory::class,
+            'dreSearch'             => Service\BlockLayout\SearchBlockFactory::class,
+            'dreSearchProjects'     => Service\BlockLayout\SearchBlockFactory::class,
+            'dreSearchPublications' => Service\BlockLayout\SearchBlockFactory::class,
+            'dreSearchPodcasts'     => Service\BlockLayout\SearchBlockFactory::class,
+            'dreSearchVideos'       => Service\BlockLayout\SearchBlockFactory::class,
+            'dreSearchPeople'       => Service\BlockLayout\SearchBlockFactory::class,
+            'dreSearchSections'     => Service\BlockLayout\SearchBlockFactory::class,
+            'dreSearchOrganisations' => Service\BlockLayout\SearchBlockFactory::class,
+            'dreSearchGenres'       => Service\BlockLayout\SearchBlockFactory::class,
+            'dreSearchLanguages'    => Service\BlockLayout\SearchBlockFactory::class,
+            'dreSearchLocations'    => Service\BlockLayout\SearchBlockFactory::class,
+            'dreSearchSubjects'     => Service\BlockLayout\SearchBlockFactory::class,
         ],
     ],
 
@@ -237,9 +240,12 @@ return [
             'port'     => 8108,
             'protocol' => 'http',
         ],
-        'public_search' => [
-            // Hard filter appended to every public query, enforced server-side.
-            'filter_by' => 'is_public:=true',
+        'operations' => [
+            // Keep the live generation plus one rollback target indefinitely;
+            // retired session-owned generations become eligible after this age.
+            'retention_days' => 30,
+            // Maximum dependency/event fan-out performed inline after a save.
+            'inline_sync_cap' => 200,
         ],
 
         // ── Search profiles (corpora) ───────────────────────────────────────
@@ -267,7 +273,7 @@ return [
                 'item_set_id' => null, // research items aren't confined to one set
                 'query_by'    => 'title,abstract,description,subject_ss,tag_ss,creator_ss',
                 // mode 'single' = one origin year; facet => a year range slider.
-                'date'        => ['mode' => 'single', 'label' => 'Year', 'facet' => true],
+                'date'        => ['mode' => 'single', 'property' => 'dcterms:issued', 'label' => 'Year', 'facet' => true],
 
                 // Authority item sets backing the facets (DRE instance defaults).
                 'authority_item_sets' => [
@@ -403,7 +409,7 @@ return [
                     // finds everything a person authored OR edited. Mapper-emitted
                     // (property null) from bibo:authorList ∪ bibo:editorList; the card
                     // filters on it when an author/editor byline name is clicked.
-                    'creator_ss'   => ['property' => null,                'label' => 'Author / Editor', 'array' => true],
+                    'creator_ss'   => ['property' => null,                'label' => 'Author / Editor', 'array' => true, 'derived' => true],
                     'container_ss' => ['property' => 'dcterms:isPartOf',  'label' => 'Journal / Book',  'array' => true],
                     'publisher_ss' => ['property' => 'dcterms:publisher', 'label' => 'Publisher',       'array' => true],
                     'keyword_ss'   => ['property' => 'dcterms:subject',   'label' => 'Keyword',         'array' => true],

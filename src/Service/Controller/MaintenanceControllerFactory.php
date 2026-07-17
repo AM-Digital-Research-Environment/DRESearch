@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace DRESearch\Service\Controller;
 
 use DRESearch\Controller\Admin\MaintenanceController;
+use DRESearch\Indexer\RebuildStateStore;
 use DRESearch\Search\TypesenseClientProvider;
 use DRESearch\Settings\ProfileRegistry;
 use Laminas\ServiceManager\Factory\FactoryInterface;
@@ -16,6 +17,7 @@ final class MaintenanceControllerFactory implements FactoryInterface
         return new MaintenanceController(
             $container->get(TypesenseClientProvider::class),
             $container->get(ProfileRegistry::class),
+            $container->get(RebuildStateStore::class),
         );
     }
 }

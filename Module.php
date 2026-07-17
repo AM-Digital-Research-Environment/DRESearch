@@ -26,6 +26,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 use Laminas\EventManager\SharedEventManagerInterface;
 use Laminas\Mvc\Controller\AbstractController;
 use Laminas\Mvc\MvcEvent;
+use Laminas\ServiceManager\ServiceLocatorInterface;
 use Laminas\View\Renderer\PhpRenderer;
 use Omeka\Module\AbstractModule;
 use Omeka\Permissions\Acl;
@@ -43,6 +44,18 @@ class Module extends AbstractModule
     public function getConfig(): array
     {
         return include __DIR__ . '/config/module.config.php';
+    }
+
+    public function install(ServiceLocatorInterface $services): void
+    {
+        $this->installOperationalTables($services);
+    }
+
+    public function upgrade($oldVersion, $newVersion, ServiceLocatorInterface $services): void
+    {
+        if (version_compare((string) $oldVersion, '1.17.0', '<')) {
+            $this->installOperationalTables($services);
+        }
     }
 
     /**
@@ -98,9 +111,32 @@ class Module extends AbstractModule
         );
         $sharedEventManager->attach(
             \Omeka\Api\Adapter\ItemAdapter::class,
+            'api.delete.pre',
+            [$listener, 'onItemDeletePre']
+        );
+        $sharedEventManager->attach(
+            \Omeka\Api\Adapter\ItemAdapter::class,
             'api.delete.post',
             [$listener, 'onItemDelete']
         );
+        foreach (['api.batch_create.post', 'api.batch_update.post'] as $eventName) {
+            $sharedEventManager->attach(\Omeka\Api\Adapter\ItemAdapter::class, $eventName, [$listener, 'onItemBatch']);
+        }
+        $sharedEventManager->attach(\Omeka\Api\Adapter\ItemAdapter::class, 'api.batch_delete.pre', [$listener, 'onItemBatchDeletePre']);
+        $sharedEventManager->attach(\Omeka\Api\Adapter\ItemAdapter::class, 'api.batch_delete.post', [$listener, 'onItemBatchDelete']);
+
+        foreach (['api.create.post', 'api.update.post'] as $eventName) {
+            $sharedEventManager->attach(\Omeka\Api\Adapter\MediaAdapter::class, $eventName, [$listener, 'onMediaSave']);
+        }
+        $sharedEventManager->attach(\Omeka\Api\Adapter\MediaAdapter::class, 'api.delete.pre', [$listener, 'onMediaDeletePre']);
+        $sharedEventManager->attach(\Omeka\Api\Adapter\MediaAdapter::class, 'api.delete.post', [$listener, 'onMediaDelete']);
+
+        foreach (['api.update.pre', 'api.delete.pre'] as $eventName) {
+            $sharedEventManager->attach(\Omeka\Api\Adapter\ItemSetAdapter::class, $eventName, [$listener, 'onItemSetPre']);
+        }
+        foreach (['api.update.post', 'api.delete.post'] as $eventName) {
+            $sharedEventManager->attach(\Omeka\Api\Adapter\ItemSetAdapter::class, $eventName, [$listener, 'onItemSetPost']);
+        }
     }
 
     /**
@@ -138,7 +174,8 @@ class Module extends AbstractModule
 
         $data = [];
         foreach (self::SETTINGS as $key) {
-            $data[$key] = $settings->get($key, '');
+            // Never place the stored secret back into the rendered admin DOM.
+            $data[$key] = $key === 'dre_search_typesense_api_key' ? '' : $settings->get($key, '');
         }
         $form->setData($data);
 
@@ -159,6 +196,14 @@ class Module extends AbstractModule
 
         $data = $form->getData();
         foreach (self::SETTINGS as $key) {
+            if ($key === 'dre_search_typesense_api_key') {
+                if (!empty($data['dre_search_clear_api_key'])) {
+                    $settings->set($key, '');
+                } elseif ((string) ($data[$key] ?? '') !== '') {
+                    $settings->set($key, (string) $data[$key]);
+                }
+                continue;
+            }
             $settings->set($key, (string) ($data[$key] ?? ''));
         }
         return true;
@@ -170,8 +215,64 @@ class Module extends AbstractModule
         foreach (self::SETTINGS as $key) {
             $settings->delete($key);
         }
+        $connection = $services->get('Omeka\Connection');
+        $connection->executeStatement('DROP TABLE IF EXISTS dre_search_rate_limit');
+        $connection->executeStatement('DROP TABLE IF EXISTS dre_search_generation');
+        $connection->executeStatement('DROP TABLE IF EXISTS dre_search_profile_state');
         // Typesense collections are intentionally left untouched — they may be
         // shared with a parallel install, and dropping data on uninstall is
         // surprising. Clean them up from the Typesense side if needed.
+    }
+
+    private function installOperationalTables(ServiceLocatorInterface $services): void
+    {
+        $connection = $services->get('Omeka\Connection');
+        $connection->executeStatement(<<<'SQL'
+CREATE TABLE IF NOT EXISTS dre_search_profile_state (
+    profile VARCHAR(100) NOT NULL PRIMARY KEY,
+    collection_alias VARCHAR(255) NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'unconfigured',
+    live_collection VARCHAR(255) NULL,
+    previous_collection VARCHAR(255) NULL,
+    active_job_id VARCHAR(64) NULL,
+    active_collection VARCHAR(255) NULL,
+    dirty TINYINT(1) NOT NULL DEFAULT 0,
+    dirty_reason VARCHAR(255) NULL,
+    started_at DATETIME NULL,
+    finished_at DATETIME NULL,
+    last_success_at DATETIME NULL,
+    last_failure_at DATETIME NULL,
+    last_duration_ms INT NULL,
+    last_documents INT NULL,
+    documents_attempted INT NOT NULL DEFAULT 0,
+    documents_imported INT NOT NULL DEFAULT 0,
+    documents_failed INT NOT NULL DEFAULT 0,
+    last_error_code VARCHAR(64) NULL,
+    updated_at DATETIME NOT NULL,
+    INDEX idx_dre_search_state_status (status),
+    INDEX idx_dre_search_state_dirty (dirty)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL);
+        $connection->executeStatement(<<<'SQL'
+CREATE TABLE IF NOT EXISTS dre_search_generation (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    profile VARCHAR(100) NOT NULL,
+    collection_name VARCHAR(255) NOT NULL,
+    session_token CHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    created_at DATETIME NOT NULL,
+    promoted_at DATETIME NULL,
+    UNIQUE INDEX uniq_dre_search_collection (collection_name),
+    INDEX idx_dre_search_generation_profile (profile, status, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL);
+        $connection->executeStatement(<<<'SQL'
+CREATE TABLE IF NOT EXISTS dre_search_rate_limit (
+    bucket_key CHAR(64) NOT NULL PRIMARY KEY,
+    window_started DATETIME NOT NULL,
+    request_count INT NOT NULL DEFAULT 0,
+    INDEX idx_dre_search_rate_window (window_started)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL);
     }
 }

@@ -23,13 +23,13 @@ use DRESearch\Settings\SearchProfile;
  *   filters       array   field => [values]  (validated against the profile)
  *   facets        array   facet fields to count (defaults to all profile facets)
  *   year_from/to  int     optional year bounds (overlap for range profiles)
- *   locked_filter string  admin-authored raw filter from the block (echoed by
- *                         the client; only ever narrows, never widens)
+ * A saved block scope is supplied only by the server through the constructor.
  */
 final class QueryBuilder
 {
-    private const PER_PAGE_DEFAULT = 20;
-    private const PER_PAGE_MAX = 50;
+    public const PER_PAGE_DEFAULT = 20;
+    public const PER_PAGE_MAX = 50;
+    public const MAX_PAGE = 250;
 
     /**
      * Export paging. The result-export menu pulls the CURRENT result set as a
@@ -61,7 +61,10 @@ final class QueryBuilder
      */
     public const STOPWORDS_SET = \DRESearch\Indexer\StopwordsSync::SET_NAME;
 
-    public function __construct(private readonly SearchProfile $profile)
+    public function __construct(
+        private readonly SearchProfile $profile,
+        private readonly ?string $serverFilter = null,
+    )
     {
     }
 
@@ -78,7 +81,7 @@ final class QueryBuilder
             'q'         => $isBrowse ? '*' : $q,
             'query_by'  => $this->profile->queryBy(),
             'filter_by' => $this->buildFilter($req),
-            'page'      => max(1, (int) ($req['page'] ?? 1)),
+            'page'      => max(1, min(self::MAX_PAGE, (int) ($req['page'] ?? 1))),
             'per_page'  => $perPage,
             'sort_by'   => $this->buildSort((string) ($req['sort'] ?? 'relevance'), $isBrowse),
         ];
@@ -151,7 +154,7 @@ final class QueryBuilder
             'q'              => $q,
             'query_by'       => 'title',
             'prefix'         => true,
-            'filter_by'      => 'is_public:=true',
+            'filter_by'      => $this->buildFilter([]),
             'sort_by'        => '_text_match:desc',
             'page'           => 1,
             'per_page'       => 6,
@@ -267,7 +270,7 @@ final class QueryBuilder
         // Security invariant — always first, never client-controlled.
         $clauses = ['is_public:=true'];
 
-        $locked = trim((string) ($req['locked_filter'] ?? ''));
+        $locked = trim((string) ($this->serverFilter ?? ''));
         if ($locked !== '') {
             $clauses[] = '(' . $locked . ')';
         }
@@ -339,11 +342,9 @@ final class QueryBuilder
     {
         $allowed = $this->profile->fieldNames();
         $requested = $req['facets'] ?? null;
-        if (is_array($requested) && $requested !== []) {
+        if (is_array($requested)) {
             $fields = array_values(array_intersect($allowed, array_map('strval', $requested)));
-            if ($fields !== []) {
-                return implode(',', $fields);
-            }
+            return implode(',', $fields);
         }
         return implode(',', $allowed);
     }

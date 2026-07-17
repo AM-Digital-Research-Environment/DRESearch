@@ -5,20 +5,28 @@ namespace DRESearch\Search;
 
 use DRESearch\Settings\ProfileRegistry;
 use DRESearch\Settings\SearchProfile;
+use DRESearch\Search\Exception\RequestValidationException;
+use Laminas\Log\LoggerInterface;
 
 /**
  * Server-side search: runs the Typesense query for a given search profile with
  * the server-held key and normalises the response into the compact shape the
- * Svelte client expects. Every method is null-safe — when Typesense isn't
- * configured/reachable, or the profile is unknown, it returns an
- * "available: false" payload rather than throwing, so the block shows a quiet
- * notice instead of breaking the page.
+ * Svelte client expects. Backend outages return a stable "available: false"
+ * payload; invalid profile names and request data are rejected at the public
+ * boundary with a structured validation error.
  */
 final class SearchProxy
 {
+    /** @var array<string,array{expires:int,counts:array<string,int>}> */
+    private static array $countCache = [];
+    /** @var array<string,array{expires:int,bounds:?array{min:int,max:int}}> */
+    private static array $yearCache = [];
+
     public function __construct(
         private readonly TypesenseClientProvider $provider,
         private readonly ProfileRegistry $registry,
+        private readonly BlockScopeResolver $scopeResolver,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -28,14 +36,15 @@ final class SearchProxy
     }
 
     /** @param array<string,mixed> $req */
-    public function search(string $profileName, array $req): array
+    public function search(string $profileName, array $req, ?string $requestId = null): array
     {
-        $profile = $this->registry->get($profileName);
+        [$profile, $req, $serverFilter] = $this->prepare($profileName, $req, 'search');
         $client = $this->provider->getClient();
-        if ($profile === null || $client === null) {
-            return $this->unavailable();
+        if ($client === null) {
+            return $this->unavailable($requestId);
         }
-        $params = (new QueryBuilder($profile))->search($req);
+        $started = hrtime(true);
+        $params = (new QueryBuilder($profile, $serverFilter))->search($req);
         $collection = $client->collections[$profile->collection()];
         try {
             $result = $collection->documents->search($params);
@@ -50,13 +59,17 @@ final class SearchProxy
                 try {
                     $result = $collection->documents->search($params);
                 } catch (\Throwable $retry) {
-                    return $this->unavailable($retry->getMessage());
+                    $this->logBackendFailure('search', $retry, $profile, $requestId);
+                    return $this->unavailable($requestId);
                 }
             } else {
-                return $this->unavailable($e->getMessage());
+                $this->logBackendFailure('search', $e, $profile, $requestId);
+                return $this->unavailable($requestId);
             }
         }
-        return $this->normalize($result, $profile);
+        $normalized = $this->normalize($result, $profile);
+        $this->logMetric('search', $started, $profile, $requestId, ['found' => $normalized['found']]);
+        return $normalized;
     }
 
     /**
@@ -65,21 +78,22 @@ final class SearchProxy
      * server-side at {@see QueryBuilder::EXPORT_PER_PAGE} up to
      * {@see QueryBuilder::EXPORT_MAX_HITS}. Returns the raw documents (citation /
      * display fields only — no facets, no highlights, no `is_public`); the client
-     * serializes them to txt / json / ris / bibtex. Null-safe like {@see search()}:
-     * no client / unknown profile → available:false with an empty set.
+     * serializes them to txt / json / ris / bibtex. A file is deliverable only
+     * when every expected page was returned; partial exports fail closed.
      *
      * @param array<string,mixed> $req
-     * @return array{available:bool, found:int, docs:list<array<string,mixed>>, error?:?string}
+     * @return array<string,mixed>
      */
-    public function export(string $profileName, array $req): array
+    public function export(string $profileName, array $req, ?string $requestId = null): array
     {
-        $profile = $this->registry->get($profileName);
+        [$profile, $req, $serverFilter] = $this->prepare($profileName, $req, 'export');
         $client = $this->provider->getClient();
-        if ($profile === null || $client === null) {
-            return ['available' => false, 'found' => 0, 'docs' => [], 'error' => null];
+        if ($client === null) {
+            return $this->unavailableExport($requestId);
         }
+        $started = hrtime(true);
         $collection = $client->collections[$profile->collection()];
-        $builder = new QueryBuilder($profile);
+        $builder = new QueryBuilder($profile, $serverFilter);
         $maxHits = QueryBuilder::EXPORT_MAX_HITS;
         $pages = (int) ceil($maxHits / QueryBuilder::EXPORT_PER_PAGE);
 
@@ -101,12 +115,8 @@ final class SearchProxy
                     $page--; // retry this page without stopwords
                     continue;
                 }
-                // Hard error with nothing collected → fail; otherwise keep the
-                // partial pull we already have rather than discarding it.
-                if ($docs === []) {
-                    return ['available' => false, 'found' => 0, 'docs' => [], 'error' => $e->getMessage()];
-                }
-                break;
+                $this->logBackendFailure('export', $e, $profile, $requestId);
+                return $this->unavailableExport($requestId);
             }
             $found = (int) ($result['found'] ?? 0);
             foreach ($result['hits'] ?? [] as $hit) {
@@ -117,26 +127,52 @@ final class SearchProxy
             }
         }
 
-        return [
+        $docs = array_slice($docs, 0, $maxHits);
+        $expected = min($found, $maxHits);
+        if (count($docs) !== $expected) {
+            $error = new \RuntimeException(sprintf(
+                'Typesense returned %d of %d expected export documents.',
+                count($docs),
+                $expected,
+            ));
+            $this->logBackendFailure('export_verification', $error, $profile, $requestId);
+            return $this->unavailableExport($requestId);
+        }
+        $response = [
             'available' => true,
             'found'     => $found,
-            'docs'      => array_slice($docs, 0, $maxHits),
+            'exported'  => count($docs),
+            'capped'    => $found > $maxHits,
+            'complete'  => true,
+            'docs'      => $docs,
         ];
+        $this->logMetric('export', $started, $profile, $requestId, ['found' => $found, 'exported' => count($docs)]);
+        return $response;
     }
 
-    public function suggest(string $profileName, string $q): array
+    public function suggest(
+        string $profileName,
+        string $q,
+        ?int $blockId = null,
+        ?string $requestId = null,
+    ): array
     {
-        $q = trim($q);
+        $q = SearchRequest::query($q);
         $profile = $this->registry->get($profileName);
+        if ($profile === null) {
+            throw new RequestValidationException('unknown_profile', 'Unknown search profile.');
+        }
+        $serverFilter = $this->scopeResolver->resolve($blockId, $profile->name());
         $client = $this->provider->getClient();
-        if ($profile === null || $client === null || $q === '') {
-            return ['available' => $client !== null && $profile !== null, 'suggestions' => []];
+        if ($client === null || $q === '') {
+            return ['available' => $client !== null, 'suggestions' => []];
         }
         try {
             $result = $client->collections[$profile->collection()]
                 ->documents
-                ->search((new QueryBuilder($profile))->suggest($q));
+                ->search((new QueryBuilder($profile, $serverFilter))->suggest($q));
         } catch (\Throwable $e) {
+            $this->logBackendFailure('suggest', $e, $profile, $requestId);
             return ['available' => false, 'suggestions' => []];
         }
 
@@ -163,9 +199,13 @@ final class SearchProxy
      * @param callable(string):string|null $translate translates the profile label (defaults to identity)
      * @return array{available:bool, groups:list<array{profile:string,label:string,kind:string,suggestions:list<array{id:string,title:string,subtitle:?string}>}>}
      */
-    public function suggestAll(string $q, ?callable $translate = null): array
+    public function suggestAll(
+        string $q,
+        ?callable $translate = null,
+        ?string $requestId = null,
+    ): array
     {
-        $q = trim($q);
+        $q = SearchRequest::query($q);
         $client = $this->provider->getClient();
         if ($client === null || $q === '') {
             return ['available' => $client !== null, 'groups' => []];
@@ -181,6 +221,10 @@ final class SearchProxy
         try {
             $response = $client->multiSearch->perform(['searches' => $searches]);
         } catch (\Throwable $e) {
+            $profile = $profiles[0] ?? $this->registry->default();
+            if ($profile !== null) {
+                $this->logBackendFailure('suggest_all', $e, $profile, $requestId);
+            }
             return ['available' => false, 'groups' => []];
         }
 
@@ -221,14 +265,16 @@ final class SearchProxy
      * sidebar selections. Counts are non-fatal — on failure the tabs just lack a
      * number; the active search still runs and drives `available`.
      *
-     * @param array<string,mixed> $req shared: q, year_from, year_to; focused: page, sort, filters, facets, per_page, locked_filter
+     * @param array<string,mixed> $req shared: q, year_from, year_to; focused: page, sort, filters, facets, per_page
      * @return array{available:bool, counts:array<string,int>, active:array<string,mixed>}
      */
-    public function searchAll(string $activeProfile, array $req): array
+    public function searchAll(string $activeProfile, array $req, ?string $requestId = null): array
     {
+        [$profile, $req] = $this->prepare($activeProfile, $req, 'search');
+        $activeProfile = $profile->name();
         $client = $this->provider->getClient();
         if ($client === null) {
-            return ['available' => false, 'counts' => [], 'active' => $this->unavailable()];
+            return ['available' => false, 'counts' => [], 'active' => $this->unavailable($requestId)];
         }
 
         $profiles = array_values($this->registry->all());
@@ -237,22 +283,31 @@ final class SearchProxy
             'year_from' => $req['year_from'] ?? null,
             'year_to'   => $req['year_to'] ?? null,
         ];
-        $searches = [];
-        foreach ($profiles as $profile) {
-            $searches[] = (new QueryBuilder($profile))->countOnly($countReq);
-        }
-
         $counts = [];
-        try {
-            $response = $client->multiSearch->perform(['searches' => $searches]);
-            foreach ($profiles as $i => $profile) {
-                $counts[$profile->name()] = (int) ($response['results'][$i]['found'] ?? 0);
+        if (!empty($req['include_counts'])) {
+            $cacheKey = hash('sha256', json_encode($countReq, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '');
+            $cached = self::$countCache[$cacheKey] ?? null;
+            if ($cached !== null && $cached['expires'] >= time()) {
+                $counts = $cached['counts'];
+            } else {
+                $searches = [];
+                foreach ($profiles as $countProfile) {
+                    $searches[] = (new QueryBuilder($countProfile))->countOnly($countReq);
+                }
+                try {
+                    $response = $client->multiSearch->perform(['searches' => $searches]);
+                    foreach ($profiles as $i => $countProfile) {
+                        $counts[$countProfile->name()] = (int) ($response['results'][$i]['found'] ?? 0);
+                    }
+                    self::$countCache[$cacheKey] = ['expires' => time() + 30, 'counts' => $counts];
+                } catch (\Throwable $e) {
+                    $this->logBackendFailure('federated_count', $e, $profile, $requestId);
+                    $counts = [];
+                }
             }
-        } catch (\Throwable $e) {
-            $counts = []; // counts are non-fatal; the active search still runs
         }
 
-        $active = $this->search($activeProfile, $req);
+        $active = $this->search($activeProfile, $req, $requestId);
         return [
             'available' => (bool) ($active['available'] ?? false),
             'counts'    => $counts,
@@ -273,6 +328,11 @@ final class SearchProxy
         $client = $this->provider->getClient();
         if ($profile === null || $client === null || !$profile->hasYearFacet()) {
             return null;
+        }
+        $cacheKey = $profile->name();
+        $cached = self::$yearCache[$cacheKey] ?? null;
+        if ($cached !== null && $cached['expires'] >= time()) {
+            return $cached['bounds'];
         }
         try {
             $result = $client->collections[$profile->collection()]
@@ -300,7 +360,9 @@ final class SearchProxy
         if ($min === null || $max === null || $max < $min) {
             return null;
         }
-        return ['min' => $min, 'max' => $max];
+        $bounds = ['min' => $min, 'max' => $max];
+        self::$yearCache[$cacheKey] = ['expires' => time() + 300, 'bounds' => $bounds];
+        return $bounds;
     }
 
     private function normalize(array $result, SearchProfile $profile): array
@@ -441,7 +503,54 @@ final class SearchProxy
         return stripos($e->getMessage(), 'stopword') !== false;
     }
 
-    private function unavailable(?string $error = null): array
+    /**
+     * @param array<string,mixed> $req
+     * @return array{0:SearchProfile,1:array<string,mixed>,2:?string}
+     */
+    private function prepare(string $profileName, array $req, string $mode): array
+    {
+        $profile = $this->registry->get($profileName);
+        if ($profile === null) {
+            throw new RequestValidationException('unknown_profile', 'Unknown search profile.');
+        }
+        $validated = SearchRequest::fromArray($req, $profile, $mode)->toArray();
+        $blockId = isset($validated['block_id']) ? (int) $validated['block_id'] : null;
+        $serverFilter = $this->scopeResolver->resolve($blockId, $profile->name());
+        return [$profile, $validated, $serverFilter];
+    }
+
+    private function logBackendFailure(
+        string $operation,
+        \Throwable $error,
+        SearchProfile $profile,
+        ?string $requestId,
+    ): void {
+        $this->logger->err('DRESearch backend request failed', [
+            'request_id' => $requestId,
+            'operation' => $operation,
+            'profile' => $profile->name(),
+            'exception' => $error::class,
+            'message' => $error->getMessage(),
+        ]);
+    }
+
+    /** @param array<string,int> $extra */
+    private function logMetric(
+        string $operation,
+        int $started,
+        SearchProfile $profile,
+        ?string $requestId,
+        array $extra = [],
+    ): void {
+        $this->logger->info('DRESearch request metric', $extra + [
+            'request_id' => $requestId,
+            'operation' => $operation,
+            'profile' => $profile->name(),
+            'duration_ms' => (int) round((hrtime(true) - $started) / 1_000_000),
+        ]);
+    }
+
+    private function unavailable(?string $requestId = null): array
     {
         return [
             'available' => false,
@@ -449,7 +558,38 @@ final class SearchProxy
             'page'      => 1,
             'hits'      => [],
             'facets'    => [],
-            'error'     => $error,
+            'error'     => $this->publicError(
+                'backend_unavailable',
+                'Search is temporarily unavailable.',
+                $requestId,
+            ),
         ];
+    }
+
+    private function unavailableExport(?string $requestId = null): array
+    {
+        return [
+            'available' => false,
+            'found' => 0,
+            'exported' => 0,
+            'capped' => false,
+            'complete' => false,
+            'docs' => [],
+            'error' => $this->publicError(
+                'export_failed',
+                'The export could not be completed. No file was produced.',
+                $requestId,
+            ),
+        ];
+    }
+
+    /** @return array{code:string,message:string,request_id?:string} */
+    private function publicError(string $code, string $message, ?string $requestId): array
+    {
+        $error = ['code' => $code, 'message' => $message];
+        if ($requestId !== null && $requestId !== '') {
+            $error['request_id'] = $requestId;
+        }
+        return $error;
     }
 }

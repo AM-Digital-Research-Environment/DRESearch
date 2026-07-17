@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace DRESearch\Service;
 
 use DRESearch\Search\SearchProxy;
+use DRESearch\Search\BlockScopeResolver;
 use DRESearch\Search\TypesenseClientProvider;
 use DRESearch\Settings\ProfileRegistry;
 use Laminas\ServiceManager\Factory\FactoryInterface;
@@ -16,6 +17,8 @@ final class SearchProxyFactory implements FactoryInterface
         return new SearchProxy(
             $container->get(TypesenseClientProvider::class),
             $container->get(ProfileRegistry::class),
+            $container->get(BlockScopeResolver::class),
+            $container->get('Omeka\Logger'),
         );
     }
 }

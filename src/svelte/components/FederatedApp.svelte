@@ -2,7 +2,7 @@
   import type { Bootstrap, FederatedBootstrap, ProfileMeta, SearchResponse } from '../lib/types';
   import { searchAll } from '../lib/api';
   import { readFederatedShell, syncFederatedShell } from '../lib/urlState';
-  import { t } from '../lib/i18n';
+  import { formatNumber, t } from '../lib/i18n';
   import App from '../App.svelte';
 
   /**
@@ -54,6 +54,7 @@
   let autoSelected = pinnedProfile !== null;
   let reqId = 0;
   let inputTimer: number | null = null;
+  let controller: AbortController | null = null;
 
   function onInput(e: Event): void {
     inputValue = (e.target as HTMLInputElement).value;
@@ -73,6 +74,16 @@
     }
     inputValue = '';
     commitQuery('');
+  }
+
+  function handleSearchKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    if (inputTimer !== null) {
+      clearTimeout(inputTimer);
+      inputTimer = null;
+    }
+    commitQuery(inputValue.trim());
   }
 
   /**
@@ -98,6 +109,8 @@
       return;
     }
     const myId = ++reqId;
+    controller?.abort();
+    controller = new AbortController();
     activeResponse = null; // hide the stale corpus; show "searching"
     isLoading = true;
     error = null;
@@ -106,17 +119,22 @@
       // returned `active` page matches the state the reused App seeds with (it
       // skips its first fetch when seeded), and so its facet sidebar is populated.
       const meta = metaFor(profile);
-      const res = await searchAll(bootstrap.endpoints.search_all, {
-        profile,
-        q,
-        sort: meta?.default_sort,
-        per_page: meta?.per_page,
-        facets: meta?.facets,
-      });
+      const res = await searchAll(
+        bootstrap.endpoints.search_all,
+        {
+          profile,
+          q,
+          sort: meta?.default_sort,
+          per_page: meta?.per_page,
+          facets: meta?.facets,
+          include_counts: countsQuery !== q,
+        },
+        controller.signal,
+      );
       if (myId !== reqId) {
         return;
       }
-      if (countsQuery !== q) {
+      if (countsQuery !== q && Object.keys(res.counts).length > 0) {
         counts = res.counts;
         countsQuery = q;
         maybeAutoSelect();
@@ -127,6 +145,7 @@
       if (myId !== reqId) {
         return;
       }
+      if ((e as Error).name === 'AbortError') return;
       error = (e as Error).message;
       activeResponse = null;
     } finally {
@@ -169,6 +188,13 @@
     }
   });
 
+  $effect(() => {
+    return () => {
+      controller?.abort();
+      if (inputTimer !== null) clearTimeout(inputTimer);
+    };
+  });
+
   // Back / forward → re-hydrate the shared query + active corpus from the URL. The
   // per-corpus App restores its own facets (via its own popstate handler, or a
   // remount when the query/profile changed here).
@@ -198,10 +224,28 @@
     activeProfile = name;
   }
 
+  function handleTabKeydown(event: KeyboardEvent, name: string): void {
+    const index = profiles.findIndex((profile) => profile.name === name);
+    if (index < 0) return;
+    let next: number;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown')
+      next = (index + 1) % profiles.length;
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp')
+      next = (index - 1 + profiles.length) % profiles.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = profiles.length - 1;
+    else return;
+    event.preventDefault();
+    const nextName = profiles[next]?.name;
+    if (!nextName) return;
+    selectTab(nextName);
+    requestAnimationFrame(() => document.getElementById(`dre-fed-tab-${nextName}`)?.focus());
+  }
+
   /** Synthesise a per-corpus Bootstrap so the reused App renders that corpus. */
-  function appBootstrap(meta: ProfileMeta, idx: number): Bootstrap {
+  function appBootstrap(meta: ProfileMeta): Bootstrap {
     return {
-      block_id: 1000 + idx,
+      block_id: null,
       profile: meta.name,
       card_kind: meta.kind,
       search_placeholder: meta.placeholder ?? null,
@@ -213,7 +257,6 @@
       default_sort: meta.default_sort,
       sort_options: meta.sort_options,
       per_page: meta.per_page,
-      locked_filter: '',
       item_url_base: bootstrap.item_url_base,
       endpoints: {
         search: bootstrap.endpoints.search,
@@ -226,9 +269,8 @@
   }
 
   const activeMeta = $derived(metaFor(activeProfile));
-  const activeIdx = $derived(profiles.findIndex((p) => p.name === activeProfile));
   const countLabel = (name: string): string =>
-    countsQuery === null ? '' : (counts[name] ?? 0).toLocaleString();
+    countsQuery === null ? '' : formatNumber(counts[name] ?? 0);
 </script>
 
 <div class="dre-fed">
@@ -244,6 +286,7 @@
       placeholder={t('search_all_placeholder')}
       value={inputValue}
       oninput={onInput}
+      onkeydown={handleSearchKeydown}
     />
     {#if inputValue !== ''}
       <button
@@ -261,7 +304,7 @@
       <p>{t('search_unavailable_hint')}</p>
     </div>
   {:else}
-    <div class="dre-fed__tabs" role="tablist" aria-label={t('filters')}>
+    <div class="dre-fed__tabs" role="tablist" aria-label={t('result_types')}>
       {#each profiles as p (p.name)}
         <button
           type="button"
@@ -274,6 +317,7 @@
           class:dre-fed__tab--empty={countsQuery !== null && (counts[p.name] ?? 0) === 0}
           tabindex={p.name === activeProfile ? 0 : -1}
           onclick={() => selectTab(p.name)}
+          onkeydown={(event) => handleTabKeydown(event, p.name)}
         >
           <span class="dre-fed__tab-label">{p.label}</span>
           {#if countLabel(p.name) !== ''}
@@ -283,7 +327,13 @@
       {/each}
     </div>
 
-    <div class="dre-fed__panel" id="dre-fed-panel" role="tabpanel">
+    <div
+      class="dre-fed__panel"
+      id="dre-fed-panel"
+      role="tabpanel"
+      aria-labelledby="dre-fed-tab-{activeProfile}"
+      tabindex="0"
+    >
       {#if error}
         <div class="dre-fed__error" role="alert">
           <strong>{t('search_unavailable')}</strong>
@@ -294,7 +344,7 @@
       {:else if activeMeta && activeResponse}
         {#key activeProfile + '::' + query}
           <App
-            bootstrap={appBootstrap(activeMeta, activeIdx)}
+            bootstrap={appBootstrap(activeMeta)}
             showSearchBox={false}
             syncUrl={true}
             urlPrefix=""

@@ -44,10 +44,20 @@ class ConfigForm extends Form
 
         $this->add([
             'name'    => 'dre_search_typesense_api_key',
-            'type'    => Element\Text::class,
+            'type'    => Element\Password::class,
             'options' => [
                 'label' => 'Typesense API key', // @translate
-                'info'  => 'Used server-side only — never sent to the browser. Needs collection create/import rights for reindexing.', // @translate
+                'info'  => 'Used server-side only. Leave blank to keep the saved secret; environment variables are preferred.', // @translate
+            ],
+            'attributes' => ['autocomplete' => 'new-password', 'placeholder' => '••••••••••••'],
+        ]);
+
+        $this->add([
+            'name' => 'dre_search_clear_api_key',
+            'type' => Element\Checkbox::class,
+            'options' => [
+                'label' => 'Clear the saved API key', // @translate
+                'use_hidden_element' => true,
             ],
         ]);
 
@@ -59,6 +69,7 @@ class ConfigForm extends Form
             'dre_search_typesense_port',
             'dre_search_typesense_protocol',
             'dre_search_typesense_api_key',
+            'dre_search_clear_api_key',
         ] as $name) {
             $inputFilter->add(['name' => $name, 'required' => false]);
         }

@@ -3,6 +3,11 @@ declare(strict_types=1);
 
 namespace DRESearch\Settings;
 
+use DRESearch\Settings\Definition\DateDefinition;
+use DRESearch\Settings\Definition\FieldDefinition;
+use DRESearch\Settings\Definition\SortDefinition;
+use DRESearch\Settings\Definition\SourceScope;
+
 /**
  * One search corpus ("profile") — e.g. research items or research projects —
  * built from a `dre_search.profiles.<name>` config block (overridable via
@@ -66,13 +71,28 @@ final class SearchProfile
         private readonly array $sortFields,
         private readonly ?string $thumbnailProperty,
     ) {
+        $this->assertValid();
     }
 
     public static function fromArray(string $name, array $c): self
     {
+        foreach (['facets', 'display_fields', 'authority_item_sets', 'type_items', 'read_properties', 'sort_fields'] as $key) {
+            if (isset($c[$key]) && !is_array($c[$key])) {
+                throw new \InvalidArgumentException(sprintf('Profile "%s" key "%s" must be an array.', $name, $key));
+            }
+        }
+        foreach (['date', 'item_link', 'reverse_links', 'person_links', 'sort_count'] as $key) {
+            if (isset($c[$key]) && !is_array($c[$key])) {
+                throw new \InvalidArgumentException(sprintf('Profile "%s" key "%s" must be an object.', $name, $key));
+            }
+        }
+        $sourceScope = SourceScope::fromArray($c);
         // Normalise facet defs (fill array/derived defaults).
         $facets = [];
         foreach (($c['facets'] ?? []) as $field => $def) {
+            if (!is_array($def)) {
+                throw new \InvalidArgumentException(sprintf('Facet "%s" in profile "%s" must be an object.', $field, $name));
+            }
             $facets[$field] = [
                 'property' => $def['property'] ?? null,
                 'label'    => (string) ($def['label'] ?? $field),
@@ -83,44 +103,26 @@ final class SearchProfile
 
         $displayFields = [];
         foreach (($c['display_fields'] ?? []) as $field => $def) {
-            $displayFields[$field] = [
-                'property' => $def['property'] ?? null,
-                'type'     => (string) ($def['type'] ?? 'string'),
-                'facet'    => (bool) ($def['facet'] ?? false),
-                'sort'     => (bool) ($def['sort'] ?? false),
-                // index:false for display-only fields (e.g. id lists for links).
-                'index'    => array_key_exists('index', $def) ? (bool) $def['index'] : true,
-                // search_only: indexed for query_by but excluded from result payloads
-                // (e.g. a podcast transcript — searchable, never shipped to the card).
-                'search_only' => (bool) ($def['search_only'] ?? false),
-            ];
+            if (!is_array($def)) {
+                throw new \InvalidArgumentException(sprintf('Display field "%s" in profile "%s" must be an object.', $field, $name));
+            }
+            $displayFields[$field] = FieldDefinition::fromArray($def)->toArray();
         }
 
         // mode 'none' = the corpus has no date at all (e.g. people); 'single' is
         // the back-compat default when a date block is present but unspecified.
-        $date = $c['date'] ?? ['mode' => 'none'];
-        $date = [
-            'mode'     => (string) ($date['mode'] ?? 'single'),
-            'property' => $date['property'] ?? null,
-            'label'    => (string) ($date['label'] ?? 'Year'),
-            // Whether to expose a year range slider (works for single or range
-            // date modes; the backing field(s) differ, the UI doesn't).
-            'facet'    => (bool) ($date['facet'] ?? false),
-        ];
+        $date = DateDefinition::fromArray($c['date'] ?? ['mode' => 'none'])->toArray();
 
         // Extra source resources folded into the corpus beyond the primary
         // template/item-set (e.g. the Locations corpus also indexes geocoded
         // institutions). Each entry widens the reindex source query.
-        $extraSources = [];
-        foreach (($c['extra_sources'] ?? []) as $src) {
-            if (!is_array($src)) {
-                continue;
+        $extraSources = $sourceScope->extraSources();
+
+        $readProperties = array_values($c['read_properties'] ?? []);
+        foreach ($readProperties as $term) {
+            if (!is_string($term)) {
+                throw new \InvalidArgumentException(sprintf('Profile "%s" read_properties must contain only strings.', $name));
             }
-            $extraSources[] = [
-                'template_id'      => isset($src['template_id']) && $src['template_id'] !== null ? (int) $src['template_id'] : null,
-                'item_set_id'      => isset($src['item_set_id']) && $src['item_set_id'] !== null ? (int) $src['item_set_id'] : null,
-                'require_property' => isset($src['require_property']) && $src['require_property'] !== '' ? (string) $src['require_property'] : null,
-            ];
         }
 
         // Extra numeric sorts: sort key => { field, dir, label }. Each exposes a
@@ -128,15 +130,10 @@ final class SearchProfile
         // number) — the generalisation of the single-field `sort_count`.
         $sortFields = [];
         foreach (($c['sort_fields'] ?? []) as $key => $def) {
-            if (!is_array($def) || empty($def['field'])) {
-                continue;
+            if (!is_array($def)) {
+                throw new \InvalidArgumentException(sprintf('Sort "%s" in profile "%s" must be an object.', $key, $name));
             }
-            $dir = strtolower((string) ($def['dir'] ?? 'desc'));
-            $sortFields[(string) $key] = [
-                'field' => (string) $def['field'],
-                'dir'   => $dir === 'asc' ? 'asc' : 'desc',
-                'label' => (string) ($def['label'] ?? $key),
-            ];
+            $sortFields[(string) $key] = SortDefinition::fromArray((string) $key, $def)->toArray();
         }
 
         return new self(
@@ -147,15 +144,15 @@ final class SearchProfile
             (string) ($c['kind'] ?? 'item'),
             // null = no template filter (e.g. publications span several
             // templates but share one item set); scoping then relies on item_set_id.
-            isset($c['template_id']) && $c['template_id'] !== null ? (int) $c['template_id'] : null,
-            isset($c['item_set_id']) && $c['item_set_id'] !== null ? (int) $c['item_set_id'] : null,
+            $sourceScope->templateId(),
+            $sourceScope->itemSetId(),
             (string) ($c['query_by'] ?? 'title'),
             $facets,
             $displayFields,
             $c['authority_item_sets'] ?? [],
             $c['type_items'] ?? [],
             $date,
-            array_values($c['read_properties'] ?? []),
+            $readProperties,
             $c['item_link'] ?? null,
             // `reverse_links` is the current key; `person_links` is accepted as a
             // back-compat alias (the mechanism was first built for the people corpus).
@@ -171,6 +168,90 @@ final class SearchProfile
             // series item's image) instead of the item's own media. '' / unset → own.
             isset($c['thumbnail_property']) && $c['thumbnail_property'] !== '' ? (string) $c['thumbnail_property'] : null,
         );
+    }
+
+    private function assertValid(): void
+    {
+        if (!preg_match('/^[a-z][a-z0-9_]*$/', $this->name)) {
+            throw new \InvalidArgumentException(sprintf('Invalid profile name "%s".', $this->name));
+        }
+        if (!preg_match('/^[A-Za-z0-9_-]+$/', $this->collection)) {
+            throw new \InvalidArgumentException(sprintf('Invalid collection alias "%s" in profile "%s".', $this->collection, $this->name));
+        }
+        $kinds = ['item', 'project', 'publication', 'podcast', 'video', 'person', 'section', 'organisation', 'term'];
+        if (!in_array($this->kind, $kinds, true)) {
+            throw new \InvalidArgumentException(sprintf('Unsupported mapper kind "%s" in profile "%s".', $this->kind, $this->name));
+        }
+        if ($this->label === '' || $this->queryBy === '') {
+            throw new \InvalidArgumentException(sprintf('Profile "%s" must define a label and query_by.', $this->name));
+        }
+
+        $available = [
+            'id' => true,
+            'is_public' => true,
+            'title' => true,
+            'abstract' => true,
+            'description' => true,
+            'date' => true,
+            'year' => true,
+            'year_start' => true,
+            'year_end' => true,
+        ];
+        foreach ($this->facets as $field => $definition) {
+            $this->assertFieldName((string) $field);
+            $available[$field] = true;
+            if (($definition['property'] ?? null) === null && empty($definition['derived'])) {
+                throw new \InvalidArgumentException(sprintf(
+                    'Facet "%s" in profile "%s" needs a property or derived=true.',
+                    $field,
+                    $this->name,
+                ));
+            }
+        }
+        foreach ($this->displayFields as $field => $definition) {
+            $this->assertFieldName((string) $field);
+            if (!empty($definition['index'])) {
+                $available[$field] = true;
+            }
+        }
+        foreach (array_map('trim', explode(',', $this->queryBy)) as $field) {
+            if ($field === '' || !isset($available[$field])) {
+                throw new \InvalidArgumentException(sprintf(
+                    'query_by field "%s" is not indexed in profile "%s".',
+                    $field,
+                    $this->name,
+                ));
+            }
+        }
+        foreach ($this->readProperties() as $term) {
+            if (!preg_match('/^[A-Za-z][A-Za-z0-9._-]*:[A-Za-z][A-Za-z0-9._-]*$/', $term)) {
+                throw new \InvalidArgumentException(sprintf('Invalid Omeka property term "%s" in profile "%s".', $term, $this->name));
+            }
+        }
+        if (!in_array($this->defaultSort, $this->sortOptionValues(), true)) {
+            throw new \InvalidArgumentException(sprintf('Invalid default sort "%s" in profile "%s".', $this->defaultSort, $this->name));
+        }
+        $sortFields = $this->sortFields;
+        if ($this->sortCountField() !== null) {
+            $sortFields['count'] = ['field' => $this->sortCountField()];
+        }
+        foreach ($sortFields as $key => $definition) {
+            $field = (string) ($definition['field'] ?? '');
+            if (!isset($this->displayFields[$field]) || empty($this->displayFields[$field]['sort'])) {
+                throw new \InvalidArgumentException(sprintf(
+                    'Sort "%s" in profile "%s" must reference a sortable display field.',
+                    $key,
+                    $this->name,
+                ));
+            }
+        }
+    }
+
+    private function assertFieldName(string $field): void
+    {
+        if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $field)) {
+            throw new \InvalidArgumentException(sprintf('Invalid field name "%s" in profile "%s".', $field, $this->name));
+        }
     }
 
     // ── Identity ────────────────────────────────────────────────────────────

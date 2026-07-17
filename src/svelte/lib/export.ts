@@ -1,5 +1,6 @@
 import type { ActiveFilters, CardKind, Doc } from './types';
 import { matchFieldLabel, t } from './i18n';
+import { safeExternalUrl } from './text';
 
 /**
  * Client-side serializers for the result-export menu: plain text, JSON, RIS
@@ -85,7 +86,8 @@ export function download(filename: string, mime: string, content: string): void 
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  // Keep the object URL alive through the browser's asynchronous download handoff.
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function exportFilename(extension: string): string {
@@ -110,7 +112,7 @@ function itemUrl(d: Doc, base: string): string {
 function links(d: Doc, kind: CardKind, base: string): string[] {
   const out = [itemUrl(d, base)];
   if ((kind === 'podcast' || kind === 'video') && d.url_s) {
-    out.push(d.url_s);
+    out.push(safeExternalUrl(d.url_s));
   }
   return out.filter((s) => s !== '');
 }
@@ -312,7 +314,7 @@ function toRis(docs: Doc[], kind: CardKind, base: string): string {
   const out: string[] = [];
   for (const d of docs) {
     const tag = (name: string, value: string | undefined | null): void => {
-      const v = (value ?? '').trim();
+      const v = (value ?? '').replace(/[\r\n]+/g, ' ').trim();
       if (v !== '') out.push(`${name}  - ${v}`);
     };
     out.push(`TY  - ${risType(d, kind)}`);

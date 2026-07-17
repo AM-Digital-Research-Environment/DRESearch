@@ -23,6 +23,9 @@ use Typesense\Client;
  */
 final class TypesenseClientProvider
 {
+    private ?Client $client = null;
+    private bool $resolved = false;
+
     public function __construct(
         private readonly string $host,
         private readonly int $port,
@@ -46,9 +49,13 @@ final class TypesenseClientProvider
         if (!$this->isConfigured()) {
             return null;
         }
+        if ($this->resolved) {
+            return $this->client;
+        }
+        $this->resolved = true;
 
         try {
-            return new Client([
+            $this->client = new Client([
                 'api_key' => $this->apiKey,
                 'nodes'   => [[
                     'host'     => $this->host,
@@ -58,7 +65,8 @@ final class TypesenseClientProvider
                 'connection_timeout_seconds' => 5,
             ]);
         } catch (\Throwable) {
-            return null;
+            $this->client = null;
         }
+        return $this->client;
     }
 }

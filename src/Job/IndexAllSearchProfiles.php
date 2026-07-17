@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace DRESearch\Job;
 
 use DRESearch\Indexer\Reindexer;
+use DRESearch\Indexer\RebuildStateStore;
+use DRESearch\Indexer\Exception\ReindexCancelledException;
 use DRESearch\Indexer\StopwordsSync;
 use DRESearch\Search\TypesenseClientProvider;
 use DRESearch\Settings\ProfileRegistry;
@@ -50,6 +52,9 @@ class IndexAllSearchProfiles extends AbstractJob
         /** @var ProfileRegistry $registry */
         $registry = $services->get(ProfileRegistry::class);
         $profiles = $registry->all();
+        $config = $services->get('Config')['dre_search']['operations'] ?? [];
+        $stateStore = $services->get(RebuildStateStore::class);
+        $jobId = (string) $this->getJob()->getId();
 
         $log = static function (string $message) use ($logger): void {
             $logger->info('DRESearch: ' . $message);
@@ -61,18 +66,29 @@ class IndexAllSearchProfiles extends AbstractJob
         $logger->info(sprintf('DRESearch: reindex-all starting — %d corpora.', $total));
 
         foreach ($profiles as $profile) {
-            // The admin can stop the job from the Jobs page; bail cleanly between
-            // corpora rather than mid-rebuild (an in-flight reindex still finishes
-            // its alias swap, so no half-built collection is ever made live).
+            // The admin can stop the job from the Jobs page. The reindexer also
+            // checks within a corpus and removes its unpublished staging build.
             if ($this->shouldStop()) {
                 $logger->warn(sprintf('DRESearch: reindex-all stopped after %d of %d corpora (by request).', $done, $total));
                 return;
             }
             try {
-                $reindexer = new Reindexer($connection, $client, $profile, $log);
+                $reindexer = new Reindexer(
+                    $connection,
+                    $client,
+                    $profile,
+                    $log,
+                    $stateStore,
+                    (int) ($config['retention_days'] ?? 30),
+                    $jobId,
+                    fn(): bool => $this->shouldStop(),
+                );
                 $stats = $reindexer->run();
                 $done++;
                 $logger->info(sprintf('DRESearch: [%d/%d] "%s" complete', $done, $total, $profile->label()), $stats);
+            } catch (ReindexCancelledException $e) {
+                $logger->warn(sprintf('DRESearch: reindex-all cancelled during "%s"; live aliases were preserved.', $profile->label()));
+                return;
             } catch (\Throwable $e) {
                 $failed[] = $profile->label();
                 $logger->err(sprintf('DRESearch: reindex of "%s" failed — %s', $profile->label(), $e->getMessage()));

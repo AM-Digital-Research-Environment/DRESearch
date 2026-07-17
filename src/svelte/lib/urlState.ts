@@ -82,9 +82,9 @@ export function readUrlState(
     if (!key.startsWith(filterKey)) continue;
     const field = key.slice(filterKey.length);
     if (!isValidFieldName(field)) continue;
-    // getAll() handles repeated keys; comma-separated values are split too so a
-    // hand-edited ?f.subject_ss=a,b still works.
-    const raw = params.getAll(key).flatMap((v) => v.split(',').map((s) => s.trim()));
+    // Repeated keys preserve values exactly. Commas are valid catalogue data and
+    // must never be interpreted as an implicit separator.
+    const raw = params.getAll(key).map((value) => value.trim());
     const values = Array.from(new Set(raw.filter((v) => v !== '')));
     if (values.length > 0) {
       filters[field] = values;
@@ -93,7 +93,7 @@ export function readUrlState(
 
   return {
     q: includeQuery ? (params.get(`${prefix}q`) ?? '') : '',
-    page: clampInt(params.get(`${prefix}page`), 1, 100000, 1),
+    page: clampInt(params.get(`${prefix}page`), 1, 250, 1),
     sort: (params.get(`${prefix}sort`) as SortKey | null) ?? defaultSort,
     filters,
     yearFrom: parseYearOrNull(params.get(`${prefix}date.from`)),

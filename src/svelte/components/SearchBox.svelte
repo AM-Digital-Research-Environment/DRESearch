@@ -19,10 +19,13 @@
     placeholder?: string;
     api: SearchApi;
     itemUrlBase: string;
+    instanceId: string;
     onQueryChange: (next: string) => void;
   }
 
-  const { value, placeholder = '', api, itemUrlBase, onQueryChange }: Props = $props();
+  const { value, placeholder = '', api, itemUrlBase, instanceId, onQueryChange }: Props = $props();
+  const safeId = $derived(instanceId.replace(/[^A-Za-z0-9_-]/g, '-'));
+  const listboxId = $derived(`dre-suggest-${safeId}`);
 
   // svelte-ignore state_referenced_locally
   let local = $state(value);
@@ -141,6 +144,13 @@
         break;
     }
   }
+
+  $effect(() => {
+    return () => {
+      controller?.abort();
+      if (timer !== null) clearTimeout(timer);
+    };
+  });
 </script>
 
 <div class="dre-search-box">
@@ -154,10 +164,11 @@
       spellcheck="false"
       inputmode="search"
       role="combobox"
-      aria-label={placeholder || 'Search'}
+      aria-label={placeholder || t('search_placeholder')}
       aria-autocomplete="list"
       aria-expanded={open}
-      aria-controls="dre-suggest"
+      aria-controls={listboxId}
+      aria-activedescendant={activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
       {placeholder}
       value={local}
       oninput={handleInput}
@@ -176,15 +187,11 @@
   </div>
 
   {#if open && suggestions.length > 0}
-    <ul
-      class="dre-search-box__suggest"
-      id="dre-suggest"
-      role="listbox"
-      aria-label={t('suggestions')}
-    >
+    <ul class="dre-search-box__suggest" id={listboxId} role="listbox" aria-label={t('suggestions')}>
       {#each suggestions as s, i (s.id)}
         <li role="presentation">
           <a
+            id="{listboxId}-option-{i}"
             class="dre-search-box__suggestion"
             class:dre-search-box__suggestion--active={i === activeIndex}
             href={itemUrl(s.id)}

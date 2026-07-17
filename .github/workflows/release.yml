@@ -1,0 +1,47 @@
+name: Release package
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+      - run: npm ci && npm run lint && npm run check && npm test && npm run build
+      - run: composer install --no-dev --classmap-authoritative --no-interaction
+      - name: Build deterministic module archive
+        run: |
+          mkdir -p package/DRESearch
+          rsync -a --exclude='.git' --exclude='.github' --exclude='node_modules' --exclude='tests' --exclude='package' --exclude='.phpunit.cache' --exclude='.phpstan-cache' ./ package/DRESearch/
+          find package -exec touch -d '1980-01-01T00:00:00Z' {} +
+          (cd package && zip -X -r ../DRESearch.zip DRESearch)
+          sha256sum DRESearch.zip > DRESearch.zip.sha256
+      - uses: actions/upload-artifact@v7
+        with:
+          name: DRESearch-${{ github.ref_name }}
+          path: |
+            DRESearch.zip
+            DRESearch.zip.sha256
+          if-no-files-found: error
+      - name: Publish GitHub release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" DRESearch.zip DRESearch.zip.sha256 --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" DRESearch.zip DRESearch.zip.sha256 --verify-tag --generate-notes
+          fi

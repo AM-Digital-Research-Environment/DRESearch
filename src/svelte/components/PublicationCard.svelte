@@ -2,6 +2,7 @@
   import type { Doc } from '../lib/types';
   import { t } from '../lib/i18n';
   import { firstMarked, markedLookup } from '../lib/highlight';
+  import { safeExternalUrl } from '../lib/text';
   import Highlight from './Highlight.svelte';
   import MatchedIn from './MatchedIn.svelte';
 
@@ -45,7 +46,7 @@
   // Keyword facet still exposes the full list.
   const keywords = $derived((doc.keyword_ss ?? []).slice(0, 8));
   const keywordHl = $derived(markedLookup(doc, 'keyword_ss'));
-  const doi = $derived(doc.doi_s ?? '');
+  const doi = $derived(safeExternalUrl(doc.doi_s));
 
   // Authors — filter buttons (click adds the person to the creator_ss facet,
   // which unifies authors + editors). Literals filter fine by name.

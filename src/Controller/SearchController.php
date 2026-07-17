@@ -3,124 +3,201 @@ declare(strict_types=1);
 
 namespace DRESearch\Controller;
 
+use DRESearch\Search\Exception\RequestValidationException;
+use DRESearch\Search\RateLimiter;
 use DRESearch\Search\SearchProxy;
+use DRESearch\Search\SearchRequest;
 use Laminas\Http\Response;
+use Laminas\Log\LoggerInterface;
 use Laminas\Mvc\Controller\AbstractActionController;
 use Laminas\View\Model\ViewModel;
 
-/**
- * Public JSON proxy in front of Typesense, plus the federated results page.
- *
- * - apiSearch / apiSuggest      : per-corpus search + autocomplete (the blocks).
- * - apiSuggestAll / apiSearchAll: federated across every corpus (the header bar
- *                                 + the grouped-by-type results page).
- * - results                     : the federated results page (a site route).
- *
- * The Typesense key stays server-side and is_public:=true is enforced by the
- * QueryBuilder. The api* actions emit a Response directly (no view), so they
- * don't depend on a JSON view strategy; results returns a ViewModel.
- */
+/** Public JSON boundary with bounded input, stable errors, and request IDs. */
 class SearchController extends AbstractActionController
 {
-    public function __construct(private readonly SearchProxy $proxy)
-    {
+    public function __construct(
+        private readonly SearchProxy $proxy,
+        private readonly RateLimiter $rateLimiter,
+        private readonly LoggerInterface $logger,
+    ) {
     }
 
     public function apiSearchAction(): Response
     {
-        $body = $this->readBody();
-        $profile = (string) ($body['profile'] ?? '');
-        return $this->json($this->proxy->search($profile, $body));
+        return $this->respond(function (string $requestId): array {
+            $this->requireMethod(['POST']);
+            $this->requireRateLimit('search', 120);
+            $body = $this->readJsonBody();
+            return $this->proxy->search(SearchRequest::profile($body['profile'] ?? ''), $body, $requestId);
+        });
     }
 
-    /**
-     * Bulk citation export of the current result set. Same JSON body shape as
-     * apiSearch (profile + q + sort + filters + year window + locked_filter);
-     * returns the matching documents (capped server-side), which the client
-     * serializes to txt / json / ris / bibtex.
-     */
     public function apiExportAction(): Response
     {
-        $body = $this->readBody();
-        $profile = (string) ($body['profile'] ?? '');
-        return $this->json($this->proxy->export($profile, $body));
+        return $this->respond(function (string $requestId): array {
+            $this->requireMethod(['POST']);
+            $this->requireRateLimit('export', 10);
+            $body = $this->readJsonBody();
+            return $this->proxy->export(SearchRequest::profile($body['profile'] ?? ''), $body, $requestId);
+        }, 'no-store');
     }
 
     public function apiSuggestAction(): Response
     {
-        $profile = (string) ($this->params()->fromQuery('profile') ?? $this->params()->fromPost('profile') ?? '');
-        $q = (string) ($this->params()->fromQuery('q') ?? $this->params()->fromPost('q') ?? '');
-        return $this->json($this->proxy->suggest($profile, $q));
+        return $this->respond(function (string $requestId): array {
+            $this->requireMethod(['GET', 'POST']);
+            $profile = SearchRequest::profile(
+                $this->params()->fromQuery('profile') ?? $this->params()->fromPost('profile') ?? '',
+            );
+            $q = SearchRequest::query(
+                $this->params()->fromQuery('q') ?? $this->params()->fromPost('q') ?? '',
+            );
+            $blockId = SearchRequest::blockId(
+                $this->params()->fromQuery('block_id') ?? $this->params()->fromPost('block_id')
+            );
+            return $this->proxy->suggest($profile, $q, $blockId, $requestId);
+        }, 'public, max-age=15, stale-while-revalidate=30');
     }
 
-    /**
-     * Federated autocomplete across every corpus (the header search bar). Labels
-     * are translated server-side via the controller's translate plugin so the
-     * type badge reads in the site language.
-     */
     public function apiSuggestAllAction(): Response
     {
-        $q = (string) ($this->params()->fromQuery('q') ?? $this->params()->fromPost('q') ?? '');
-        return $this->json($this->proxy->suggestAll(
-            $q,
-            fn(string $s): string => (string) $this->translate($s),
-        ));
+        return $this->respond(function (string $requestId): array {
+            $this->requireMethod(['GET', 'POST']);
+            $q = SearchRequest::query(
+                $this->params()->fromQuery('q') ?? $this->params()->fromPost('q') ?? '',
+            );
+            return $this->proxy->suggestAll(
+                $q,
+                fn(string $s): string => (string) $this->translate($s),
+                $requestId,
+            );
+        }, 'public, max-age=15, stale-while-revalidate=30');
     }
 
-    /**
-     * Federated search for the results page: per-corpus counts (tabs) plus the
-     * focused corpus's full faceted response. The focused corpus is the `profile`
-     * key in the JSON body (falls back to the default profile in SearchProxy).
-     */
     public function apiSearchAllAction(): Response
     {
-        $body = $this->readBody();
-        $profile = (string) ($body['profile'] ?? '');
-        return $this->json($this->proxy->searchAll($profile, $body));
+        return $this->respond(function (string $requestId): array {
+            $this->requireMethod(['POST']);
+            $this->requireRateLimit('federated', 60);
+            $body = $this->readJsonBody();
+            return $this->proxy->searchAll(SearchRequest::profile($body['profile'] ?? ''), $body, $requestId);
+        });
     }
 
-    /**
-     * The federated results page (site/dre-search). Renders within the active
-     * site theme layout; the dreFederatedSearch view helper builds the bootstrap
-     * and mounts the Svelte client. Seeds the initial query from ?q=.
-     */
     public function resultsAction(): ViewModel
     {
-        $view = new ViewModel(['query' => (string) $this->params()->fromQuery('q', '')]);
+        $query = (string) $this->params()->fromQuery('q', '');
+        if (mb_strlen($query) > SearchRequest::MAX_QUERY_LENGTH) {
+            $query = mb_substr($query, 0, SearchRequest::MAX_QUERY_LENGTH);
+        }
+        $view = new ViewModel(['query' => $query]);
         $view->setTemplate('dre-search/federated');
         return $view;
     }
 
-    /**
-     * Read the request payload: a JSON body (the client's normal path) or, as a
-     * fallback, POST/GET params.
-     *
-     * @return array<string,mixed>
-     */
-    private function readBody(): array
+    /** @param callable(string):array<string,mixed> $operation */
+    private function respond(callable $operation, string $cacheControl = 'no-store'): Response
+    {
+        $requestId = bin2hex(random_bytes(12));
+        try {
+            $data = $operation($requestId);
+            $status = ($data['available'] ?? true) === false ? 503 : 200;
+            if ($status === 503 && !is_array($data['error'] ?? null)) {
+                $data['error'] = [
+                    'code' => 'backend_unavailable',
+                    'message' => 'Search is temporarily unavailable.',
+                    'request_id' => $requestId,
+                ];
+            }
+            return $this->json($data, $status, $requestId, $cacheControl);
+        } catch (RequestValidationException $e) {
+            return $this->json([
+                'available' => false,
+                'error' => [
+                    'code' => $e->publicCode(),
+                    'message' => $e->getMessage(),
+                    'request_id' => $requestId,
+                ],
+            ], $e->status(), $requestId, 'no-store');
+        } catch (\Throwable $e) {
+            $this->logger->err('DRESearch public endpoint failed unexpectedly', [
+                'request_id' => $requestId,
+                'exception' => $e::class,
+                'message' => $e->getMessage(),
+            ]);
+            return $this->json([
+                'available' => false,
+                'error' => [
+                    'code' => 'internal_error',
+                    'message' => 'The request could not be completed.',
+                    'request_id' => $requestId,
+                ],
+            ], 503, $requestId, 'no-store');
+        }
+    }
+
+    /** @param list<string> $allowed */
+    private function requireMethod(array $allowed): void
+    {
+        $method = strtoupper((string) $this->getRequest()->getMethod());
+        if (!in_array($method, $allowed, true)) {
+            throw new RequestValidationException('method_not_allowed', 'This HTTP method is not supported.', 405);
+        }
+    }
+
+    /** @return array<string,mixed> */
+    private function readJsonBody(): array
     {
         $request = $this->getRequest();
-        if ($request->isPost()) {
-            $content = (string) $request->getContent();
-            if ($content !== '') {
-                $decoded = json_decode($content, true);
-                if (is_array($decoded)) {
-                    return $decoded;
-                }
-            }
-            $post = $this->params()->fromPost();
-            return is_array($post) ? $post : [];
+        $lengthHeader = $request->getHeaders()->get('Content-Length');
+        $length = $lengthHeader ? (int) $lengthHeader->getFieldValue() : 0;
+        if ($length > SearchRequest::MAX_BODY_BYTES) {
+            throw new RequestValidationException('body_too_large', 'The request body is too large.', 413);
         }
-        $query = $this->params()->fromQuery();
-        return is_array($query) ? $query : [];
+        $content = (string) $request->getContent();
+        if (strlen($content) > SearchRequest::MAX_BODY_BYTES) {
+            throw new RequestValidationException('body_too_large', 'The request body is too large.', 413);
+        }
+        $contentType = $request->getHeaders()->get('Content-Type');
+        $type = $contentType ? strtolower((string) $contentType->getFieldValue()) : '';
+        if ($content !== '' && !str_starts_with($type, 'application/json')) {
+            throw new RequestValidationException('invalid_content_type', 'Use application/json for request bodies.');
+        }
+        if ($content === '') {
+            return [];
+        }
+        $decoded = json_decode($content, true);
+        if (!is_array($decoded) || json_last_error() !== JSON_ERROR_NONE) {
+            throw new RequestValidationException('invalid_json', 'The request body is not valid JSON.');
+        }
+        return $decoded;
+    }
+
+    private function requireRateLimit(string $scope, int $limit): void
+    {
+        $server = $this->getRequest()->getServer();
+        $identity = is_object($server) && method_exists($server, 'get')
+            ? (string) $server->get('REMOTE_ADDR', 'unknown')
+            : 'unknown';
+        if (!$this->rateLimiter->allow($scope, $identity, $limit)) {
+            throw new RequestValidationException('rate_limited', 'Too many requests. Please try again shortly.', 429);
+        }
     }
 
     /** @param array<string,mixed> $data */
-    private function json(array $data): Response
-    {
+    private function json(
+        array $data,
+        int $status,
+        string $requestId,
+        string $cacheControl,
+    ): Response {
         /** @var Response $response */
         $response = $this->getResponse();
+        $response->setStatusCode($status);
         $response->getHeaders()->addHeaderLine('Content-Type', 'application/json; charset=utf-8');
+        $response->getHeaders()->addHeaderLine('Cache-Control', $cacheControl);
+        $response->getHeaders()->addHeaderLine('X-Request-ID', $requestId);
+        $response->getHeaders()->addHeaderLine('X-Content-Type-Options', 'nosniff');
         $response->setContent((string) json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
         return $response;
     }

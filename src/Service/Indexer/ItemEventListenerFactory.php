@@ -9,7 +9,7 @@ use Laminas\ServiceManager\Factory\FactoryInterface;
 use Psr\Container\ContainerInterface;
 
 /**
- * Trivial factory — the listener has one dependency. Kept as a dedicated class
+ * Trivial factory for the event adapter and its Omeka connection. Kept as a dedicated class
  * for symmetry with the rest of the service layer.
  */
 final class ItemEventListenerFactory implements FactoryInterface
@@ -20,7 +20,8 @@ final class ItemEventListenerFactory implements FactoryInterface
         ?array $options = null
     ): ItemEventListener {
         return new ItemEventListener(
-            indexer: $container->get(IncrementalIndexer::class)
+            indexer: $container->get(IncrementalIndexer::class),
+            connection: $container->get('Omeka\Connection'),
         );
     }
 }

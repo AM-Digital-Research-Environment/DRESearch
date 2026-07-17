@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace DRESearch\Job;
 
 use DRESearch\Indexer\Reindexer;
+use DRESearch\Indexer\RebuildStateStore;
+use DRESearch\Indexer\Exception\ReindexCancelledException;
 use DRESearch\Search\TypesenseClientProvider;
 use DRESearch\Settings\ProfileRegistry;
 use Omeka\Job\AbstractJob;
@@ -42,11 +44,25 @@ class IndexSearchProfile extends AbstractJob
         $log = static function (string $message) use ($logger): void {
             $logger->info('DRESearch: ' . $message);
         };
+        $config = $services->get('Config')['dre_search']['operations'] ?? [];
+        $stateStore = $services->get(RebuildStateStore::class);
+        $jobId = (string) $this->getJob()->getId();
 
         try {
-            $reindexer = new Reindexer($connection, $client, $profile, $log);
+            $reindexer = new Reindexer(
+                $connection,
+                $client,
+                $profile,
+                $log,
+                $stateStore,
+                (int) ($config['retention_days'] ?? 30),
+                $jobId,
+                fn(): bool => $this->shouldStop(),
+            );
             $stats = $reindexer->run();
             $logger->info('DRESearch: reindex complete', $stats);
+        } catch (ReindexCancelledException $e) {
+            $logger->warn('DRESearch: ' . $e->getMessage());
         } catch (\Throwable $e) {
             $logger->err('DRESearch: reindex failed — ' . $e->getMessage());
             throw $e; // mark the job ERROR in the admin Jobs list

@@ -2,7 +2,7 @@
 /**
  * @var \Laminas\View\Renderer\PhpRenderer $this
  * @var bool $configured
- * @var list<array{name:string, label:string, collection:string, reachable:bool, documents:?int, error:?string}> $profiles
+ * @var list<array{name:string, label:string, collection:string, reachable:bool, documents:?int, error:?string, state:array<string,mixed>}> $profiles
  * @var \DRESearch\Form\MaintenanceForm $form
  */
 $this->headTitle($this->translate('DRE Search'));
@@ -29,6 +29,8 @@ $form->prepare();
             <th><?= $this->translate('Collection alias') ?></th>
             <th><?= $this->translate('Server reachable') ?></th>
             <th><?= $this->translate('Documents indexed') ?></th>
+            <th><?= $this->translate('Index state') ?></th>
+            <th><?= $this->translate('Last run') ?></th>
         </tr>
     </thead>
     <tbody>
@@ -41,6 +43,33 @@ $form->prepare();
                 <?= $p['documents'] === null ? '—' : $this->escapeHtml((string) $p['documents']) ?>
                 <?php if (!empty($p['error'])): ?>
                     <div class="error"><?= $this->escapeHtml($p['error']) ?></div>
+                <?php endif; ?>
+            </td>
+            <td>
+                <?php $state = $p['state']; ?>
+                <strong><?= $this->escapeHtml($this->translate((string) ($state['status'] ?? 'Not built'))) ?></strong>
+                <?php if (!empty($state['dirty'])): ?>
+                    <div class="warning"><?= $this->translate('Content changed; a full rebuild is recommended.') ?></div>
+                <?php endif; ?>
+                <?php if (!empty($state['live_collection'])): ?>
+                    <div><code><?= $this->escapeHtml((string) $state['live_collection']) ?></code></div>
+                <?php endif; ?>
+            </td>
+            <td>
+                <?php if (!empty($state['finished_at'])): ?>
+                    <div><?= $this->escapeHtml((string) $state['finished_at']) ?> UTC</div>
+                <?php endif; ?>
+                <?php if (isset($state['last_duration_ms'])): ?>
+                    <div><?= $this->escapeHtml(number_format(((int) $state['last_duration_ms']) / 1000, 1)) ?> s</div>
+                <?php endif; ?>
+                <?php if (isset($state['documents_imported'])): ?>
+                    <div>
+                        <?= $this->escapeHtml((string) $state['documents_imported']) ?> / <?= $this->escapeHtml((string) ($state['documents_attempted'] ?? 0)) ?>
+                        <?= $this->translate('documents imported') ?>
+                    </div>
+                <?php endif; ?>
+                <?php if (!empty($state['last_error_code'])): ?>
+                    <div class="error"><?= $this->escapeHtml((string) $state['last_error_code']) ?></div>
                 <?php endif; ?>
             </td>
         </tr>

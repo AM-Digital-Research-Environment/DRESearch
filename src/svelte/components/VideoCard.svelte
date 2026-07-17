@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
-  import { t } from '../lib/i18n';
+  import { formatDate, t } from '../lib/i18n';
   import { firstMarked, markedLookup } from '../lib/highlight';
+  import { safeExternalUrl } from '../lib/text';
   import Highlight from './Highlight.svelte';
   import MatchedIn from './MatchedIn.svelte';
 
@@ -32,38 +33,6 @@
 
   const { doc, itemUrlBase, onAddFilter }: Props = $props();
 
-  const MONTHS = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-
-  /** "2026-03-29" → "29 Mar 2026"; tolerates year-month and year-only values. */
-  function formatDate(raw: string | undefined): string {
-    if (!raw) {
-      return '';
-    }
-    const ymd = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw);
-    if (ymd) {
-      return `${Number(ymd[3])} ${MONTHS[Number(ymd[2]) - 1] ?? ''} ${ymd[1]}`.trim();
-    }
-    const ym = /^(\d{4})-(\d{2})/.exec(raw);
-    if (ym) {
-      return `${MONTHS[Number(ym[2]) - 1] ?? ''} ${ym[1]}`.trim();
-    }
-    const y = /^(\d{4})/.exec(raw);
-    return y ? y[1] : raw;
-  }
-
   function people(names: string[] | undefined, ids: string[] | undefined) {
     const list = names ?? [];
     const idList = ids ?? [];
@@ -90,7 +59,7 @@
   // Abstract: the matched window when it matched, else the plain abstract.
   const snippet = $derived(firstMarked(doc, ['abstract']) ?? (doc.abstract ?? '').trim());
 
-  const watch = $derived(doc.url_s ?? '');
+  const watch = $derived(safeExternalUrl(doc.url_s));
 </script>
 
 <article class="dre-vcard" class:dre-vcard--no-thumb={!doc.thumbnail_url}>

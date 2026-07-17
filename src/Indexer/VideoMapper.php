@@ -44,13 +44,14 @@ final class VideoMapper implements MapperInterface
 
     public function map(array $item, array $values, ?string $thumbnailUrl): array
     {
+        $bag = new ValueBag($values);
         $doc = [
             'id'        => (string) $item['id'],
             'is_public' => $item['is_public'],
             'title'     => $item['title'] !== '' ? $item['title'] : sprintf('[Untitled #%d]', $item['id']),
         ];
 
-        if (($abstract = $this->firstLiteral($values, 'dcterms:abstract')) !== null) {
+        if (($abstract = $bag->firstLiteral('dcterms:abstract')) !== null) {
             $doc['abstract'] = $abstract;
         }
 
@@ -64,7 +65,7 @@ final class VideoMapper implements MapperInterface
             if ($field === 'speaker_ss' || empty($def['property'])) {
                 continue;
             }
-            $titles = $this->linkedTitles($values, $def['property']);
+            $titles = $bag->labels($def['property']);
             if ($titles === []) {
                 continue;
             }
@@ -75,7 +76,7 @@ final class VideoMapper implements MapperInterface
         // speaker_ids[i]) so the card links each person to their page. This field is
         // also searchable (query_by). Empty in the data today; populates over time.
         if ($this->profile->hasFacet('speaker_ss')) {
-            [$speakerNames, $speakerIds] = $this->collectPeople($values, $this->profile->property('speaker_ss') ?? 'marcrel:spk');
+            [$speakerNames, $speakerIds] = $bag->people($this->profile->property('speaker_ss') ?? 'marcrel:spk');
             if ($speakerNames) {
                 $doc['speaker_ss'] = $speakerNames;
                 $doc['speaker_ids'] = $speakerIds;
@@ -86,20 +87,20 @@ final class VideoMapper implements MapperInterface
         // chip to its Omeka page.
         if (isset($df['playlist_id'])) {
             $playlistProp = $this->profile->property('playlist_s') ?? 'dcterms:isPartOf';
-            if (($pid = $this->firstResourceId($values, $playlistProp)) !== null) {
+            if (($pid = $bag->firstResourceId($playlistProp)) !== null) {
                 $doc['playlist_id'] = (string) $pid;
             }
         }
 
         // External "Watch" link — prefer the URI value's @id, literal fallback.
-        if (($url = $this->firstUri($values, $df['url_s']['property'] ?? 'fabio:hasURL')) !== null) {
+        if (($url = $bag->firstUrl($df['url_s']['property'] ?? 'fabio:hasURL')) !== null) {
             $doc['url_s'] = $url;
         }
 
         // Date — the verbatim value for display + the 4-digit year for sorting/slider.
-        if (($raw = $this->firstLiteral($values, $this->profile->dateProperty())) !== null) {
+        if (($raw = $bag->firstLiteral($this->profile->dateProperty())) !== null) {
             $doc['date_s'] = $raw;
-            if (($year = $this->yearOf($raw)) !== null) {
+            if (($year = $bag->firstYear($this->profile->dateProperty())) !== null) {
                 $doc['year'] = $year;
             }
         }
@@ -108,7 +109,7 @@ final class VideoMapper implements MapperInterface
         // search_only (excluded from result payloads); `has_transcript` flags
         // availability so the card can show a "Transcript" badge without shipping
         // the (potentially huge) text.
-        $transcript = $this->firstLiteral($values, $df['transcript']['property'] ?? 'bibo:content');
+        $transcript = $bag->firstLiteral($df['transcript']['property'] ?? 'bibo:content');
         if ($transcript !== null && $transcript !== '') {
             $doc['transcript'] = $transcript;
             $doc['has_transcript'] = true;
@@ -123,117 +124,4 @@ final class VideoMapper implements MapperInterface
         return $doc;
     }
 
-    /**
-     * Linked-resource titles (literal fallback) for a property, deduped, order
-     * preserved.
-     *
-     * @param array<string, list<array{vrid:?int, value:?string, uri:?string, title:?string}>> $values
-     * @return list<string>
-     */
-    private function linkedTitles(array $values, ?string $term): array
-    {
-        if ($term === null || $term === '') {
-            return [];
-        }
-        $out = [];
-        foreach ($values[$term] ?? [] as $v) {
-            $label = ($v['title'] ?? '') !== '' ? $v['title'] : ($v['value'] ?? '');
-            if ($label !== null && $label !== '') {
-                $out[] = $label;
-            }
-        }
-        return array_values(array_unique($out));
-    }
-
-    /**
-     * Collect a person property's display names and matching resource ids (empty
-     * string where a value is a literal rather than a link), deduped by name and
-     * kept parallel so speaker_ss[i] ↔ speaker_ids[i].
-     *
-     * @param array<string, list<array{vrid:?int, value:?string, uri:?string, title:?string}>> $values
-     * @return array{0:list<string>, 1:list<string>}
-     */
-    private function collectPeople(array $values, ?string $term): array
-    {
-        $names = [];
-        $ids = [];
-        $seen = [];
-        if ($term === null) {
-            return [$names, $ids];
-        }
-        foreach ($values[$term] ?? [] as $v) {
-            $name = ($v['title'] ?? '') !== '' ? $v['title'] : ($v['value'] ?? '');
-            if ($name === null || $name === '' || isset($seen[$name])) {
-                continue;
-            }
-            $seen[$name] = true;
-            $names[] = $name;
-            $ids[] = $v['vrid'] !== null ? (string) $v['vrid'] : '';
-        }
-        return [$names, $ids];
-    }
-
-    /** @param array<string, list<array{vrid:?int, value:?string, uri:?string, title:?string}>> $values */
-    private function firstLiteral(array $values, ?string $term): ?string
-    {
-        if ($term === null || $term === '') {
-            return null;
-        }
-        foreach ($values[$term] ?? [] as $v) {
-            if (($v['value'] ?? '') !== '') {
-                return $v['value'];
-            }
-        }
-        return null;
-    }
-
-    /**
-     * First linked resource id for a property (the playlist item), or null.
-     *
-     * @param array<string, list<array{vrid:?int, value:?string, uri:?string, title:?string}>> $values
-     */
-    private function firstResourceId(array $values, ?string $term): ?int
-    {
-        if ($term === null || $term === '') {
-            return null;
-        }
-        foreach ($values[$term] ?? [] as $v) {
-            if ($v['vrid'] !== null) {
-                return $v['vrid'];
-            }
-        }
-        return null;
-    }
-
-    /**
-     * The external link as a URL — prefer the URI value's @id, falling back to a
-     * literal that looks like a URL.
-     *
-     * @param array<string, list<array{vrid:?int, value:?string, uri:?string, title:?string}>> $values
-     */
-    private function firstUri(array $values, ?string $term): ?string
-    {
-        if ($term === null || $term === '') {
-            return null;
-        }
-        foreach ($values[$term] ?? [] as $v) {
-            if (($v['uri'] ?? '') !== '') {
-                return $v['uri'];
-            }
-            $label = (string) ($v['value'] ?? '');
-            if (str_starts_with($label, 'http')) {
-                return $label;
-            }
-        }
-        return null;
-    }
-
-    /** The first plausible 4-digit year (1000–2099) in a date value, or null. */
-    private function yearOf(string $raw): ?int
-    {
-        if ($raw !== '' && preg_match('/\b(1\d{3}|20\d{2})\b/', $raw, $m)) {
-            return (int) $m[1];
-        }
-        return null;
-    }
 }

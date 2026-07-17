@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { CardKind, Doc } from '../lib/types';
+  import { t } from '../lib/i18n';
   import ResultItem from './ResultItem.svelte';
   import ProjectCard from './ProjectCard.svelte';
   import PublicationCard from './PublicationCard.svelte';
@@ -90,12 +91,12 @@
 </ol>
 
 {#if totalPages > 1}
-  <nav class="dre-pager" aria-label="Pagination">
+  <nav class="dre-pager" aria-label={t('pagination')}>
     <button
       type="button"
       class="dre-pager__btn"
       disabled={page <= 1}
-      aria-label="Previous page"
+      aria-label={t('previous_page')}
       onclick={() => go(page - 1)}>‹</button
     >
 
@@ -129,7 +130,7 @@
       type="button"
       class="dre-pager__btn"
       disabled={page >= totalPages}
-      aria-label="Next page"
+      aria-label={t('next_page')}
       onclick={() => go(page + 1)}>›</button
     >
   </nav>

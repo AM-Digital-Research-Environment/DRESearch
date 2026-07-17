@@ -18,3 +18,14 @@ export function foldAccents(input: string): string {
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase();
 }
+
+/** Accept only absolute HTTP(S) links before binding untrusted index data to href. */
+export function safeExternalUrl(input: string | null | undefined): string {
+  if (!input) return '';
+  try {
+    const url = new URL(input);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : '';
+  } catch {
+    return '';
+  }
+}

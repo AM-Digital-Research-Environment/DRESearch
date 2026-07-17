@@ -5,6 +5,9 @@ namespace DRESearch\Indexer;
 
 use Closure;
 use Doctrine\DBAL\Connection;
+use DRESearch\Indexer\Exception\BatchImportException;
+use DRESearch\Indexer\Exception\ReindexCancelledException;
+use DRESearch\Indexer\Exception\VerificationException;
 use DRESearch\Settings\SearchProfile;
 use Omeka\Entity\Item;
 use Typesense\Client;
@@ -42,97 +45,219 @@ final class Reindexer
         private readonly Client $client,
         private readonly SearchProfile $profile,
         private readonly Closure $log,
+        private readonly ?RebuildStateStore $stateStore = null,
+        private readonly int $retentionDays = 30,
+        private readonly string $jobId = 'manual',
+        private readonly ?Closure $cancel = null,
     ) {
         $this->alias = $profile->collection();
         $this->valueTerms = $profile->readProperties();
     }
 
-    /** @return array{documents:int, collection:string} */
+    /**
+     * @return array{documents:int,attempted:int,failed:int,collection:string,previous:?string,duration_ms:int}
+     */
     public function run(): array
     {
+        $started = hrtime(true);
         ($this->log)(sprintf("Starting reindex of '%s'…", $this->profile->name()));
+        $lock = new RebuildLock(
+            $this->connection,
+            $this->profile->name(),
+            $this->alias,
+            $this->stateStore,
+        );
+        $lock->acquire();
+        $collection = '';
+        $previous = null;
+        $created = false;
+        $promoted = false;
+        $attempted = 0;
+        $imported = 0;
+        $failed = 0;
 
-        $mapper = $this->buildMapper();
+        try {
+            $previous = $this->aliasTarget();
+            $this->recoverOrphanedCollections($previous);
+            $base = $this->collectionBase();
+            $collection = $base . 'g' . (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('YmdHisv')
+                . '_' . bin2hex(random_bytes(3));
+            $token = bin2hex(random_bytes(16));
+            $this->throwIfCancelled();
+            $mapper = $this->buildMapper();
+            $this->stateStore?->markBuilding(
+                $this->profile->name(),
+                $this->alias,
+                $collection,
+                $token,
+                $this->jobId,
+            );
+            // From this point the name is owned by this session. Attempt cleanup
+            // even if the create response is lost after Typesense accepted it.
+            $created = true;
+            $this->client->collections->create((new SchemaProvider())->collection($collection, $this->profile));
+            ($this->log)(sprintf('Created staging collection %s', $collection));
 
-        $base = $this->collectionBase();
-        $collection = $base . gmdate('YmdHis');
-        $this->client->collections->create((new SchemaProvider())->collection($collection, $this->profile));
-        ($this->log)(sprintf('Created collection %s', $collection));
+            $itemLink = $this->profile->itemLink();
+            $reverseLinks = $this->profile->reverseLinks();
+            $lastId = 0;
+            $batch = [];
 
-        $itemLink = $this->profile->itemLink();
-        $reverseLinks = $this->profile->reverseLinks();
-        $total = 0;
-        $lastId = 0;
-        $batch = [];
+            $predicate = $this->sourcePredicate();
+            $sql = 'SELECT id, title, is_public FROM resource'
+                . ' WHERE resource_type = :rt AND id > :lastId'
+                . ($predicate !== '' ? ' AND ' . $predicate : '')
+                . ' ORDER BY id ASC LIMIT ' . self::PAGE;
+            $params = ['rt' => Item::class];
 
-        // Source scope: the profile's base template/item-set, plus any extra
-        // sources OR'd in (e.g. Locations also pulls geocoded institutions). The
-        // predicate inlines validated ints, so :rt and :lastId stay the only
-        // bound params and keyset pagination is unchanged.
-        $predicate = $this->sourcePredicate();
-        $sql = 'SELECT id, title, is_public FROM resource'
-            . ' WHERE resource_type = :rt AND id > :lastId'
-            . ($predicate !== '' ? ' AND ' . $predicate : '')
-            . ' ORDER BY id ASC LIMIT ' . self::PAGE;
-        $params = ['rt' => Item::class];
-
-        while (true) {
-            $rows = $this->connection
-                ->executeQuery($sql, ['lastId' => $lastId] + $params)
-                ->fetchAllAssociative();
-
-            if (!$rows) {
-                break;
-            }
-
-            $ids = array_map(static fn(array $r): int => (int) $r['id'], $rows);
-            $lastId = (int) end($ids);
-            $valuesByItem = $this->loadValues($ids);
-            $thumbnails = $this->loadThumbnails($ids);
-            $counts = $itemLink !== null ? $this->loadItemCounts($ids, $itemLink) : [];
-            [$reverseCounts, $reverseRoles] = $reverseLinks !== null
-                ? $this->loadReverseLinks($ids, $reverseLinks)
-                : [[], []];
-
-            foreach ($rows as $r) {
-                $id = (int) $r['id'];
-                $item = [
-                    'id'        => $id,
-                    'title'     => (string) ($r['title'] ?? ''),
-                    'is_public' => (bool) $r['is_public'],
-                ];
-                if ($itemLink !== null) {
-                    $item['item_count'] = $counts[$id] ?? 0;
+            while (true) {
+                $this->throwIfCancelled();
+                $rows = $this->connection
+                    ->executeQuery($sql, ['lastId' => $lastId] + $params)
+                    ->fetchAllAssociative();
+                if (!$rows) {
+                    break;
                 }
-                if ($reverseLinks !== null) {
-                    $item['counts'] = [];
-                    foreach ($reverseCounts as $field => $map) {
-                        $item['counts'][$field] = $map[$id] ?? 0;
+
+                $ids = array_map(static fn(array $r): int => (int) $r['id'], $rows);
+                $lastId = (int) end($ids);
+                $valuesByItem = $this->loadValues($ids);
+                $thumbnails = $this->loadThumbnails($ids);
+                $counts = $itemLink !== null ? $this->loadItemCounts($ids, $itemLink) : [];
+                [$reverseCounts, $reverseRoles] = $reverseLinks !== null
+                    ? $this->loadReverseLinks($ids, $reverseLinks)
+                    : [[], []];
+
+                foreach ($rows as $r) {
+                    $id = (int) $r['id'];
+                    $item = [
+                        'id'        => $id,
+                        'title'     => (string) ($r['title'] ?? ''),
+                        'is_public' => (bool) $r['is_public'],
+                    ];
+                    if ($itemLink !== null) {
+                        $item['item_count'] = $counts[$id] ?? 0;
                     }
-                    $item['roles'] = $reverseRoles[$id] ?? [];
-                }
-                $batch[] = $mapper->map($item, $valuesByItem[$id] ?? [], $thumbnails[$id] ?? null);
-                if (count($batch) >= self::BATCH) {
-                    $this->flush($collection, $batch);
-                    $total += count($batch);
-                    $batch = [];
-                    ($this->log)(sprintf('Indexed %d…', $total));
+                    if ($reverseLinks !== null) {
+                        $item['counts'] = [];
+                        foreach ($reverseCounts as $field => $map) {
+                            $item['counts'][$field] = $map[$id] ?? 0;
+                        }
+                        $item['roles'] = $reverseRoles[$id] ?? [];
+                    }
+                    $batch[] = $mapper->map($item, $valuesByItem[$id] ?? [], $thumbnails[$id] ?? null);
+                    if (count($batch) >= self::BATCH) {
+                        $attempted += count($batch);
+                        try {
+                            $imported += $this->flush($collection, $batch);
+                        } catch (BatchImportException $e) {
+                            $imported += $e->successful();
+                            $failed += count($e->failedIds());
+                            throw $e;
+                        }
+                        $batch = [];
+                        ($this->log)(sprintf('Imported %d documents…', $imported));
+                        $this->throwIfCancelled();
+                    }
                 }
             }
+
+            if ($batch) {
+                $attempted += count($batch);
+                try {
+                    $imported += $this->flush($collection, $batch);
+                } catch (BatchImportException $e) {
+                    $imported += $e->successful();
+                    $failed += count($e->failedIds());
+                    throw $e;
+                }
+            }
+
+            $this->throwIfCancelled();
+            try {
+                $this->stateStore?->markVerifying($this->profile->name(), $attempted, $imported, $failed);
+            } catch (\Throwable $stateError) {
+                ($this->log)(sprintf('Could not persist verifying state: %s', $stateError->getMessage()));
+            }
+            $info = $this->client->collections[$collection]->retrieve();
+            $verified = (int) ($info['num_documents'] ?? -1);
+            if ($verified !== $imported || $imported !== $attempted) {
+                throw new VerificationException(sprintf(
+                    'Staging verification failed: attempted=%d imported=%d stored=%d.',
+                    $attempted,
+                    $imported,
+                    $verified,
+                ));
+            }
+
+            $this->throwIfCancelled();
+            $this->client->aliases->upsert($this->alias, ['collection_name' => $collection]);
+            $promoted = true;
+            $durationMs = $this->durationMs($started);
+            try {
+                $this->stateStore?->markLive(
+                    $this->profile->name(),
+                    $collection,
+                    $previous,
+                    $durationMs,
+                    $attempted,
+                    $imported,
+                    $failed,
+                );
+            } catch (\Throwable $stateError) {
+                // The verified alias is already live. Do not report the rebuild as
+                // failed or attempt to delete it because operational metadata lagged.
+                ($this->log)(sprintf('Alias promoted, but rebuild state could not be persisted: %s', $stateError->getMessage()));
+            }
+            ($this->log)(sprintf("Promoted alias '%s' → '%s' (rollback: %s)", $this->alias, $collection, $previous ?? 'none'));
+
+            $this->cleanupRetiredCollections($collection, $previous);
+            ($this->log)(sprintf('Done — %d documents verified and promoted.', $imported));
+
+            return [
+                'documents' => $imported,
+                'attempted' => $attempted,
+                'failed' => $failed,
+                'collection' => $collection,
+                'previous' => $previous,
+                'duration_ms' => $durationMs,
+            ];
+        } catch (\Throwable $e) {
+            $deleted = false;
+            if ($created && !$promoted) {
+                $deleted = $this->deleteOwnedStaging($collection);
+            }
+            $status = $e instanceof ReindexCancelledException ? 'cancelled' : 'failed';
+            $code = match (true) {
+                $e instanceof BatchImportException => 'batch_import_failed',
+                $e instanceof VerificationException => 'document_count_mismatch',
+                $e instanceof ReindexCancelledException => 'cancelled',
+                default => 'rebuild_failed',
+            };
+            try {
+                if ($collection !== '') {
+                    if ($deleted) {
+                        $this->stateStore?->forgetGeneration($collection);
+                    } else {
+                        $this->stateStore?->markGeneration($collection, $status);
+                    }
+                }
+                $this->stateStore?->markTerminal(
+                    $this->profile->name(),
+                    $status,
+                    $code,
+                    $this->durationMs($started),
+                    $attempted,
+                    $imported,
+                    $failed,
+                );
+            } catch (\Throwable $stateError) {
+                ($this->log)(sprintf('Could not persist failed rebuild state: %s', $stateError->getMessage()));
+            }
+            throw $e;
+        } finally {
+            $lock->release();
         }
-
-        if ($batch) {
-            $this->flush($collection, $batch);
-            $total += count($batch);
-        }
-
-        $this->client->aliases->upsert($this->alias, ['collection_name' => $collection]);
-        ($this->log)(sprintf("Alias '%s' → '%s'", $this->alias, $collection));
-
-        $this->dropOldCollections($collection, $base);
-        ($this->log)(sprintf('Done — %d documents indexed.', $total));
-
-        return ['documents' => $total, 'collection' => $collection];
     }
 
     /**
@@ -154,11 +279,23 @@ final class Reindexer
      */
     public function indexOne(int $id): bool
     {
+        return $this->syncOne($id) === 'upserted';
+    }
+
+    /**
+     * Converge one document with current profile scope.
+     *
+     * @return 'upserted'|'deleted'|'missing_alias'|'ignored'
+     */
+    public function syncOne(int $id): string
+    {
         if ($id <= 0) {
-            return false;
+            return 'ignored';
+        }
+        if ($this->aliasTarget() === null) {
+            return 'missing_alias';
         }
 
-        // In scope for this profile? Same predicate as run(), narrowed to one id.
         $predicate = $this->sourcePredicate();
         $sql = 'SELECT id, title, is_public FROM resource'
             . ' WHERE resource_type = :rt AND id = :id'
@@ -167,18 +304,25 @@ final class Reindexer
             ->executeQuery($sql, ['rt' => Item::class, 'id' => $id])
             ->fetchAssociative();
         if ($row === false) {
-            return false; // not a source resource of this corpus
+            $this->deleteOne($id);
+            return 'deleted';
         }
 
         $doc = $this->buildDoc($row, $this->buildMapper());
 
-        $results = $this->client->collections[$this->alias]->documents->import([$doc], ['action' => 'upsert']);
-        foreach ($results as $result) {
-            if (is_array($result) && ($result['success'] ?? true) === false) {
-                throw new \RuntimeException('Typesense upsert failed: ' . (string) ($result['error'] ?? 'unknown error'));
-            }
+        $result = ImportResult::fromResponse(
+            $this->client->collections[$this->alias]->documents->import([$doc], ['action' => 'upsert']),
+            [$doc],
+        );
+        if (!$result->isComplete()) {
+            throw new BatchImportException(
+                $this->alias,
+                $result->successful(),
+                $result->failedIds(),
+                $result->errors(),
+            );
         }
-        return true;
+        return 'upserted';
     }
 
     /**
@@ -188,7 +332,13 @@ final class Reindexer
      */
     public function deleteOne(int $id): void
     {
-        $this->client->collections[$this->alias]->documents[(string) $id]->delete();
+        try {
+            $this->client->collections[$this->alias]->documents[(string) $id]->delete();
+        } catch (\Throwable $e) {
+            if (!$this->isNotFound($e)) {
+                throw $e;
+            }
+        }
     }
 
     /**
@@ -364,7 +514,8 @@ final class Reindexer
             . ' JOIN vocabulary vo ON p.vocabulary_id = vo.id'
             . ' LEFT JOIN resource t ON v.value_resource_id = t.id'
             . " WHERE v.resource_id IN ($idList)"
-            . " AND CONCAT(vo.prefix, ':', p.local_name) IN ($termList)";
+            . " AND CONCAT(vo.prefix, ':', p.local_name) IN ($termList)"
+            . ' ORDER BY v.resource_id ASC, v.property_id ASC, v.id ASC';
 
         $out = [];
         foreach ($this->connection->executeQuery($sql)->fetchAllAssociative() as $row) {
@@ -716,43 +867,116 @@ final class Reindexer
     }
 
     /** @param list<array<string,mixed>> $docs */
-    private function flush(string $collection, array $docs): void
+    private function flush(string $collection, array $docs): int
     {
-        $results = $this->client->collections[$collection]->documents->import($docs, ['action' => 'upsert']);
-
-        $failed = 0;
-        $firstError = null;
-        foreach ($results as $result) {
-            if (is_array($result) && ($result['success'] ?? true) === false) {
-                $failed++;
-                $firstError ??= (string) ($result['error'] ?? 'unknown error');
-            }
+        $result = ImportResult::fromResponse(
+            $this->client->collections[$collection]->documents->import($docs, ['action' => 'upsert']),
+            $docs,
+        );
+        if (!$result->isComplete()) {
+            throw new BatchImportException(
+                $collection,
+                $result->successful(),
+                $result->failedIds(),
+                $result->errors(),
+            );
         }
-        if ($failed > 0) {
-            ($this->log)(sprintf('  %d document(s) failed in batch; first error: %s', $failed, (string) $firstError));
+        return $result->successful();
+    }
+
+    private function aliasTarget(): ?string
+    {
+        try {
+            $alias = $this->client->aliases[$this->alias]->retrieve();
+            $target = is_array($alias) ? (string) ($alias['collection_name'] ?? '') : '';
+            return $target !== '' ? $target : null;
+        } catch (\Throwable $e) {
+            if ($this->isNotFound($e)) {
+                return null;
+            }
+            throw $e;
         }
     }
 
-    private function dropOldCollections(string $keep, string $base): void
+    private function deleteOwnedStaging(string $collection): bool
     {
         try {
-            $collections = $this->client->collections->retrieve();
+            $this->client->collections[$collection]->delete();
+            ($this->log)(sprintf('Deleted session staging collection %s', $collection));
+            return true;
         } catch (\Throwable $e) {
-            ($this->log)('Cleanup skipped: ' . $e->getMessage());
+            if ($this->isNotFound($e)) {
+                return true;
+            }
+            ($this->log)(sprintf('Could not delete session staging collection %s: %s', $collection, $e->getMessage()));
+            return false;
+        }
+    }
+
+    private function cleanupRetiredCollections(string $live, ?string $rollback): void
+    {
+        if ($this->stateStore === null) {
             return;
         }
+        $keep = array_values(array_filter([$live, $rollback], 'is_string'));
+        foreach ($this->stateStore->cleanupCandidates($this->profile->name(), $keep, $this->retentionDays) as $name) {
+            try {
+                $this->client->collections[$name]->delete();
+                $this->stateStore->forgetGeneration($name);
+                ($this->log)(sprintf('Deleted retired owned collection %s', $name));
+            } catch (\Throwable $e) {
+                ($this->log)(sprintf('Could not delete retired collection %s: %s', $name, $e->getMessage()));
+            }
+        }
+    }
 
-        foreach ($collections as $collection) {
-            $name = is_array($collection) ? (string) ($collection['name'] ?? '') : '';
-            if ($name === '' || $name === $keep || !str_starts_with($name, $base)) {
+    /**
+     * Lock ownership proves no earlier worker is still writing. Remove its
+     * unpublished, metadata-owned staging collections, while preserving and
+     * reconciling any collection that is already the live alias target.
+     */
+    private function recoverOrphanedCollections(?string $liveTarget): void
+    {
+        if ($this->stateStore === null) {
+            return;
+        }
+        foreach ($this->stateStore->orphanedCollections($this->profile->name()) as $name) {
+            if ($name === $liveTarget) {
+                $this->stateStore->markGeneration($name, 'live');
                 continue;
             }
             try {
                 $this->client->collections[$name]->delete();
-                ($this->log)(sprintf('Dropped old collection %s', $name));
+                $this->stateStore->forgetGeneration($name);
+                ($this->log)(sprintf('Removed orphaned staging collection %s', $name));
             } catch (\Throwable $e) {
-                ($this->log)(sprintf('Could not drop %s: %s', $name, $e->getMessage()));
+                if ($this->isNotFound($e)) {
+                    $this->stateStore->forgetGeneration($name);
+                    continue;
+                }
+                $this->stateStore->markGeneration($name, 'failed');
+                ($this->log)(sprintf('Could not remove orphaned staging collection %s: %s', $name, $e->getMessage()));
             }
         }
+    }
+
+    private function throwIfCancelled(): void
+    {
+        if ($this->cancel !== null && ($this->cancel)()) {
+            throw new ReindexCancelledException(sprintf('Reindex of "%s" was cancelled before promotion.', $this->profile->name()));
+        }
+    }
+
+    private function durationMs(int $started): int
+    {
+        return (int) round((hrtime(true) - $started) / 1_000_000);
+    }
+
+    private function isNotFound(\Throwable $e): bool
+    {
+        $message = strtolower($e->getMessage());
+        return str_contains($message, 'not found')
+            || str_contains($message, '404')
+            || str_contains($message, 'could not find');
     }
 }

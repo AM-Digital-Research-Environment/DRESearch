@@ -39,6 +39,8 @@ final class ResearchItemMapper implements MapperInterface
      */
     public function map(array $item, array $values, ?string $thumbnailUrl): array
     {
+        $bag = new ValueBag($values);
+
         // Facet → Omeka property (config-driven). '' if a facet is unmapped,
         // which simply yields no values from $values.
         $pType       = $this->profile->property('type_s') ?? '';
@@ -62,10 +64,10 @@ final class ResearchItemMapper implements MapperInterface
             'title'     => $item['title'] !== '' ? $item['title'] : sprintf('[Untitled #%d]', $item['id']),
         ];
 
-        if (($abstract = $this->firstLiteral($values, 'dcterms:abstract')) !== null) {
+        if (($abstract = $bag->firstLiteral('dcterms:abstract')) !== null) {
             $doc['abstract'] = $abstract;
         }
-        if (($description = $this->firstLiteral($values, 'dcterms:description')) !== null) {
+        if (($description = $bag->firstLiteral('dcterms:description')) !== null) {
             $doc['description'] = $description;
         }
 
@@ -210,17 +212,6 @@ final class ResearchItemMapper implements MapperInterface
         if ($out) {
             $doc[$field] = array_values(array_unique($out));
         }
-    }
-
-    /** @param array<string, list<array{vrid:?int, value:?string, title:?string}>> $values */
-    private function firstLiteral(array $values, string $term): ?string
-    {
-        foreach ($values[$term] ?? [] as $v) {
-            if (($v['value'] ?? '') !== '') {
-                return $v['value'];
-            }
-        }
-        return null;
     }
 
     /**

@@ -36,7 +36,8 @@ export interface YearBounds {
 
 /** Per-block config the server inlines; read once on mount. */
 export interface Bootstrap {
-  block_id: number;
+  /** Persisted Omeka block id. Null on the federated surface. */
+  block_id: number | null;
   /** Search profile (corpus) this block queries, e.g. "research_projects". */
   profile: string;
   /** Result card to render. */
@@ -57,8 +58,6 @@ export interface Bootstrap {
   /** Sort choices to show, in order (varies by corpus — e.g. no year sorts when date-less). */
   sort_options?: SortOption[];
   per_page: number;
-  /** Admin-authored raw Typesense filter_by; echoed back on every request. */
-  locked_filter: string;
   /** Result links are built as `${item_url_base}/${doc.id}`. */
   item_url_base: string;
   endpoints: { search: string; export: string; suggest: string };
@@ -208,7 +207,13 @@ export interface SearchResponse {
   hits: Doc[];
   facets: Facet[];
   search_time_ms?: number;
-  error?: string | null;
+  error?: ApiError | null;
+}
+
+export interface ApiError {
+  code: string;
+  message: string;
+  request_id?: string;
 }
 
 export interface Suggestion {
@@ -222,14 +227,14 @@ export interface Suggestion {
 export type ActiveFilters = Record<string, string[]>;
 
 export interface SearchRequest {
-  profile: string;
   q: string;
   page: number;
   per_page: number;
   sort: SortKey;
   filters: ActiveFilters;
   facets: string[];
-  locked_filter: string;
+  /** Server resolves any saved locked filter from this id. */
+  block_id?: number;
   /** Year bounds — null means "no constraint at that end". */
   year_from?: number | null;
   year_to?: number | null;
@@ -244,7 +249,7 @@ export interface ExportRequest {
   q: string;
   sort: SortKey;
   filters: ActiveFilters;
-  locked_filter: string;
+  block_id?: number;
   year_from?: number | null;
   year_to?: number | null;
 }
@@ -253,9 +258,13 @@ export interface ExportResponse {
   available: boolean;
   /** Total matches (may exceed the capped `docs` length). */
   found: number;
+  exported: number;
+  capped: boolean;
+  /** False only when the operation failed; capping is represented separately. */
+  complete: boolean;
   /** The exported documents (citation / display fields only). */
   docs: Doc[];
-  error?: string | null;
+  error?: ApiError | null;
 }
 
 // ── Federated search (header bar + grouped results page) ─────────────────────
@@ -336,6 +345,8 @@ export interface SearchAllRequest {
   sort?: SortKey;
   filters?: ActiveFilters;
   facets?: string[];
+  /** Skip the expensive per-corpus fan-out when tab counts are already cached. */
+  include_counts?: boolean;
   year_from?: number | null;
   year_to?: number | null;
 }

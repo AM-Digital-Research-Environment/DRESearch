@@ -2,6 +2,9 @@
 # runs on Linux (Docker) and ships a precompiled bundle in asset/dist.
 * text=auto eol=lf
 
+# Minified vendor/runtime tables can contain literal whitespace character sets.
+asset/dist/*.js -whitespace
+
 # Binary assets (none yet, but keep Git from munging them if added).
 *.png binary
 *.jpg binary

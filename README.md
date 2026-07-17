@@ -237,9 +237,10 @@ All share the same options:
   (Date-less corpora — people, sections, organisations, and the four term corpora —
   no longer offer the meaningless Newest/Oldest.)
 - **Results per page**.
-- **Locked filter** — an optional raw Typesense `filter_by` to scope the block,
+- **Locked filter** — an optional Typesense `filter_by` saved with the block,
   e.g. pin items to one project (`project_s`) or projects to one research section
-  (`section_ss`).
+  (`section_ss`). The browser sends only the block ID; the server reloads the
+  saved scope, so visitors cannot weaken or replace it.
 
 Put each block on its own page and link them in the site navigation.
 
@@ -476,6 +477,14 @@ Notes:
 > item authority sets / `dcterms:type` targets. They
 > come from the MongoDB2OmekaS config; on a different Omeka instance, override the
 > `dre_search` config in `config/local.config.php`.
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Operations and rebuild recovery](docs/operations.md)
+- [Profile configuration](docs/profile-configuration.md)
+- [Public API](docs/public-api.md)
+- [Upgrading to 1.17](docs/upgrade-1.17.md)
 
 ## Development
 

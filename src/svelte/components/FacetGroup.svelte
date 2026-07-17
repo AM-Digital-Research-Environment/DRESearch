@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FacetCount } from '../lib/types';
-  import { t } from '../lib/i18n';
+  import { formatNumber, t } from '../lib/i18n';
   import { foldAccents } from '../lib/text';
 
   interface Props {
@@ -72,7 +72,7 @@
                   onToggle(field, c.value, (e.currentTarget as HTMLInputElement).checked)}
               />
               <span class="dre-facet__value" title={c.value}>{c.value}</span>
-              <span class="dre-facet__count">{c.count.toLocaleString()}</span>
+              <span class="dre-facet__count">{formatNumber(c.count)}</span>
             </label>
           </li>
         {/each}

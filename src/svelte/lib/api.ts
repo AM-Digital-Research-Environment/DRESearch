@@ -21,17 +21,17 @@ export class SearchApi {
   constructor(
     private readonly endpoints: Bootstrap['endpoints'],
     private readonly profile: string,
+    private readonly blockId: number | null = null,
   ) {}
 
-  async search(req: SearchRequest): Promise<SearchResponse> {
+  async search(req: SearchRequest, signal?: AbortSignal): Promise<SearchResponse> {
     const res = await fetch(this.endpoints.search, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ ...req, profile: this.profile }),
+      body: JSON.stringify(this.withScope(req)),
+      signal,
     });
-    if (!res.ok) {
-      throw new Error(`Search request failed (HTTP ${res.status})`);
-    }
+    await requireOk(res, 'Search request failed');
     return (await res.json()) as SearchResponse;
   }
 
@@ -44,18 +44,17 @@ export class SearchApi {
     const res = await fetch(this.endpoints.export, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ ...req, profile: this.profile }),
+      body: JSON.stringify(this.withScope(req)),
     });
-    if (!res.ok) {
-      throw new Error(`Export request failed (HTTP ${res.status})`);
-    }
+    await requireOk(res, 'Export request failed');
     return (await res.json()) as ExportResponse;
   }
 
   async suggest(q: string, signal?: AbortSignal): Promise<Suggestion[]> {
     const url =
       `${this.endpoints.suggest}?profile=${encodeURIComponent(this.profile)}` +
-      `&q=${encodeURIComponent(q)}`;
+      `&q=${encodeURIComponent(q)}` +
+      (this.blockId !== null ? `&block_id=${encodeURIComponent(this.blockId)}` : '');
     try {
       const res = await fetch(url, { headers: { Accept: 'application/json' }, signal });
       if (!res.ok) {
@@ -68,6 +67,28 @@ export class SearchApi {
       return [];
     }
   }
+
+  private withScope<T extends SearchRequest | ExportRequest>(req: T): T & { profile: string } {
+    return {
+      ...req,
+      profile: this.profile,
+      ...(this.blockId !== null ? { block_id: this.blockId } : {}),
+    };
+  }
+}
+
+async function requireOk(res: Response, fallback: string): Promise<void> {
+  if (res.ok) return;
+  type ErrorBody = { error?: { message?: string; request_id?: string } };
+  let body: ErrorBody | undefined;
+  try {
+    body = (await res.json()) as ErrorBody;
+  } catch {
+    // Non-JSON intermediary response: fall back to the stable HTTP message.
+  }
+  const message = body?.error?.message?.trim() || `${fallback} (HTTP ${res.status})`;
+  const requestId = body?.error?.request_id || res.headers.get('X-Request-ID');
+  throw new Error(requestId ? `${message} [${requestId}]` : message);
 }
 
 /**
@@ -100,14 +121,14 @@ export async function suggestAll(
 export async function searchAll(
   endpoint: string,
   req: SearchAllRequest,
+  signal?: AbortSignal,
 ): Promise<SearchAllResponse> {
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(req),
+    signal,
   });
-  if (!res.ok) {
-    throw new Error(`Federated search failed (HTTP ${res.status})`);
-  }
+  await requireOk(res, 'Federated search failed');
   return (await res.json()) as SearchAllResponse;
 }

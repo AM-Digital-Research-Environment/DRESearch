@@ -22,9 +22,9 @@ use Throwable;
  * actual single-item map + upsert reuses {@see Reindexer::indexOne()} /
  * {@see Reindexer::deleteOne()}, so the mapping logic lives in exactly one place.
  *
- * Scope: only the saved item's OWN document is refreshed. Reverse-link
- * aggregates it feeds on OTHER records (e.g. a person's item_count when an item
- * crediting them is edited) are corpus-wide and left to the next full reindex.
+ * Scope: the saved item's own document is reconciled across every profile, then
+ * bounded incoming/outgoing links are refreshed for cross-document labels and
+ * aggregates. Fan-outs beyond the inline cap mark profiles dirty for a rebuild.
  *
  * Resilience: Typesense is optional. With no client configured every call is a
  * no-op, and any Typesense error is logged and swallowed — an indexing failure
@@ -37,6 +37,8 @@ final class IncrementalIndexer
         private readonly TypesenseClientProvider $provider,
         private readonly ProfileRegistry $registry,
         private readonly LoggerInterface $logger,
+        private readonly ?RebuildStateStore $stateStore = null,
+        private readonly int $inlineCap = 200,
     ) {
     }
 
@@ -49,11 +51,20 @@ final class IncrementalIndexer
      */
     public function indexItem(int $itemId): void
     {
+        $this->syncItem($itemId);
+    }
+
+    /** Reconcile one item against every current profile scope. */
+    public function syncItem(int $itemId): void
+    {
         if ($itemId <= 0) {
             return;
         }
         $client = $this->provider->getClient();
         if ($client === null) {
+            if ($this->provider->isConfigured()) {
+                $this->safeMarkDirty($this->registry->names(), 'Incremental sync skipped: Typesense client unavailable.');
+            }
             return; // Typesense not configured — nothing to do
         }
 
@@ -66,11 +77,24 @@ final class IncrementalIndexer
         foreach ($this->registry->all() as $profile) {
             try {
                 $reindexer = new Reindexer($this->connection, $client, $profile, $log);
-                if ($reindexer->indexOne($itemId)) {
+                $result = $reindexer->syncOne($itemId);
+                if ($result === 'upserted') {
                     $this->logger->info(sprintf(
                         'DRESearch: item %d re-indexed in collection "%s"',
                         $itemId,
                         $profile->collection()
+                    ));
+                } elseif ($result === 'deleted') {
+                    $this->logger->info(sprintf(
+                        'DRESearch: item %d removed from "%s" after leaving profile scope',
+                        $itemId,
+                        $profile->collection(),
+                    ));
+                } elseif ($result === 'missing_alias') {
+                    $this->logger->info(sprintf(
+                        'DRESearch: incremental sync skipped for item %d; alias "%s" has not been built yet',
+                        $itemId,
+                        $profile->collection(),
                     ));
                 }
             } catch (Throwable $e) {
@@ -81,8 +105,71 @@ final class IncrementalIndexer
                     $profile->collection(),
                     $e->getMessage()
                 ));
+                $this->safeMarkDirty([$profile->name()], 'Incremental synchronization failed; run a full rebuild.');
             }
         }
+    }
+
+    /**
+     * Hybrid cross-document consistency: update the saved item plus bounded
+     * outgoing/incoming linked resources whose titles, thumbnails, or reverse
+     * aggregates may have changed. Larger fan-outs become an explicit dirty flag.
+     */
+    public function syncItemWithDependencies(int $itemId): void
+    {
+        if ($itemId <= 0) {
+            return;
+        }
+        $this->syncItem($itemId);
+        $limit = max(1, $this->inlineCap) + 1;
+        try {
+            $rows = $this->connection->executeQuery(
+                'SELECT DISTINCT CASE WHEN resource_id = :caseId THEN value_resource_id ELSE resource_id END AS rid'
+                . ' FROM value WHERE (resource_id = :sourceId AND value_resource_id IS NOT NULL)'
+                . ' OR value_resource_id = :targetId LIMIT ' . $limit,
+                ['caseId' => $itemId, 'sourceId' => $itemId, 'targetId' => $itemId],
+            )->fetchFirstColumn();
+        } catch (Throwable $e) {
+            $this->logger->warn(sprintf('DRESearch: dependency lookup for item %d failed — %s', $itemId, $e->getMessage()));
+            $this->safeMarkDirty($this->registry->names(), 'Dependency lookup failed; reconciliation required.');
+            return;
+        }
+        $ids = array_values(array_unique(array_filter(
+            array_map('intval', $rows),
+            static fn(int $id): bool => $id > 0 && $id !== $itemId,
+        )));
+        if (count($ids) > $this->inlineCap) {
+            $this->safeMarkDirty(
+                $this->registry->names(),
+                sprintf('Dependency fan-out for item %d exceeded the inline cap; reconciliation required.', $itemId),
+            );
+            return;
+        }
+        foreach ($ids as $id) {
+            $this->syncItem($id);
+        }
+    }
+
+    /** @param list<int> $itemIds */
+    public function syncItems(array $itemIds, string $reason = 'batch operation'): void
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $itemIds), static fn(int $id): bool => $id > 0)));
+        if (count($ids) > $this->inlineCap) {
+            $this->safeMarkDirty(
+                $this->registry->names(),
+                sprintf('%s affected %d items (inline cap %d); reconciliation required.', $reason, count($ids), $this->inlineCap),
+            );
+            return;
+        }
+        foreach ($ids as $id) {
+            $this->syncItem($id);
+        }
+    }
+
+    /** Record that an event could not determine its complete dependency set. */
+    public function markDirty(string $reason): void
+    {
+        $this->safeMarkDirty($this->registry->names(), $reason);
     }
 
     /**
@@ -98,6 +185,9 @@ final class IncrementalIndexer
         }
         $client = $this->provider->getClient();
         if ($client === null) {
+            if ($this->provider->isConfigured()) {
+                $this->safeMarkDirty($this->registry->names(), 'Incremental delete skipped: Typesense client unavailable.');
+            }
             return;
         }
 
@@ -122,6 +212,7 @@ final class IncrementalIndexer
                     $profile->collection(),
                     $e->getMessage()
                 ));
+                $this->safeMarkDirty([$profile->name()], 'Incremental deletion failed; run a full rebuild.');
             }
         }
     }
@@ -137,5 +228,16 @@ final class IncrementalIndexer
         return str_contains($msg, 'not found')
             || str_contains($msg, '404')
             || str_contains($msg, 'could not find');
+    }
+
+    /** @param list<string> $profiles */
+    private function safeMarkDirty(array $profiles, string $reason): void
+    {
+        try {
+            $this->stateStore?->markDirty($profiles, $reason);
+        } catch (Throwable $e) {
+            // Operational metadata must never make the Omeka write fail.
+            $this->logger->warn(sprintf('DRESearch: could not mark index state dirty — %s', $e->getMessage()));
+        }
     }
 }

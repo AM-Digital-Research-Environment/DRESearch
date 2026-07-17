@@ -17,7 +17,7 @@
     type ExportFormat,
     type ExportMeta,
   } from '../lib/export';
-  import { t } from '../lib/i18n';
+  import { formatNumber, t } from '../lib/i18n';
 
   /**
    * "Export" disclosure in the results toolbar: a small outlined trigger (same
@@ -92,8 +92,8 @@
     error = null;
     try {
       const res = await fetchDocs();
-      if (!res.available) {
-        throw new Error(res.error || t('search_unavailable'));
+      if (!res.available || !res.complete || res.exported !== res.docs.length) {
+        throw new Error(res.error?.message || t('search_unavailable'));
       }
       if (res.docs.length === 0) {
         error = t('export_empty');
@@ -168,7 +168,7 @@
       {/each}
       {#if found > EXPORT_MAX_HITS}
         <p class="dre-export__hint">
-          {t('export_limit', { n: EXPORT_MAX_HITS.toLocaleString() })}
+          {t('export_limit', { n: formatNumber(EXPORT_MAX_HITS) })}
         </p>
       {/if}
       {#if error}

@@ -23,10 +23,25 @@ final class ProfileRegistry
     public static function fromArray(array $profilesConfig): self
     {
         $profiles = [];
+        $collections = [];
         foreach ($profilesConfig as $name => $config) {
-            if (is_array($config)) {
-                $profiles[(string) $name] = SearchProfile::fromArray((string) $name, $config);
+            if (!is_array($config)) {
+                throw new \InvalidArgumentException(sprintf('Search profile "%s" must be an object.', (string) $name));
             }
+            $profile = SearchProfile::fromArray((string) $name, $config);
+            if (isset($collections[$profile->collection()])) {
+                throw new \InvalidArgumentException(sprintf(
+                    'Profiles "%s" and "%s" use the same collection alias "%s".',
+                    $collections[$profile->collection()],
+                    $profile->name(),
+                    $profile->collection(),
+                ));
+            }
+            $collections[$profile->collection()] = $profile->name();
+            $profiles[$profile->name()] = $profile;
+        }
+        if ($profiles === []) {
+            throw new \InvalidArgumentException('At least one DRE Search profile must be configured.');
         }
         return new self($profiles);
     }
@@ -36,11 +51,15 @@ final class ProfileRegistry
         return isset($this->profiles[$name]);
     }
 
-    /** Resolve a profile by name, falling back to the default profile. */
+    /**
+     * Resolve a profile. Only null/empty means "default"; an explicit unknown
+     * name is rejected so jobs and public requests can never rebuild/search the
+     * first corpus by accident.
+     */
     public function get(?string $name): ?SearchProfile
     {
-        if ($name !== null && $name !== '' && isset($this->profiles[$name])) {
-            return $this->profiles[$name];
+        if ($name !== null && $name !== '') {
+            return $this->profiles[$name] ?? null;
         }
         return $this->default();
     }

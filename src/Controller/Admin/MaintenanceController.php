@@ -7,6 +7,7 @@ use DRESearch\Form\MaintenanceForm;
 use DRESearch\Job\IndexAllSearchProfiles;
 use DRESearch\Job\IndexSearchProfile;
 use DRESearch\Job\SyncStopwords;
+use DRESearch\Indexer\RebuildStateStore;
 use DRESearch\Search\TypesenseClientProvider;
 use DRESearch\Settings\ProfileRegistry;
 use Laminas\Mvc\Controller\AbstractActionController;
@@ -23,6 +24,7 @@ class MaintenanceController extends AbstractActionController
     public function __construct(
         private readonly TypesenseClientProvider $provider,
         private readonly ProfileRegistry $registry,
+        private readonly RebuildStateStore $stateStore,
     ) {
     }
 
@@ -119,6 +121,7 @@ class MaintenanceController extends AbstractActionController
     private function collectStatuses(): array
     {
         $client = $this->provider->getClient();
+        $states = $this->stateStore->all();
         $rows = [];
 
         foreach ($this->registry->all() as $profile) {
@@ -129,6 +132,7 @@ class MaintenanceController extends AbstractActionController
                 'reachable'  => false,
                 'documents'  => null,
                 'error'      => null,
+                'state'      => $states[$profile->name()] ?? [],
             ];
 
             if ($client !== null) {

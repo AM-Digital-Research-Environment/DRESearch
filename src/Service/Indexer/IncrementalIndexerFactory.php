@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace DRESearch\Service\Indexer;
 
 use DRESearch\Indexer\IncrementalIndexer;
+use DRESearch\Indexer\RebuildStateStore;
 use DRESearch\Search\TypesenseClientProvider;
 use DRESearch\Settings\ProfileRegistry;
 use Laminas\ServiceManager\Factory\FactoryInterface;
@@ -27,6 +28,8 @@ final class IncrementalIndexerFactory implements FactoryInterface
             provider:   $container->get(TypesenseClientProvider::class),
             registry:   $container->get(ProfileRegistry::class),
             logger:     $container->get('Omeka\Logger'),
+            stateStore: $container->get(RebuildStateStore::class),
+            inlineCap:  (int) ($container->get('Config')['dre_search']['operations']['inline_sync_cap'] ?? 200),
         );
     }
 }

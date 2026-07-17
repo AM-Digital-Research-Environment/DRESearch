@@ -4,8 +4,11 @@ declare(strict_types=1);
 namespace DRESearch\Site\BlockLayout;
 
 use DRESearch\Search\SearchProxy;
+use DRESearch\Search\QueryBuilder;
+use DRESearch\Security\HtmlSanitizer;
 use DRESearch\Settings\ProfileRegistry;
 use DRESearch\Settings\SearchProfile;
+use DRESearch\Settings\SortOptions;
 use Laminas\View\Renderer\PhpRenderer;
 use Omeka\Api\Representation\SitePageBlockRepresentation;
 use Omeka\Api\Representation\SitePageRepresentation;
@@ -36,13 +39,6 @@ use Omeka\Site\BlockLayout\AbstractBlockLayout;
  */
 abstract class AbstractSearchBlock extends AbstractBlockLayout
 {
-    private const SORT_OPTIONS = [
-        'relevance' => 'Relevance',       // @translate
-        'newest'    => 'Newest first',    // @translate
-        'oldest'    => 'Oldest first',    // @translate
-        'title'     => 'Title (A–Z)',     // @translate
-    ];
-
     public function __construct(
         private readonly SearchProxy $proxy,
         private readonly ProfileRegistry $registry,
@@ -57,24 +53,6 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
         return $this->registry->get($this->profileName());
     }
 
-    /**
-     * Human label for a sort key. Built-ins come from SORT_OPTIONS; the `count`
-     * key uses the profile's configured label (e.g. "Most research items").
-     *
-     * @param callable(string):string $t
-     */
-    private function sortLabel(?SearchProfile $profile, string $value, callable $t): string
-    {
-        if ($value === 'count' && $profile !== null) {
-            return $t($profile->sortCountLabel());
-        }
-        // Config-defined numeric sort (e.g. podcasts' "Episode number").
-        if ($profile !== null && ($custom = $profile->sortFieldLabel($value)) !== null) {
-            return $t($custom);
-        }
-        return $t(self::SORT_OPTIONS[$value] ?? $value);
-    }
-
     public function form(
         PhpRenderer $view,
         SiteRepresentation $site,
@@ -86,42 +64,41 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
         $hasYearFacet = $profile && $profile->hasYearFacet();
 
         $data = $block ? $block->data() : [];
+        $settings = new SearchBlockSettings($data, $profile);
         $title        = (string) ($data['title'] ?? '');
         $introHtml    = (string) ($data['intro_html'] ?? '');
-        $facets       = $data['facets'] ?? array_keys($allFacets);
-        $showYear     = !$block || (bool) ($data['show_year'] ?? true);
-        $sortValues   = $profile ? $profile->sortOptionValues() : array_keys(self::SORT_OPTIONS);
-        $defaultSort  = (string) ($data['default_sort'] ?? ($profile ? $profile->defaultSort() : 'relevance'));
-        if (!in_array($defaultSort, $sortValues, true)) {
-            $defaultSort = $sortValues[0] ?? 'relevance';
-        }
-        $perPage      = (int) ($data['results_per_page'] ?? 20);
-        $lockedFilter = (string) ($data['locked_filter'] ?? '');
+        $facets       = $settings->facets();
+        $showYear     = !$block || $settings->showYear();
+        $defaultSort  = $settings->defaultSort();
+        $perPage      = $settings->perPage();
+        $lockedFilter = $settings->lockedFilter();
 
         $esc     = fn(string $s): string => $view->escapeHtml($s);
         $escAttr = fn(string $s): string => $view->escapeHtmlAttr($s);
         $t       = fn(string $s): string => (string) $view->translate($s);
         $prefix  = 'o:block[__blockIndex__][o:data]';
+        $idPrefix = 'dre-search-__blockIndex__-';
+        $sortOptions = $profile ? SortOptions::forProfile($profile, $t) : [];
 
         ob_start();
         ?>
         <div class="field">
             <div class="field-meta">
-                <label for="dre-search-title"><?= $esc($t('Title (optional)')) ?></label>
+                <label for="<?= $escAttr($idPrefix) ?>title"><?= $esc($t('Title (optional)')) ?></label>
             </div>
             <div class="inputs">
-                <input id="dre-search-title" type="text"
+                <input id="<?= $escAttr($idPrefix) ?>title" type="text"
                        name="<?= $escAttr($prefix) ?>[title]" value="<?= $escAttr($title) ?>">
             </div>
         </div>
 
         <div class="field">
             <div class="field-meta">
-                <label for="dre-search-intro"><?= $esc($t('Intro HTML (optional)')) ?></label>
+                <label for="<?= $escAttr($idPrefix) ?>intro"><?= $esc($t('Intro HTML (optional)')) ?></label>
                 <div class="field-description"><?= $esc($t('Plain HTML rendered above the search.')) ?></div>
             </div>
             <div class="inputs">
-                <textarea id="dre-search-intro" rows="3"
+                <textarea id="<?= $escAttr($idPrefix) ?>intro" rows="3"
                           name="<?= $escAttr($prefix) ?>[intro_html]"><?= $esc($introHtml) ?></textarea>
             </div>
         </div>
@@ -133,6 +110,7 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
             </div>
             <div class="inputs">
                 <?php if ($hasYearFacet): ?>
+                    <input type="hidden" name="<?= $escAttr($prefix) ?>[show_year]" value="0">
                     <label style="display:block;">
                         <input type="checkbox"
                                name="<?= $escAttr($prefix) ?>[show_year]"
@@ -156,13 +134,13 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
 
         <div class="field">
             <div class="field-meta">
-                <label for="dre-search-sort"><?= $esc($t('Default sort')) ?></label>
+                <label for="<?= $escAttr($idPrefix) ?>sort"><?= $esc($t('Default sort')) ?></label>
             </div>
             <div class="inputs">
-                <select id="dre-search-sort" name="<?= $escAttr($prefix) ?>[default_sort]">
-                    <?php foreach ($sortValues as $key): ?>
-                        <option value="<?= $escAttr($key) ?>"<?= $key === $defaultSort ? ' selected' : '' ?>>
-                            <?= $esc($this->sortLabel($profile, $key, $t)) ?>
+                <select id="<?= $escAttr($idPrefix) ?>sort" name="<?= $escAttr($prefix) ?>[default_sort]">
+                    <?php foreach ($sortOptions as $option): ?>
+                        <option value="<?= $escAttr($option['value']) ?>"<?= $option['value'] === $defaultSort ? ' selected' : '' ?>>
+                            <?= $esc($option['label']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -171,23 +149,23 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
 
         <div class="field">
             <div class="field-meta">
-                <label for="dre-search-perpage"><?= $esc($t('Results per page')) ?></label>
+                <label for="<?= $escAttr($idPrefix) ?>perpage"><?= $esc($t('Results per page')) ?></label>
             </div>
             <div class="inputs">
-                <input id="dre-search-perpage" type="number" min="1" max="50" step="1"
+                <input id="<?= $escAttr($idPrefix) ?>perpage" type="number" min="1" max="<?= QueryBuilder::PER_PAGE_MAX ?>" step="1"
                        name="<?= $escAttr($prefix) ?>[results_per_page]" value="<?= $escAttr((string) $perPage) ?>">
             </div>
         </div>
 
         <div class="field">
             <div class="field-meta">
-                <label for="dre-search-locked"><?= $esc($t('Locked filter (optional)')) ?></label>
+                <label for="<?= $escAttr($idPrefix) ?>locked"><?= $esc($t('Locked filter (optional)')) ?></label>
                 <div class="field-description">
                     <?= $esc($t('Pins this block to a subset, Typesense filter_by syntax. Example: section_ss:=`Mobilities`')) ?>
                 </div>
             </div>
             <div class="inputs">
-                <input id="dre-search-locked" type="text"
+                <input id="<?= $escAttr($idPrefix) ?>locked" type="text" maxlength="1000"
                        name="<?= $escAttr($prefix) ?>[locked_filter]"
                        value="<?= $escAttr($lockedFilter) ?>" placeholder="field:=`...`">
             </div>
@@ -203,6 +181,7 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
     ) {
         $data = $block->data();
         $profile = $this->profile();
+        $settings = new SearchBlockSettings($data, $profile);
 
         // Inject the bundle once per page (headLink/headScript dedupe by URL).
         $view->headLink()->appendStylesheet($view->assetUrl('css/dre-search.css', 'DRESearch'));
@@ -213,37 +192,16 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
             ['defer' => true]
         );
 
-        $allFields = $profile ? $profile->fieldNames() : [];
-
-        // Sanitise the configured facet list against the known fields.
-        $facets = array_values(array_intersect(
-            $allFields,
-            (array) ($data['facets'] ?? $allFields)
-        ));
-        if ($facets === []) {
-            $facets = $allFields;
-        }
-
-        $hasYearFacet = $profile && $profile->hasYearFacet();
-        $showYear     = $hasYearFacet && (bool) ($data['show_year'] ?? true);
+        $facets = $settings->facets();
+        $showYear = $settings->showYear();
 
         // Sort options for this corpus (drops year sorts on date-less corpora,
         // adds the count sort where configured). default_sort is validated against
         // them so a stale/invalid saved value can't reach the client.
         $t           = fn(string $s): string => (string) $view->translate($s);
-        $sortValues  = $profile ? $profile->sortOptionValues() : array_keys(self::SORT_OPTIONS);
-        $defaultSort = (string) ($data['default_sort'] ?? ($profile ? $profile->defaultSort() : 'relevance'));
-        if (!in_array($defaultSort, $sortValues, true)) {
-            $defaultSort = $sortValues[0] ?? 'relevance';
-        }
-        $sortOptions = [];
-        foreach ($sortValues as $value) {
-            $sortOptions[] = ['value' => $value, 'label' => $this->sortLabel($profile, $value, $t)];
-        }
-
-        $perPage      = (int) ($data['results_per_page'] ?? 20);
-        $perPage      = $perPage > 0 ? $perPage : 20;
-        $lockedFilter = (string) ($data['locked_filter'] ?? '');
+        $defaultSort = $settings->defaultSort();
+        $sortOptions = $profile ? SortOptions::forProfile($profile, $t) : [];
+        $perPage = $settings->perPage();
 
         $facetLabels = [];
         foreach ($facets as $field) {
@@ -273,7 +231,6 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
             'default_sort'  => $defaultSort,
             'sort_options'  => $sortOptions,
             'per_page'      => $perPage,
-            'locked_filter' => $lockedFilter,
             // Client builds result links as `${item_url_base}/${id}`.
             'item_url_base' => $view->basePath('/s/' . $siteSlug . '/item'),
             'endpoints'     => [
@@ -290,7 +247,7 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
             'per_page'      => $perPage,
             'sort'          => $defaultSort,
             'facets'        => $facets,
-            'locked_filter' => $lockedFilter,
+            'block_id'      => (int) $block->id(),
         ]);
 
         return $view->partial($templateViewScript, [
@@ -298,7 +255,7 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
             'data'       => $data,
             'bootstrap'  => $bootstrap,
             'title'      => (string) ($data['title'] ?? ''),
-            'intro_html' => (string) ($data['intro_html'] ?? ''),
+            'intro_html' => HtmlSanitizer::sanitize((string) ($data['intro_html'] ?? '')),
         ]);
     }
 }
