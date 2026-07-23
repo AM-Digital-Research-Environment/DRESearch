@@ -40,10 +40,10 @@ final class SearchProfile
 {
     /**
      * @param array<string,array{property:?string,label:string,array:bool,derived:bool}> $facets
-     * @param array<string,array{property:?string,type:string,facet:bool,sort:bool,index:bool}> $displayFields
+     * @param array<string,array{property:?string,type:string,facet:bool,sort:bool,index:bool,search_only:bool}> $displayFields
      * @param array<string,int> $itemSets
      * @param array<string,int> $typeItems
-     * @param array{mode:string,property:?string,label:string} $date
+     * @param array{mode:string,property:?string,label:string,facet:bool} $date
      * @param list<string> $readProperties
      * @param array{from_template:int,property:string,public_only:bool}|null $itemLink
      * @param array{counts?:array<string,array<string,mixed>>,roles?:list<array<string,mixed>>}|null $reverseLinks
@@ -300,7 +300,7 @@ final class SearchProfile
     {
         $fields = $this->fieldNames();
         foreach ($this->displayFields as $name => $def) {
-            if (($def['facet'] ?? false) && (($def['index'] ?? true) !== false)) {
+            if ($def['facet'] && $def['index']) {
                 $fields[] = $name;
             }
         }

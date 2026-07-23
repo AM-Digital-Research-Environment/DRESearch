@@ -108,9 +108,7 @@ final class ValueBag
     public function firstYearRange(?string $term): array
     {
         foreach ($this->rows($term) as $row) {
-            if (!preg_match_all('/\b(1\d{3}|20\d{2})\b/', (string) ($row['value'] ?? ''), $matches)
-                || $matches[1] === []
-            ) {
+            if (!preg_match_all('/\b(1\d{3}|20\d{2})\b/', (string) ($row['value'] ?? ''), $matches)) {
                 continue;
             }
             $years = array_map('intval', $matches[1]);

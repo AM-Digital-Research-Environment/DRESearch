@@ -56,8 +56,8 @@ final class SourceScope
             ];
         }
         return new self(
-            isset($config['template_id']) && $config['template_id'] !== null ? (int) $config['template_id'] : null,
-            isset($config['item_set_id']) && $config['item_set_id'] !== null ? (int) $config['item_set_id'] : null,
+            isset($config['template_id']) ? (int) $config['template_id'] : null,
+            isset($config['item_set_id']) ? (int) $config['item_set_id'] : null,
             $extra,
         );
     }
