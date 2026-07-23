@@ -35,6 +35,11 @@ jobs:
         image: typesense/typesense:30.1
         ports:
           - 8108:8108
+        # The Typesense image does not create the data dir itself; without a
+        # mounted volume the server exits at boot ("Data directory /data does
+        # not exist") and the integration test's health gate times out.
+        volumes:
+          - typesense-data:/data
         env:
           TYPESENSE_API_KEY: dre-search-ci-key
           TYPESENSE_DATA_DIR: /data
