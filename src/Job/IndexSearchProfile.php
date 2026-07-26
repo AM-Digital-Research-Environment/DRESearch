@@ -46,7 +46,9 @@ class IndexSearchProfile extends AbstractJob
         };
         $config = $services->get('Config')['dre_search']['operations'] ?? [];
         $stateStore = $services->get(RebuildStateStore::class);
-        $jobId = (string) $this->getJob()->getId();
+        // AbstractJob exposes the Job entity as a protected property; there is no
+        // getJob() accessor in Omeka core.
+        $jobId = (string) $this->job->getId();
 
         try {
             $reindexer = new Reindexer(

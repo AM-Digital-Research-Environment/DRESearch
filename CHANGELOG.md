@@ -3,6 +3,15 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.17.1] - 2026-07-26
+
+### Fixed
+
+- Both reindex jobs crashed immediately with `Call to undefined method
+  getJob()`. Omeka's `AbstractJob` exposes the Job entity as the protected
+  `$job` property and has no `getJob()` accessor, so "Reindex all corpora" and
+  the per-corpus reindex both aborted before indexing anything.
+
 ## [1.17.0] - 2026-07-17
 
 ### Added
