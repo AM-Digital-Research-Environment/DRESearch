@@ -67,4 +67,22 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - run: test -f LICENSE && test -f SECURITY.md && test -f CHANGELOG.md && test -f CONTRIBUTING.md
-      - run: grep -q '^version[[:space:]]*=[[:space:]]*"1.17.0"' config/module.ini
+      # Pin nothing: assert the three places a release number lives agree with
+      # each other, so a bump never has to be mirrored into this workflow.
+      - name: Version consistency (module.ini / package.json / CHANGELOG)
+        run: |
+          module_version=$(sed -n 's/^version[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' config/module.ini | head -1)
+          package_version=$(sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' package.json | head -1)
+          if [ -z "$module_version" ]; then
+            echo "::error file=config/module.ini::no version key found"
+            exit 1
+          fi
+          if [ "$module_version" != "$package_version" ]; then
+            echo "::error::version mismatch: config/module.ini=$module_version, package.json=$package_version"
+            exit 1
+          fi
+          if ! grep -q "^## \[$module_version\]" CHANGELOG.md; then
+            echo "::error file=CHANGELOG.md::no '## [$module_version]' entry for the current version"
+            exit 1
+          fi
+          echo "Version $module_version is consistent across module.ini, package.json and CHANGELOG.md."
