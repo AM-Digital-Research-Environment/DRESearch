@@ -3,6 +3,20 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.17.2] - 2026-07-30
+
+### Changed
+
+- Match highlights follow the DRE theme's renamed highlight token. The theme
+  renamed `--dre-hl-bg` to `--highlight-bg` in v2.22.0 — it was the only token
+  carrying a product prefix and an abbreviation, on the one token whose whole
+  purpose is to be shared across theme, search and visualizations.
+  `Highlight.svelte` now reads
+  `var(--highlight-bg, var(--dre-hl-bg, <literal>))`, so a matched term keeps its
+  wash against both the new theme and any instance still on 2.21.x. The
+  `--dre-hl-bg` step can be dropped once every deployment is on ≥ 2.23, when the
+  theme retires its deprecated alias.
+
 ## [1.17.1] - 2026-07-26
 
 ### Fixed
