@@ -102,8 +102,7 @@
             };
             const feature = event.features?.[0];
             const src = map?.getSource(source) as
-              | { getClusterExpansionZoom(id: number): Promise<number> }
-              | undefined;
+              { getClusterExpansionZoom(id: number): Promise<number> } | undefined;
             if (feature && src)
               void src
                 .getClusterExpansionZoom(feature.properties.cluster_id)

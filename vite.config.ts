@@ -37,7 +37,7 @@ export default defineConfig({
     sourcemap: false,
     target: 'es2022',
     lib: {
-      entry: resolve(__dirname, 'src/svelte/main.ts'),
+      entry: resolve(import.meta.dirname, 'src/svelte/main.ts'),
       formats: ['iife'],
       name: 'DreSearch',
       fileName: () => 'dre-search.js',

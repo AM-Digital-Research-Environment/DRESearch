@@ -3,6 +3,21 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.18.1] - 2026-08-01
+
+### Changed
+
+- Updated the supported Svelte 5, Vite 8, ESLint 10, TypeScript ESLint,
+  Svelte Check, Prettier, and browser-global development toolchain releases.
+- Regenerated the committed production bundle with Svelte 5.56.8 and Vite
+  8.2.0.
+
+### Security
+
+- Refreshed transitive build dependencies to remove the reported
+  `brace-expansion` denial-of-service and PostCSS source-map path-traversal
+  advisories; `npm audit` now reports no known vulnerabilities.
+
 ## [1.18.0] - 2026-08-01
 
 ### Added
