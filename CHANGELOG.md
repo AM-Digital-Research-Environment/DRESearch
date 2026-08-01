@@ -24,8 +24,9 @@ All notable changes to DRE Search are documented here. The project follows
 
 - One shared reindex orchestrator now owns stopword provisioning, one/all profile
   rebuild wiring, and the non-fatal analytics follow-up.
-- CI now runs PHP syntax, PHPCS, PHPUnit, PHPStan, frontend lint/type/tests/build,
-  a committed-bundle check, and a live Typesense 30 union integration test.
+- CI now runs PHP syntax, PHPUnit and PHPStan on PHP 8.2–8.5, plus frontend
+  lint/type/tests/build, a committed-bundle check, and a live Typesense 30 union
+  integration test.
 
 ### Deployment
 
