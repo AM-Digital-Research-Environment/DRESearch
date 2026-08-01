@@ -16,6 +16,10 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
       - run: npm ci
       - run: npm run lint
       - run: npm run check
@@ -58,7 +62,8 @@ jobs:
       - run: composer validate --strict
       - run: composer install --no-interaction --prefer-dist
       - name: PHP syntax
-        run: find Module.php config src tests/phpunit -name '*.php' -print0 | xargs -0 -n1 php -l
+        run: find Module.php config src scripts tests/phpunit -name '*.php' -print0 | xargs -0 -n1 php -l
+      - run: composer lint
       - run: composer test
       - run: composer analyse
 

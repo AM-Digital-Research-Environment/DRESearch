@@ -1,9 +1,10 @@
 <script lang="ts">
-  import type { Doc } from '../lib/types';
+  import type { Doc, ViewMode } from '../lib/types';
   import { t } from '../lib/i18n';
   import { firstMarked, markedLookup } from '../lib/highlight';
   import Highlight from './Highlight.svelte';
   import MatchedIn from './MatchedIn.svelte';
+  import { thumbnailFor } from '../lib/thumbnail';
 
   /**
    * One result card:
@@ -29,13 +30,17 @@
     doc: Doc;
     itemUrlBase: string;
     onAddFilter: (field: string, value: string) => void;
+    view?: ViewMode;
   }
 
-  const { doc, itemUrlBase, onAddFilter }: Props = $props();
+  const { doc, itemUrlBase, onAddFilter, view = 'list' }: Props = $props();
 
   const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
   const title = $derived(doc.title || t('untitled'));
   const titleHl = $derived(doc._highlights?.title?.[0] ?? null);
+  const thumbnail = $derived(
+    thumbnailFor(doc.thumbnail_url, view === 'gallery' ? 'gallery' : 'list'),
+  );
 
   // Authors / contributors — clickable (filters creator_ss) and highlighted.
   const creators = $derived(doc.creator_ss ?? []);
@@ -56,11 +61,13 @@
   const languages = $derived(doc.language_ss ?? []);
 </script>
 
-<article class="dre-card" class:dre-card--no-thumb={!doc.thumbnail_url}>
-  {#if doc.thumbnail_url}
+<article class="dre-card" class:dre-card--gallery={view === 'gallery'}>
+  {#if thumbnail}
     <a class="dre-card__thumb" href={url} tabindex="-1" aria-hidden="true">
-      <img src={doc.thumbnail_url} alt="" loading="lazy" />
+      <img src={thumbnail} alt="" loading="lazy" />
     </a>
+  {:else}
+    <div class="dre-card__thumb dre-card__thumb--empty" aria-hidden="true"></div>
   {/if}
 
   <div class="dre-card__body">
@@ -161,14 +168,10 @@
     border-color: color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dcd6cb));
     box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.08));
   }
-  .dre-card--no-thumb {
-    grid-template-columns: 1fr;
-  }
-
   .dre-card__thumb {
     display: block;
-    width: 6rem;
-    height: 6rem;
+    width: 7rem;
+    height: 7rem;
     border-radius: var(--radius-sm, 0.375rem);
     overflow: hidden;
     background: var(--surface-sunken, #f1ede6);
@@ -179,6 +182,48 @@
     height: 100%;
     object-fit: cover;
     display: block;
+    filter: saturate(0.82) contrast(0.96);
+    transition: filter var(--transition-base, 200ms ease);
+  }
+  .dre-card:hover .dre-card__thumb img {
+    filter: saturate(1) contrast(1);
+  }
+  .dre-card__thumb--empty {
+    background: linear-gradient(
+      135deg,
+      var(--surface-sunken, #f1ede6),
+      var(--border-light, #eae5dd)
+    );
+  }
+  .dre-card--gallery {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0;
+    overflow: hidden;
+  }
+  .dre-card--gallery .dre-card__thumb {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4/3;
+    border: 0;
+    border-radius: 0;
+  }
+  .dre-card--gallery .dre-card__body {
+    padding: var(--space-md, 1rem);
+  }
+  .dre-card--gallery .dre-card__snippet,
+  .dre-card--gallery .dre-card__geo,
+  .dre-card--gallery :global(.dre-matched-in) {
+    display: none;
+  }
+  @media (prefers-color-scheme: dark) {
+    .dre-card__thumb {
+      border-color: var(--border, #dcd6cb);
+    }
+    .dre-card__thumb img {
+      filter: saturate(0.72) brightness(0.9) contrast(1.08);
+    }
   }
 
   .dre-card__body {

@@ -27,6 +27,8 @@ final class SearchProxy
         private readonly ProfileRegistry $registry,
         private readonly BlockScopeResolver $scopeResolver,
         private readonly LoggerInterface $logger,
+        /** @var list<string> */
+        private readonly array $unionProfiles = [],
     ) {
     }
 
@@ -316,6 +318,112 @@ final class SearchProxy
     }
 
     /**
+     * One merged Typesense v30 union result stream. The configured scope is
+     * curated toward content and named entities so authority vocabularies do not
+     * overwhelm the ranking. The server-held key never reaches the browser.
+     *
+     * @param array<string,mixed> $req
+     * @return array<string,mixed>
+     */
+    public function union(array $req, ?string $requestId = null): array
+    {
+        $validated = SearchRequest::union($req);
+        $client = $this->provider->getClient();
+        if ($client === null) {
+            return $this->unavailable($requestId);
+        }
+
+        $profiles = [];
+        $names = $this->unionProfiles !== [] ? $this->unionProfiles : $this->registry->names();
+        foreach ($names as $name) {
+            $profile = $this->registry->get((string) $name);
+            if ($profile !== null) {
+                $profiles[] = $profile;
+            }
+        }
+        if ($profiles === []) {
+            throw new RequestValidationException('empty_union_scope', 'No search profiles are configured for merged search.');
+        }
+
+        $searches = [];
+        foreach ($profiles as $profile) {
+            $searches[] = (new QueryBuilder($profile))->union($validated['q']);
+        }
+        $started = hrtime(true);
+        try {
+            $result = $client->multiSearch->perform(
+                ['union' => true, 'searches' => $searches],
+                ['page' => $validated['page'], 'per_page' => $validated['per_page']],
+            );
+        } catch (\Throwable $e) {
+            $this->logBackendFailure('union', $e, $profiles[0], $requestId);
+            return $this->unavailable($requestId);
+        }
+
+        $normalized = $this->normalize($result, $profiles[0]);
+        foreach ($normalized['hits'] as &$doc) {
+            $profile = $this->registry->get((string) ($doc['_profile'] ?? ''));
+            $doc['_profile_label'] = $profile?->label() ?? (string) ($doc['_profile'] ?? '');
+        }
+        unset($doc);
+        $this->logMetric('union', $started, $profiles[0], $requestId, ['found' => $normalized['found']]);
+        return $normalized;
+    }
+
+    /**
+     * Return up to MAP_MAX_HITS geocoded documents matching one location
+     * profile's current query/filter scope. Paging stays server-side so the map
+     * represents the result set rather than only the visible list page.
+     *
+     * @param array<string,mixed> $req
+     * @return array<string,mixed>
+     */
+    public function map(string $profileName, array $req, ?string $requestId = null): array
+    {
+        [$profile, $validated, $serverFilter] = $this->prepare($profileName, $req, 'search');
+        if (!isset($profile->displayFields()['geo'], $profile->displayFields()['has_coords'])) {
+            throw new RequestValidationException('map_unavailable', 'This search profile does not provide map coordinates.');
+        }
+        $client = $this->provider->getClient();
+        if ($client === null) {
+            return $this->unavailableMap($requestId);
+        }
+
+        $builder = new QueryBuilder($profile, $serverFilter);
+        $collection = $client->collections[$profile->collection()];
+        $docs = [];
+        $found = 0;
+        $pages = (int) ceil(QueryBuilder::MAP_MAX_HITS / QueryBuilder::EXPORT_PER_PAGE);
+        $started = hrtime(true);
+        for ($page = 1; $page <= $pages; $page++) {
+            try {
+                $result = $collection->documents->search($builder->map($validated, $page));
+            } catch (\Throwable $e) {
+                $this->logBackendFailure('map', $e, $profile, $requestId);
+                return $this->unavailableMap($requestId);
+            }
+            $found = (int) ($result['found'] ?? 0);
+            foreach ($result['hits'] ?? [] as $hit) {
+                if (is_array($hit['document'] ?? null)) {
+                    $docs[] = $hit['document'];
+                }
+            }
+            if (count($docs) >= $found || count($docs) >= QueryBuilder::MAP_MAX_HITS) {
+                break;
+            }
+        }
+        $docs = array_slice($docs, 0, QueryBuilder::MAP_MAX_HITS);
+        $this->logMetric('map', $started, $profile, $requestId, ['found' => $found, 'mapped' => count($docs)]);
+        return [
+            'available' => true,
+            'found' => $found,
+            'mapped' => count($docs),
+            'capped' => $found > QueryBuilder::MAP_MAX_HITS,
+            'docs' => $docs,
+        ];
+    }
+
+    /**
      * Global year span for the slider bounds, from the profile's date field(s)
      * (`year`, or the `year_start`/`year_end` pair). Null when the profile has
      * no year facet or Typesense is unavailable.
@@ -578,6 +686,22 @@ final class SearchProxy
             'error' => $this->publicError(
                 'export_failed',
                 'The export could not be completed. No file was produced.',
+                $requestId,
+            ),
+        ];
+    }
+
+    private function unavailableMap(?string $requestId = null): array
+    {
+        return [
+            'available' => false,
+            'found' => 0,
+            'mapped' => 0,
+            'capped' => false,
+            'docs' => [],
+            'error' => $this->publicError(
+                'map_failed',
+                'The map data could not be loaded.',
                 $requestId,
             ),
         ];

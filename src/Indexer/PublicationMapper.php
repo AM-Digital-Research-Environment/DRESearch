@@ -52,6 +52,14 @@ final class PublicationMapper implements MapperInterface
             $doc['abstract'] = $abstract;
         }
 
+        // Extracted publication full text is a search-only payload. The compact
+        // derived facet gives the client one stable token for its quick toggle.
+        $fulltextProperty = $this->profile->displayFields()['fulltext']['property'] ?? 'bibo:content';
+        if (($fulltext = $bag->firstLiteral($fulltextProperty)) !== null) {
+            $doc['fulltext'] = $fulltext;
+            $doc['has_fulltext'] = 'Yes';
+        }
+
         $df = $this->profile->displayFields();
 
         // Facet fields — each takes its linked titles (or literal fallback). Single-

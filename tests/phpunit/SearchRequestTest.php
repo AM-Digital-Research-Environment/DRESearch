@@ -43,4 +43,20 @@ final class SearchRequestTest extends TestCase
         $this->expectException(RequestValidationException::class);
         SearchRequest::fromArray(['include_counts' => 'false'], $this->profile());
     }
+
+    public function testUnionRequestIsBoundedAndRejectsExtraScope(): void
+    {
+        self::assertSame(
+            ['q' => 'archive', 'page' => 250, 'per_page' => 50],
+            SearchRequest::union(['q' => ' archive ', 'page' => 250, 'per_page' => 50]),
+        );
+        $this->expectException(RequestValidationException::class);
+        SearchRequest::union(['q' => 'archive', 'filters' => ['type_s' => ['Book']]]);
+    }
+
+    public function testUnionRequestRejectsOutOfRangePagination(): void
+    {
+        $this->expectException(RequestValidationException::class);
+        SearchRequest::union(['page' => 251]);
+    }
 }

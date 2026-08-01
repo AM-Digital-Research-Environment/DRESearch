@@ -35,6 +35,7 @@ return [
             // Module.php so the listener logic stays testable.
             Indexer\ItemEventListener::class => Service\Indexer\ItemEventListenerFactory::class,
             Indexer\RebuildStateStore::class => Service\Indexer\RebuildStateStoreFactory::class,
+            Indexer\ReindexOrchestrator::class => Service\Indexer\ReindexOrchestratorFactory::class,
         ],
     ],
 
@@ -153,6 +154,31 @@ return [
                     ],
                 ],
             ],
+            // Typesense v30 union search: one relevance-ranked result stream
+            // across the curated federated scope, still behind the server-held
+            // key. Union results intentionally carry no facets.
+            'dre-search-api-union' => [
+                'type'    => \Laminas\Router\Http\Literal::class,
+                'options' => [
+                    'route'    => '/dre-search/api/union',
+                    'defaults' => [
+                        'controller' => Controller\SearchController::class,
+                        'action'     => 'apiUnion',
+                    ],
+                ],
+            ],
+            // Location map payload: the same validated query/filter scope as
+            // list search, paged server-side and reduced to geocoded documents.
+            'dre-search-api-map' => [
+                'type'    => \Laminas\Router\Http\Literal::class,
+                'options' => [
+                    'route'    => '/dre-search/api/map',
+                    'defaults' => [
+                        'controller' => Controller\SearchController::class,
+                        'action'     => 'apiMap',
+                    ],
+                ],
+            ],
 
             // Federated results page, site-scoped so Omeka wraps it in the active
             // theme layout and currentSite() resolves. Child of the core `site`
@@ -246,6 +272,20 @@ return [
             'retention_days' => 30,
             // Maximum dependency/event fan-out performed inline after a save.
             'inline_sync_cap' => 200,
+        ],
+        'federated' => [
+            // Keep authority-only term corpora on their dedicated tabs so a
+            // short query is not swamped by generic vocabulary matches. This
+            // list is deliberately instance-overridable in local.config.php.
+            'union_profiles' => [
+                'research_items',
+                'research_projects',
+                'research_publications',
+                'research_podcasts',
+                'research_videos',
+                'research_people',
+                'research_organisations',
+            ],
         ],
 
         // ── Search profiles (corpora) ───────────────────────────────────────
@@ -398,7 +438,7 @@ return [
                 'kind'        => 'publication',
                 'template_id' => null, // spans the publication-type templates (article, book, chapter, …)
                 'item_set_id' => 29918, // the single "publications" item set holds them all
-                'query_by'    => 'title,abstract,author_ss,editor_ss,container_ss,publisher_ss,keyword_ss',
+                'query_by'    => 'title,abstract,fulltext,author_ss,editor_ss,container_ss,publisher_ss,keyword_ss',
                 // mode 'single' = one publication year; facet => a year range slider.
                 // dcterms:date is a numeric:timestamp whose @value is the year.
                 'date'        => ['mode' => 'single', 'property' => 'dcterms:date', 'label' => 'Year', 'facet' => true],
@@ -414,6 +454,9 @@ return [
                     'publisher_ss' => ['property' => 'dcterms:publisher', 'label' => 'Publisher',       'array' => true],
                     'keyword_ss'   => ['property' => 'dcterms:subject',   'label' => 'Keyword',         'array' => true],
                     'language_ss'  => ['property' => 'dcterms:language',  'label' => 'Language',        'array' => true],
+                    // Derived single-value facet rendered as a compact quick
+                    // toggle in the filter rail rather than a checkbox group.
+                    'has_fulltext' => ['property' => null,                'label' => 'Full text available', 'array' => false, 'derived' => true],
                 ],
 
                 // Display fields. author_ss / editor_ss keep the two roles apart for
@@ -427,6 +470,9 @@ return [
                     'issue_s'    => ['property' => 'bibo:issue',      'type' => 'string', 'facet' => false, 'index' => false],
                     'pages_s'    => ['property' => null,              'type' => 'string', 'facet' => false, 'index' => false],
                     'doi_s'      => ['property' => null,              'type' => 'string', 'facet' => false, 'index' => false],
+                    // Searchable extracted text, never returned in result
+                    // documents. A centred highlight still identifies matches.
+                    'fulltext'   => ['property' => 'bibo:content',     'type' => 'string', 'facet' => false, 'search_only' => true],
                 ],
 
                 // Properties read beyond the facet/display/date props: the abstract,
@@ -858,7 +904,13 @@ return [
 
                 'display_fields' => [
                     'item_count' => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
+                    // Typesense geopoints use [lat, lng]. Both fields are
+                    // mapper-derived from geo:lat / geo:long and optional.
+                    'geo'        => ['property' => null, 'type' => 'geopoint', 'facet' => false],
+                    'has_coords' => ['property' => null, 'type' => 'bool', 'facet' => true],
                 ],
+
+                'read_properties' => ['geo:lat', 'geo:long'],
 
                 'reverse_links' => [
                     'counts' => [

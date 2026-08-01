@@ -59,6 +59,8 @@ class FederatedSearch extends AbstractDreSearchHelper
                 'search'      => $view->basePath('/dre-search/api/search'),
                 'export'      => $view->basePath('/dre-search/api/export'),
                 'search_all'  => $view->basePath('/dre-search/api/search-all'),
+                'union'       => $view->basePath('/dre-search/api/union'),
+                'map'         => $view->basePath('/dre-search/api/map'),
                 'suggest'     => $view->basePath('/dre-search/api/suggest'),
                 'suggest_all' => $view->basePath('/dre-search/api/suggest-all'),
             ],

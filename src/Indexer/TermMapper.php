@@ -31,6 +31,7 @@ final class TermMapper implements MapperInterface
 
     public function map(array $item, array $values, ?string $thumbnailUrl): array
     {
+        $bag = new ValueBag($values);
         $doc = [
             'id'        => (string) $item['id'],
             'is_public' => $item['is_public'],
@@ -64,6 +65,20 @@ final class TermMapper implements MapperInterface
         foreach ($this->profile->displayFields() as $field => $def) {
             if (($def['type'] ?? '') === 'int32') {
                 $doc[$field] = (int) ($counts[$field] ?? 0);
+            }
+        }
+
+        // Location profiles opt into a geopoint field. Typesense's coordinate
+        // order is [latitude, longitude]; MapLibre swaps it at presentation time.
+        if (isset($this->profile->displayFields()['geo'])) {
+            $lat = $bag->firstFloat('geo:lat');
+            $lng = $bag->firstFloat('geo:long');
+            $valid = $lat !== null && $lng !== null
+                && $lat >= -90.0 && $lat <= 90.0
+                && $lng >= -180.0 && $lng <= 180.0;
+            $doc['has_coords'] = $valid;
+            if ($valid) {
+                $doc['geo'] = [$lat, $lng];
             }
         }
 

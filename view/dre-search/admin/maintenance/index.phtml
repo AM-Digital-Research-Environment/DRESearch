@@ -4,6 +4,7 @@
  * @var bool $configured
  * @var list<array{name:string, label:string, collection:string, reachable:bool, documents:?int, error:?string, state:array<string,mixed>}> $profiles
  * @var \DRESearch\Form\MaintenanceForm $form
+ * @var array{enabled:bool,rows:list<array{profile:string,kind:string,q:string,count:int}>} $analytics
  */
 $this->headTitle($this->translate('DRE Search'));
 $form->setAttribute('action', $this->url('admin/dre-search/reindex'));
@@ -77,6 +78,33 @@ $form->prepare();
     </tbody>
 </table>
 
+<h2><?= $this->translate('Search analytics') ?></h2>
+<p>
+    <?= $this->translate('Popular and zero-result queries reveal missing terminology and cataloguing gaps. Analytics is optional and requires Typesense search analytics with persistent storage.') ?>
+</p>
+<?php if ($analytics['enabled'] && $analytics['rows'] !== []): ?>
+    <table class="tablesaw" data-tablesaw-mode="stack">
+        <thead><tr>
+            <th><?= $this->translate('Search') ?></th>
+            <th><?= $this->translate('Signal') ?></th>
+            <th><?= $this->translate('Query') ?></th>
+            <th><?= $this->translate('Count') ?></th>
+        </tr></thead>
+        <tbody>
+        <?php foreach ($analytics['rows'] as $row): ?>
+            <tr>
+                <td><?= $this->escapeHtml($this->translate($row['profile'])) ?></td>
+                <td><?= $this->escapeHtml($this->translate($row['kind'])) ?></td>
+                <td><?= $this->escapeHtml($row['q']) ?></td>
+                <td><?= $this->escapeHtml((string) $row['count']) ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+<?php else: ?>
+    <p><?= $this->translate('No analytics data is available yet.') ?></p>
+<?php endif; ?>
+
 <h2><?= $this->translate('Reindex') ?></h2>
 <p>
     <?= $this->translate('Rebuild a search index from the current Omeka content. Each runs as a background job — you can keep working while it completes.') ?>
@@ -110,6 +138,16 @@ $form->prepare();
         </button>
         <span style="margin-inline-start:.5rem; color:#6c6357; font-size:.9em;">
             <?= $this->translate('Re-uploads the English stopword set to Typesense (no reindex needed). A full reindex does this too.') ?>
+        </span>
+    </p>
+
+    <h3><?= $this->translate('Search analytics') ?></h3>
+    <p>
+        <button type="submit" class="button" name="provision_analytics" value="1">
+            <?= $this->translate('Provision analytics') ?>
+        </button>
+        <span style="margin-inline-start:.5rem; color:#6c6357; font-size:.9em;">
+            <?= $this->translate('Creates or refreshes per-corpus popular and zero-result query rules. Analytics must be enabled on the Typesense server.') ?>
         </span>
     </p>
     <?= $this->form()->closeTag() ?>

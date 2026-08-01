@@ -145,7 +145,9 @@ final class Reindexer
                         }
                         $item['roles'] = $reverseRoles[$id] ?? [];
                     }
-                    $batch[] = $mapper->map($item, $valuesByItem[$id] ?? [], $thumbnails[$id] ?? null);
+                    $batch[] = $this->decorateDoc(
+                        $mapper->map($item, $valuesByItem[$id] ?? [], $thumbnails[$id] ?? null)
+                    );
                     if (count($batch) >= self::BATCH) {
                         $attempted += count($batch);
                         try {
@@ -380,7 +382,17 @@ final class Reindexer
             $item['roles'] = $reverseRoles[$id] ?? [];
         }
 
-        return $mapper->map($item, $valuesByItem[$id] ?? [], $thumbnails[$id] ?? null);
+        return $this->decorateDoc(
+            $mapper->map($item, $valuesByItem[$id] ?? [], $thumbnails[$id] ?? null)
+        );
+    }
+
+    /** Add the collection-independent source metadata required by union search. */
+    private function decorateDoc(array $doc): array
+    {
+        $doc['_profile'] = $this->profile->name();
+        $doc['_kind'] = $this->profile->kind();
+        return $doc;
     }
 
     /**

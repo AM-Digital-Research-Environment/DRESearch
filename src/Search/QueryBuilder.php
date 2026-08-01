@@ -40,6 +40,8 @@ final class QueryBuilder
      */
     public const EXPORT_PER_PAGE = 250;
     public const EXPORT_MAX_HITS = 1000;
+    /** Maximum geocoded documents returned to one map view. */
+    public const MAP_MAX_HITS = 1000;
 
     /**
      * Sentinels wrapped around matched tokens instead of the default <mark>.
@@ -111,7 +113,7 @@ final class QueryBuilder
             // long free-text fields (abstract, description, transcript) return a
             // windowed snippet centred on the match (the full text would scroll the
             // match out of the clamped card, or dump a whole transcript into a line).
-            $longTextFields = ['abstract', 'description', 'transcript'];
+            $longTextFields = ['abstract', 'description', 'transcript', 'fulltext'];
             $queryFields = array_values(array_filter(array_map(
                 'trim',
                 explode(',', $this->profile->queryBy())
@@ -203,6 +205,59 @@ final class QueryBuilder
             $params['facet_by'],
             $params['max_facet_values'],
             $params['exclude_fields'],
+            $params['stopwords'],
+            $params['highlight_full_fields'],
+            $params['highlight_start_tag'],
+            $params['highlight_end_tag'],
+            $params['highlight_affix_num_tokens'],
+        );
+        return $params;
+    }
+
+    /**
+     * One sub-search for a Typesense v30 union request. Pagination is supplied
+     * globally to /multi_search, while every collection uses the same sortable
+     * string field on browse and the same relevance field on a real query.
+     * Facets are intentionally omitted: union responses do not expose them.
+     *
+     * @return array<string,mixed>
+     */
+    public function union(string $q): array
+    {
+        $isBrowse = trim($q) === '';
+        $params = $this->search([
+            'q' => $q,
+            'page' => 1,
+            'per_page' => 1,
+            'sort' => $isBrowse ? 'title' : 'relevance',
+            'facets' => [],
+        ]);
+        $params['collection'] = $this->profile->collection();
+        $params['sort_by'] = $isBrowse ? 'title:asc' : '_text_match:desc,title:asc';
+        // A union across many collections should not fail because a fresh
+        // server is missing the optional stopword set.
+        unset($params['page'], $params['per_page'], $params['stopwords']);
+        return $params;
+    }
+
+    /**
+     * One page of a location-map pull. It preserves the validated text, facet,
+     * locked-filter and year scope, then requires a valid mapper-produced
+     * geopoint and trims the payload to popup fields.
+     *
+     * @param array<string,mixed> $req
+     * @return array<string,mixed>
+     */
+    public function map(array $req, int $page): array
+    {
+        $params = $this->search($req);
+        $params['page'] = max(1, $page);
+        $params['per_page'] = self::EXPORT_PER_PAGE;
+        $params['filter_by'] .= ' && has_coords:=true';
+        $params['include_fields'] = 'id,title,type_s,roles_ss,item_count,geo,_profile,_kind';
+        unset(
+            $params['facet_by'],
+            $params['max_facet_values'],
             $params['stopwords'],
             $params['highlight_full_fields'],
             $params['highlight_start_tag'],

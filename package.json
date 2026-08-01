@@ -1,6 +1,6 @@
 {
   "name": "dre-search-client",
-  "version": "1.17.2",
+  "version": "1.18.0",
   "description": "Svelte client for the DRESearch Omeka S module — faceted search (research items + research projects + publications + podcasts + YouTube videos + people + research sections + organisations + genres + languages + locations + subjects & tags) backed by Typesense.",
   "private": true,
   "type": "module",
@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint:tokens": "node scripts/check-design-tokens.mjs",
-    "lint": "npm run lint:tokens && eslint src/svelte tests/frontend && prettier --check \"src/svelte/**/*.{ts,svelte}\" \"tests/frontend/**/*.ts\" \"*.{ts,json,md}\"",
+    "lint:schema": "php scripts/check-profile-schema.php",
+    "lint": "npm run lint:tokens && npm run lint:schema && eslint src/svelte tests/frontend && prettier --check \"src/svelte/**/*.{ts,svelte}\" \"tests/frontend/**/*.ts\" \"*.{ts,json,md}\"",
     "lint:fix": "eslint src/svelte tests/frontend --fix && prettier --write \"src/svelte/**/*.{ts,svelte}\" \"tests/frontend/**/*.ts\" \"*.{ts,json,md}\"",
     "format": "prettier --write \"src/svelte/**/*.{ts,svelte}\" \"tests/frontend/**/*.ts\" \"*.{ts,json,md}\""
   },

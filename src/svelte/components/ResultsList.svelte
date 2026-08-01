@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { CardKind, Doc } from '../lib/types';
+  import type { CardKind, Doc, ViewMode } from '../lib/types';
   import { t } from '../lib/i18n';
   import ResultItem from './ResultItem.svelte';
   import ProjectCard from './ProjectCard.svelte';
@@ -20,6 +20,7 @@
     cardKind: CardKind;
     /** Pack the compact two-up cards as a masonry instead of a row-aligned grid. */
     masonry?: boolean;
+    view?: ViewMode;
     onPageChange: (next: number) => void;
     onAddFilter: (field: string, value: string) => void;
   }
@@ -32,6 +33,7 @@
     itemUrlBase,
     cardKind,
     masonry = false,
+    view = 'list',
     onPageChange,
     onAddFilter,
   }: Props = $props();
@@ -64,6 +66,7 @@
   class="dre-results"
   class:dre-results--masonry={masonry}
   class:dre-results--two-col={cardKind === 'term' && !masonry}
+  class:dre-results--gallery={view === 'gallery'}
 >
   {#each hits as doc (doc.id)}
     <li class="dre-results__item">
@@ -84,7 +87,7 @@
       {:else if cardKind === 'term'}
         <TermCard {doc} {itemUrlBase} {onAddFilter} />
       {:else}
-        <ResultItem {doc} {itemUrlBase} {onAddFilter} />
+        <ResultItem {doc} {itemUrlBase} {onAddFilter} {view} />
       {/if}
     </li>
   {/each}
@@ -151,6 +154,11 @@
   .dre-results--two-col {
     display: grid;
     grid-template-columns: 1fr;
+  }
+  .dre-results--gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+    gap: var(--space-md, 1rem);
   }
   @media (min-width: 60rem) {
     .dre-results--two-col {

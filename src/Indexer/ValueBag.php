@@ -80,6 +80,20 @@ final class ValueBag
         return null;
     }
 
+    public function firstFloat(?string $term): ?float
+    {
+        foreach ($this->rows($term) as $row) {
+            $raw = trim((string) ($row['value'] ?? ''));
+            if ($raw !== '' && is_numeric($raw)) {
+                $value = (float) $raw;
+                if (is_finite($value)) {
+                    return $value;
+                }
+            }
+        }
+        return null;
+    }
+
     /** Returns only an absolute HTTP(S) URL. */
     public function firstUrl(?string $term): ?string
     {

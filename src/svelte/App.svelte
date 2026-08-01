@@ -1,5 +1,13 @@
 <script lang="ts">
-  import type { ActiveFilters, Bootstrap, SearchResponse, SortKey, SortOption } from './lib/types';
+  import type {
+    ActiveFilters,
+    Bootstrap,
+    MapResponse,
+    SearchResponse,
+    SortKey,
+    SortOption,
+    ViewMode,
+  } from './lib/types';
   import { SearchApi } from './lib/api';
   import {
     onUrlPop,
@@ -8,13 +16,20 @@
     type UrlSearchState,
     type UrlSyncOptions,
   } from './lib/urlState';
-  import { formatNumber, t } from './lib/i18n';
+  import { t } from './lib/i18n';
+  import { buildFilterChips, type FilterChipModel as ChipModel } from './lib/filterChips';
+  import { rememberSearch } from './lib/searchHistory';
   import SearchBox from './components/SearchBox.svelte';
   import SortSelect from './components/SortSelect.svelte';
   import ExportMenu from './components/ExportMenu.svelte';
   import FacetPanel from './components/FacetPanel.svelte';
   import YearRangeFacet from './components/YearRangeFacet.svelte';
   import ResultsList from './components/ResultsList.svelte';
+  import ResultSummary from './components/ResultSummary.svelte';
+  import ResultSkeleton from './components/ResultSkeleton.svelte';
+  import ViewToggle from './components/ViewToggle.svelte';
+  import CopyLinkButton from './components/CopyLinkButton.svelte';
+  import MapView from './components/MapView.svelte';
 
   /**
    * One instance per mounted block. Owns the search state (query, page, sort,
@@ -115,6 +130,26 @@
   // the bootstrap (the federated page passes its shared query via initial_query).
   // svelte-ignore state_referenced_locally
   const urlInitial = syncUrl ? readUrlState(window.location.href, urlOptions) : null;
+  const viewOptions = $derived<ViewMode[]>(
+    bootstrap.profile === 'research_items'
+      ? ['list', 'gallery']
+      : bootstrap.profile === 'research_locations'
+        ? ['list', 'map']
+        : ['list'],
+  );
+  // svelte-ignore state_referenced_locally
+  const viewStorageKey = `dre-search:view:${bootstrap.profile}`;
+  const storedView = (() => {
+    try {
+      const stored = localStorage.getItem(viewStorageKey) as ViewMode | null;
+      return stored && viewOptions.includes(stored) ? stored : null;
+    } catch {
+      return null;
+    }
+  })();
+  // svelte-ignore state_referenced_locally
+  const explicitInitialView =
+    urlInitial?.view && viewOptions.includes(urlInitial.view) ? urlInitial.view : storedView;
   // svelte-ignore state_referenced_locally
   const defaultSort: SortKey = bootstrap.default_sort ?? 'relevance';
   // A URL-seeded sort is validated against this corpus's offered sorts so a stale
@@ -137,10 +172,15 @@
   let filters = $state<ActiveFilters>(urlInitial?.filters ?? {});
   let yearFrom = $state<number | null>(urlInitial?.yearFrom ?? null);
   let yearTo = $state<number | null>(urlInitial?.yearTo ?? null);
+  let view = $state<ViewMode>(explicitInitialView ?? 'list');
+  let viewExplicit = explicitInitialView !== null;
 
   let response = $state<SearchResponse | null>(initialResponse);
   let isLoading = $state(false);
   let error = $state<string | null>(null);
+  let mapResponse = $state<MapResponse | null>(null);
+  let mapLoading = $state(false);
+  let correction = $state<string | null>(null);
 
   // Mobile only: the sidebar is collapsed by default and toggled open. Ignored
   // on wider viewports, where the sidebar is always shown (see styles).
@@ -176,7 +216,7 @@
   // replace history, everything else pushes a back-button-able step.
   $effect(() => {
     if (!syncUrl) return;
-    const next: UrlSearchState = { q: query, page, sort, filters, yearFrom, yearTo };
+    const next: UrlSearchState = { q: query, page, sort, filters, yearFrom, yearTo, view };
     syncToUrl(next, prevUrlState, urlOptions);
     // Plain, proxy-free deep copy for the next diff (filters is a Svelte proxy).
     prevUrlState = {
@@ -186,6 +226,7 @@
       filters: Object.fromEntries(Object.entries(next.filters).map(([k, v]) => [k, [...v]])),
       yearFrom: next.yearFrom,
       yearTo: next.yearTo,
+      view: next.view,
     };
   });
 
@@ -200,6 +241,7 @@
       filters = s.filters;
       yearFrom = s.yearFrom;
       yearTo = s.yearTo;
+      if (s.view && viewOptions.includes(s.view)) view = s.view;
     }, urlOptions);
   });
 
@@ -248,6 +290,26 @@
           return;
         }
         response = r;
+        if (q.trim() && r.found > 0) rememberSearch(q);
+        if (
+          !viewExplicit &&
+          view === 'list' &&
+          bootstrap.profile === 'research_items' &&
+          r.hits.length >= 4
+        ) {
+          const ratio = r.hits.filter((hit) => Boolean(hit.thumbnail_url)).length / r.hits.length;
+          if (ratio > 0.6) view = 'gallery';
+          viewExplicit = true; // one suggestion per mount, regardless of outcome
+        }
+        correction = null;
+        if (r.found === 0 && q.trim().length >= 2) {
+          void api
+            .suggest(q, controller.signal)
+            .then((suggestions) => {
+              if (myId === reqId) correction = suggestions[0]?.title ?? null;
+            })
+            .catch(() => undefined);
+        }
       })
       .catch((e: Error) => {
         if (myId !== reqId) {
@@ -267,6 +329,28 @@
     return () => controller.abort();
   });
 
+  $effect(() => {
+    if (view !== 'map') {
+      mapResponse = null;
+      mapLoading = false;
+      return;
+    }
+    const controller = new AbortController();
+    mapLoading = true;
+    api
+      .map({ q: query, sort, filters, year_from: yearFrom, year_to: yearTo }, controller.signal)
+      .then((result) => {
+        mapResponse = result;
+      })
+      .catch((reason: Error) => {
+        if (reason.name !== 'AbortError') error = reason.message;
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) mapLoading = false;
+      });
+    return () => controller.abort();
+  });
+
   const facets = $derived(response?.facets ?? []);
 
   // Sort choices come from the server (they vary by corpus). Fall back to a
@@ -283,6 +367,9 @@
   const activeCount = $derived(
     Object.values(filters).reduce((n, values) => n + (values?.length ?? 0), 0) +
       (yearFrom != null || yearTo != null ? 1 : 0),
+  );
+  const scopeChips = $derived(
+    buildFilterChips(filters, bootstrap.facet_labels, yearFrom, yearTo, query),
   );
 
   function handleQueryChange(next: string): void {
@@ -331,6 +418,26 @@
     yearFrom = null;
     yearTo = null;
     page = 1;
+  }
+
+  function handleRemoveChip(chip: ChipModel): void {
+    if (chip.kind === 'query') handleQueryChange('');
+    else if (chip.kind === 'year') {
+      yearFrom = null;
+      yearTo = null;
+      page = 1;
+    } else handleFacetToggle(chip.field, chip.value, false);
+  }
+
+  function handleViewChange(next: ViewMode): void {
+    if (!viewOptions.includes(next)) return;
+    view = next;
+    viewExplicit = true;
+    try {
+      localStorage.setItem(viewStorageKey, next);
+    } catch {
+      /* optional preference */
+    }
   }
 
   function handleYearChange(from: number, to: number): void {
@@ -443,36 +550,38 @@
 
       <div class="dre-search__results" aria-busy={isLoading}>
         {#if response}
-          <header class="dre-search__toolbar" aria-live="polite">
-            <span class="dre-search__count">
-              {#if response.found > 0}
-                <strong>{formatNumber(response.found)}</strong>
-                {response.found === 1 ? t('result_one') : t('result_other')}
-              {:else}
-                {t('no_results_title')}
-              {/if}
-            </span>
-            <div class="dre-search__tools">
-              <SortSelect value={sort} options={sortOptions} onChange={handleSortChange} />
-              {#if response.found > 0}
-                <ExportMenu
-                  fetchDocs={handleExportFetch}
-                  {query}
-                  found={response.found}
-                  kind={bootstrap.card_kind}
-                  itemUrlBase={bootstrap.item_url_base}
-                  {filters}
-                  {yearFrom}
-                  {yearTo}
-                  facetLabels={bootstrap.facet_labels}
-                />
-              {/if}
-            </div>
-          </header>
+          {#snippet summaryTools()}
+            <SortSelect value={sort} options={sortOptions} onChange={handleSortChange} />
+            {#if viewOptions.length > 1}<ViewToggle
+                value={view}
+                options={viewOptions}
+                onChange={handleViewChange}
+              />{/if}
+            <CopyLinkButton />
+            {#if (response?.found ?? 0) > 0}
+              <ExportMenu
+                fetchDocs={handleExportFetch}
+                {query}
+                found={response?.found ?? 0}
+                kind={bootstrap.card_kind}
+                itemUrlBase={bootstrap.item_url_base}
+                {filters}
+                {yearFrom}
+                {yearTo}
+                facetLabels={bootstrap.facet_labels}
+              />
+            {/if}
+          {/snippet}
+          <ResultSummary
+            found={view === 'map' ? (mapResponse?.found ?? response.found) : response.found}
+            chips={scopeChips}
+            onRemove={handleRemoveChip}
+            tools={summaryTools}
+          />
         {/if}
 
-        {#if isLoading && !response}
-          <p class="dre-search__status">{t('searching')}</p>
+        {#if isLoading}
+          <ResultSkeleton {view} count={view === 'gallery' ? 8 : 6} />
         {:else if response && response.found === 0}
           <div class="dre-search__empty" role="status">
             <strong>{t('no_results_title')}</strong>
@@ -482,11 +591,27 @@
                 {t('clear_all_filters')}
               </button>
             {:else if query.trim() !== ''}
-              <p>{t('try_broader_query')}</p>
+              <p>{t('no_results_for_query', { q: query })}</p>
+              {#if correction}
+                <button
+                  type="button"
+                  class="dre-search__clear-link"
+                  onclick={() => handleQueryChange(correction ?? '')}
+                >
+                  {t('did_you_mean', { q: correction })}
+                </button>
+              {:else}<p>{t('try_broader_query')}</p>{/if}
             {:else}
               <p>{t('corpus_empty')}</p>
             {/if}
           </div>
+        {:else if response && view === 'map'}
+          <MapView
+            docs={mapResponse?.docs ?? []}
+            loading={mapLoading}
+            capped={mapResponse?.capped ?? false}
+            itemUrlBase={bootstrap.item_url_base}
+          />
         {:else if response}
           <ResultsList
             hits={response.hits}
@@ -496,6 +621,7 @@
             itemUrlBase={bootstrap.item_url_base}
             cardKind={bootstrap.card_kind}
             masonry={masonryLayout}
+            {view}
             onPageChange={handlePageChange}
             onAddFilter={handleAddFilter}
           />
@@ -586,36 +712,6 @@
     flex-direction: column;
     gap: var(--space-md, 1rem);
     min-width: 0;
-    transition: opacity var(--transition-base, 200ms ease);
-  }
-  .dre-search__results[aria-busy='true'] {
-    opacity: 0.65;
-  }
-
-  .dre-search__toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-md, 1rem);
-    flex-wrap: wrap;
-    padding-block-end: var(--space-sm, 0.5rem);
-    border-bottom: 1px solid var(--border-light, #eae5dd);
-  }
-  /* Right-side control cluster: sort + export, kept together as the count grows. */
-  .dre-search__tools {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-sm, 0.5rem);
-    flex-wrap: wrap;
-  }
-  .dre-search__count {
-    color: var(--muted, #7a7164);
-    font-size: var(--text-sm, 0.9rem);
-    font-variant-numeric: tabular-nums;
-  }
-  .dre-search__count strong {
-    color: var(--ink-strong, var(--ink, #33291f));
-    font-size: var(--text-lg, 1.125rem);
   }
 
   .dre-search__error,
@@ -638,12 +734,6 @@
     text-align: center;
   }
   .dre-search__notice p {
-    margin: 0;
-  }
-
-  .dre-search__status {
-    color: var(--muted, #7a7164);
-    font-size: var(--text-sm, 0.9rem);
     margin: 0;
   }
 

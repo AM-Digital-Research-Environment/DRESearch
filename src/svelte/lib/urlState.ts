@@ -1,4 +1,4 @@
-import type { ActiveFilters, SortKey } from './types';
+import type { ActiveFilters, SortKey, ViewMode } from './types';
 
 /**
  * URL ↔ search-state codec for the DRE Search surfaces.
@@ -39,6 +39,7 @@ export interface UrlSearchState {
   filters: ActiveFilters;
   yearFrom: number | null;
   yearTo: number | null;
+  view?: ViewMode | null;
 }
 
 export interface UrlSyncOptions {
@@ -98,7 +99,12 @@ export function readUrlState(
     filters,
     yearFrom: parseYearOrNull(params.get(`${prefix}date.from`)),
     yearTo: parseYearOrNull(params.get(`${prefix}date.to`)),
+    view: parseView(params.get(`${prefix}view`)),
   };
+}
+
+function parseView(raw: string | null): ViewMode | null {
+  return raw === 'list' || raw === 'gallery' || raw === 'map' ? raw : null;
 }
 
 function parseYearOrNull(raw: string | null): number | null {
@@ -122,6 +128,7 @@ function clearOwnedKeys(params: URLSearchParams, prefix: string, includeQuery: b
     `${prefix}sort`,
     `${prefix}date.from`,
     `${prefix}date.to`,
+    `${prefix}view`,
   ]);
   if (includeQuery) scalars.add(`${prefix}q`);
   // Collect first, then delete — mutating while iterating keys() is unsafe.
@@ -157,6 +164,9 @@ function applyState(params: URLSearchParams, state: UrlSearchState, o: ResolvedO
   }
   if (state.yearTo != null) {
     params.set(`${prefix}date.to`, String(state.yearTo));
+  }
+  if (state.view && state.view !== 'list') {
+    params.set(`${prefix}view`, state.view);
   }
 }
 
@@ -206,6 +216,7 @@ export function syncToUrl(
     prev.sort === next.sort &&
     prev.yearFrom === next.yearFrom &&
     prev.yearTo === next.yearTo &&
+    (prev.view ?? null) === (next.view ?? null) &&
     sameFilters(prev.filters, next.filters);
 
   if (prev === null || onlyPaginationChanged) {

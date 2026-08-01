@@ -8,6 +8,8 @@ import type {
   Bootstrap,
   ExportRequest,
   ExportResponse,
+  MapRequest,
+  MapResponse,
   SearchAllRequest,
   SearchAllResponse,
   SearchRequest,
@@ -15,6 +17,7 @@ import type {
   SuggestAllResponse,
   SuggestGroup,
   Suggestion,
+  UnionSearchRequest,
 } from './types';
 
 export class SearchApi {
@@ -68,7 +71,20 @@ export class SearchApi {
     }
   }
 
-  private withScope<T extends SearchRequest | ExportRequest>(req: T): T & { profile: string } {
+  async map(req: MapRequest, signal?: AbortSignal): Promise<MapResponse> {
+    const res = await fetch(this.endpoints.map, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(this.withScope(req)),
+      signal,
+    });
+    await requireOk(res, 'Map request failed');
+    return (await res.json()) as MapResponse;
+  }
+
+  private withScope<T extends SearchRequest | ExportRequest | MapRequest>(
+    req: T,
+  ): T & { profile: string } {
     return {
       ...req,
       profile: this.profile,
@@ -131,4 +147,20 @@ export async function searchAll(
   });
   await requireOk(res, 'Federated search failed');
   return (await res.json()) as SearchAllResponse;
+}
+
+/** Typesense v30 union search through the module's server-side proxy. */
+export async function searchUnion(
+  endpoint: string,
+  req: UnionSearchRequest,
+  signal?: AbortSignal,
+): Promise<SearchResponse> {
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(req),
+    signal,
+  });
+  await requireOk(res, 'Merged search failed');
+  return (await res.json()) as SearchResponse;
 }

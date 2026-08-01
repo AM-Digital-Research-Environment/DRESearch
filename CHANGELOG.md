@@ -3,6 +3,36 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.18.0] - 2026-08-01
+
+### Added
+
+- Publication full-text search and a compact availability filter without sending
+  full texts to browsers.
+- Shareable list/gallery preferences, larger derivative-aware thumbnails, and a
+  lazy clustered map for geocoded locations.
+- A persistent result summary with shared removable scope chips, layout-matched
+  reduced-motion skeletons, compact association sparklines, recent searches,
+  slash-to-focus, copy-link, and zero-result suggestions.
+- A server-side Typesense 30 union endpoint and federated All tab with mixed-card
+  corpus handoff; the server-held API key remains private.
+- Optional per-profile popular/no-hit analytics provisioning and an admin digest.
+- A standalone profile/schema/client drift guard wired into lint, plus map, union,
+  mapper, URL-state, thumbnail, and chip-model regression tests.
+
+### Changed
+
+- One shared reindex orchestrator now owns stopword provisioning, one/all profile
+  rebuild wiring, and the non-fatal analytics follow-up.
+- CI now runs PHP syntax, PHPCS, PHPUnit, PHPStan, frontend lint/type/tests/build,
+  a committed-bundle check, and a live Typesense 30 union integration test.
+
+### Deployment
+
+- Reindex all corpora to populate union source markers plus the new publication
+  full-text and location coordinate fields. Analytics additionally requires
+  Typesense search analytics and a persistent analytics directory.
+
 ## [1.17.2] - 2026-07-30
 
 ### Changed

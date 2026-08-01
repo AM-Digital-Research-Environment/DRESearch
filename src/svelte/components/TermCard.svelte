@@ -2,6 +2,8 @@
   import type { Doc } from '../lib/types';
   import { t, researchItemsLabel, publicationsLabel } from '../lib/i18n';
   import Highlight from './Highlight.svelte';
+  import Sparkline from './Sparkline.svelte';
+  import { associationSeries } from '../lib/sparkline';
 
   /**
    * One authority-term card — a genre, language, location, or subject/tag:
@@ -43,6 +45,7 @@
     }
     return out;
   });
+  const series = $derived(associationSeries(doc.item_count, doc.publication_count));
 </script>
 
 <article class="dre-term">
@@ -74,7 +77,10 @@
   {/if}
 
   {#if counts.length > 0}
-    <p class="dre-term__counts">{counts.join(' · ')}</p>
+    <div class="dre-term__association">
+      <Sparkline values={series} label={t('association_counts', { values: counts.join(', ') })} />
+      <p class="dre-term__counts">{counts.join(' · ')}</p>
+    </div>
   {/if}
 </article>
 
@@ -179,5 +185,11 @@
     font-size: var(--text-xs, 0.78rem);
     color: var(--muted, #7a7164);
     font-variant-numeric: tabular-nums;
+  }
+  .dre-term__association {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm, 0.5rem);
+    min-height: 0.875rem;
   }
 </style>

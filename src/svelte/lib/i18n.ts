@@ -24,6 +24,7 @@ const ENGLISH_STRINGS: Record<string, string> = {
   facet_no_matches: 'No matches',
   show_filters: 'Filters',
   hide_filters: 'Hide filters',
+  search_scope: 'Search',
 
   sort_label: 'Sort',
   sort_relevance: 'Relevance',
@@ -32,11 +33,19 @@ const ENGLISH_STRINGS: Record<string, string> = {
   sort_title: 'Title (A–Z)',
 
   searching: 'Searching…',
+  loading_results: 'Loading results',
   result_one: 'result',
   result_other: 'results',
   pagination: 'Pagination',
   previous_page: 'Previous page',
   next_page: 'Next page',
+  view_label: 'Result view',
+  view_list: 'List',
+  view_gallery: 'Gallery',
+  view_map: 'Map',
+  copy_link: 'Copy link',
+  copied_link: 'Link copied',
+  recent_searches: 'Recent searches',
 
   // Result export menu.
   export: 'Export',
@@ -60,9 +69,16 @@ const ENGLISH_STRINGS: Record<string, string> = {
   clear_all_filters: 'Clear all filters',
   try_broader_query: 'Try a different or broader search term.',
   corpus_empty: 'Nothing to show yet.',
+  no_results_for_query: 'No results were found for “{q}”.',
+  did_you_mean: 'Did you mean “{q}”?',
 
   search_unavailable: 'Search is unavailable',
   search_unavailable_hint: 'The search service is not reachable right now.',
+  map_label: 'Map of matching locations',
+  map_loading: 'Loading map…',
+  map_empty: 'No matching locations have coordinates.',
+  map_error: 'The map is unavailable.',
+  map_capped: 'The map shows the first 1,000 matching locations.',
 
   // Federated header bar + results page.
   search_all_placeholder: 'Search everything…',
@@ -70,6 +86,8 @@ const ENGLISH_STRINGS: Record<string, string> = {
   no_matches_anywhere: 'No matches in any collection.',
   search_results_for: 'Results for “{q}”',
   result_types: 'Result types',
+  all_results: 'All',
+  all_no_facets: 'Open a corpus tab to filter these merged results.',
 
   untitled: 'Untitled',
   project_label: 'Project',
@@ -94,6 +112,7 @@ const ENGLISH_STRINGS: Record<string, string> = {
   field_speaker: 'Speaker',
   field_playlist: 'Playlist',
   field_transcript: 'Transcript',
+  field_fulltext: 'Full text',
   field_pi: 'Principal investigator',
   field_member: 'Member',
   field_institution: 'Institution',
@@ -158,6 +177,7 @@ const ENGLISH_STRINGS: Record<string, string> = {
   // Organisation card.
   people_one: '{n} person',
   people_other: '{n} people',
+  association_counts: 'Associations: {values}',
 };
 
 declare global {
@@ -235,6 +255,7 @@ const MATCH_FIELD_KEYS: Record<string, string> = {
   speaker_ss: 'field_speaker',
   playlist_s: 'field_playlist',
   transcript: 'field_transcript',
+  fulltext: 'field_fulltext',
   pi_ss: 'field_pi',
   member_ss: 'field_member',
   institution_ss: 'field_institution',

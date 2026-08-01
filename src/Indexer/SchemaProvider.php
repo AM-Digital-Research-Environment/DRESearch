@@ -36,6 +36,11 @@ final class SchemaProvider
         $add(['name' => 'title', 'type' => 'string', 'sort' => true]);
         $add(['name' => 'abstract', 'type' => 'string', 'optional' => true]);
         $add(['name' => 'description', 'type' => 'string', 'optional' => true]);
+        // Display-only source markers let a Typesense union response select the
+        // correct mixed-result card. Union responses do not otherwise identify
+        // which sub-search produced a hit.
+        $add(['name' => '_profile', 'type' => 'string', 'index' => false]);
+        $add(['name' => '_kind', 'type' => 'string', 'index' => false]);
 
         // Facet fields (data-driven). Derived facets (e.g. has_items) are plain
         // single-valued strings.

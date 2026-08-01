@@ -2,6 +2,8 @@
   import type { SearchApi } from '../lib/api';
   import type { Suggestion } from '../lib/types';
   import { t } from '../lib/i18n';
+  import { recentSearches } from '../lib/searchHistory';
+  import { installSlashFocus } from '../lib/keyboard';
 
   /**
    * Search input with a debounced query and an autocomplete dropdown.
@@ -35,6 +37,8 @@
   let activeIndex = $state(-1);
   let timer: number | null = null;
   let controller: AbortController | null = null;
+  let inputEl = $state<HTMLInputElement>();
+  let recent = $state<string[]>([]);
 
   function itemUrl(id: string): string {
     return `${itemUrlBase}/${encodeURIComponent(id)}`;
@@ -83,9 +87,8 @@
 
   function handleFocus(): void {
     focused = true;
-    if (suggestions.length > 0) {
-      open = true;
-    }
+    recent = recentSearches();
+    open = suggestions.length > 0 || (local.trim() === '' && recent.length > 0);
   }
 
   function handleBlur(): void {
@@ -113,6 +116,12 @@
     open = false;
     activeIndex = -1;
     onQueryChange(local);
+  }
+
+  function reuseRecent(query: string): void {
+    local = query;
+    open = false;
+    onQueryChange(query);
   }
 
   function handleKeydown(e: KeyboardEvent): void {
@@ -146,7 +155,13 @@
   }
 
   $effect(() => {
+    if (value !== local) local = value;
+  });
+
+  $effect(() => {
+    const removeShortcut = installSlashFocus(() => inputEl);
     return () => {
+      removeShortcut();
       controller?.abort();
       if (timer !== null) clearTimeout(timer);
     };
@@ -156,6 +171,7 @@
 <div class="dre-search-box">
   <div class="dre-search-box__input-wrap">
     <input
+      bind:this={inputEl}
       name="q"
       class="dre-search-box__input"
       type="search"
@@ -186,8 +202,21 @@
     {/if}
   </div>
 
-  {#if open && suggestions.length > 0}
+  {#if open && (suggestions.length > 0 || recent.length > 0)}
     <ul class="dre-search-box__suggest" id={listboxId} role="listbox" aria-label={t('suggestions')}>
+      {#if suggestions.length === 0 && local.trim() === ''}
+        <li class="dre-search-box__recent-label">{t('recent_searches')}</li>
+        {#each recent as query (query)}
+          <li>
+            <button
+              type="button"
+              class="dre-search-box__recent"
+              onmousedown={(e) => e.preventDefault()}
+              onclick={() => reuseRecent(query)}>{query}</button
+            >
+          </li>
+        {/each}
+      {/if}
       {#each suggestions as s, i (s.id)}
         <li role="presentation">
           <a
@@ -329,5 +358,29 @@
   .dre-search-box__suggestion-meta {
     font-size: var(--text-xs, 0.75rem);
     color: var(--muted, #7a7164);
+  }
+  .dre-search-box__recent-label {
+    padding: 0.4rem 0.5rem 0.2rem;
+    color: var(--muted, #7a7164);
+    font-size: var(--text-xs, 0.75rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .dre-search-box__recent {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0.5rem;
+    border: 0;
+    border-radius: var(--radius-sm, 0.375rem);
+    background: transparent;
+    color: var(--ink, #33291f);
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+  }
+  .dre-search-box__recent:hover {
+    background: var(--surface-sunken, #f1ede6);
   }
 </style>

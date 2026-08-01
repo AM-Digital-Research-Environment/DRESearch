@@ -138,13 +138,19 @@ Beyond the per-corpus blocks, the module exposes a **site-wide search** across
   / Location / …). Picking a suggestion jumps straight to that record's page;
   pressing Enter / "See all results" goes to the results page.
 - A **federated results page** at **`/s/{site-slug}/dre-search`** (`?q=…`):
-  results **grouped by type**, one **tab per corpus** with its hit count.
+  an **All** tab uses Typesense 30's union search for one relevance-ranked stream,
+  followed by one **tab per corpus** with its hit count.
   Selecting a tab reveals **that corpus's own facets, cards, sorting and
-  paging** — it reuses the same per-corpus search UI as the blocks.
+  paging** — it reuses the same per-corpus search UI as the blocks. The initial
+  union scope is curated to content and named-entity corpora so generic authority
+  terms do not swamp the ranking. Union responses do not carry facet counts;
+  choose a corpus tab to filter them.
 
-Two server endpoints back it (top-level, anonymous, `is_public:=true` enforced):
+Three server endpoints back it (top-level, anonymous, `is_public:=true` enforced):
 `/dre-search/api/suggest-all` (grouped autocomplete) and
-`/dre-search/api/search-all` (per-corpus counts + the focused corpus's results).
+`/dre-search/api/search-all` (per-corpus counts + the focused corpus's results),
+plus `/dre-search/api/union` (the merged result stream). The Typesense key remains
+server-side in every case.
 
 **Theme integration** is one guarded helper call — the theme degrades to its own
 search form when the module is absent:
@@ -220,6 +226,21 @@ collection and swaps that profile's alias (`dre_research_current` /
 `dre_genres_current` / `dre_languages_current` / `dre_locations_current` /
 `dre_subjects_current`) to it atomically, so live searches never hit a half-built
 index.
+
+Run **Reindex all corpora** after deploying this release. Every union profile
+needs its new source markers, Publications needs the full-text availability
+fields, and Locations needs its coordinates. The Locations result toolbar then
+offers an opt-in, lazy-loaded MapLibre map; list remains the default. Research
+items offer list and image-forward gallery views, with the chosen view stored in
+the shareable URL and as a local preference.
+
+### Optional search analytics
+
+To collect popular and zero-result queries, start Typesense with
+`--enable-search-analytics=true` and a persistent `--analytics-dir`. Then choose
+**Admin → DRE Search → Provision analytics**. The maintenance page shows the top
+signals per corpus. Provisioning is deliberately non-fatal: reindex and public
+search continue when analytics is disabled.
 
 ## The page blocks
 
@@ -496,7 +517,10 @@ npm run lint       # eslint + prettier
 npm run lint:fix   # auto-fix
 ```
 
-Run `check` + `lint` + `build` before committing anything under `src/svelte/`.
+`npm run lint` also runs `scripts/check-profile-schema.php`, which fails CI when
+profile query/facet/search-only fields drift from the generated Typesense schema
+or client card/i18n contracts. Run `check` + `lint` + `build` before committing
+anything under `src/svelte/`.
 Lint the PHP in your runtime image (`php -l`) since this repo ships no PHP
 toolchain.
 
@@ -510,14 +534,16 @@ toolchain.
   selects its indexer mapper and its result card.
 - **Search is server-side.** The browser calls the module's own JSON endpoints
   (`/dre-search/api/search`, `/dre-search/api/suggest` per corpus;
-  `/dre-search/api/suggest-all`, `/dre-search/api/search-all` federated) with a
+  `/dre-search/api/suggest-all`, `/dre-search/api/search-all`,
+  `/dre-search/api/union` federated) with a
   `profile`; PHP forwards to Typesense with the server-held key and enforces
   `is_public:=true`. The key never reaches the browser, so there are no scoped
   keys or nginx changes — and "optional" is trivial (no key → no search). The
-  federated endpoints use one Typesense `multi_search` across all collections.
+  federated endpoints use Typesense `multi_search`; the All tab opts into the
+  Typesense 30 union mode for one merged ranking.
 - **PHP**: `src/Search` (proxy, query builder, lazy client provider),
-  `src/Indexer` (schema, authority resolver, item/project mappers, paged
-  reindexer), `src/Job` (background reindex), `src/Site/BlockLayout` (the blocks),
+  `src/Indexer` (schema, authority resolver, mappers, analytics sync, paged
+  reindexer and shared reindex orchestrator), `src/Job` (background operations), `src/Site/BlockLayout` (the blocks),
   `src/Controller` (public proxy + federated results page + admin maintenance),
   `src/View/Helper` (the `dreSearchBar` / `dreFederatedSearch` / `dreSearchAssets`
   surfaces), `src/Settings` (`SearchProfile`, `ProfileRegistry`, `SortOptions`).

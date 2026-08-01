@@ -19,6 +19,7 @@ final class SearchProxyFactory implements FactoryInterface
             $container->get(ProfileRegistry::class),
             $container->get(BlockScopeResolver::class),
             $container->get('Omeka\Logger'),
+            (array) ($container->get('Config')['dre_search']['federated']['union_profiles'] ?? []),
         );
     }
 }

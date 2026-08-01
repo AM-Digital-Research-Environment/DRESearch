@@ -6,7 +6,9 @@ namespace DRESearch\Controller\Admin;
 use DRESearch\Form\MaintenanceForm;
 use DRESearch\Job\IndexAllSearchProfiles;
 use DRESearch\Job\IndexSearchProfile;
+use DRESearch\Job\ProvisionAnalytics;
 use DRESearch\Job\SyncStopwords;
+use DRESearch\Indexer\AnalyticsSync;
 use DRESearch\Indexer\RebuildStateStore;
 use DRESearch\Search\TypesenseClientProvider;
 use DRESearch\Settings\ProfileRegistry;
@@ -33,6 +35,7 @@ class MaintenanceController extends AbstractActionController
         $view = new ViewModel([
             'configured' => $this->provider->isConfigured(),
             'profiles'   => $this->collectStatuses(),
+            'analytics'  => $this->collectAnalytics(),
             'form'       => $this->getForm(MaintenanceForm::class),
         ]);
         $view->setTemplate('dre-search/admin/maintenance/index');
@@ -64,6 +67,20 @@ class MaintenanceController extends AbstractActionController
             $jobUrl = $this->url()->fromRoute('admin/id', ['controller' => 'job', 'id' => $job->getId()]);
             $message = new Message(
                 'Stopword sync queued. Track progress in %1$sjob #%2$s%3$s.', // @translate
+                sprintf('<a href="%s">', htmlspecialchars($jobUrl, ENT_QUOTES, 'UTF-8')),
+                $job->getId(),
+                '</a>'
+            );
+            $message->setEscapeHtml(false);
+            $this->messenger()->addSuccess($message);
+            return $this->redirect()->toRoute('admin/dre-search');
+        }
+
+        if ($this->params()->fromPost('provision_analytics')) {
+            $job = $this->jobDispatcher()->dispatch(ProvisionAnalytics::class);
+            $jobUrl = $this->url()->fromRoute('admin/id', ['controller' => 'job', 'id' => $job->getId()]);
+            $message = new Message(
+                'Search analytics provisioning queued. Track progress in %1$sjob #%2$s%3$s.', // @translate
                 sprintf('<a href="%s">', htmlspecialchars($jobUrl, ENT_QUOTES, 'UTF-8')),
                 $job->getId(),
                 '</a>'
@@ -157,5 +174,42 @@ class MaintenanceController extends AbstractActionController
         }
 
         return $rows;
+    }
+
+    /** @return array{enabled:bool,rows:list<array{profile:string,kind:string,q:string,count:int}>} */
+    private function collectAnalytics(): array
+    {
+        $client = $this->provider->getClient();
+        if ($client === null) {
+            return ['enabled' => false, 'rows' => []];
+        }
+        $rows = [];
+        $reachable = false;
+        foreach ($this->registry->all() as $profile) {
+            foreach (['popular' => 'Popular', 'nohits' => 'No results'] as $suffix => $kind) {
+                try {
+                    $result = $client->collections[AnalyticsSync::collectionName($profile->name(), $suffix)]
+                        ->documents->search([
+                            'q' => '*',
+                            'query_by' => 'q',
+                            'sort_by' => 'count:desc',
+                            'per_page' => 5,
+                        ]);
+                    $reachable = true;
+                    foreach ($result['hits'] ?? [] as $hit) {
+                        $document = $hit['document'] ?? [];
+                        $rows[] = [
+                            'profile' => $profile->label(),
+                            'kind' => $kind,
+                            'q' => (string) ($document['q'] ?? ''),
+                            'count' => (int) ($document['count'] ?? 0),
+                        ];
+                    }
+                } catch (\Throwable) {
+                    // Analytics is optional; an absent collection is an empty state.
+                }
+            }
+        }
+        return ['enabled' => $reachable, 'rows' => $rows];
     }
 }

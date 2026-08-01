@@ -3,6 +3,8 @@
   import type { ActiveFilters, Facet } from '../lib/types';
   import { t, matchFieldLabel } from '../lib/i18n';
   import FacetGroup from './FacetGroup.svelte';
+  import FilterChip from './FilterChip.svelte';
+  import { buildFilterChips, type FilterChipModel } from '../lib/filterChips';
 
   interface Props {
     /** Facet counts from the latest response (arbitrary order). */
@@ -36,15 +38,10 @@
       .filter((f): f is Facet => !!f && f.counts.length > 0),
   );
 
-  const chips = $derived.by(() => {
-    const out: { field: string; value: string; label: string }[] = [];
-    for (const [field, values] of Object.entries(selected)) {
-      for (const value of values) {
-        out.push({ field, value, label: labelFor(field) });
-      }
-    }
-    return out;
-  });
+  const chips = $derived(buildFilterChips(selected, labels));
+  function removeChip(chip: FilterChipModel): void {
+    onToggle(chip.field, chip.value, false);
+  }
 </script>
 
 <div class="dre-facets">
@@ -62,16 +59,7 @@
       <ul class="dre-facets__chips">
         {#each chips as chip (chip.field + '|' + chip.value)}
           <li>
-            <button
-              type="button"
-              class="dre-facets__chip"
-              aria-label={t('remove_filter', { label: chip.label, value: chip.value })}
-              onclick={() => onToggle(chip.field, chip.value, false)}
-            >
-              <span class="dre-facets__chip-field">{chip.label}:</span>
-              <span class="dre-facets__chip-value">{chip.value}</span>
-              <span class="dre-facets__chip-x" aria-hidden="true">×</span>
-            </button>
+            <FilterChip {chip} onRemove={removeChip} />
           </li>
         {/each}
       </ul>
@@ -84,13 +72,25 @@
     <div class="dre-facets__groups">
       {@render prepend?.()}
       {#each orderedFacets as facet (facet.field)}
-        <FacetGroup
-          field={facet.field}
-          label={labelFor(facet.field)}
-          counts={facet.counts}
-          selected={selected[facet.field] ?? []}
-          {onToggle}
-        />
+        {#if facet.field === 'has_fulltext'}
+          <button
+            type="button"
+            class:dre-facets__fulltext-active={(selected.has_fulltext ?? []).includes('Yes')}
+            class="dre-facets__fulltext"
+            aria-pressed={(selected.has_fulltext ?? []).includes('Yes')}
+            onclick={() =>
+              onToggle('has_fulltext', 'Yes', !(selected.has_fulltext ?? []).includes('Yes'))}
+            >{labelFor(facet.field)}</button
+          >
+        {:else}
+          <FacetGroup
+            field={facet.field}
+            label={labelFor(facet.field)}
+            counts={facet.counts}
+            selected={selected[facet.field] ?? []}
+            {onToggle}
+          />
+        {/if}
       {/each}
     </div>
   {/if}
@@ -146,49 +146,26 @@
     flex-wrap: wrap;
     gap: var(--space-xs, 0.25rem);
   }
-  .dre-facets__chip {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-xs, 0.25rem);
-    /* A long selected value (e.g. a full project title) must wrap within the
-       rail, never widen it. */
-    max-width: 100%;
-    min-width: 0;
-    padding: 0.2rem 0.55rem;
-    background: var(--surface, #fdfcfa);
-    border: 1px solid color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dcd6cb));
-    border-radius: var(--radius-full, 9999px);
-    cursor: pointer;
-    font: inherit;
-    font-size: var(--text-xs, 0.75rem);
-    color: var(--ink, #33291f);
-    /* The hover fill (below) is intentional. */
-  }
-  .dre-facets__chip:hover {
-    background: var(--primary, #007a50);
-    border-color: var(--primary, #007a50);
-    color: var(--primary-contrast, #fdfcfa);
-  }
-  .dre-facets__chip-field {
-    color: var(--muted, #7a7164);
-  }
-  .dre-facets__chip:hover .dre-facets__chip-field {
-    color: inherit;
-    opacity: 0.85;
-  }
-  .dre-facets__chip-value {
-    font-weight: 600;
-    /* Break even an unbroken token so a spaceless value can't overflow the rail. */
-    overflow-wrap: anywhere;
-  }
-  .dre-facets__chip-x {
-    font-size: var(--text-sm, 0.9rem);
-    line-height: 1;
-  }
-
   .dre-facets__groups {
     display: flex;
     flex-direction: column;
+  }
+  .dre-facets__fulltext {
+    margin-block: var(--space-md, 1rem) 0;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--border, #dcd6cb);
+    border-radius: var(--radius-md, 0.5rem);
+    background: var(--surface, #fdfcfa);
+    color: var(--ink, #33291f);
+    font: inherit;
+    font-size: var(--text-sm, 0.9rem);
+    text-align: start;
+    cursor: pointer;
+  }
+  .dre-facets__fulltext:hover,
+  .dre-facets__fulltext-active {
+    border-color: var(--primary, #007a50);
+    background: color-mix(in srgb, var(--primary, #007a50) 12%, var(--surface, #fdfcfa));
   }
   .dre-facets__empty {
     padding-block: var(--space-md, 1rem);

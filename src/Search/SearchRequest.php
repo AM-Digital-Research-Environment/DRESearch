@@ -110,6 +110,35 @@ final class SearchRequest
         return self::integer($value, 'block_id', 1, PHP_INT_MAX);
     }
 
+    /**
+     * Validate the intentionally small public union payload. Per-corpus filters
+     * and sorts stay on profile tabs; the merged tab accepts only query/paging.
+     *
+     * @param array<string,mixed> $input
+     * @return array{q:string,page:int,per_page:int}
+     */
+    public static function union(array $input): array
+    {
+        $allowed = ['q', 'page', 'per_page'];
+        $unknown = array_values(array_diff(array_keys($input), $allowed));
+        if ($unknown !== []) {
+            throw new RequestValidationException(
+                'unknown_parameter',
+                'Unknown request parameter: ' . (string) $unknown[0],
+            );
+        }
+        return [
+            'q' => self::boundedString($input['q'] ?? '', 'q', self::MAX_QUERY_LENGTH),
+            'page' => self::integer($input['page'] ?? 1, 'page', 1, QueryBuilder::MAX_PAGE),
+            'per_page' => self::integer(
+                $input['per_page'] ?? QueryBuilder::PER_PAGE_DEFAULT,
+                'per_page',
+                1,
+                QueryBuilder::PER_PAGE_MAX,
+            ),
+        ];
+    }
+
     /** @return array<string,mixed> */
     public function toArray(): array
     {

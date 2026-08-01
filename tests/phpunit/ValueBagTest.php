@@ -30,4 +30,14 @@ final class ValueBagTest extends TestCase
         self::assertNull($bag->firstUrl('url'));
         self::assertSame('https://doi.org/10.1234/example', $bag->firstDoi());
     }
+
+    public function testParsesFiniteCoordinatesOnly(): void
+    {
+        $bag = new ValueBag([
+            'geo:lat' => [['vrid' => null, 'value' => '12.345', 'uri' => null, 'title' => null]],
+            'bad' => [['vrid' => null, 'value' => 'NaN', 'uri' => null, 'title' => null]],
+        ]);
+        self::assertSame(12.345, $bag->firstFloat('geo:lat'));
+        self::assertNull($bag->firstFloat('bad'));
+    }
 }

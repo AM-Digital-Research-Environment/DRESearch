@@ -6,6 +6,7 @@
  */
 
 export type SortKey = 'relevance' | 'newest' | 'oldest' | 'title' | 'count' | 'episode';
+export type ViewMode = 'list' | 'gallery' | 'map';
 
 /** One sort choice offered for a corpus (server-built, label already translated). */
 export interface SortOption {
@@ -60,7 +61,7 @@ export interface Bootstrap {
   per_page: number;
   /** Result links are built as `${item_url_base}/${doc.id}`. */
   item_url_base: string;
-  endpoints: { search: string; export: string; suggest: string };
+  endpoints: { search: string; export: string; suggest: string; map: string };
   /** Server-rendered first page, so the block paints without a round-trip. */
   initial_response?: SearchResponse;
   /** Seed query (federated results page reuses App per corpus with a shared query). */
@@ -71,6 +72,10 @@ export interface Bootstrap {
 export interface Doc {
   id: string;
   title: string;
+  /** Source markers injected centrally for mixed Typesense union results. */
+  _profile?: string;
+  _profile_label?: string;
+  _kind?: CardKind;
 
   // Research-item fields.
   type_s?: string;
@@ -116,6 +121,7 @@ export interface Doc {
   pages_s?: string;
   /** Resolvable DOI link, e.g. "https://doi.org/10.1163/…". */
   doi_s?: string;
+  has_fulltext?: string;
 
   // Podcast fields. people_ss (union of hosts + guests) and language_ss are shared
   // with the corpora above; series_s is single-valued.
@@ -177,6 +183,9 @@ export interface Doc {
   // shared item_count / publication_count association figures.
 
   // Shared.
+  /** Typesense geopoint order: [latitude, longitude]. */
+  geo?: [number, number];
+  has_coords?: boolean;
   abstract?: string;
   description?: string;
   thumbnail_url?: string;
@@ -267,6 +276,23 @@ export interface ExportResponse {
   error?: ApiError | null;
 }
 
+export interface MapRequest {
+  q: string;
+  sort: SortKey;
+  filters: ActiveFilters;
+  year_from?: number | null;
+  year_to?: number | null;
+}
+
+export interface MapResponse {
+  available: boolean;
+  found: number;
+  mapped: number;
+  capped: boolean;
+  docs: Doc[];
+  error?: ApiError | null;
+}
+
 // ── Federated search (header bar + grouped results page) ─────────────────────
 
 /** One corpus's suggestions in the federated autocomplete, tagged for a badge. */
@@ -324,6 +350,8 @@ export interface FederatedBootstrap {
     search: string;
     export: string;
     search_all: string;
+    union: string;
+    map: string;
     suggest: string;
     suggest_all: string;
   };
@@ -349,4 +377,10 @@ export interface SearchAllRequest {
   include_counts?: boolean;
   year_from?: number | null;
   year_to?: number | null;
+}
+
+export interface UnionSearchRequest {
+  q: string;
+  page?: number;
+  per_page?: number;
 }

@@ -84,6 +84,25 @@ class SearchController extends AbstractActionController
         });
     }
 
+    public function apiUnionAction(): Response
+    {
+        return $this->respond(function (string $requestId): array {
+            $this->requireMethod(['POST']);
+            $this->requireRateLimit('union', 60);
+            return $this->proxy->union($this->readJsonBody(), $requestId);
+        });
+    }
+
+    public function apiMapAction(): Response
+    {
+        return $this->respond(function (string $requestId): array {
+            $this->requireMethod(['POST']);
+            $this->requireRateLimit('map', 30);
+            $body = $this->readJsonBody();
+            return $this->proxy->map(SearchRequest::profile($body['profile'] ?? ''), $body, $requestId);
+        });
+    }
+
     public function resultsAction(): ViewModel
     {
         $query = (string) $this->params()->fromQuery('q', '');

@@ -28,3 +28,17 @@ Item, batch, media, and item-set events call the bounded incremental indexer.
 `syncOne` upserts a matching public resource and deletes a document that became
 private or left scope. Linked resources are refreshed up to the configured cap.
 Failures mark the profile dirty so operators know a rebuild is required.
+
+## Federated, map, and analytics extensions
+
+The server-side proxy also owns two bounded read models. Typesense 30 union
+search merges a curated set of collection aliases into the federated All tab;
+source markers stored on each document select the safe client card and support
+handoff to its corpus. Location maps page through at most 1,000 matching
+documents carrying a validated `geopoint`; MapLibre loads only after the user
+selects Map.
+
+`ReindexOrchestrator` is the single construction path for one/all rebuild jobs:
+it provisions stopwords, rebuilds profiles, and then attempts optional per-profile
+analytics rules. Analytics destination collections are persistent and outside
+the versioned alias-swap lifecycle.

@@ -237,6 +237,7 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
                 'search'  => $view->basePath('/dre-search/api/search'),
                 'export'  => $view->basePath('/dre-search/api/export'),
                 'suggest' => $view->basePath('/dre-search/api/suggest'),
+                'map'     => $view->basePath('/dre-search/api/map'),
             ],
         ];
 

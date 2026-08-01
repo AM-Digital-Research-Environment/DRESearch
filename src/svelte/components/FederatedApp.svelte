@@ -1,248 +1,229 @@
 <script lang="ts">
   import type { Bootstrap, FederatedBootstrap, ProfileMeta, SearchResponse } from '../lib/types';
-  import { searchAll } from '../lib/api';
-  import { readFederatedShell, syncFederatedShell } from '../lib/urlState';
+  import { searchAll, searchUnion } from '../lib/api';
+  import { readFederatedShell, syncFederatedShell, writeUrlState } from '../lib/urlState';
   import { formatNumber, t } from '../lib/i18n';
+  import { installSlashFocus } from '../lib/keyboard';
+  import { rememberSearch } from '../lib/searchHistory';
   import App from '../App.svelte';
-
-  /**
-   * The federated results page. One instance per page.
-   *
-   * Owns a shared query + the active corpus. A single /search-all round-trip
-   * gives per-corpus counts (the type tabs) plus the active corpus's full
-   * faceted response, which seeds a reused per-corpus {@link App} (its own search
-   * box suppressed). Switching tabs / changing the query re-runs search-all;
-   * within a corpus, the reused App handles facets, sort and paging itself.
-   */
+  import MixedResultCard from './MixedResultCard.svelte';
+  import Pagination from './Pagination.svelte';
+  import ResultSkeleton from './ResultSkeleton.svelte';
+  import CopyLinkButton from './CopyLinkButton.svelte';
 
   interface Props {
     bootstrap: FederatedBootstrap;
   }
-
   const { bootstrap }: Props = $props();
-
   // svelte-ignore state_referenced_locally
   const profiles = bootstrap.profiles;
-  const metaFor = (name: string): ProfileMeta | undefined => profiles.find((p) => p.name === name);
-
-  // Hydrate the shared query + active corpus from the URL so a federated search is
-  // shareable / bookmarkable. The reused per-corpus App reads its own facets/sort/
-  // page/year from the (bare) URL; the shell owns ?q + ?profile.
+  const ALL = 'all';
+  const metaFor = (name: string): ProfileMeta | undefined =>
+    profiles.find((profile) => profile.name === name);
   const shell = readFederatedShell();
-  const pinnedProfile =
-    shell.profile && profiles.some((p) => p.name === shell.profile) ? shell.profile : null;
+  const pinned =
+    shell.profile && (shell.profile === ALL || profiles.some((p) => p.name === shell.profile))
+      ? shell.profile
+      : null;
   // svelte-ignore state_referenced_locally
   const seedQuery = shell.q || (bootstrap.initial_query ?? '');
-
   let query = $state(seedQuery);
   let inputValue = $state(seedQuery);
   // svelte-ignore state_referenced_locally
-  let activeProfile = $state(
-    pinnedProfile || bootstrap.default_profile || (profiles[0]?.name ?? ''),
-  );
+  let activeProfile = $state(pinned || bootstrap.default_profile || profiles[0]?.name || ALL);
   let counts = $state<Record<string, number>>({});
+  let countsQuery = $state<string | null>(null);
   let activeResponse = $state<SearchResponse | null>(null);
+  let unionResponse = $state<SearchResponse | null>(null);
+  let unionPage = $state(1);
   let isLoading = $state(false);
   let error = $state<string | null>(null);
-
-  // Per-query cache of corpus responses so revisiting a tab is instant.
-  let cache: Record<string, SearchResponse> = {};
-  let cacheQuery: string | null = null;
-  // $state because the tab count labels (countLabel) read it in the template.
-  let countsQuery = $state<string | null>(null);
-  // A URL-pinned profile counts as a deliberate choice — don't auto-jump off it.
-  let autoSelected = pinnedProfile !== null;
-  let reqId = 0;
   let inputTimer: number | null = null;
   let controller: AbortController | null = null;
+  let inputEl = $state<HTMLInputElement>();
+  let cache: Record<string, SearchResponse> = {};
+  let cacheQuery: string | null = null;
+  let requestId = 0;
+  const tabs = $derived([
+    { name: ALL, label: t('all_results') },
+    ...profiles.map((p) => ({ name: p.name, label: p.label })),
+  ]);
 
-  function onInput(e: Event): void {
-    inputValue = (e.target as HTMLInputElement).value;
-    if (inputTimer !== null) {
-      clearTimeout(inputTimer);
-    }
+  function commitQuery(next: string): void {
+    if (next === query) return;
+    syncFederatedShell({ q: next, profile: activeProfile }, false);
+    query = next;
+    unionPage = 1;
+  }
+  function onInput(event: Event): void {
+    inputValue = (event.currentTarget as HTMLInputElement).value;
+    if (inputTimer !== null) clearTimeout(inputTimer);
     inputTimer = window.setTimeout(() => {
       inputTimer = null;
       commitQuery(inputValue.trim());
     }, 300);
   }
-
   function clearQuery(): void {
-    if (inputTimer !== null) {
-      clearTimeout(inputTimer);
-      inputTimer = null;
-    }
+    if (inputTimer !== null) clearTimeout(inputTimer);
+    inputTimer = null;
     inputValue = '';
     commitQuery('');
   }
-
-  function handleSearchKeydown(event: KeyboardEvent): void {
+  function keySearch(event: KeyboardEvent): void {
     if (event.key !== 'Enter') return;
     event.preventDefault();
-    if (inputTimer !== null) {
-      clearTimeout(inputTimer);
-      inputTimer = null;
-    }
+    if (inputTimer !== null) clearTimeout(inputTimer);
+    inputTimer = null;
     commitQuery(inputValue.trim());
   }
 
-  /**
-   * Commit a new shared query. Update the URL first — which also resets the active
-   * corpus's facets/sort/page (a fresh query starts clean) — so the per-corpus App
-   * re-seeds from a clean URL when the query change remounts it. Replace, not push:
-   * typing isn't a back-button-able step.
-   */
-  function commitQuery(next: string): void {
-    if (next === query) return;
-    syncFederatedShell({ q: next, profile: activeProfile }, false);
-    query = next;
-  }
-
-  async function load(profile: string, q: string): Promise<void> {
+  async function load(profile: string, q: string, page = 1): Promise<void> {
     if (q !== cacheQuery) {
       cache = {};
       cacheQuery = q;
+      countsQuery = null;
     }
-    if (cache[profile]) {
-      activeResponse = cache[profile];
-      isLoading = false;
+    const cacheKey = `${profile}:${page}`;
+    if (cache[cacheKey]) {
+      if (profile === ALL) unionResponse = cache[cacheKey];
+      else activeResponse = cache[cacheKey];
       return;
     }
-    const myId = ++reqId;
+    const id = ++requestId;
     controller?.abort();
     controller = new AbortController();
-    activeResponse = null; // hide the stale corpus; show "searching"
     isLoading = true;
     error = null;
     try {
-      // Ask for the corpus's own default sort / page size / facets so the
-      // returned `active` page matches the state the reused App seeds with (it
-      // skips its first fetch when seeded), and so its facet sidebar is populated.
-      const meta = metaFor(profile);
-      const res = await searchAll(
-        bootstrap.endpoints.search_all,
-        {
-          profile,
-          q,
-          sort: meta?.default_sort,
-          per_page: meta?.per_page,
-          facets: meta?.facets,
-          include_counts: countsQuery !== q,
-        },
-        controller.signal,
-      );
-      if (myId !== reqId) {
-        return;
+      if (profile === ALL) {
+        unionResponse = null;
+        const unionPromise = searchUnion(
+          bootstrap.endpoints.union,
+          { q, page, per_page: 20 },
+          controller.signal,
+        );
+        const countsPromise =
+          countsQuery === q
+            ? Promise.resolve(null)
+            : searchAll(
+                bootstrap.endpoints.search_all,
+                {
+                  profile: bootstrap.default_profile || profiles[0]?.name || '',
+                  q,
+                  per_page: 1,
+                  include_counts: true,
+                },
+                controller.signal,
+              );
+        const [merged, countResult] = await Promise.all([unionPromise, countsPromise]);
+        if (id !== requestId) return;
+        unionResponse = merged;
+        cache[cacheKey] = merged;
+        if (q.trim() && merged.found > 0) rememberSearch(q);
+        if (countResult) {
+          counts = countResult.counts;
+          countsQuery = q;
+        }
+      } else {
+        activeResponse = null;
+        const meta = metaFor(profile);
+        const result = await searchAll(
+          bootstrap.endpoints.search_all,
+          {
+            profile,
+            q,
+            sort: meta?.default_sort,
+            per_page: meta?.per_page,
+            facets: meta?.facets,
+            include_counts: countsQuery !== q,
+          },
+          controller.signal,
+        );
+        if (id !== requestId) return;
+        activeResponse = result.active;
+        cache[cacheKey] = result.active;
+        if (Object.keys(result.counts).length) {
+          counts = result.counts;
+          countsQuery = q;
+        }
       }
-      if (countsQuery !== q && Object.keys(res.counts).length > 0) {
-        counts = res.counts;
-        countsQuery = q;
-        maybeAutoSelect();
-      }
-      cache[profile] = res.active;
-      activeResponse = res.active;
-    } catch (e) {
-      if (myId !== reqId) {
-        return;
-      }
-      if ((e as Error).name === 'AbortError') return;
-      error = (e as Error).message;
-      activeResponse = null;
+    } catch (reason) {
+      if (id === requestId && (reason as Error).name !== 'AbortError')
+        error = (reason as Error).message;
     } finally {
-      if (myId === reqId) {
-        isLoading = false;
-      }
-    }
-  }
-
-  /** On first counts, if the default corpus is empty, land on the richest one. */
-  function maybeAutoSelect(): void {
-    if (autoSelected) {
-      return;
-    }
-    autoSelected = true;
-    if ((counts[activeProfile] ?? 0) > 0) {
-      return;
-    }
-    let best = activeProfile;
-    let bestN = counts[activeProfile] ?? 0;
-    for (const p of profiles) {
-      const n = counts[p.name] ?? 0;
-      if (n > bestN) {
-        best = p.name;
-        bestN = n;
-      }
-    }
-    if (best !== activeProfile && bestN > 0) {
-      // Reflect the auto-chosen corpus in the URL (replace — not a user nav).
-      syncFederatedShell({ q: query, profile: best }, false);
-      activeProfile = best; // re-triggers the effect → load(best)
+      if (id === requestId) isLoading = false;
     }
   }
 
   $effect(() => {
-    const p = activeProfile;
-    const q = query;
-    if (bootstrap.available) {
-      void load(p, q);
-    }
+    if (bootstrap.available) void load(activeProfile, query, activeProfile === ALL ? unionPage : 1);
   });
-
   $effect(() => {
+    const remove = installSlashFocus(() => inputEl);
     return () => {
+      remove();
       controller?.abort();
       if (inputTimer !== null) clearTimeout(inputTimer);
     };
   });
-
-  // Back / forward → re-hydrate the shared query + active corpus from the URL. The
-  // per-corpus App restores its own facets (via its own popstate handler, or a
-  // remount when the query/profile changed here).
   $effect(() => {
     const onPop = (): void => {
-      const s = readFederatedShell();
-      const profile =
-        s.profile && profiles.some((p) => p.name === s.profile)
-          ? s.profile
-          : bootstrap.default_profile || (profiles[0]?.name ?? '');
-      query = s.q;
-      inputValue = s.q;
-      activeProfile = profile;
+      const value = readFederatedShell();
+      query = value.q;
+      inputValue = value.q;
+      activeProfile =
+        value.profile && (value.profile === ALL || profiles.some((p) => p.name === value.profile))
+          ? value.profile
+          : bootstrap.default_profile || profiles[0]?.name || ALL;
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   });
 
   function selectTab(name: string): void {
-    if (name === activeProfile) {
-      return;
-    }
-    autoSelected = true; // a manual choice disables the one-shot auto-jump
-    // Push a back-button-able step and reset the previous corpus's facet/sort/page
-    // (facet fields don't carry across corpora) before the remount re-seeds.
+    if (name === activeProfile) return;
     syncFederatedShell({ q: query, profile: name }, true);
     activeProfile = name;
+    unionPage = 1;
   }
-
-  function handleTabKeydown(event: KeyboardEvent, name: string): void {
-    const index = profiles.findIndex((profile) => profile.name === name);
-    if (index < 0) return;
+  function tabKey(event: KeyboardEvent, name: string): void {
+    const index = tabs.findIndex((tab) => tab.name === name);
     let next: number;
-    if (event.key === 'ArrowRight' || event.key === 'ArrowDown')
-      next = (index + 1) % profiles.length;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = (index + 1) % tabs.length;
     else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp')
-      next = (index - 1 + profiles.length) % profiles.length;
+      next = (index - 1 + tabs.length) % tabs.length;
     else if (event.key === 'Home') next = 0;
-    else if (event.key === 'End') next = profiles.length - 1;
+    else if (event.key === 'End') next = tabs.length - 1;
     else return;
     event.preventDefault();
-    const nextName = profiles[next]?.name;
-    if (!nextName) return;
-    selectTab(nextName);
-    requestAnimationFrame(() => document.getElementById(`dre-fed-tab-${nextName}`)?.focus());
+    const target = tabs[next]?.name;
+    if (target) {
+      selectTab(target);
+      requestAnimationFrame(() => document.getElementById(`dre-fed-tab-${target}`)?.focus());
+    }
   }
-
-  /** Synthesise a per-corpus Bootstrap so the reused App renders that corpus. */
+  function handoff(profile: string, field?: string, value?: string): void {
+    const meta = metaFor(profile);
+    if (!meta) return;
+    syncFederatedShell({ q: query, profile }, true);
+    if (field && value) {
+      const search = writeUrlState(
+        {
+          q: '',
+          page: 1,
+          sort: meta.default_sort,
+          filters: { [field]: [value] },
+          yearFrom: null,
+          yearTo: null,
+          view: null,
+        },
+        { includeQuery: false, defaultSort: meta.default_sort },
+        window.location.search,
+      );
+      window.history.replaceState(window.history.state, '', `${window.location.pathname}${search}`);
+    }
+    activeProfile = profile;
+  }
   function appBootstrap(meta: ProfileMeta): Bootstrap {
     return {
       block_id: null,
@@ -262,22 +243,22 @@
         search: bootstrap.endpoints.search,
         export: bootstrap.endpoints.export,
         suggest: bootstrap.endpoints.suggest,
+        map: bootstrap.endpoints.map,
       },
       initial_response: activeResponse ?? undefined,
       initial_query: query,
     };
   }
-
   const activeMeta = $derived(metaFor(activeProfile));
-  const countLabel = (name: string): string =>
+  const count = (name: string): string =>
     countsQuery === null ? '' : formatNumber(counts[name] ?? 0);
 </script>
 
 <div class="dre-fed">
   <div class="dre-fed__search">
     <input
+      bind:this={inputEl}
       name="q"
-      class="dre-fed__input"
       type="search"
       autocomplete="off"
       spellcheck="false"
@@ -286,47 +267,33 @@
       placeholder={t('search_all_placeholder')}
       value={inputValue}
       oninput={onInput}
-      onkeydown={handleSearchKeydown}
-    />
-    {#if inputValue !== ''}
-      <button
-        type="button"
-        class="dre-fed__clear"
-        aria-label={t('clear_search')}
-        onclick={clearQuery}>×</button
-      >
-    {/if}
+      onkeydown={keySearch}
+    />{#if inputValue}<button type="button" aria-label={t('clear_search')} onclick={clearQuery}
+        >×</button
+      >{/if}
   </div>
-
-  {#if !bootstrap.available || (activeResponse !== null && !activeResponse.available)}
-    <div class="dre-fed__notice" role="status">
+  {#if !bootstrap.available}<div class="dre-fed__notice" role="status">
       <strong>{t('search_unavailable')}</strong>
       <p>{t('search_unavailable_hint')}</p>
     </div>
   {:else}
     <div class="dre-fed__tabs" role="tablist" aria-label={t('result_types')}>
-      {#each profiles as p (p.name)}
-        <button
+      {#each tabs as tab (tab.name)}<button
           type="button"
           role="tab"
-          id="dre-fed-tab-{p.name}"
-          aria-selected={p.name === activeProfile}
+          id="dre-fed-tab-{tab.name}"
+          aria-selected={tab.name === activeProfile}
           aria-controls="dre-fed-panel"
-          class="dre-fed__tab"
-          class:dre-fed__tab--active={p.name === activeProfile}
-          class:dre-fed__tab--empty={countsQuery !== null && (counts[p.name] ?? 0) === 0}
-          tabindex={p.name === activeProfile ? 0 : -1}
-          onclick={() => selectTab(p.name)}
-          onkeydown={(event) => handleTabKeydown(event, p.name)}
-        >
-          <span class="dre-fed__tab-label">{p.label}</span>
-          {#if countLabel(p.name) !== ''}
-            <span class="dre-fed__tab-count">{countLabel(p.name)}</span>
-          {/if}
-        </button>
-      {/each}
+          class:active={tab.name === activeProfile}
+          tabindex={tab.name === activeProfile ? 0 : -1}
+          onclick={() => selectTab(tab.name)}
+          onkeydown={(event) => tabKey(event, tab.name)}
+          ><span>{tab.label}</span>{#if tab.name === ALL && unionResponse}<small
+              >{formatNumber(unionResponse.found)}</small
+            >{:else if tab.name !== ALL && count(tab.name)}<small>{count(tab.name)}</small
+            >{/if}</button
+        >{/each}
     </div>
-
     <div
       class="dre-fed__panel"
       id="dre-fed-panel"
@@ -334,24 +301,41 @@
       aria-labelledby="dre-fed-tab-{activeProfile}"
       tabindex="0"
     >
-      {#if error}
-        <div class="dre-fed__error" role="alert">
-          <strong>{t('search_unavailable')}</strong>
-          <span>{error}</span>
+      {#if error}<div class="dre-fed__error" role="alert">
+          <strong>{t('search_unavailable')}</strong><span>{error}</span>
         </div>
-      {:else if isLoading && !activeResponse}
-        <p class="dre-fed__status">{t('searching')}</p>
-      {:else if activeMeta && activeResponse}
-        {#key activeProfile + '::' + query}
-          <App
+      {:else if isLoading}<ResultSkeleton count={activeProfile === ALL ? 8 : 6} />
+      {:else if activeProfile === ALL && unionResponse}
+        <header class="dre-fed__all-summary">
+          <span
+            ><strong>{formatNumber(unionResponse.found)}</strong>
+            {unionResponse.found === 1 ? t('result_one') : t('result_other')}</span
+          ><span>{t('all_no_facets')}</span><CopyLinkButton />
+        </header>
+        {#if unionResponse.found === 0}<div class="dre-fed__empty">
+            {query ? t('no_results_for_query', { q: query }) : t('corpus_empty')}
+          </div>
+        {:else}<ol class="dre-fed__mixed">
+            {#each unionResponse.hits as doc (`${doc._profile}:${doc.id}`)}<li>
+                <MixedResultCard {doc} itemUrlBase={bootstrap.item_url_base} onHandoff={handoff} />
+              </li>{/each}
+          </ol>
+          <Pagination
+            found={unionResponse.found}
+            page={unionResponse.page}
+            perPage={20}
+            onPageChange={(next) => {
+              unionPage = next;
+              document.getElementById('dre-fed-panel')?.scrollIntoView({ block: 'start' });
+            }}
+          />{/if}
+      {:else if activeMeta && activeResponse}{#key activeProfile + '::' + query}<App
             bootstrap={appBootstrap(activeMeta)}
             showSearchBox={false}
             syncUrl={true}
             urlPrefix=""
             includeQuery={false}
-          />
-        {/key}
-      {/if}
+          />{/key}{/if}
     </div>
   {/if}
 </div>
@@ -363,137 +347,113 @@
     gap: var(--space-md, 1rem);
     color: var(--ink, #33291f);
   }
-
-  /* Shared query box. */
   .dre-fed__search {
     position: relative;
     display: flex;
-    align-items: center;
     max-width: 36rem;
   }
-  .dre-fed__input {
+  .dre-fed__search input {
     width: 100%;
-    height: var(--size-control-lg, 2.75rem);
-    padding-inline: var(--space-md, 1rem) var(--space-2xl, 3rem);
+    height: 2.75rem;
     margin: 0;
-    font-size: var(--text-base, 1rem);
-    color: var(--ink, #33291f);
-    background: var(--surface, #fdfcfa);
+    padding-inline: 1rem 3rem;
     border: 1px solid var(--border, #dcd6cb);
     border-radius: var(--radius-md, 0.5rem);
-  }
-  .dre-fed__input:focus {
-    outline: none;
-    border-color: var(--primary, #007a50);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.1));
-  }
-  .dre-fed__input::-webkit-search-cancel-button {
-    -webkit-appearance: none;
-    appearance: none;
-    display: none;
-  }
-  .dre-fed__clear {
-    position: absolute;
-    inset-inline-end: var(--space-sm, 0.5rem);
-    top: 50%;
-    transform: translateY(-50%);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    min-width: 0;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: var(--muted, #938979);
-    font-size: 1.25rem;
-    line-height: 1;
-    cursor: pointer;
-    border-radius: var(--radius-full, 9999px);
-  }
-  .dre-fed__clear:hover {
-    background: color-mix(in srgb, currentColor 16%, transparent);
-    color: var(--ink, #33291f);
-  }
-
-  /* Type tabs. */
-  .dre-fed__tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-xs, 0.4rem);
-    padding-block-end: var(--space-sm, 0.5rem);
-    border-bottom: 1px solid var(--border-light, #eae5dd);
-  }
-  /*
-   * Tabs read as quiet chips with their own surface/border; the active tab uses
-   * the brand colour on purpose.
-   */
-  .dre-fed__tab {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.4rem 0.8rem;
-    margin: 0;
-    border: 1px solid var(--border, #dcd6cb);
-    border-radius: var(--radius-full, 9999px);
     background: var(--surface, #fdfcfa);
     color: var(--ink, #33291f);
     font: inherit;
-    font-size: var(--text-sm, 0.9rem);
-    line-height: 1.2;
+  }
+  .dre-fed__search input:focus {
+    outline: 0;
+    border-color: var(--primary, #007a50);
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.1));
+  }
+  .dre-fed__search > button {
+    position: absolute;
+    inset-inline-end: 0.5rem;
+    top: 0.35rem;
+    width: 2rem;
+    height: 2rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--muted, #938979);
+    font-size: 1.25rem;
     cursor: pointer;
   }
-  .dre-fed__tab:hover {
-    border-color: var(--primary, #007a50);
-    color: var(--primary, #007a50);
-    background: var(--surface, #fdfcfa);
+  .dre-fed__tabs {
+    display: flex;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border, #dcd6cb);
   }
-  .dre-fed__tab--active,
-  .dre-fed__tab--active:hover {
-    background: var(--primary, #007a50);
-    border-color: var(--primary, #007a50);
-    color: var(--primary-contrast, #fdfcfa);
-    font-weight: 600;
-  }
-  .dre-fed__tab--empty:not(.dre-fed__tab--active) {
-    opacity: 0.55;
-  }
-  .dre-fed__tab:focus-visible {
-    outline: none;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.15));
-  }
-  .dre-fed__tab-count {
-    font-variant-numeric: tabular-nums;
-    font-size: var(--text-xs, 0.75rem);
-    opacity: 0.85;
-  }
-
-  .dre-fed__status {
-    color: var(--muted, #7a7164);
-    font-size: var(--text-sm, 0.9rem);
+  .dre-fed__tabs button {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex: none;
     margin: 0;
+    padding: 0.65rem 0.8rem;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--muted, #7a7164);
+    font: inherit;
+    cursor: pointer;
   }
-  .dre-fed__notice,
-  .dre-fed__error {
-    border-radius: var(--radius-md, 0.5rem);
-    padding: var(--space-md, 1rem);
+  .dre-fed__tabs button.active {
+    border-bottom-color: var(--primary, #007a50);
+    color: var(--ink, #33291f);
+    font-weight: 700;
+  }
+  .dre-fed__tabs small {
+    padding: 0.08rem 0.35rem;
+    border-radius: 999px;
+    background: var(--surface-sunken, #f1ede6);
+    font-variant-numeric: tabular-nums;
+  }
+  .dre-fed__panel {
+    min-width: 0;
+    outline: none;
+  }
+  .dre-fed__all-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    padding-block: 0.65rem;
+    border-block: 1px solid var(--border-light, #eae5dd);
+    color: var(--muted, #7a7164);
+    font-size: 0.9rem;
+  }
+  .dre-fed__all-summary strong {
+    color: var(--ink, #33291f);
+  }
+  .dre-fed__mixed {
     display: flex;
     flex-direction: column;
-    gap: var(--space-xs, 0.25rem);
+    gap: 1rem;
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0;
   }
-  .dre-fed__notice {
-    background: var(--surface-sunken, #f1ede6);
-    border: 1px dashed var(--border, #dcd6cb);
-    color: var(--muted, #6c6357);
-    text-align: center;
-  }
-  .dre-fed__notice p {
-    margin: 0;
+  .dre-fed__empty,
+  .dre-fed__notice,
+  .dre-fed__error {
+    padding: 1rem;
+    border: 1px solid var(--border-light, #eae5dd);
+    border-radius: 0.75rem;
+    background: var(--surface, #fdfcfa);
   }
   .dre-fed__error {
-    background: color-mix(in srgb, var(--error, #c0392b) 12%, var(--surface, #fdfcfa));
-    border: 1px solid color-mix(in srgb, var(--error, #c0392b) 35%, transparent);
+    border-color: var(--danger, #b42318);
+  }
+  @media (max-width: 40rem) {
+    .dre-fed__all-summary {
+      align-items: flex-start;
+      flex-direction: column;
+    }
   }
 </style>
