@@ -66,15 +66,28 @@ final class TypesenseIntegrationTest extends TestCase
                 'query_by' => 'title',
                 'sort_by' => '_text_match:desc,title:asc',
             ], $collections);
-            $result = $client->multiSearch->perform(
+            $firstPage = $client->multiSearch->perform(
                 ['union' => true, 'searches' => $searches],
-                ['page' => 1, 'per_page' => 10],
+                ['page' => 1, 'per_page' => 1],
             );
-            self::assertSame(2, $result['found']);
-            self::assertCount(2, $result['hits']);
+            $secondPage = $client->multiSearch->perform(
+                ['union' => true, 'searches' => $searches],
+                ['page' => 2, 'per_page' => 1],
+            );
+
+            self::assertSame(2, $firstPage['found']);
+            self::assertSame(2, $secondPage['found']);
+            self::assertCount(1, $firstPage['hits']);
+            self::assertCount(1, $secondPage['hits']);
+            $documents = array_column(
+                array_merge($firstPage['hits'], $secondPage['hits']),
+                'document',
+            );
+            $profiles = array_column($documents, '_profile');
+            sort($profiles);
             self::assertSame(
-                ['research_projects', 'research_items'],
-                array_column(array_column($result['hits'], 'document'), '_profile'),
+                ['research_items', 'research_projects'],
+                $profiles,
             );
         } finally {
             foreach ($collections as $collection) {
