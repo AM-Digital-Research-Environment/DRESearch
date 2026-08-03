@@ -36,7 +36,11 @@ jobs:
         php: ['8.2', '8.3', '8.4', '8.5']
     services:
       typesense:
-        image: typesense/typesense:30.1
+        # Keep this on the version the DRE stack actually runs (currently the
+        # latest stable, 30.2). The schema test asserts what the *server*
+        # accepts, so a drifting pin would validate against rules no deployment
+        # is using.
+        image: typesense/typesense:30.2
         ports:
           - 8108:8108
         # The Typesense image does not create the data dir itself; without a
