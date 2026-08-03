@@ -2,6 +2,10 @@
 vendor/
 composer.lock
 
+# Tool caches (phpstan.neon.dist / phpunit.xml.dist write these locally)
+.phpstan-cache/
+.phpunit.cache/
+
 # Node / Svelte build
 node_modules/
 .svelte-kit/

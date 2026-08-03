@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace DRESearch\Test;
 
 use DRESearch\Indexer\ImportResult;
+use DRESearch\Indexer\SchemaProvider;
+use DRESearch\Settings\SearchProfile;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Typesense\Client;
@@ -11,6 +13,33 @@ use Typesense\Client;
 #[Group('typesense')]
 final class TypesenseIntegrationTest extends TestCase
 {
+    /**
+     * Every shipped profile must produce a schema Typesense actually accepts.
+     * Unit tests only assert the array we build, so field-combination rules that
+     * live in the server (a geopoint may not declare `sort: false`, a non-indexed
+     * field may not be faceted, …) used to surface for the first time mid-reindex,
+     * against production data.
+     */
+    public function testEveryShippedProfileSchemaIsAcceptedByTypesense(): void
+    {
+        $client = $this->client();
+        $config = require dirname(__DIR__, 2) . '/config/module.config.php';
+        $profiles = $config['dre_search']['profiles'] ?? [];
+        self::assertNotEmpty($profiles, 'No search profiles are configured.');
+
+        foreach ($profiles as $name => $definition) {
+            $profile = SearchProfile::fromArray((string) $name, $definition);
+            $collection = 'dre_schema_' . bin2hex(random_bytes(5));
+            $schema = (new SchemaProvider())->collection($collection, $profile);
+            try {
+                $client->collections->create($schema);
+            } catch (\Throwable $e) {
+                self::fail(sprintf('Profile "%s" produced a schema Typesense rejected: %s', $name, $e->getMessage()));
+            }
+            $client->collections[$collection]->delete();
+        }
+    }
+
     public function testMixedBatchResponseCannotPassThePromotionGate(): void
     {
         $client = $this->client();

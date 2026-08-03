@@ -3,6 +3,25 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.18.2] - 2026-08-03
+
+### Fixed
+
+- Reindexing the Locations corpus failed outright: Typesense builds its geo
+  index from the sort index, so it rejects a `geopoint` field declared with
+  `sort: false` — the default for every config-declared display field. The
+  generated schema now forces geopoint fields sortable, which is a property of
+  Typesense rather than of any one profile's configuration.
+- A failing corpus no longer hides its cause. The reindex-all summary reported
+  only which corpora failed, leaving the actual Typesense message reachable only
+  by digging through the per-corpus log lines; it now carries each reason.
+
+### Added
+
+- An integration test that creates every shipped profile's schema against a live
+  Typesense, so server-side field-combination rules are caught in CI instead of
+  mid-reindex, and a profile-schema guard rule for unsortable geopoints.
+
 ## [1.18.1] - 2026-08-01
 
 ### Changed

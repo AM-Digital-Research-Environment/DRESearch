@@ -59,7 +59,10 @@ final class SchemaProvider
                 'name'     => $field,
                 'type'     => $def['type'],
                 'facet'    => $def['facet'],
-                'sort'     => $def['sort'],
+                // Typesense builds the geo index from the sort index, so it
+                // rejects a geopoint declared with `sort: false` outright. The
+                // rule belongs here rather than in every profile's config.
+                'sort'     => $def['sort'] || self::isGeo($def['type']),
                 'optional' => true,
             ];
             if (($def['index'] ?? true) === false) {
@@ -89,5 +92,10 @@ final class SchemaProvider
             'token_separators' => ["'", '-'],
             'fields' => $fields,
         ];
+    }
+
+    private static function isGeo(string $type): bool
+    {
+        return $type === 'geopoint' || $type === 'geopoint[]';
     }
 }

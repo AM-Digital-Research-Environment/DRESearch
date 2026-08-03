@@ -77,7 +77,7 @@ final class ReindexOrchestrator
             } catch (ReindexCancelledException $e) {
                 throw $e;
             } catch (\Throwable $e) {
-                $failed[] = $profile->label();
+                $failed[] = sprintf('%s (%s)', $profile->label(), $e->getMessage());
                 $this->logger->err(sprintf(
                     'DRESearch: reindex of "%s" failed — %s',
                     $profile->label(),
@@ -87,11 +87,14 @@ final class ReindexOrchestrator
         }
         $analytics = (new AnalyticsSync($client, $this->registry, $this->logger))->sync();
         if ($failed !== []) {
+            // Carry each corpus' reason into the summary: this exception is what
+            // the admin UI surfaces, and hunting the per-corpus log line for it
+            // is the difference between a readable failure and a log dig.
             throw new \RuntimeException(sprintf(
                 'Reindex-all finished with %d of %d corpora failing: %s',
                 count($failed),
                 $total,
-                implode(', ', $failed),
+                implode('; ', $failed),
             ));
         }
         return ['profiles' => $results, 'analytics' => $analytics, 'completed' => $done];

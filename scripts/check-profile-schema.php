@@ -49,6 +49,16 @@ foreach ($profiles as $name => $definition) {
                 $errors[] = "$name: display facet $field is missing or not facetable";
             }
         }
+        // Typesense derives the geo index from the sort index, so it refuses to
+        // create a collection whose geopoint field carries `sort: false`. The
+        // failure only surfaces at reindex time, well after CI.
+        foreach ($fields as $field => $schemaField) {
+            if (in_array($schemaField['type'], ['geopoint', 'geopoint[]'], true)
+                && empty($schemaField['sort'])
+            ) {
+                $errors[] = "$name: geopoint field $field must be sortable";
+            }
+        }
         $query = (new QueryBuilder($profile))->search(['q' => '', 'facets' => []]);
         $excluded = array_filter(explode(',', (string) ($query['exclude_fields'] ?? '')));
         foreach ($profile->searchOnlyFields() as $field) {
