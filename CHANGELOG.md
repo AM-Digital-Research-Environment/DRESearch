@@ -3,6 +3,25 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.19.1] - 2026-08-04
+
+### Fixed
+
+- Short queries under-reported their matches by up to 10×. Prefix search is on,
+  so a one- or two-character query has to stand in for every token starting with
+  it, and Typesense's default cap of four prefix expansions per token truncated
+  the result set: on the research items corpus `k` found 137 of 1299 matches and
+  `ke` 102 of 165. The truncation also interacted with `filter_by` — a narrower
+  filter reaches deeper into the same candidate space — so a filtered search could
+  report more hits than the unfiltered facet count claimed for that value. The
+  pool is now 512 (`QueryBuilder::MAX_CANDIDATES`), applied to search,
+  autocomplete, and every query derived from them (federated tab counts, export,
+  map, union, facet recounts) — enough for `k` to reach all 1299. Longer queries
+  are unaffected: `kenya`, `africa`, `islam` and `music` return exactly the counts
+  they did before. It is also faster, because the default's escalating retry
+  passes cost more than one wider pass — `k` went 415ms → 92ms and `africa` 37ms →
+  3ms on the dev corpus. No reindex.
+
 ## [1.19.0] - 2026-08-04
 
 ### Fixed

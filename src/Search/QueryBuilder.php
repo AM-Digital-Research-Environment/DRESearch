@@ -63,6 +63,35 @@ final class QueryBuilder
      */
     public const STOPWORDS_SET = \DRESearch\Indexer\StopwordsSync::SET_NAME;
 
+    /**
+     * How many prefix/typo variations Typesense may expand per query token.
+     *
+     * Typesense defaults to 4, which a short query blows straight past: because
+     * prefix search is on, "k" has to stand in for every token starting with k,
+     * and the cap truncated the result set to a fraction of the real matches
+     * (measured on research_items: `k` found 137 of 1299, `ke` 102 of 165). Worse,
+     * the truncation interacts with `filter_by` — a narrower filter reaches deeper
+     * into the same candidate space — so a filtered search could report MORE hits
+     * than the unfiltered facet count claimed for that value.
+     *
+     * 512 is where the short-query tail closes on the dev corpus — `k` reaches the
+     * same 1299 an exhaustive search finds, and `ke` and `ken` reach theirs at any
+     * value ≥128 — while longer queries stay bit-for-bit unchanged (`kenya`,
+     * `africa`, `islam`, `music` return exactly the counts they did at the
+     * default). It also runs FASTER, because the default's escalating retry passes
+     * cost more than one wider pass: `k` 415ms → 92ms, `ken` 76ms → 1ms, `africa`
+     * 37ms → 3ms. Raising it further changes nothing (1000 matches 512).
+     *
+     * Deliberately NOT `exhaustive_search`, which reaches the same recall but also
+     * lifts the typo-pass early exit for every query — "islam" goes 34 → 71 hits,
+     * all of them typo matches (with num_typos=0 both settings return 34). That is
+     * a relevance decision, not a correctness fix.
+     *
+     * Worth re-measuring if a corpus grows by an order of magnitude: the cap
+     * exists for large collections, and the biggest here is ~4k documents.
+     */
+    public const MAX_CANDIDATES = 512;
+
     public function __construct(
         private readonly SearchProfile $profile,
         private readonly ?string $serverFilter = null,
@@ -86,6 +115,9 @@ final class QueryBuilder
             'page'      => max(1, min(self::MAX_PAGE, (int) ($req['page'] ?? 1))),
             'per_page'  => $perPage,
             'sort_by'   => $this->buildSort((string) ($req['sort'] ?? 'relevance'), $isBrowse),
+            // Every derived query (counts, export, map, union, facet recounts)
+            // builds on these params, so they all inherit the same recall.
+            'max_candidates' => self::MAX_CANDIDATES,
         ];
         // Facets are optional — a corpus may have none (e.g. genres, languages),
         // in which case we omit facet_by entirely rather than send an empty one.
@@ -156,6 +188,9 @@ final class QueryBuilder
             'q'              => $q,
             'query_by'       => 'title',
             'prefix'         => true,
+            // Autocomplete is the most prefix-sensitive path there is — it fires
+            // on the first keystroke, exactly where the default cap truncates.
+            'max_candidates' => self::MAX_CANDIDATES,
             'filter_by'      => $this->buildFilter([]),
             'sort_by'        => '_text_match:desc',
             'page'           => 1,

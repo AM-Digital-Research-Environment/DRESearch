@@ -45,6 +45,23 @@ final class QueryBuilderTest extends TestCase
         self::assertArrayNotHasKey('facet_by', $params);
     }
 
+    public function testShortPrefixQueriesGetAWiderCandidatePool(): void
+    {
+        $builder = new QueryBuilder($this->profile());
+
+        // Every query path that a user's text reaches, including the ones derived
+        // from search() — a truncated candidate pool under-reports each of them.
+        self::assertSame(QueryBuilder::MAX_CANDIDATES, $builder->search(['q' => 'k'])['max_candidates']);
+        self::assertSame(QueryBuilder::MAX_CANDIDATES, $builder->suggest('k')['max_candidates']);
+        self::assertSame(QueryBuilder::MAX_CANDIDATES, $builder->countOnly(['q' => 'k'])['max_candidates']);
+        self::assertSame(QueryBuilder::MAX_CANDIDATES, $builder->union('k')['max_candidates']);
+        self::assertSame(QueryBuilder::MAX_CANDIDATES, $builder->export(['q' => 'k'], 1)['max_candidates']);
+
+        // exhaustive_search would recover the rest of the tail, but it also lifts
+        // the typo-pass early exit for EVERY query — a relevance change, not a fix.
+        self::assertArrayNotHasKey('exhaustive_search', $builder->search(['q' => 'k']));
+    }
+
     public function testOnlyRefinedSidebarFacetsAreRecounted(): void
     {
         $builder = new QueryBuilder($this->multiFacetProfile());
