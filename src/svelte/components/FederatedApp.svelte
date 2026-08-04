@@ -383,35 +383,87 @@
     font-size: 1.25rem;
     cursor: pointer;
   }
+  /*
+   * Thirteen corpora don't fit on one line: they measure ~1885px against a
+   * ~1236px column, so a single-row scroller kept five tabs (and their counts)
+   * behind a horizontal scrollbar — the corpora most people never think to look
+   * for. Wrapping shows all of them at every width (2 rows desktop, 5 at 390px).
+   * Since the active tab can then land on any row, its state reads as a filled
+   * pill rather than an underline that no longer meets the container's border.
+   */
   .dre-fed__tabs {
     display: flex;
-    overflow-x: auto;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    padding-block-end: 0.6rem;
     border-bottom: 1px solid var(--border, #dcd6cb);
   }
   .dre-fed__tabs button {
     display: flex;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.3rem;
     flex: none;
     margin: 0;
-    padding: 0.65rem 0.8rem;
-    border: 0;
-    border-bottom: 2px solid transparent;
-    background: transparent;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--border, #dcd6cb);
+    border-radius: 999px;
+    /* The host theme paints every bare <button> as a filled primary button, and
+       its button:hover bleeds green — !important is this module's fix idiom. */
+    background: var(--surface, #fdfcfa) !important;
+    box-shadow: none !important;
+    transform: none !important;
     color: var(--muted, #7a7164);
     font: inherit;
+    /* em, not rem: the host theme's body face runs at 17px, and a chip strip this
+       dense wants to sit just under it rather than at an unrelated absolute size. */
+    font-size: 0.9em;
+    line-height: 1.25;
     cursor: pointer;
   }
-  .dre-fed__tabs button.active {
-    border-bottom-color: var(--primary, #007a50);
-    color: var(--ink, #33291f);
-    font-weight: 700;
+  .dre-fed__tabs button:hover {
+    border-color: var(--primary, #007a50);
+    color: var(--primary, #007a50);
+  }
+  .dre-fed__tabs button.active,
+  .dre-fed__tabs button.active:hover {
+    border-color: var(--primary, #007a50);
+    background: var(--primary, #007a50) !important;
+    color: var(--primary-contrast, #fdfcfa);
+    font-weight: 600;
+  }
+  .dre-fed__tabs button:focus-visible {
+    outline: none;
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.15)) !important;
   }
   .dre-fed__tabs small {
-    padding: 0.08rem 0.35rem;
+    padding: 0.05rem 0.35rem;
     border-radius: 999px;
     background: var(--surface-sunken, #f1ede6);
+    color: var(--muted, #7a7164);
+    font-size: 0.75rem;
+    line-height: 1.4;
     font-variant-numeric: tabular-nums;
+  }
+  /* Outline, not fill. The badge sits on the filled pill, so any tint pulls its
+     background toward the label's own colour and eats the contrast the number
+     needs: a 26% mix measured 4.0:1 in dark mode and 3.3:1 in light, and even 10%
+     stayed under AA in light. Unfilled, the count keeps the label's full ratio
+     (6.5:1 dark / 5.2:1 light) and the ring still reads as a chip. */
+  .dre-fed__tabs button.active small {
+    background: none;
+    border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+    color: inherit;
+  }
+  /* Phones need six rows for thirteen chips; tighten them rather than drop the
+     counts, which are the whole reason to look at an empty corpus's tab. */
+  @media (max-width: 30rem) {
+    .dre-fed__tabs button {
+      padding: 0.28rem 0.6rem;
+      font-size: 0.82em;
+    }
+    .dre-fed__tabs small {
+      font-size: 0.72rem;
+    }
   }
   .dre-fed__panel {
     min-width: 0;

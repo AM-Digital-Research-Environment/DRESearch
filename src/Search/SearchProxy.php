@@ -46,32 +46,182 @@ final class SearchProxy
             return $this->unavailable($requestId);
         }
         $started = hrtime(true);
-        $params = (new QueryBuilder($profile, $serverFilter))->search($req);
+        $builder = new QueryBuilder($profile, $serverFilter);
+        $params = $builder->search($req);
         $collection = $client->collections[$profile->collection()];
-        try {
-            $result = $collection->documents->search($params);
-        } catch (\Throwable $e) {
-            // A missing stopword set (e.g. a fresh Typesense volume not yet
-            // provisioned by a reindex) would otherwise 404 the whole search.
-            // Stopwords are an enhancement, not a correctness requirement — drop
-            // them and retry once. Restore filtering with "Reindex all corpora" or
-            // the Maintenance "Sync stopwords" action.
-            if (isset($params['stopwords']) && $this->isStopwordError($e)) {
-                unset($params['stopwords']);
-                try {
-                    $result = $collection->documents->search($params);
-                } catch (\Throwable $retry) {
-                    $this->logBackendFailure('search', $retry, $profile, $requestId);
-                    return $this->unavailable($requestId);
-                }
-            } else {
-                $this->logBackendFailure('search', $e, $profile, $requestId);
-                return $this->unavailable($requestId);
-            }
+
+        // Facets stay multi-select: any facet the user has already refined is
+        // recounted alongside the main search with its own clause lifted, so its
+        // unselected options keep showing (see QueryBuilder::refinedFacetFields()).
+        // Nothing refined — or the combined call failed — falls through to the
+        // plain single search, which owns the missing-stopword-set retry.
+        $refined = $builder->refinedFacetFields($req);
+        $result = $refined === []
+            ? null
+            : $this->searchWithOpenFacets($client, $builder, $params, $req, $refined, $profile, $requestId);
+        $result ??= $this->runSearch($collection, $params, $profile, $requestId);
+        if ($result === null) {
+            return $this->unavailable($requestId);
         }
         $normalized = $this->normalize($result, $profile);
         $this->logMetric('search', $started, $profile, $requestId, ['found' => $normalized['found']]);
         return $normalized;
+    }
+
+    /**
+     * Run one search, degrading gracefully when the stopword set is missing (e.g.
+     * a fresh Typesense volume not yet provisioned by a reindex) — that would
+     * otherwise 404 the whole search. Stopwords are an enhancement, not a
+     * correctness requirement, so drop them and retry once. Restore filtering with
+     * "Reindex all corpora" or the Maintenance "Sync stopwords" action.
+     *
+     * @param array<string,mixed> $params
+     * @return array<string,mixed>|null null once the failure has been logged
+     */
+    private function runSearch(
+        object $collection,
+        array $params,
+        SearchProfile $profile,
+        ?string $requestId,
+    ): ?array {
+        try {
+            return $collection->documents->search($params);
+        } catch (\Throwable $e) {
+            if (isset($params['stopwords']) && $this->isStopwordError($e)) {
+                unset($params['stopwords']);
+                try {
+                    return $collection->documents->search($params);
+                } catch (\Throwable $retry) {
+                    $this->logBackendFailure('search', $retry, $profile, $requestId);
+                    return null;
+                }
+            }
+            $this->logBackendFailure('search', $e, $profile, $requestId);
+            return null;
+        }
+    }
+
+    /**
+     * The main search plus one facet-only recount per refined field, in a single
+     * `multi_search`. Returns the main Typesense result with those fields' counts
+     * substituted, or null to fall back to a plain single search — a corrected
+     * sidebar is worth a round-trip, never a failed search.
+     *
+     * @param array<string,mixed> $params main search params
+     * @param array<string,mixed> $req    validated request
+     * @param list<string> $refined       facet fields to recount
+     * @return array<string,mixed>|null
+     */
+    private function searchWithOpenFacets(
+        object $client,
+        QueryBuilder $builder,
+        array $params,
+        array $req,
+        array $refined,
+        SearchProfile $profile,
+        ?string $requestId,
+    ): ?array {
+        $searches = [$params + ['collection' => $profile->collection()]];
+        foreach ($refined as $field) {
+            $searches[] = $builder->facetCountsFor($req, $field);
+        }
+        try {
+            $response = $client->multiSearch->perform(['searches' => $searches]);
+        } catch (\Throwable $e) {
+            // Non-fatal: log once, then let the caller run the plain search.
+            $this->logBackendFailure('facet_recount', $e, $profile, $requestId);
+            return null;
+        }
+        $results = $response['results'] ?? [];
+        $main = $results[0] ?? null;
+        // multi_search reports per-search failures in the entry itself rather than
+        // throwing, so a missing stopword set surfaces here — fall back and let
+        // runSearch() retry without them.
+        if (!is_array($main) || isset($main['error']) || !isset($main['hits'])) {
+            return null;
+        }
+        /** @var array<string,mixed> $main */
+        $filters = is_array($req['filters'] ?? null) ? $req['filters'] : [];
+        foreach ($refined as $i => $field) {
+            $counts = $this->facetCountsOf($results[$i + 1] ?? null, $field);
+            if ($counts === null) {
+                continue; // that one entry failed; keep the (narrowed) counts
+            }
+            /** @var list<string> $selected */
+            $selected = array_map('strval', $filters[$field] ?? []);
+            $main['facet_counts'] = $this->withFacetCounts(
+                is_array($main['facet_counts'] ?? null) ? $main['facet_counts'] : [],
+                $field,
+                $this->keepSelectedListed($counts, $selected),
+            );
+        }
+        return $main;
+    }
+
+    /**
+     * The counts a facet-only search returned for one field, or null if that
+     * multi_search entry errored / carried no facet payload.
+     *
+     * @return list<array<string,mixed>>|null
+     */
+    private function facetCountsOf(mixed $result, string $field): ?array
+    {
+        if (!is_array($result) || isset($result['error']) || !is_array($result['facet_counts'] ?? null)) {
+            return null;
+        }
+        foreach ($result['facet_counts'] as $facet) {
+            if (is_array($facet) && ($facet['field_name'] ?? null) === $field && is_array($facet['counts'] ?? null)) {
+                return array_values($facet['counts']);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A selected value that no longer matches under the OTHER filters is absent
+     * from the recount, which would hide its (ticked) checkbox and leave the user
+     * no way back except the active-filter chip. Keep it listed at zero.
+     *
+     * @param list<array<string,mixed>> $counts
+     * @param list<string> $selected
+     * @return list<array<string,mixed>>
+     */
+    private function keepSelectedListed(array $counts, array $selected): array
+    {
+        $present = [];
+        foreach ($counts as $count) {
+            if (is_array($count)) {
+                $present[(string) ($count['value'] ?? '')] = true;
+            }
+        }
+        foreach ($selected as $value) {
+            if (!isset($present[$value])) {
+                $counts[] = ['value' => $value, 'count' => 0];
+            }
+        }
+        return array_values($counts);
+    }
+
+    /**
+     * Substitute one field's counts in a Typesense `facet_counts` block, appending
+     * the entry when the main search returned none for it (a filter combination
+     * with no matches still needs its facet listed — that list is the way out).
+     *
+     * @param list<mixed> $facetCounts
+     * @param list<array<string,mixed>> $counts
+     * @return list<mixed>
+     */
+    private function withFacetCounts(array $facetCounts, string $field, array $counts): array
+    {
+        foreach ($facetCounts as $i => $facet) {
+            if (is_array($facet) && ($facet['field_name'] ?? null) === $field) {
+                $facet['counts'] = $counts;
+                $facetCounts[$i] = $facet;
+                return array_values($facetCounts);
+            }
+        }
+        $facetCounts[] = ['field_name' => $field, 'counts' => $counts];
+        return array_values($facetCounts);
     }
 
     /**

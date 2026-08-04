@@ -302,6 +302,72 @@ final class QueryBuilder
     }
 
     /**
+     * Facet fields that need a separate count pass so they stay MULTI-SELECT.
+     *
+     * A facet's own selection is part of `filter_by`, so Typesense can only ever
+     * count the value(s) already chosen: pick one Type and every other Type
+     * vanishes from the sidebar, which makes a checkbox list behave like a radio
+     * group. The fix is the standard disjunctive-facet pass — recount that one
+     * field with its own clause lifted, every OTHER field's filter still applied
+     * (so the numbers remain honest: they are what you'd get by also ticking that
+     * value). A field with no selection needs no correction; its counts already
+     * sit under the full filter set.
+     *
+     * Only fields actually being faceted qualify — a filter on a non-sidebar
+     * display field (e.g. an author chip from a card) has no list to keep open.
+     *
+     * @param array<string,mixed> $req
+     * @return list<string>
+     */
+    public function refinedFacetFields(array $req): array
+    {
+        $filters = $req['filters'] ?? [];
+        if (!is_array($filters) || $filters === []) {
+            return [];
+        }
+        $refined = [];
+        foreach (array_filter(explode(',', $this->buildFacetBy($req))) as $field) {
+            $values = $filters[$field] ?? null;
+            if (is_array($values) && $values !== []) {
+                $refined[] = $field;
+            }
+        }
+        return $refined;
+    }
+
+    /**
+     * One `multi_search` entry that recounts a single facet field with its own
+     * selections lifted from `filter_by` — see {@see refinedFacetFields()}. It
+     * inherits the live query / sort / stopwords so the counts describe the same
+     * result set the user is looking at; only the facet payload is wanted, so it
+     * asks for one hit and just the id.
+     *
+     * @param array<string,mixed> $req
+     * @return array<string,mixed>
+     */
+    public function facetCountsFor(array $req, string $field): array
+    {
+        $params = $this->search($req);
+        $params['collection'] = $this->profile->collection();
+        $params['filter_by'] = $this->buildFilter($req, $field);
+        $params['facet_by'] = $field;
+        $params['max_facet_values'] = 100;
+        $params['page'] = 1;
+        $params['per_page'] = 1;
+        $params['include_fields'] = 'id';
+        // include_fields already bounds the payload, and no hit is rendered from
+        // this pass — highlighting it would just cost time.
+        unset(
+            $params['exclude_fields'],
+            $params['highlight_full_fields'],
+            $params['highlight_start_tag'],
+            $params['highlight_end_tag'],
+            $params['highlight_affix_num_tokens'],
+        );
+        return $params;
+    }
+
+    /**
      * Minimal query for the year facet stats (slider bounds). facet_stats
      * (min/max) are computed over all matches regardless of per_page, so we ask
      * for a single hit (per_page 1 is always valid) and read the stats.
@@ -319,8 +385,13 @@ final class QueryBuilder
         ];
     }
 
-    /** @param array<string,mixed> $req */
-    private function buildFilter(array $req): string
+    /**
+     * @param array<string,mixed> $req
+     * @param string|null $except field whose own selections are left out, for the
+     *                            multi-select facet recount ({@see facetCountsFor()}).
+     *                            Never affects `is_public` or the block scope.
+     */
+    private function buildFilter(array $req, ?string $except = null): string
     {
         // Security invariant — always first, never client-controlled.
         $clauses = ['is_public:=true'];
@@ -333,6 +404,9 @@ final class QueryBuilder
         $filters = $req['filters'] ?? [];
         if (is_array($filters)) {
             foreach ($this->profile->filterableFields() as $field) {
+                if ($field === $except) {
+                    continue;
+                }
                 $values = $filters[$field] ?? null;
                 if (!is_array($values) || $values === []) {
                     continue;

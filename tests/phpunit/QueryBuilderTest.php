@@ -45,6 +45,51 @@ final class QueryBuilderTest extends TestCase
         self::assertArrayNotHasKey('facet_by', $params);
     }
 
+    public function testOnlyRefinedSidebarFacetsAreRecounted(): void
+    {
+        $builder = new QueryBuilder($this->multiFacetProfile());
+        $refined = $builder->refinedFacetFields([
+            'facets'  => ['type_s', 'language_ss'],
+            'filters' => [
+                'type_s'     => ['Book'],
+                'language_ss' => [],            // no selection → counts already open
+                'creator_ss' => ['Achebe'],     // filterable, but not a sidebar facet
+            ],
+        ]);
+
+        self::assertSame(['type_s'], $refined);
+    }
+
+    public function testFacetRecountLiftsOnlyItsOwnFilterAndKeepsTheScope(): void
+    {
+        $req = [
+            'q'       => 'archive',
+            'facets'  => ['type_s', 'language_ss'],
+            'filters' => ['type_s' => ['Book'], 'language_ss' => ['French']],
+        ];
+        $params = (new QueryBuilder($this->multiFacetProfile(), 'tenant_s:=`A`'))
+            ->facetCountsFor($req, 'type_s');
+
+        self::assertSame('type_s', $params['facet_by']);
+        self::assertStringNotContainsString('type_s:=', $params['filter_by']);
+        // Every other constraint still applies, so the counts stay honest.
+        self::assertStringContainsString('is_public:=true', $params['filter_by']);
+        self::assertStringContainsString('tenant_s:=`A`', $params['filter_by']);
+        self::assertStringContainsString('language_ss:=[`French`]', $params['filter_by']);
+        // Facet payload only.
+        self::assertSame('records_current', $params['collection']);
+        self::assertSame(1, $params['per_page']);
+        self::assertSame('id', $params['include_fields']);
+        self::assertArrayNotHasKey('highlight_full_fields', $params);
+    }
+
+    public function testUnrefinedSearchStaysASingleQuery(): void
+    {
+        $builder = new QueryBuilder($this->multiFacetProfile());
+        self::assertSame([], $builder->refinedFacetFields(['filters' => []]));
+        self::assertSame([], $builder->refinedFacetFields([]));
+    }
+
     public function testMapQueryIsCoordinateScopedAndPayloadBounded(): void
     {
         $profile = $this->profile(['display_fields' => [
@@ -55,5 +100,13 @@ final class QueryBuilderTest extends TestCase
         self::assertStringContainsString('has_coords:=true', $params['filter_by']);
         self::assertStringContainsString('geo', $params['include_fields']);
         self::assertLessThanOrEqual(250, $params['per_page']);
+    }
+
+    /** Two sidebar facets + a filterable-but-not-faceted display field. */
+    private function multiFacetProfile(): \DRESearch\Settings\SearchProfile
+    {
+        return $this->profile(['facets' => [
+            'language_ss' => ['property' => 'dcterms:language', 'label' => 'Language', 'array' => true],
+        ]]);
     }
 }

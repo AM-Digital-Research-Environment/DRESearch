@@ -3,6 +3,33 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.19.0] - 2026-08-04
+
+### Fixed
+
+- Facets are multi-select again. Picking one Type emptied the Type list of every
+  other option, so a checkbox group behaved like a radio group: a facet's own
+  selection is part of the filter, leaving Typesense nothing else to count. Each
+  refined facet is now recounted alongside the main search with its own clause
+  lifted — every other filter still applies, so the numbers stay honest — and a
+  selected value that no longer matches stays listed at zero rather than
+  disappearing from the list it was ticked in. This lives in the shared query
+  layer, so it holds for every corpus, every page block, and the federated page,
+  with no configuration and no reindex. Unfiltered searches are unchanged: the
+  extra pass rides along in the existing round-trip only when a facet is refined,
+  and falls back to the plain search if it fails.
+
+### Changed
+
+- The federated page's corpus tabs wrap instead of scrolling sideways. Thirteen
+  tabs measure ~1885px against a ~1236px column, so five of them — Genres,
+  Languages, Locations, Subjects & tags and half of Organisations — sat behind a
+  horizontal scrollbar. They now wrap to two rows on a desktop column (five on a
+  phone, where the chips tighten), and read as pills so the active one is legible
+  on any row. The count badge on the active pill lost its fill: on the filled pill
+  any tint pushed the number under WCAG AA (4.0:1 dark, 3.3:1 light); outlined, it
+  keeps the label's own 6.5:1 / 5.2:1.
+
 ## [1.18.2] - 2026-08-03
 
 ### Fixed

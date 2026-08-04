@@ -265,10 +265,18 @@ All share the same options:
 
 Put each block on its own page and link them in the site navigation.
 
-Facet behaviour is the same across every block: a facet with many values shows a
-**type-to-filter** box (scroll or type to find a value — no "show N more"), and on
-narrow screens the whole filter sidebar collapses behind a **Filters** toggle
-(with an active-filter count) that opens and closes it.
+Facet behaviour is the same across every block, with nothing to configure:
+
+- **Facets are multi-select.** Values within one facet are OR'd (Type: Text _or_
+  Image), separate facets are AND'd. Picking a value never empties its own list:
+  each refined facet is recounted with its own selection lifted, so its remaining
+  options stay visible with the counts you'd get by also ticking them. A selected
+  value that no longer matches under the other filters stays listed at zero rather
+  than vanishing — so a filter combination with no results still shows the way out.
+- A facet with many values shows a **type-to-filter** box (scroll or type to find a
+  value — no "show N more").
+- On narrow screens the whole filter sidebar collapses behind a **Filters** toggle
+  (with an active-filter count) that opens and closes it.
 
 ## Data model
 
