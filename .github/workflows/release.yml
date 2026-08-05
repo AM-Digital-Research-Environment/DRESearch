@@ -12,6 +12,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Tag must match the module version
+        run: |
+          module_version=$(sed -n 's/^version[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' config/module.ini | head -1)
+          if [ "v$module_version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match config/module.ini version $module_version"
+            exit 1
+          fi
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -23,12 +30,51 @@ jobs:
       - run: npm ci && npm run lint && npm run check && npm test && npm run build
       - run: composer install --no-dev --classmap-authoritative --no-interaction
       - name: Build deterministic module archive
+        # Keep this exclude list in step with the export-ignore block in
+        # .gitattributes, which governs GitHub's auto-generated "Source code"
+        # tarballs. This archive cannot be a `git archive`: it has to carry
+        # vendor/ and the built asset/dist, and vendor/ is untracked.
+        # Every exclude is anchored with a leading slash so it applies to the
+        # repo root only. Unanchored rsync patterns match a basename at ANY
+        # depth, which would reach into vendor/ and strip files Composer
+        # packages ship legitimately (`tests/`, `scripts/`, `package.json`).
         run: |
           mkdir -p package/DRESearch
-          rsync -a --exclude='.git' --exclude='.github' --exclude='node_modules' --exclude='tests' --exclude='package' --exclude='.phpunit.cache' --exclude='.phpstan-cache' ./ package/DRESearch/
+          rsync -a \
+            --exclude='.git' --exclude='node_modules' \
+            --exclude='/.gitattributes' --exclude='/.gitignore' \
+            --exclude='/.github' --exclude='/.agents' --exclude='/.claude' \
+            --exclude='/package' \
+            --exclude='/tests' --exclude='/scripts' \
+            --exclude='/.phpunit.cache' --exclude='/.phpstan-cache' \
+            --exclude='/.prettierignore' --exclude='/.prettierrc.json' \
+            --exclude='/eslint.config.js' --exclude='/svelte.config.js' \
+            --exclude='/vite.config.ts' --exclude='/tsconfig.json' \
+            --exclude='/phpstan.neon.dist' --exclude='/phpunit.xml.dist' \
+            --exclude='/package.json' --exclude='/package-lock.json' \
+            ./ package/DRESearch/
           find package -exec touch -d '1980-01-01T00:00:00Z' {} +
           (cd package && zip -X -r ../DRESearch.zip DRESearch)
           sha256sum DRESearch.zip > DRESearch.zip.sha256
+      - name: Assert the archive has the right shape
+        run: |
+          unzip -Z1 DRESearch.zip > entries.txt
+          # Scope the leak check to the module's own tree: Composer packages
+          # legitimately ship their own tests/ and package.json inside vendor/,
+          # and failing the release over those would be noise.
+          leaked=$(grep -v '^DRESearch/vendor/' entries.txt | grep -E \
+            '^DRESearch/(tests|scripts|node_modules|\.github|\.agents)/|^DRESearch/(package(-lock)?\.json|tsconfig\.json|vite\.config\.ts|eslint\.config\.js|svelte\.config\.js|phpunit\.xml\.dist|phpstan\.neon\.dist|\.prettierrc\.json|\.prettierignore|\.gitattributes|\.gitignore)$' || true)
+          if [ -n "$leaked" ]; then
+            echo "::error::development files present in DRESearch.zip:"; echo "$leaked"; exit 1
+          fi
+          # And assert the things that MUST be there actually are.
+          for required in DRESearch/Module.php DRESearch/config/module.ini \
+                          DRESearch/asset/dist/dre-search.js DRESearch/vendor/autoload.php; do
+            grep -qx "$required" entries.txt || {
+              echo "::error::missing from DRESearch.zip: $required"; exit 1; }
+          done
+          echo "Archive shape OK ($(wc -l < entries.txt) entries, $(du -h DRESearch.zip | cut -f1))."
+          rm -f entries.txt
       - uses: actions/upload-artifact@v7
         with:
           name: DRESearch-${{ github.ref_name }}

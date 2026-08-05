@@ -22,6 +22,26 @@ All notable changes to DRE Search are documented here. The project follows
   passes cost more than one wider pass — `k` went 415ms → 92ms and `africa` 37ms →
   3ms on the dev corpus. No reindex.
 
+### Packaging
+
+- First tagged release, so the module is now installable from a release asset
+  (`DRESearch.zip` + its SHA-256) instead of a `git clone` plus a
+  `composer install`. The release workflow additionally asserts the tag matches
+  `config/module.ini`, and that the archive contains `Module.php`,
+  `config/module.ini`, the built bundle and `vendor/autoload.php` while
+  containing no dev tooling.
+- Development files no longer leak into the archives. `.gitattributes` gained
+  `export-ignore` rules — which is what governs GitHub's auto-generated "Source
+  code" tarballs — and the release workflow's own exclude list was widened to
+  match: `tests/`, `scripts/`, `.github/`, and the Node/PHPUnit/PHPStan/ESLint/
+  Prettier/TypeScript config files are all out. `docs/` and `src/svelte` (the
+  GPL sources for the compiled bundle) deliberately stay in.
+- `LICENSE` now carries the verbatim GPL-3.0 text rather than a short notice, so
+  the licence is machine-detectable; the copyright notice moved to the README.
+- Added `CITATION.cff` (ORCID, affiliation, SPDX licence), wired into the
+  existing CI version-consistency check so it cannot drift from
+  `config/module.ini`.
+
 ## [1.19.0] - 2026-08-04
 
 ### Fixed

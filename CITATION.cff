@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+title: "DRE Search: Typesense-backed faceted search for Omeka S"
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - given-names: Frédérick
+    family-names: Madore
+    orcid: "https://orcid.org/0000-0003-0959-2092"
+    affiliation: "University of Bayreuth"
+abstract: >-
+  DRE Search is an Omeka S module that adds Typesense-backed faceted search to
+  the Africa Multiple Cluster of Excellence's Digital Research Environment.
+  Twelve search corpora — research items, research projects, publications,
+  podcasts, YouTube videos, people, research sections, organisations, and the
+  genre, language, location and subject authority terms — ship as configurable
+  search profiles, each an independent Typesense collection with its own
+  facets, sorts and result card. The index is built directly from the Omeka
+  dashboard over MySQL, with no external ingestion pipeline, and Typesense is
+  optional: with no backend configured the module installs cleanly and the site
+  runs normally.
+repository-code: "https://github.com/AM-Digital-Research-Environment/DRESearch"
+url: "https://data.africamultiple.uni-bayreuth.de/s/amira"
+keywords:
+  - Omeka S
+  - Typesense
+  - faceted search
+  - research data management
+  - digital humanities
+  - African studies
+  - Africa Multiple Cluster of Excellence
+license: GPL-3.0-or-later
+version: 1.19.1
+date-released: "2026-08-04"

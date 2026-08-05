@@ -562,8 +562,26 @@ toolchain.
 - **Keyword search only** (no embedding model) to keep Typesense lean on a
   modest host. The reindexer is paged + batched, so memory stays flat.
 
+## Citation
+
+If you use DRE Search in research, cite it via the repository's
+[`CITATION.cff`](CITATION.cff) — GitHub renders it under **Cite this
+repository** and will export APA or BibTeX for you.
+
+> Madore, F. (2026). _DRE Search: Typesense-backed faceted search for Omeka S_
+> (Version 1.19.1) [Computer software].
+> https://github.com/AM-Digital-Research-Environment/DRESearch
+
 ## Licence
 
-GPL-3.0-or-later.
+DRE Search
+Copyright (C) 2024-2026 Frédérick Madore and contributors
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. See [LICENSE](LICENSE) for the full text.
+
+SPDX-License-Identifier: `GPL-3.0-or-later`
 
 [MongoDB2OmekaS]: https://github.com/AM-Digital-Research-Environment/MongoDB2OmekaS

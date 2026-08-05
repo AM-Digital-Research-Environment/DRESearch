@@ -74,13 +74,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - run: test -f LICENSE && test -f SECURITY.md && test -f CHANGELOG.md && test -f CONTRIBUTING.md
-      # Pin nothing: assert the three places a release number lives agree with
+      - run: test -f LICENSE && test -f SECURITY.md && test -f CHANGELOG.md && test -f CONTRIBUTING.md && test -f CITATION.cff
+      # Pin nothing: assert the four places a release number lives agree with
       # each other, so a bump never has to be mirrored into this workflow.
-      - name: Version consistency (module.ini / package.json / CHANGELOG)
+      - name: Version consistency (module.ini / package.json / CHANGELOG / CITATION)
         run: |
           module_version=$(sed -n 's/^version[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' config/module.ini | head -1)
           package_version=$(sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' package.json | head -1)
+          citation_version=$(sed -n 's/^version:[[:space:]]*"\{0,1\}\([^"]*\)"\{0,1\}[[:space:]]*$/\1/p' CITATION.cff | head -1)
           if [ -z "$module_version" ]; then
             echo "::error file=config/module.ini::no version key found"
             exit 1
@@ -89,8 +90,28 @@ jobs:
             echo "::error::version mismatch: config/module.ini=$module_version, package.json=$package_version"
             exit 1
           fi
+          if [ "$module_version" != "$citation_version" ]; then
+            echo "::error file=CITATION.cff::version mismatch: CITATION.cff=$citation_version, config/module.ini=$module_version"
+            exit 1
+          fi
           if ! grep -q "^## \[$module_version\]" CHANGELOG.md; then
             echo "::error file=CHANGELOG.md::no '## [$module_version]' entry for the current version"
             exit 1
           fi
-          echo "Version $module_version is consistent across module.ini, package.json and CHANGELOG.md."
+          echo "Version $module_version is consistent across module.ini, package.json, CHANGELOG.md and CITATION.cff."
+
+      # GitHub renders "Cite this repository" from CITATION.cff and silently
+      # drops the button when the file does not parse. Catch that here rather
+      # than noticing it missing from the repo page months later.
+      - name: CITATION.cff parses and carries the required keys
+        run: |
+          python3 - <<'PY'
+          import sys, yaml
+          d = yaml.safe_load(open('CITATION.cff', encoding='utf-8'))
+          missing = [k for k in ('cff-version', 'message', 'title', 'authors') if not d.get(k)]
+          if missing:
+              sys.exit(f"::error file=CITATION.cff::missing required key(s): {', '.join(missing)}")
+          if not any(a.get('family-names') or a.get('name') for a in d['authors']):
+              sys.exit("::error file=CITATION.cff::no usable author entry")
+          print(f"CITATION.cff OK (cff-version {d['cff-version']}, {len(d['authors'])} author(s)).")
+          PY

@@ -13,3 +13,35 @@ asset/dist/*.js -whitespace
 *.webp binary
 *.woff binary
 *.woff2 binary
+
+# --- Release hygiene ---------------------------------------------------------
+# `export-ignore` keeps development-only files out of anything produced by
+# `git archive` — which is what GitHub serves as the "Source code (zip/tar.gz)"
+# assets on a release page, and what `composer archive` builds. Someone who
+# downloads that tarball should get a module they can drop into Omeka, not a
+# Node/PHPUnit workspace.
+#
+# The installable DRESearch.zip is built separately by .github/workflows/
+# release.yml (it needs vendor/, which is untracked, so it cannot come from
+# `git archive`). Keep that workflow's rsync excludes in step with this list.
+#
+# Deliberately NOT ignored: docs/, src/svelte/ (the GPL sources for the
+# compiled bundle in asset/dist), CHANGELOG.md, CITATION.cff.
+# (No trailing slashes: unlike .gitignore, a directory pattern in .gitattributes
+# is written without one — `git archive` then drops the directory and all of it.)
+/.agents           export-ignore
+/.github           export-ignore
+/tests             export-ignore
+/scripts           export-ignore
+/.gitattributes    export-ignore
+/.gitignore        export-ignore
+/.prettierignore   export-ignore
+/.prettierrc.json  export-ignore
+/eslint.config.js  export-ignore
+/svelte.config.js  export-ignore
+/vite.config.ts    export-ignore
+/tsconfig.json     export-ignore
+/phpstan.neon.dist export-ignore
+/phpunit.xml.dist  export-ignore
+/package.json      export-ignore
+/package-lock.json export-ignore
