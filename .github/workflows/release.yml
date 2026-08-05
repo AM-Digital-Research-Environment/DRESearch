@@ -82,12 +82,55 @@ jobs:
             DRESearch.zip
             DRESearch.zip.sha256
           if-no-files-found: error
+      # Release notes come from CHANGELOG.md, not --generate-notes: this project
+      # commits straight to main, so the generated notes list only the handful of
+      # Dependabot PRs and none of the actual changes.
+      - name: Build release notes from the changelog
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            $0 == "## [" v "]" || index($0, "## [" v "] -") == 1 { f = 1; next }
+            /^## \[/ { f = 0 }
+            f
+          ' CHANGELOG.md > SECTION.md
+          if [ ! -s SECTION.md ]; then
+            echo "::error file=CHANGELOG.md::no '## [$version]' section to build release notes from"
+            exit 1
+          fi
+          {
+            cat SECTION.md
+            cat <<EOF
+
+          ## Install
+
+          Download \`DRESearch.zip\`, unzip it into your Omeka S \`modules/\`
+          directory, and enable **DRE Search** in the admin. The archive already
+          carries \`vendor/\` and the compiled front-end bundle, so no Composer or
+          Node toolchain is needed on the server.
+
+          Verify the download:
+
+          \`\`\`
+          sha256sum -c DRESearch.zip.sha256
+          \`\`\`
+
+          Requires Omeka S ^4.2.0 and PHP >= 8.2. Typesense is optional — with no
+          backend configured the module installs cleanly and the site runs
+          normally.
+
+          **Full changelog**: https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/CHANGELOG.md
+          EOF
+          } > RELEASE_NOTES.md
+          rm -f SECTION.md
+          cat RELEASE_NOTES.md
       - name: Publish GitHub release assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" DRESearch.zip DRESearch.zip.sha256 --clobber
+            gh release edit "$GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md
           else
-            gh release create "$GITHUB_REF_NAME" DRESearch.zip DRESearch.zip.sha256 --verify-tag --generate-notes
+            gh release create "$GITHUB_REF_NAME" DRESearch.zip DRESearch.zip.sha256 \
+              --verify-tag --title "DRE Search $GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md
           fi
