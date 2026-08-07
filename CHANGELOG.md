@@ -3,6 +3,26 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.19.2] - 2026-08-07
+
+### Fixed
+
+- Result cards broke apart on narrow screens wherever a click-to-filter value was
+  long enough to wrap — worst on a publication's reference line, where the venue
+  title was centred against the left-aligned text around it and stranded
+  ` (eds.),` and `, pp. 25–48.` on lines of their own. The cause was the element,
+  not the CSS: those values were `<button>`s, and a button is an atomic
+  inline-block, so it cannot break across the line boxes of the sentence it sits
+  in — a wide one claims the full column width, and the UA's `text-align: center`
+  for buttons centres whatever it wraps internally. They are now `FilterLink`
+  spans (`role="button"`, `tabindex="0"`, Enter/Space), which fragment like the
+  text around them. A 375px-wide reference went from seven ragged lines to five
+  flush ones. One shared component replaces six identical copies of the style, so
+  every corpus is covered: research items (authors, place of origin, current
+  location, language), publications (authors, editors, venue, publisher),
+  projects (PIs), research sections (leaders), podcasts and videos (language).
+  Frontend only — no reindex, no config.
+
 ## [1.19.1] - 2026-08-04
 
 ### Fixed

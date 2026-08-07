@@ -2,6 +2,7 @@
   import type { Doc, ViewMode } from '../lib/types';
   import { t } from '../lib/i18n';
   import { firstMarked, markedLookup } from '../lib/highlight';
+  import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
   import MatchedIn from './MatchedIn.svelte';
   import { thumbnailFor } from '../lib/thumbnail';
@@ -86,11 +87,9 @@
 
     {#if creators.length > 0}
       <p class="dre-card__byline">
-        {#each creators as name, i (name + '|' + i)}{i > 0 ? ', ' : ''}<button
-            type="button"
-            class="dre-card__filter-link"
+        {#each creators as name, i (name + '|' + i)}{i > 0 ? ', ' : ''}<FilterLink
             onclick={() => onAddFilter('creator_ss', name)}
-            ><Highlight value={creatorHl.get(name) ?? name} /></button
+            ><Highlight value={creatorHl.get(name) ?? name} /></FilterLink
           >{/each}
       </p>
     {/if}
@@ -116,10 +115,8 @@
     {#if origins.length > 0}
       <p class="dre-card__geo">
         <span class="dre-card__geo-label">{t('origin_label')}</span>
-        {#each origins as o, i (o + '|' + i)}{i > 0 ? ' · ' : ''}<button
-            type="button"
-            class="dre-card__filter-link"
-            onclick={() => onAddFilter('origin_ss', o)}>{o}</button
+        {#each origins as o, i (o + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
+            onclick={() => onAddFilter('origin_ss', o)}>{o}</FilterLink
           >{/each}
       </p>
     {/if}
@@ -127,10 +124,8 @@
     {#if currentLocations.length > 0}
       <p class="dre-card__geo">
         <span class="dre-card__geo-label">{t('current_location_label')}</span>
-        {#each currentLocations as c, i (c + '|' + i)}{i > 0 ? ' · ' : ''}<button
-            type="button"
-            class="dre-card__filter-link"
-            onclick={() => onAddFilter('provenance_ss', c)}>{c}</button
+        {#each currentLocations as c, i (c + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
+            onclick={() => onAddFilter('provenance_ss', c)}>{c}</FilterLink
           >{/each}
       </p>
     {/if}
@@ -138,10 +133,8 @@
     {#if languages.length > 0}
       <p class="dre-card__geo">
         <span class="dre-card__geo-label">{t('language_label')}</span>
-        {#each languages as l, i (l + '|' + i)}{i > 0 ? ' · ' : ''}<button
-            type="button"
-            class="dre-card__filter-link"
-            onclick={() => onAddFilter('language_ss', l)}>{l}</button
+        {#each languages as l, i (l + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
+            onclick={() => onAddFilter('language_ss', l)}>{l}</FilterLink
           >{/each}
       </p>
     {/if}
@@ -347,30 +340,8 @@
   .dre-card__geo-label::after {
     content: ': ';
   }
-  /* Inline "click to filter" values (authors, places, language) — a plain text
-     button, underlined, that turns brand-coloured on hover. `background: none`
-     strips the native button fill (the host theme no longer styles bare
-     <button>s, so no override fight is needed). */
-  .dre-card__filter-link {
-    padding: 0;
-    border: none;
-    background: none;
-    font: inherit;
-    cursor: pointer;
-    color: inherit;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
-  }
-  .dre-card__filter-link:hover {
-    color: var(--primary, #007a50);
-    text-decoration-color: currentColor;
-  }
-  .dre-card__filter-link:focus-visible {
-    outline: none;
-    border-radius: var(--radius-sm, 0.375rem);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3));
-  }
+  /* Inline "click to filter" values (authors, places, language) are FilterLink
+     spans — see that component for the styling and the rationale. */
 
   @media (max-width: 32rem) {
     .dre-card {

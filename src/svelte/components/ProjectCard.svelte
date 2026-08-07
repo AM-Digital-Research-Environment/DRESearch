@@ -2,6 +2,7 @@
   import type { Doc } from '../lib/types';
   import { t, researchItemsLabel } from '../lib/i18n';
   import { firstMarked, markedLookup } from '../lib/highlight';
+  import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
   import MatchedIn from './MatchedIn.svelte';
 
@@ -72,11 +73,9 @@
     {#if pis.length > 0}
       <p class="dre-pcard__pi">
         <span class="dre-pcard__pi-label">{t('pi_label')}</span>
-        {#each pis as pi, i (pi + '|' + i)}{i > 0 ? ', ' : ''}<button
-            type="button"
-            class="dre-pcard__pi-link"
+        {#each pis as pi, i (pi + '|' + i)}{i > 0 ? ', ' : ''}<FilterLink
             onclick={() => onAddFilter('people_ss', pi)}
-            ><Highlight value={piHl.get(pi) ?? pi} /></button
+            ><Highlight value={piHl.get(pi) ?? pi} /></FilterLink
           >{/each}
       </p>
     {/if}
@@ -194,27 +193,7 @@
     color: var(--muted, #7a7164);
     margin-inline-end: 0.15rem;
   }
-  .dre-pcard__pi-link {
-    padding: 0;
-    border: none;
-    /* Plain text link — reset the native button chrome. */
-    background: none;
-    font: inherit;
-    cursor: pointer;
-    color: inherit;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
-  }
-  .dre-pcard__pi-link:hover {
-    color: var(--primary, #007a50);
-    text-decoration-color: currentColor;
-  }
-  .dre-pcard__pi-link:focus-visible {
-    outline: none;
-    border-radius: var(--radius-sm, 0.375rem);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3));
-  }
+  /* The PI names are FilterLink spans — see that component for the styling. */
   .dre-pcard__snippet {
     margin: var(--space-xs, 0.25rem) 0 0;
     font-size: var(--text-sm, 0.9rem);

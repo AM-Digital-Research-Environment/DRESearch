@@ -2,6 +2,7 @@
   import type { Doc } from '../lib/types';
   import { t, projectsLabel, membersLabel } from '../lib/i18n';
   import { firstMarked, markedLookup } from '../lib/highlight';
+  import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
   import MatchedIn from './MatchedIn.svelte';
 
@@ -81,11 +82,9 @@
     {#if leaders}
       <p class="dre-scard__leaders">
         <span class="dre-scard__leaders-label">{leaders.label}</span>
-        {#each leaders.names as nm, i (nm + '|' + i)}{i > 0 ? ', ' : ''}<button
-            type="button"
-            class="dre-scard__person"
+        {#each leaders.names as nm, i (nm + '|' + i)}{i > 0 ? ', ' : ''}<FilterLink
             onclick={() => onAddFilter('people_ss', nm)}
-            ><Highlight value={leaderHl.get(nm) ?? nm} /></button
+            ><Highlight value={leaderHl.get(nm) ?? nm} /></FilterLink
           >{/each}
       </p>
     {/if}
@@ -192,27 +191,7 @@
     color: var(--muted, #7a7164);
     margin-inline-end: 0.3rem;
   }
-  .dre-scard__person {
-    padding: 0;
-    border: none;
-    /* Plain text link — reset the native button chrome. */
-    background: none;
-    font: inherit;
-    cursor: pointer;
-    color: inherit;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
-  }
-  .dre-scard__person:hover {
-    color: var(--primary, #007a50);
-    text-decoration-color: currentColor;
-  }
-  .dre-scard__person:focus-visible {
-    outline: none;
-    border-radius: var(--radius-sm, 0.375rem);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3));
-  }
+  /* The leader names are FilterLink spans — see that component for the styling. */
   .dre-scard__members {
     margin: 0;
     font-size: var(--text-xs, 0.78rem);

@@ -3,6 +3,7 @@
   import { formatDate, t } from '../lib/i18n';
   import { firstMarked, markedLookup } from '../lib/highlight';
   import { safeExternalUrl } from '../lib/text';
+  import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
   import MatchedIn from './MatchedIn.svelte';
 
@@ -138,10 +139,8 @@
     {#if languages.length > 0}
       <p class="dre-pcard__meta">
         <span class="dre-pcard__role">{t('language_label')}</span>
-        {#each languages as l, i (l + '|' + i)}{i > 0 ? ' · ' : ''}<button
-            type="button"
-            class="dre-pcard__filter-link"
-            onclick={() => onAddFilter('language_ss', l)}>{l}</button
+        {#each languages as l, i (l + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
+            onclick={() => onAddFilter('language_ss', l)}>{l}</FilterLink
           >{/each}
       </p>
     {/if}
@@ -311,28 +310,7 @@
     line-height: 1.5;
     color: var(--ink-light, var(--ink, #5f5648));
   }
-  /* Inline "click to filter" value (language) — a plain text button, underlined,
-     brand-coloured on hover. `background: none` resets the native button chrome. */
-  .dre-pcard__filter-link {
-    padding: 0;
-    border: none;
-    background: none;
-    font: inherit;
-    cursor: pointer;
-    color: inherit;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
-  }
-  .dre-pcard__filter-link:hover {
-    color: var(--primary, #007a50);
-    text-decoration-color: currentColor;
-  }
-  .dre-pcard__filter-link:focus-visible {
-    outline: none;
-    border-radius: var(--radius-sm, 0.375rem);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3));
-  }
+  /* The language is a FilterLink span — see that component for the styling. */
 
   .dre-pcard__snippet {
     margin: var(--space-xs, 0.25rem) 0 0;

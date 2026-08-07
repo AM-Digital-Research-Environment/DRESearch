@@ -3,6 +3,7 @@
   import { t } from '../lib/i18n';
   import { firstMarked, markedLookup } from '../lib/highlight';
   import { safeExternalUrl } from '../lib/text';
+  import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
   import MatchedIn from './MatchedIn.svelte';
 
@@ -19,7 +20,7 @@
    *   │ [keyword] [keyword]                            DOI ↗   │
    *   └────────────────────────────────────────────────────┘
    *
-   * Authors and editors are buttons that add the person to the "Author / Editor"
+   * Authors and editors are FilterLinks that add the person to the "Author / Editor"
    * facet (onAddFilter creator_ss); the venue (journal / book) and publisher filter
    * on container_ss / publisher_ss; the keyword chips add a keyword filter; the DOI
    * opens the canonical record. Editors render as their own byline for an edited
@@ -118,22 +119,18 @@
 
     {#if authors.length > 0}
       <p class="dre-bcard__authors">
-        {#each authors as name, i (name + '|' + i)}{i > 0 ? ', ' : ''}<button
-            type="button"
-            class="dre-bcard__person"
+        {#each authors as name, i (name + '|' + i)}{i > 0 ? ', ' : ''}<FilterLink
             onclick={() => onAddFilter('creator_ss', name)}
-            ><Highlight value={authorHl.get(name) ?? name} /></button
+            ><Highlight value={authorHl.get(name) ?? name} /></FilterLink
           >{/each}
       </p>
     {/if}
 
     {#if editorsAsByline}
       <p class="dre-bcard__authors">
-        {#each editors as name, i (name + '|' + i)}{i > 0 ? '; ' : ''}<button
-            type="button"
-            class="dre-bcard__person"
+        {#each editors as name, i (name + '|' + i)}{i > 0 ? '; ' : ''}<FilterLink
             onclick={() => onAddFilter('creator_ss', name)}
-            ><Highlight value={editorHl.get(name) ?? name} /></button
+            ><Highlight value={editorHl.get(name) ?? name} /></FilterLink
           >{/each}{` (${edsLabel})`}
       </p>
     {/if}
@@ -142,23 +139,16 @@
       <p class="dre-bcard__ref">
         {#if editorsInRef}{`${t('in_prefix')} `}{#each editors as name, i (name + '|' + i)}{i > 0
               ? '; '
-              : ''}<button
-              type="button"
-              class="dre-bcard__person"
-              onclick={() => onAddFilter('creator_ss', name)}
-              ><Highlight value={editorHl.get(name) ?? name} /></button
-            >{/each}{` (${edsLabel}), `}{/if}{#if container}<button
-            type="button"
-            class="dre-bcard__person"
+              : ''}<FilterLink onclick={() => onAddFilter('creator_ss', name)}
+              ><Highlight value={editorHl.get(name) ?? name} /></FilterLink
+            >{/each}{` (${edsLabel}), `}{/if}{#if container}<FilterLink
             onclick={() => onAddFilter('container_ss', container)}
             ><cite class="dre-bcard__venue"
               ><Highlight value={containerHl.get(container) ?? container} /></cite
-            ></button
-          >{sepAfterVenue}{/if}{#if metrics}{metrics}{sepAfterMetrics}{/if}{#if publisher}<button
-            type="button"
-            class="dre-bcard__person"
+            ></FilterLink
+          >{sepAfterVenue}{/if}{#if metrics}{metrics}{sepAfterMetrics}{/if}{#if publisher}<FilterLink
             onclick={() => onAddFilter('publisher_ss', publisher)}
-            ><Highlight value={publisherHl.get(publisher) ?? publisher} /></button
+            ><Highlight value={publisherHl.get(publisher) ?? publisher} /></FilterLink
           >{/if}
       </p>
     {/if}
@@ -277,29 +267,8 @@
     font-size: var(--text-sm, 0.9rem);
     color: var(--ink-light, var(--ink, #5f5648));
   }
-  /* Author / editor names — plain-text buttons (click to filter), underlined,
-     turning brand-coloured on hover. background:none strips the native button fill
-     (the host theme no longer styles bare <button>s, so no override fight). */
-  .dre-bcard__person {
-    padding: 0;
-    border: none;
-    background: none;
-    font: inherit;
-    cursor: pointer;
-    color: inherit;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
-  }
-  .dre-bcard__person:hover {
-    color: var(--primary, #007a50);
-    text-decoration-color: currentColor;
-  }
-  .dre-bcard__person:focus-visible {
-    outline: none;
-    border-radius: var(--radius-sm, 0.375rem);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3));
-  }
+  /* Author / editor names, venue and publisher are FilterLink spans — see that
+     component for the styling and for why they are not <button>s. */
   .dre-bcard__ref {
     margin: 0;
     font-size: var(--text-sm, 0.85rem);
