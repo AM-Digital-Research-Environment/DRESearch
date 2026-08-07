@@ -11,8 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint:tokens": "node scripts/check-design-tokens.mjs",
+    "lint:version": "node scripts/check-version-consistency.mjs",
     "lint:schema": "php scripts/check-profile-schema.php",
-    "lint": "npm run lint:tokens && npm run lint:schema && eslint src/svelte tests/frontend && prettier --check \"src/svelte/**/*.{ts,svelte}\" \"tests/frontend/**/*.ts\" \"*.{ts,json,md}\"",
+    "lint": "npm run lint:tokens && npm run lint:version && npm run lint:schema && eslint src/svelte tests/frontend && prettier --check \"src/svelte/**/*.{ts,svelte}\" \"tests/frontend/**/*.ts\" \"*.{ts,json,md}\"",
     "lint:fix": "eslint src/svelte tests/frontend --fix && prettier --write \"src/svelte/**/*.{ts,svelte}\" \"tests/frontend/**/*.ts\" \"*.{ts,json,md}\"",
     "format": "prettier --write \"src/svelte/**/*.{ts,svelte}\" \"tests/frontend/**/*.ts\" \"*.{ts,json,md}\""
   },
