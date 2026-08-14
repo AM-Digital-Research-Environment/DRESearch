@@ -34,7 +34,7 @@
 <style>
   .dre-view {
     display: inline-flex;
-    border: 1px solid var(--border, #dcd6cb);
+    border: 1px solid var(--border, #dbd7d1);
     border-radius: var(--radius-md, 0.5rem);
     overflow: hidden;
   }
@@ -46,11 +46,11 @@
     margin: 0;
     padding: 0.35rem 0.6rem;
     border: 0;
-    border-inline-end: 1px solid var(--border, #dcd6cb);
-    background: var(--surface, #fdfcfa);
-    color: var(--muted, #7a7164);
+    border-inline-end: 1px solid var(--border, #dbd7d1);
+    background: var(--surface, #fdfcf9);
+    color: var(--muted, #716a66);
     font: inherit;
-    font-size: var(--text-xs, 0.75rem);
+    font-size: var(--text-xs, 0.8125rem);
     cursor: pointer;
   }
   button:last-child {
@@ -58,8 +58,8 @@
   }
   button:hover,
   .dre-view__active {
-    background: var(--surface-sunken, #f1ede6);
-    color: var(--ink, #33291f);
+    background: var(--surface-sunken, #f3f0eb);
+    color: var(--ink, #3c342d);
   }
   .dre-view__active {
     box-shadow: inset 0 -2px var(--primary, #007a50);

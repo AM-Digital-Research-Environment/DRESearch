@@ -31,10 +31,7 @@
        keeps its highlight against a pre-2.22 theme, and only then to a literal.
        Drop the --dre-hl-bg step once the deployed theme is ≥ 2.23, when the
        theme's own deprecated alias goes away. */
-    background: var(
-      --highlight-bg,
-      var(--dre-hl-bg, color-mix(in srgb, var(--accent, #d57912) 30%, transparent))
-    );
+    background: var(--highlight-bg, rgba(202, 114, 16, 0.28));
     color: inherit;
     border-radius: 0.15rem;
     padding: 0 0.05em;

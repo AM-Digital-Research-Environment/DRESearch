@@ -200,17 +200,21 @@
 <style>
   .dre-bcard {
     padding: var(--space-md, 1rem);
-    background: var(--surface, #fdfcfa);
-    border: 1px solid var(--border-light, #eae5dd);
+    background: var(--surface, #fdfcf9);
+    border: 1px solid var(--border-light, #eae8e3);
     border-radius: var(--radius-lg, 0.75rem);
-    box-shadow: var(--shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.04));
+    box-shadow: var(--shadow-xs, 0 1px 2px 0 rgba(52, 37, 26, 0.07));
     transition:
-      border-color var(--transition-base, 200ms ease),
-      box-shadow var(--transition-base, 200ms ease);
+      border-color var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1)),
+      box-shadow var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1));
   }
   .dre-bcard:hover {
-    border-color: color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dcd6cb));
-    box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.08));
+    border-color: color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dbd7d1));
+    box-shadow: var(
+      --shadow-md,
+      0 4px 6px -1px rgba(42, 28, 16, 0.14),
+      0 2px 4px -2px rgba(52, 37, 26, 0.07)
+    );
   }
 
   .dre-bcard__body {
@@ -227,8 +231,8 @@
     min-height: 1.1rem;
   }
   .dre-bcard__year {
-    color: var(--muted, #7a7164);
-    font-size: var(--text-xs, 0.75rem);
+    color: var(--muted, #716a66);
+    font-size: var(--text-xs, 0.8125rem);
     font-weight: 600;
     letter-spacing: 0.06em;
     font-variant-numeric: tabular-nums;
@@ -237,10 +241,10 @@
     display: inline-flex;
     align-items: center;
     padding: 0.1rem 0.5rem;
-    background: color-mix(in srgb, var(--primary, #007a50) 14%, var(--surface, #fdfcfa));
-    color: var(--ink-strong, var(--ink, #33291f));
+    background: color-mix(in srgb, var(--primary, #007a50) 14%, var(--surface, #fdfcf9));
+    color: var(--ink-strong, #261d15);
     border-radius: var(--radius-full, 9999px);
-    font-size: var(--text-xs, 0.7rem);
+    font-size: var(--text-xs, 0.8125rem);
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: capitalize;
@@ -248,10 +252,10 @@
   }
   .dre-bcard__title {
     margin: 0;
-    font-size: var(--text-lg, 1.125rem);
-    line-height: 1.35;
-    font-family: var(--font-display, Georgia, serif);
-    color: var(--ink-strong, var(--ink, #33291f));
+    font-size: var(--text-lg, 1.1875rem);
+    line-height: var(--leading-snug, 1.25);
+    font-family: var(--font-display, 'Spectral', Georgia, 'Times New Roman', serif);
+    color: var(--ink-strong, #261d15);
   }
   .dre-bcard__title a {
     color: inherit;
@@ -264,25 +268,25 @@
   }
   .dre-bcard__authors {
     margin: 0;
-    font-size: var(--text-sm, 0.9rem);
-    color: var(--ink-light, var(--ink, #5f5648));
+    font-size: var(--text-sm, 0.9375rem);
+    color: var(--ink-light, #5f5650);
   }
   /* Author / editor names, venue and publisher are FilterLink spans — see that
      component for the styling and for why they are not <button>s. */
   .dre-bcard__ref {
     margin: 0;
-    font-size: var(--text-sm, 0.85rem);
-    color: var(--muted, #7a7164);
-    line-height: 1.5;
+    font-size: var(--text-sm, 0.9375rem);
+    color: var(--muted, #716a66);
+    line-height: var(--leading-normal, 1.6);
   }
   .dre-bcard__venue {
     font-style: italic;
   }
   .dre-bcard__snippet {
     margin: var(--space-xs, 0.25rem) 0 0;
-    font-size: var(--text-sm, 0.9rem);
-    color: var(--ink-light, var(--ink, #5f5648));
-    line-height: 1.5;
+    font-size: var(--text-sm, 0.9375rem);
+    color: var(--ink-light, #5f5650);
+    line-height: var(--leading-normal, 1.6);
     display: -webkit-box;
     -webkit-line-clamp: 3;
     line-clamp: 3;
@@ -310,45 +314,45 @@
     display: inline-flex;
     align-items: center;
     padding: 0.1rem 0.5rem;
-    background: var(--surface-sunken, #f1ede6);
-    color: var(--ink-light, var(--ink, #5f5648));
+    background: var(--surface-sunken, #f3f0eb);
+    color: var(--ink-light, #5f5650);
     border: none;
     border-radius: var(--radius-sm, 0.375rem);
     font-family: inherit;
-    font-size: var(--text-xs, 0.75rem);
+    font-size: var(--text-xs, 0.8125rem);
     font-weight: 500;
-    line-height: 1.5;
+    line-height: var(--leading-normal, 1.6);
     cursor: pointer;
     transition:
-      background var(--transition-fast, 150ms ease),
-      color var(--transition-fast, 150ms ease);
+      background var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1)),
+      color var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
   }
   .dre-bcard__chip:hover {
-    background: color-mix(in srgb, var(--primary, #007a50) 18%, var(--surface, #fdfcfa));
-    color: var(--ink-strong, var(--ink, #33291f));
+    background: color-mix(in srgb, var(--primary, #007a50) 18%, var(--surface, #fdfcf9));
+    color: var(--ink-strong, #261d15);
   }
   .dre-bcard__chip:focus-visible {
     outline: none;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3));
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
   .dre-bcard__doi {
     display: inline-flex;
     align-items: center;
     padding: 0.1rem 0.6rem;
-    border: 1px solid color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dcd6cb));
+    border: 1px solid color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dbd7d1));
     border-radius: var(--radius-full, 9999px);
     color: var(--primary, #007a50);
-    font-size: var(--text-xs, 0.72rem);
+    font-size: var(--text-xs, 0.8125rem);
     font-weight: 700;
     letter-spacing: 0.04em;
     text-decoration: none;
     white-space: nowrap;
     transition:
-      background var(--transition-fast, 150ms ease),
-      color var(--transition-fast, 150ms ease);
+      background var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1)),
+      color var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
   }
   .dre-bcard__doi:hover {
     background: var(--primary, #007a50);
-    color: var(--primary-contrast, #fdfcfa);
+    color: var(--primary-contrast, #fcfcf9);
   }
 </style>

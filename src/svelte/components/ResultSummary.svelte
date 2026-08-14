@@ -32,7 +32,7 @@
     justify-content: space-between;
     gap: 0.75rem;
     padding-block: 0.65rem;
-    border-block: 1px solid var(--border-light, #eae5dd);
+    border-block: 1px solid var(--border-light, #eae8e3);
   }
   .dre-summary__scope {
     display: flex;
@@ -43,11 +43,11 @@
   }
   .dre-summary__count {
     white-space: nowrap;
-    color: var(--muted, #7a7164);
-    font-size: var(--text-sm, 0.9rem);
+    color: var(--muted, #716a66);
+    font-size: var(--text-sm, 0.9375rem);
   }
   .dre-summary__count strong {
-    color: var(--ink, #33291f);
+    color: var(--ink, #3c342d);
     font-variant-numeric: tabular-nums;
   }
   ul {
@@ -65,7 +65,7 @@
     flex-wrap: wrap;
     gap: 0.5rem;
   }
-  @media (max-width: 46rem) {
+  @media (max-width: 48rem) {
     .dre-summary {
       align-items: stretch;
       flex-direction: column;

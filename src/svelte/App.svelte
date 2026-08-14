@@ -636,8 +636,8 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-md, 1rem);
-    color: var(--ink, #33291f);
-    font-size: var(--text-base, 1rem);
+    color: var(--ink, #3c342d);
+    font-size: var(--text-base, 1.0625rem);
   }
 
   .dre-search__layout {
@@ -659,22 +659,22 @@
     display: none;
     align-items: center;
     justify-content: center;
-    gap: var(--space-xs, 0.5rem);
+    gap: var(--space-xs, 0.25rem);
     width: 100%;
     padding: 0.6rem 0.9rem;
-    border: 1px solid var(--border, #dcd6cb);
+    border: 1px solid var(--border, #dbd7d1);
     border-radius: var(--radius-md, 0.5rem);
-    background: var(--surface, #fdfcfa);
-    color: var(--ink-strong, var(--ink, #33291f));
+    background: var(--surface, #fdfcf9);
+    color: var(--ink-strong, #261d15);
     font: inherit;
-    font-size: var(--text-sm, 0.9rem);
+    font-size: var(--text-sm, 0.9375rem);
     font-weight: 600;
     cursor: pointer;
   }
   .dre-search__facets-toggle:hover {
     border-color: var(--primary, #007a50);
     /* Stay an outline button — the host would fill it green with a white label. */
-    background: var(--surface, #fdfcfa);
+    background: var(--surface, #fdfcf9);
     color: var(--primary, #007a50);
   }
   .dre-search__facets-toggle-badge {
@@ -686,8 +686,8 @@
     padding: 0 0.4rem;
     border-radius: var(--radius-full, 9999px);
     background: var(--primary, #007a50);
-    color: var(--primary-contrast, #fdfcfa);
-    font-size: var(--text-xs, 0.7rem);
+    color: var(--primary-contrast, #fcfcf9);
+    font-size: var(--text-xs, 0.8125rem);
     font-weight: 600;
   }
 
@@ -704,7 +704,7 @@
     /* A left gutter so the rail's controls aren't glued to the page edge; it
        lands the headings on the search box's text edge (both = --space-md). */
     padding-inline: var(--space-md, 1rem);
-    border-inline-end: 1px solid var(--border-light, #eae5dd);
+    border-inline-end: 1px solid var(--border-light, #eae8e3);
   }
 
   .dre-search__results {
@@ -723,14 +723,14 @@
     gap: var(--space-xs, 0.25rem);
   }
   .dre-search__error {
-    background: color-mix(in srgb, var(--error, #c0392b) 12%, var(--surface, #fdfcfa));
-    border: 1px solid color-mix(in srgb, var(--error, #c0392b) 35%, transparent);
-    color: var(--ink-strong, var(--ink, #33291f));
+    background: color-mix(in srgb, var(--error, #cc272e) 12%, var(--surface, #fdfcf9));
+    border: 1px solid color-mix(in srgb, var(--error, #cc272e) 35%, transparent);
+    color: var(--ink-strong, #261d15);
   }
   .dre-search__notice {
-    background: var(--surface-sunken, #f1ede6);
-    border: 1px dashed var(--border, #dcd6cb);
-    color: var(--muted, #6c6357);
+    background: var(--surface-sunken, #f3f0eb);
+    border: 1px dashed var(--border, #dbd7d1);
+    color: var(--muted, #716a66);
     text-align: center;
   }
   .dre-search__notice p {
@@ -738,20 +738,20 @@
   }
 
   .dre-search__empty {
-    background: var(--surface-sunken, #f6f2eb);
-    border: 1px dashed var(--border, #dcd6cb);
+    background: var(--surface-sunken, #f3f0eb);
+    border: 1px dashed var(--border, #dbd7d1);
     border-radius: var(--radius-md, 0.5rem);
     padding: var(--space-2xl, 3rem) var(--space-lg, 1.5rem);
     text-align: center;
-    color: var(--muted, #7a7164);
+    color: var(--muted, #716a66);
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: var(--space-sm, 0.5rem);
   }
   .dre-search__empty strong {
-    color: var(--ink-strong, var(--ink, #33291f));
-    font-size: var(--text-lg, 1.125rem);
+    color: var(--ink-strong, #261d15);
+    font-size: var(--text-lg, 1.1875rem);
   }
   .dre-search__empty p {
     margin: 0;
@@ -762,13 +762,13 @@
     color: var(--primary, #007a50);
     border-radius: var(--radius-md, 0.5rem);
     padding: 0.4rem 0.75rem;
-    font-size: var(--text-sm, 0.9rem);
+    font-size: var(--text-sm, 0.9375rem);
     cursor: pointer;
     margin-top: var(--space-xs, 0.25rem);
   }
   .dre-search__clear-link:hover {
     background: var(--primary, #007a50);
-    color: var(--primary-contrast, #fdfcfa);
+    color: var(--primary-contrast, #fcfcf9);
   }
 
   @media (max-width: 48rem) {
@@ -789,7 +789,7 @@
       overflow: visible;
       padding-inline: 0;
       border-inline-end: none;
-      border-bottom: 1px solid var(--border-light, #eae5dd);
+      border-bottom: 1px solid var(--border-light, #eae8e3);
       padding-block-end: var(--space-md, 1rem);
     }
     .dre-search__facets--open {

@@ -256,18 +256,18 @@
     width: 100%;
     height: var(--size-control-lg, 2.75rem);
     padding-inline: var(--space-md, 1rem) var(--space-2xl, 3rem);
-    font-size: var(--text-base, 1rem);
-    color: var(--ink, #33291f);
-    background: var(--surface, #fdfcfa);
-    border: 1px solid var(--border, #dcd6cb);
+    font-size: var(--text-base, 1.0625rem);
+    color: var(--ink, #3c342d);
+    background: var(--surface, #fdfcf9);
+    border: 1px solid var(--border, #dbd7d1);
     border-radius: var(--radius-md, 0.5rem);
-    box-shadow: var(--shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.04));
+    box-shadow: var(--shadow-xs, 0 1px 2px 0 rgba(52, 37, 26, 0.07));
     transition:
-      border-color var(--transition-fast, 150ms ease),
-      box-shadow var(--transition-fast, 150ms ease);
+      border-color var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1)),
+      box-shadow var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
   }
   .dre-search-box__input::placeholder {
-    color: var(--muted, #938979);
+    color: var(--muted, #716a66);
   }
   .dre-search-box__input::-webkit-search-cancel-button {
     -webkit-appearance: none;
@@ -277,7 +277,7 @@
   .dre-search-box__input:focus {
     outline: none;
     border-color: var(--primary, #007a50);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.1));
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
   /*
    * The clear control is a quiet, transparent × — its own background/color reset
@@ -304,8 +304,8 @@
     padding: 0;
     border: 0;
     background: transparent;
-    color: var(--muted, #938979);
-    font-size: 1.25rem;
+    color: var(--muted, #716a66);
+    font-size: var(--text-lg, 1.1875rem);
     line-height: 1;
     cursor: pointer;
     border-radius: var(--radius-full, 9999px);
@@ -315,11 +315,11 @@
   .dre-search-box__clear:hover {
     /* Faint neutral wash + a readable label — never the theme's green-on-green. */
     background: color-mix(in srgb, currentColor 16%, transparent);
-    color: var(--ink, #33291f);
+    color: var(--ink, #3c342d);
   }
   .dre-search-box__clear:focus-visible {
     outline: none;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.15));
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
 
   .dre-search-box__suggest {
@@ -330,10 +330,14 @@
     margin: 0;
     padding: 0.25rem;
     list-style: none;
-    background: var(--surface, #fdfcfa);
-    border: 1px solid var(--border, #dcd6cb);
+    background: var(--surface, #fdfcf9);
+    border: 1px solid var(--border, #dbd7d1);
     border-radius: var(--radius-md, 0.5rem);
-    box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1));
+    box-shadow: var(
+      --shadow-lg,
+      0 10px 15px -3px rgba(42, 28, 16, 0.14),
+      0 4px 6px -4px rgba(52, 37, 26, 0.07)
+    );
     max-height: 22rem;
     overflow-y: auto;
   }
@@ -343,26 +347,26 @@
     gap: 0.1rem;
     padding: var(--space-sm, 0.5rem) var(--space-sm, 0.5rem);
     border-radius: var(--radius-sm, 0.375rem);
-    color: var(--ink, #33291f);
+    color: var(--ink, #3c342d);
     text-decoration: none;
   }
   .dre-search-box__suggestion--active,
   .dre-search-box__suggestion:hover {
-    background: var(--surface-sunken, #f1ede6);
+    background: var(--surface-sunken, #f3f0eb);
   }
   .dre-search-box__suggestion-title {
-    font-size: var(--text-sm, 0.9rem);
+    font-size: var(--text-sm, 0.9375rem);
     font-weight: 600;
-    line-height: 1.3;
+    line-height: var(--leading-snug, 1.25);
   }
   .dre-search-box__suggestion-meta {
-    font-size: var(--text-xs, 0.75rem);
-    color: var(--muted, #7a7164);
+    font-size: var(--text-xs, 0.8125rem);
+    color: var(--muted, #716a66);
   }
   .dre-search-box__recent-label {
     padding: 0.4rem 0.5rem 0.2rem;
-    color: var(--muted, #7a7164);
-    font-size: var(--text-xs, 0.75rem);
+    color: var(--muted, #716a66);
+    font-size: var(--text-xs, 0.8125rem);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -375,12 +379,12 @@
     border: 0;
     border-radius: var(--radius-sm, 0.375rem);
     background: transparent;
-    color: var(--ink, #33291f);
+    color: var(--ink, #3c342d);
     font: inherit;
     text-align: start;
     cursor: pointer;
   }
   .dre-search-box__recent:hover {
-    background: var(--surface-sunken, #f1ede6);
+    background: var(--surface-sunken, #f3f0eb);
   }
 </style>

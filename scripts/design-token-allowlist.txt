@@ -1,0 +1,64 @@
+# GENERATED baseline for scripts/check-design-tokens.mjs — the RATCHET.
+#
+# Each line exempts one rule in one file. This is a backlog, not a set of
+# exemptions: every line is a conversion someone still owes. Lines should
+# only ever be REMOVED. Regenerate with --update-allowlist after a pass,
+# and check the diff — a new line means new drift got in.
+
+# media — 8 file(s)
+media  src/svelte/components/FederatedApp.svelte
+media  src/svelte/components/MapView.svelte
+media  src/svelte/components/OrganisationCard.svelte
+media  src/svelte/components/PersonCard.svelte
+media  src/svelte/components/PodcastCard.svelte
+media  src/svelte/components/ResultItem.svelte
+media  src/svelte/components/VideoCard.svelte
+media  src/svelte/components/ViewToggle.svelte
+
+# pxGeometry — 16 file(s)
+pxGeometry  src/svelte/components/ExportMenu.svelte
+pxGeometry  src/svelte/components/MapView.svelte
+pxGeometry  src/svelte/components/OrganisationCard.svelte
+pxGeometry  src/svelte/components/PersonCard.svelte
+pxGeometry  src/svelte/components/PodcastCard.svelte
+pxGeometry  src/svelte/components/ProjectCard.svelte
+pxGeometry  src/svelte/components/PublicationCard.svelte
+pxGeometry  src/svelte/components/ResultItem.svelte
+pxGeometry  src/svelte/components/SearchBar.svelte
+pxGeometry  src/svelte/components/SearchBox.svelte
+pxGeometry  src/svelte/components/SectionCard.svelte
+pxGeometry  src/svelte/components/TermCard.svelte
+pxGeometry  src/svelte/components/VideoCard.svelte
+pxGeometry  src/svelte/components/ViewToggle.svelte
+pxGeometry  src/svelte/components/YearRangeFacet.svelte
+pxGeometry  src/svelte/lib/tokenBridge.ts
+
+# radius — 2 file(s)
+radius  src/svelte/components/Highlight.svelte
+radius  src/svelte/components/ResultSkeleton.svelte
+
+# spacing — 24 file(s)
+spacing  src/svelte/App.svelte
+spacing  src/svelte/components/CopyLinkButton.svelte
+spacing  src/svelte/components/FacetGroup.svelte
+spacing  src/svelte/components/FacetPanel.svelte
+spacing  src/svelte/components/FederatedApp.svelte
+spacing  src/svelte/components/FilterChip.svelte
+spacing  src/svelte/components/MapView.svelte
+spacing  src/svelte/components/MixedResultCard.svelte
+spacing  src/svelte/components/OrganisationCard.svelte
+spacing  src/svelte/components/PersonCard.svelte
+spacing  src/svelte/components/PodcastCard.svelte
+spacing  src/svelte/components/ProjectCard.svelte
+spacing  src/svelte/components/PublicationCard.svelte
+spacing  src/svelte/components/ResultItem.svelte
+spacing  src/svelte/components/ResultSkeleton.svelte
+spacing  src/svelte/components/ResultSummary.svelte
+spacing  src/svelte/components/SearchBar.svelte
+spacing  src/svelte/components/SearchBox.svelte
+spacing  src/svelte/components/SectionCard.svelte
+spacing  src/svelte/components/SortSelect.svelte
+spacing  src/svelte/components/TermCard.svelte
+spacing  src/svelte/components/VideoCard.svelte
+spacing  src/svelte/components/ViewToggle.svelte
+spacing  src/svelte/components/YearRangeFacet.svelte

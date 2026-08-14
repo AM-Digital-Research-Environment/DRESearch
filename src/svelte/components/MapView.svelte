@@ -2,12 +2,34 @@
   import type { Doc } from '../lib/types';
   import { t } from '../lib/i18n';
   import {
-    DARK_STYLE,
-    LIGHT_STYLE,
+    basemapStyle,
     loadMapLibre,
     type MapLibreGlobal,
     type MapLike,
   } from '../lib/maplibreLoader';
+  import { cssColor, isDark, onThemeChange } from '../lib/tokenBridge';
+
+  /**
+   * The map's palette, resolved from the theme's tokens at paint time.
+   *
+   * These were raw hexes — clusters #007a50, points #d57912, strokes and labels
+   * #fff — which had three consequences: changing the brand colour in theme
+   * settings re-tinted the whole site except this map; the point colour was the
+   * raw Braun pigment rather than --accent; and the white stroke was the exact
+   * literal DRE-theme retired --white to prevent. Resolving through the bridge
+   * fixes all three, and re-resolving on toggle keeps them right afterwards.
+   *
+   * The fallbacks are the theme's own generated values (see DRE-theme's
+   * asset/css/dre-tokens-fallback.json) and are reached only without the theme.
+   */
+  function palette() {
+    return {
+      cluster: cssColor('--primary', '#007a50'),
+      point: cssColor('--accent', '#ca7210'),
+      stroke: cssColor('--surface', '#fdfcf9'),
+      label: cssColor('--primary-contrast', '#fcfcf9'),
+    };
+  }
   interface Props {
     docs: Doc[];
     loading: boolean;
@@ -20,6 +42,7 @@
   let lib: MapLibreGlobal | null = null;
   let ready = $state(false);
   let error = $state('');
+  let unsubscribeTheme: (() => void) | null = null;
   const source = 'dre-locations';
   const geojson = $derived({
     type: 'FeatureCollection' as const,
@@ -42,18 +65,25 @@
       .then((loaded) => {
         if (cancelled) return;
         lib = loaded;
-        const dark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+        // The THEME's mode, not the OS's. Asking matchMedia here meant a
+        // system-dark visitor who chose light got a light page carrying a
+        // dark-matter basemap — the one surface that ignored the toggle.
         map = new loaded.Map({
           container: el,
-          style: dark ? DARK_STYLE : LIGHT_STYLE,
+          style: basemapStyle(isDark()),
           center: [2, 10],
           zoom: 3.2,
           cooperativeGestures: true,
           attributionControl: { compact: true },
         });
         map.addControl(new loaded.NavigationControl({ visualizePitch: false }), 'top-right');
-        map.on('load', () => {
+        // The clustered source and its three layers, with colour resolved from
+        // the tokens at call time. Factored out because setStyle() discards
+        // everything the outgoing style owned — custom layers included — so a
+        // basemap swap has to re-add them.
+        const addDataLayers = () => {
           if (!map) return;
+          const ink = palette();
           map.addSource(source, {
             type: 'geojson',
             data: geojson,
@@ -67,9 +97,9 @@
             source,
             filter: ['has', 'point_count'],
             paint: {
-              'circle-color': '#007a50',
+              'circle-color': ink.cluster,
               'circle-radius': ['step', ['get', 'point_count'], 15, 25, 21, 100, 27],
-              'circle-stroke-color': '#fff',
+              'circle-stroke-color': ink.stroke,
               'circle-stroke-width': 2,
             },
           });
@@ -79,7 +109,7 @@
             source,
             filter: ['has', 'point_count'],
             layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 12 },
-            paint: { 'text-color': '#fff' },
+            paint: { 'text-color': ink.label },
           });
           map.addLayer({
             id: 'dre-point',
@@ -87,12 +117,17 @@
             source,
             filter: ['!', ['has', 'point_count']],
             paint: {
-              'circle-color': '#d57912',
+              'circle-color': ink.point,
               'circle-radius': ['interpolate', ['linear'], ['get', 'count'], 0, 6, 100, 11],
-              'circle-stroke-color': '#fff',
+              'circle-stroke-color': ink.stroke,
               'circle-stroke-width': 1.5,
             },
           });
+        };
+
+        map.on('load', () => {
+          if (!map) return;
+          addDataLayers();
           map.on('click', 'dre-clusters', (raw: unknown) => {
             const event = raw as {
               features?: Array<{
@@ -142,12 +177,26 @@
           }
           ready = true;
         });
+
+        // Follow the theme toggle. A WebGL map resolves its colours once, so
+        // without this it would hold whichever mode it was first painted in
+        // while the rest of the page switched around it.
+        unsubscribeTheme = onThemeChange((dark) => {
+          const target = map;
+          if (!target || !ready) return;
+          // `once`, not `on`: styledata fires on every style mutation, and a
+          // persistent handler would re-add the layers on each of them.
+          target.once('styledata', () => addDataLayers());
+          target.setStyle(basemapStyle(dark));
+        });
       })
       .catch((reason: Error) => {
         if (!cancelled) error = reason.message;
       });
     return () => {
       cancelled = true;
+      unsubscribeTheme?.();
+      unsubscribeTheme = null;
       map?.remove();
       map = null;
       ready = false;
@@ -188,10 +237,10 @@
   .dre-map {
     position: relative;
     min-height: 32rem;
-    border: 1px solid var(--border, #dcd6cb);
+    border: 1px solid var(--border, #dbd7d1);
     border-radius: var(--radius-lg, 0.75rem);
     overflow: hidden;
-    background: var(--surface-sunken, #f1ede6);
+    background: var(--surface-sunken, #f3f0eb);
   }
   .dre-map__canvas {
     position: absolute;
@@ -206,12 +255,16 @@
     margin: 0;
     padding: 0.55rem 0.75rem;
     border-radius: 0.375rem;
-    background: var(--surface, #fdfcfa);
-    box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.12));
-    color: var(--ink, #33291f);
+    background: var(--surface, #fdfcf9);
+    box-shadow: var(
+      --shadow-md,
+      0 4px 6px -1px rgba(42, 28, 16, 0.14),
+      0 2px 4px -2px rgba(52, 37, 26, 0.07)
+    );
+    color: var(--ink, #3c342d);
   }
   .dre-map__note {
-    font-size: 0.8rem;
+    font-size: var(--text-xs, 0.8125rem);
   }
   @media (max-width: 40rem) {
     .dre-map {

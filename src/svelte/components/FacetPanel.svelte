@@ -107,19 +107,28 @@
     justify-content: space-between;
     gap: var(--space-sm, 0.5rem);
     padding-block: var(--space-xs, 0.25rem) var(--space-sm, 0.5rem);
-    border-bottom: 1px solid var(--border, #dcd6cb);
+    border-bottom: 1px solid var(--border, #dbd7d1);
   }
   .dre-facets__heading {
     margin: 0;
     /* It's an <h2>, so the host theme would render it in the display serif;
        force the body face so it reads as a UI eyebrow, like the facet-group
        labels below it (Spectral caps at 13px look out of place here). */
-    font-family: var(--font-body, system-ui, sans-serif);
-    font-size: var(--text-xs, 0.75rem);
+    font-family: var(
+      --font-body,
+      'Hanken Grotesk',
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      Roboto,
+      'Helvetica Neue',
+      sans-serif
+    );
+    font-size: var(--text-xs, 0.8125rem);
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--ink-strong, var(--ink, #33291f));
+    color: var(--ink-strong, #261d15);
   }
   .dre-facets__clear-all {
     /* Plain text link — reset the native button chrome. */
@@ -127,7 +136,7 @@
     border: none;
     color: var(--primary, #007a50);
     cursor: pointer;
-    font-size: var(--text-xs, 0.75rem);
+    font-size: var(--text-xs, 0.8125rem);
     padding: 0;
   }
   .dre-facets__clear-all:hover {
@@ -153,24 +162,24 @@
   .dre-facets__fulltext {
     margin-block: var(--space-md, 1rem) 0;
     padding: 0.55rem 0.7rem;
-    border: 1px solid var(--border, #dcd6cb);
+    border: 1px solid var(--border, #dbd7d1);
     border-radius: var(--radius-md, 0.5rem);
-    background: var(--surface, #fdfcfa);
-    color: var(--ink, #33291f);
+    background: var(--surface, #fdfcf9);
+    color: var(--ink, #3c342d);
     font: inherit;
-    font-size: var(--text-sm, 0.9rem);
+    font-size: var(--text-sm, 0.9375rem);
     text-align: start;
     cursor: pointer;
   }
   .dre-facets__fulltext:hover,
   .dre-facets__fulltext-active {
     border-color: var(--primary, #007a50);
-    background: color-mix(in srgb, var(--primary, #007a50) 12%, var(--surface, #fdfcfa));
+    background: color-mix(in srgb, var(--primary, #007a50) 12%, var(--surface, #fdfcf9));
   }
   .dre-facets__empty {
     padding-block: var(--space-md, 1rem);
-    color: var(--muted, #938979);
-    font-size: var(--text-sm, 0.9rem);
+    color: var(--muted, #716a66);
+    font-size: var(--text-sm, 0.9375rem);
     margin: 0;
   }
 </style>

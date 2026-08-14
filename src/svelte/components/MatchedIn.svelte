@@ -45,23 +45,23 @@
 <style>
   .dre-match {
     margin: var(--space-xs, 0.25rem) 0 0;
-    font-size: var(--text-xs, 0.78rem);
-    line-height: 1.5;
-    color: var(--ink-light, var(--ink, #5f5648));
+    font-size: var(--text-xs, 0.8125rem);
+    line-height: var(--leading-normal, 1.6);
+    color: var(--ink-light, #5f5650);
   }
   .dre-match__label {
-    color: var(--muted, #7a7164);
+    color: var(--muted, #716a66);
     font-weight: 700;
-    font-size: var(--text-xs, 0.72rem);
+    font-size: var(--text-xs, 0.8125rem);
     letter-spacing: 0.04em;
     text-transform: uppercase;
     margin-inline-end: 0.35rem;
   }
   .dre-match__field {
-    color: var(--muted, #7a7164);
+    color: var(--muted, #716a66);
     font-weight: 600;
   }
   .dre-match__sep {
-    color: var(--muted, #a39a8c);
+    color: var(--muted, #716a66);
   }
 </style>

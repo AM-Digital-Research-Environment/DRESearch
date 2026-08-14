@@ -366,17 +366,17 @@
     margin: 0;
     border: 0;
     background: transparent;
-    color: var(--ink, #33291f);
+    color: var(--ink, #3c342d);
     cursor: pointer;
     border-radius: var(--radius-full, 9999px);
   }
   .dre-search-bar__toggle:hover {
     background: color-mix(in srgb, currentColor 12%, transparent);
-    color: var(--ink-strong, var(--ink, #33291f));
+    color: var(--ink-strong, #261d15);
   }
   .dre-search-bar__toggle:focus-visible {
     outline: none;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.15));
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
 
   /* When collapsible & expanded, float the input as an overlay so it never
@@ -399,7 +399,7 @@
     position: absolute;
     inset-inline-start: var(--space-sm, 0.5rem);
     display: inline-flex;
-    color: var(--muted, #938979);
+    color: var(--muted, #716a66);
     pointer-events: none;
   }
   .dre-search-bar__input {
@@ -408,18 +408,18 @@
     /* leave room for the leading icon and the trailing clear button */
     padding-inline: 2.1rem 2.1rem;
     margin: 0;
-    font-size: var(--text-sm, 0.95rem);
-    color: var(--ink, #33291f);
-    background: var(--surface, #fdfcfa);
-    border: 1px solid var(--border, #dcd6cb);
+    font-size: var(--text-sm, 0.9375rem);
+    color: var(--ink, #3c342d);
+    background: var(--surface, #fdfcf9);
+    border: 1px solid var(--border, #dbd7d1);
     border-radius: var(--radius-full, 9999px);
-    box-shadow: var(--shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.04));
+    box-shadow: var(--shadow-xs, 0 1px 2px 0 rgba(52, 37, 26, 0.07));
     transition:
-      border-color var(--transition-fast, 150ms ease),
-      box-shadow var(--transition-fast, 150ms ease);
+      border-color var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1)),
+      box-shadow var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
   }
   .dre-search-bar__input::placeholder {
-    color: var(--muted, #938979);
+    color: var(--muted, #716a66);
   }
   .dre-search-bar__input::-webkit-search-cancel-button {
     -webkit-appearance: none;
@@ -429,7 +429,7 @@
   .dre-search-bar__input:focus {
     outline: none;
     border-color: var(--primary, #007a50);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.1));
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
 
   /*
@@ -438,7 +438,7 @@
    */
   .dre-search-bar__clear {
     position: absolute;
-    inset-inline-end: var(--space-xs, 0.35rem);
+    inset-inline-end: var(--space-xs, 0.25rem);
     top: 50%;
     transform: translateY(-50%);
     display: inline-flex;
@@ -452,8 +452,8 @@
     padding: 0;
     border: 0;
     background: transparent;
-    color: var(--muted, #938979);
-    font-size: 1.15rem;
+    color: var(--muted, #716a66);
+    font-size: var(--text-lg, 1.1875rem);
     line-height: 1;
     cursor: pointer;
     border-radius: var(--radius-full, 9999px);
@@ -462,11 +462,11 @@
   }
   .dre-search-bar__clear:hover {
     background: color-mix(in srgb, currentColor 16%, transparent);
-    color: var(--ink, #33291f);
+    color: var(--ink, #3c342d);
   }
   .dre-search-bar__clear:focus-visible {
     outline: none;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.15));
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
 
   /* ── Suggestions dropdown ────────────────────────────────────────────────── */
@@ -478,47 +478,51 @@
     width: min(26rem, 92vw);
     margin: 0;
     padding: 0.25rem;
-    background: var(--surface, #fdfcfa);
-    border: 1px solid var(--border, #dcd6cb);
+    background: var(--surface, #fdfcf9);
+    border: 1px solid var(--border, #dbd7d1);
     border-radius: var(--radius-md, 0.5rem);
-    box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1));
+    box-shadow: var(
+      --shadow-lg,
+      0 10px 15px -3px rgba(42, 28, 16, 0.14),
+      0 4px 6px -4px rgba(52, 37, 26, 0.07)
+    );
     max-height: 28rem;
     overflow-y: auto;
   }
   .dre-search-bar__group + .dre-search-bar__group {
     margin-top: 0.15rem;
-    border-top: 1px solid var(--border-light, #eae5dd);
+    border-top: 1px solid var(--border-light, #eae8e3);
     padding-top: 0.15rem;
   }
   .dre-search-bar__group-label {
     padding: 0.35rem var(--space-sm, 0.5rem) 0.15rem;
-    font-size: var(--text-xs, 0.7rem);
+    font-size: var(--text-xs, 0.8125rem);
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: var(--muted, #938979);
+    color: var(--muted, #716a66);
   }
   .dre-search-bar__option {
     display: flex;
     flex-direction: column;
     gap: 0.1rem;
-    padding: var(--space-xs, 0.4rem) var(--space-sm, 0.5rem);
+    padding: var(--space-xs, 0.25rem) var(--space-sm, 0.5rem);
     border-radius: var(--radius-sm, 0.375rem);
-    color: var(--ink, #33291f);
+    color: var(--ink, #3c342d);
     text-decoration: none;
   }
   .dre-search-bar__option--active,
   .dre-search-bar__option:hover {
-    background: var(--surface-sunken, #f1ede6);
+    background: var(--surface-sunken, #f3f0eb);
   }
   .dre-search-bar__option-title {
-    font-size: var(--text-sm, 0.9rem);
+    font-size: var(--text-sm, 0.9375rem);
     font-weight: 600;
-    line-height: 1.3;
+    line-height: var(--leading-snug, 1.25);
   }
   .dre-search-bar__option-meta {
-    font-size: var(--text-xs, 0.75rem);
-    color: var(--muted, #7a7164);
+    font-size: var(--text-xs, 0.8125rem);
+    color: var(--muted, #716a66);
   }
   /* Pinned at the top of the dropdown so it's always reachable without scrolling
      past the grouped suggestions. */
@@ -526,14 +530,14 @@
     display: block;
     margin-bottom: 0.15rem;
     padding: var(--space-sm, 0.5rem);
-    border-bottom: 1px solid var(--border-light, #eae5dd);
+    border-bottom: 1px solid var(--border-light, #eae8e3);
     color: var(--primary, #007a50);
-    font-size: var(--text-sm, 0.85rem);
+    font-size: var(--text-sm, 0.9375rem);
     font-weight: 600;
     text-decoration: none;
     border-radius: var(--radius-sm, 0.375rem) var(--radius-sm, 0.375rem) 0 0;
   }
   .dre-search-bar__see-all:hover {
-    background: var(--surface-sunken, #f1ede6);
+    background: var(--surface-sunken, #f3f0eb);
   }
 </style>

@@ -86,7 +86,7 @@
 <style>
   .dre-facet {
     padding-block: var(--space-md, 1rem);
-    border-bottom: 1px solid var(--border-light, #eae5dd);
+    border-bottom: 1px solid var(--border-light, #eae8e3);
   }
   .dre-facet:last-child {
     border-bottom: none;
@@ -102,8 +102,8 @@
     border: none;
     cursor: pointer;
     font: inherit;
-    color: var(--ink-strong, var(--ink, #33291f));
-    font-size: var(--text-xs, 0.75rem);
+    color: var(--ink-strong, #261d15);
+    font-size: var(--text-xs, 0.8125rem);
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -117,7 +117,7 @@
   }
   .dre-facet__badge {
     background: var(--primary, #007a50);
-    color: var(--primary-contrast, #fdfcfa);
+    color: var(--primary-contrast, #fcfcf9);
     border-radius: var(--radius-full, 9999px);
     min-width: 1.25rem;
     height: 1.25rem;
@@ -125,13 +125,13 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: var(--text-xs, 0.7rem);
+    font-size: var(--text-xs, 0.8125rem);
     font-weight: 600;
     letter-spacing: 0;
   }
   .dre-facet__chevron {
-    color: var(--muted, #938979);
-    font-size: var(--text-xs, 0.75rem);
+    color: var(--muted, #716a66);
+    font-size: var(--text-xs, 0.8125rem);
   }
 
   .dre-facet__search {
@@ -143,24 +143,24 @@
     width: 100%;
     margin: 0;
     padding: 0.3rem 0.5rem;
-    border: 1px solid var(--border, #dcd6cb);
+    border: 1px solid var(--border, #dbd7d1);
     border-radius: var(--radius-sm, 0.375rem);
-    background: var(--surface, #fdfcfa);
-    color: var(--ink, #33291f);
+    background: var(--surface, #fdfcf9);
+    color: var(--ink, #3c342d);
     font: inherit;
-    font-size: var(--text-sm, 0.85rem);
+    font-size: var(--text-sm, 0.9375rem);
     box-shadow: none;
     -webkit-appearance: none;
     appearance: none;
   }
   .dre-facet__search-input::placeholder {
-    color: var(--muted, #a39a8c);
+    color: var(--muted, #716a66);
   }
   .dre-facet__search-input:focus,
   .dre-facet__search-input:focus-visible {
     outline: none;
     border-color: var(--primary, #007a50);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.18));
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
 
   .dre-facet__list {
@@ -182,11 +182,11 @@
     padding: 0.2rem 0.25rem;
     border-radius: var(--radius-sm, 0.375rem);
     cursor: pointer;
-    font-size: var(--text-sm, 0.9rem);
-    color: var(--ink, #33291f);
+    font-size: var(--text-sm, 0.9375rem);
+    color: var(--ink, #3c342d);
   }
   .dre-facet__option:hover {
-    background: var(--surface-sunken, #f1ede6);
+    background: var(--surface-sunken, #f3f0eb);
   }
   .dre-facet__value {
     flex: 1;
@@ -201,14 +201,14 @@
     white-space: nowrap;
   }
   .dre-facet__count {
-    color: var(--muted, #938979);
-    font-size: var(--text-xs, 0.75rem);
+    color: var(--muted, #716a66);
+    font-size: var(--text-xs, 0.8125rem);
     font-variant-numeric: tabular-nums;
   }
   .dre-facet__nomatch {
     margin: var(--space-sm, 0.5rem) 0 0;
     padding: 0.2rem 0.25rem;
-    color: var(--muted, #938979);
-    font-size: var(--text-sm, 0.85rem);
+    color: var(--muted, #716a66);
+    font-size: var(--text-sm, 0.9375rem);
   }
 </style>

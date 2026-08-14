@@ -58,10 +58,10 @@
     height: 2.25rem;
     margin: 0;
     padding: 0 0.5rem;
-    border: 1px solid var(--border, #dcd6cb);
+    border: 1px solid var(--border, #dbd7d1);
     border-radius: var(--radius-md, 0.5rem);
-    background: var(--surface, #fdfcfa);
-    color: var(--ink, #33291f);
+    background: var(--surface, #fdfcf9);
+    color: var(--ink, #3c342d);
     font: inherit;
     cursor: pointer;
   }
@@ -72,7 +72,7 @@
   .dre-pager button.active {
     background: var(--primary, #007a50);
     border-color: var(--primary, #007a50);
-    color: var(--primary-contrast, #fdfcfa);
+    color: var(--primary-contrast, #fcfcf9);
     font-weight: 700;
   }
   .dre-pager button:disabled {
@@ -80,6 +80,6 @@
     cursor: default;
   }
   .dre-pager span {
-    color: var(--muted, #938979);
+    color: var(--muted, #716a66);
   }
 </style>

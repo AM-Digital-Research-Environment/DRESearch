@@ -57,7 +57,7 @@
   .dre-filter-link:focus-visible {
     outline: none;
     border-radius: var(--radius-sm, 0.375rem);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3));
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
     /* Repeat the ring on every line box when the value wraps, instead of
        drawing one ring around the union of the fragments. */
     -webkit-box-decoration-break: clone;

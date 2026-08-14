@@ -44,16 +44,16 @@
     align-self: flex-end;
     margin: 0;
     padding: 0.16rem 0.5rem;
-    border: 1px solid var(--border, #dcd6cb);
+    border: 1px solid var(--border, #dbd7d1);
     border-radius: var(--radius-full, 9999px);
-    background: var(--surface-sunken, #f1ede6);
+    background: var(--surface-sunken, #f3f0eb);
     color: var(--primary, #007a50);
     font: inherit;
-    font-size: var(--text-xs, 0.7rem);
+    font-size: var(--text-xs, 0.8125rem);
     font-weight: 700;
     cursor: pointer;
   }
   .dre-mixed__source:hover {
-    background: var(--surface-sunken, #f1ede6);
+    background: var(--surface-sunken, #f3f0eb);
   }
 </style>

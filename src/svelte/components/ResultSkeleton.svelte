@@ -39,7 +39,7 @@
     gap: 1rem;
     min-height: 8.5rem;
     padding: 1rem;
-    border: 1px solid var(--border-light, #eae5dd);
+    border: 1px solid var(--border-light, #eae8e3);
     border-radius: var(--radius-lg, 0.75rem);
   }
   .dre-skeleton__image,
@@ -47,9 +47,9 @@
     display: block;
     background: linear-gradient(
       90deg,
-      var(--surface-sunken, #f1ede6) 25%,
-      color-mix(in srgb, var(--surface-sunken, #f1ede6) 65%, white) 50%,
-      var(--surface-sunken, #f1ede6) 75%
+      var(--surface-sunken, #f3f0eb) 25%,
+      color-mix(in srgb, var(--surface-sunken, #f3f0eb) 65%, white) 50%,
+      var(--surface-sunken, #f3f0eb) 75%
     );
     background-size: 200% 100%;
     animation: dre-shimmer 1.3s linear infinite;
@@ -92,7 +92,7 @@
     .dre-skeleton__image,
     .dre-skeleton i {
       animation: none;
-      background: var(--surface-sunken, #f1ede6);
+      background: var(--surface-sunken, #f3f0eb);
     }
   }
 </style>

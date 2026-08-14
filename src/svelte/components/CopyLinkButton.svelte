@@ -24,12 +24,12 @@
     min-height: 2.5rem;
     margin: 0;
     padding: 0.35rem 0.65rem;
-    border: 1px solid var(--border, #dcd6cb);
+    border: 1px solid var(--border, #dbd7d1);
     border-radius: var(--radius-md, 0.5rem);
-    background: var(--surface, #fdfcfa);
-    color: var(--ink, #33291f);
+    background: var(--surface, #fdfcf9);
+    color: var(--ink, #3c342d);
     font: inherit;
-    font-size: var(--text-xs, 0.75rem);
+    font-size: var(--text-xs, 0.8125rem);
     cursor: pointer;
   }
   button:hover {

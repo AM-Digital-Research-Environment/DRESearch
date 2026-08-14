@@ -24,12 +24,11 @@
     flex: none;
     width: 2.125rem;
     height: 0.875rem;
-    fill: var(--type-entity-term, var(--primary, #007a50));
+    fill: var(--type-entity-term, #d57912);
     opacity: 0.78;
   }
-  @media (prefers-color-scheme: dark) {
-    .dre-spark {
-      opacity: 0.95;
-    }
+  /* Theme mode, not OS preference — see DESIGN.md §9 "Mode selectors". */
+  :global([data-theme='dark']) .dre-spark {
+    opacity: 0.95;
   }
 </style>

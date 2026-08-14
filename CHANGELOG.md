@@ -3,6 +3,76 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.20.0] - 2026-08-14
+
+### Fixed
+
+- **Dark mode is the theme's, not the operating system's.** Three components —
+  `ResultItem`, `Sparkline` and `MapView` — branched on
+  `@media (prefers-color-scheme: dark)` and `matchMedia` instead of the
+  `[data-theme]` attribute the theme writes to `<html>` and `<body>` before first
+  paint. A visitor on a system-dark machine who chose light got a light page
+  carrying a dark-matter basemap, dark-tuned thumbnail filters and dark
+  opacities; choosing dark on a system-light machine inverted the same three.
+  They now follow the same switch as the rest of the client.
+- **The map is part of the site again.** `MapView` painted clusters `#007a50`,
+  points `#d57912` and every stroke and label `#fff` — raw literals no theme
+  token could reach. Three consequences, all fixed: changing the brand colour in
+  theme settings re-tinted the whole site except this map; the point colour was
+  the raw Braun pigment rather than `--accent` (`#ca7210`); and the white stroke
+  was the exact literal DRE-theme retired `--white` to prevent. Colour now
+  resolves through a token bridge at paint time and re-resolves when the theme
+  toggles, so the map follows both the toggle and the admin's brand colour.
+- `FederatedApp` read `var(--danger, …)`, a token the theme has never defined, so
+  its error border always painted the hard-coded `#b42318`. It reads `--error`.
+- `Sparkline` read `var(--type-entity-term, …)`, which nothing anywhere defined.
+  DRE-theme now publishes the entity-type colour family and this resolves.
+
+### Changed
+
+- **One rhythm.** Result text was set at `1.5` where the theme's `--leading-normal`
+  is `1.6`, so a result list and a browse list on the same page, in the same
+  family at the same size, had visibly different rhythm. All 34 hand-set
+  line-heights now come off the `--leading-*` scale. (`line-height: 1` on the
+  clear-button glyph stays — that is a reset, not rhythm.)
+- **540 `var(--token, literal)` fallbacks now carry the theme's own values.**
+  They had been written by hand and drifted into a second design system: `--muted`
+  appeared as four different greys (none of them `#716a66`), `--text-xs` as four
+  sizes all smaller than the 13px the token carries, and `--ink` resolved to two
+  different inks depending on whether it was nested. None of it was visible in
+  production — the token always wins when the theme is loaded — which is exactly
+  why it drifted. The values are generated from DRE-theme's OKLCH source now, and
+  the lint checks every one of them.
+- **MapLibre comes from the vendored copy.** The client injected
+  `cdn.jsdelivr.net` script and stylesheet tags at runtime and loaded Carto
+  basemap tiles — two third-party origins on an EU-hosted site whose theme
+  self-hosts its fonts specifically to avoid them, and a duplicate renderer
+  whenever DRE Visualizations rendered on the same page. The loader now prefers a
+  copy already on the page, then the same-origin copy DRE Visualizations vendors,
+  and reaches the CDN only as a floor.
+- Off-scale type is on the scale: `font-size: 1.25rem` in the search box (and six
+  others) now read from `--text-*`. The two `em` sizes stay — those are
+  deliberately relative to their parent, a different mechanism from the rem scale.
+- `999px` pill radii read `--radius-full`; the export menu's raw `z-index: 30`
+  reads `--z-dropdown`; its hand-set `80ms` transition reads `--transition-fast`.
+
+### Internal
+
+- `scripts/check-design-tokens.mjs` is now a thin config over
+  `scripts/lib/token-rules.mjs`, vendored verbatim from DRE-theme so all three
+  repositories run one rule set. The old script had four rules and no rem check,
+  which is why `font-size: 1.25rem` sat in the search box, and it stripped
+  `var(--x, …)` before applying any rule, which is why no fallback was ever
+  checked. Four rules are new: fallback literals, `--leading-*`, the z-index
+  scale, and `@media` widths against the shared breakpoint ladder.
+- `scripts/design-token-allowlist.txt` records what is not yet converted, per
+  rule per file. It is a backlog, not a set of exemptions: lines should only ever
+  be removed. 50 lines today — 24 off-scale spacing, 16 px geometry, 8 `@media`
+  widths off the ladder, 2 radii.
+- New `src/svelte/lib/tokenBridge.ts`: prefers DRE-theme's `window.DRETokens` and
+  falls back to an equivalent local probe, so the client still resolves tokens
+  when mounted in a host without the theme.
+
 ## [1.19.2] - 2026-08-07
 
 ### Fixed

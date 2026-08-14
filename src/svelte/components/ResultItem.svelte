@@ -149,17 +149,21 @@
     grid-template-columns: auto 1fr;
     gap: var(--space-md, 1rem);
     padding: var(--space-md, 1rem);
-    background: var(--surface, #fdfcfa);
-    border: 1px solid var(--border-light, #eae5dd);
+    background: var(--surface, #fdfcf9);
+    border: 1px solid var(--border-light, #eae8e3);
     border-radius: var(--radius-lg, 0.75rem);
-    box-shadow: var(--shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.04));
+    box-shadow: var(--shadow-xs, 0 1px 2px 0 rgba(52, 37, 26, 0.07));
     transition:
-      border-color var(--transition-base, 200ms ease),
-      box-shadow var(--transition-base, 200ms ease);
+      border-color var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1)),
+      box-shadow var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1));
   }
   .dre-card:hover {
-    border-color: color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dcd6cb));
-    box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.08));
+    border-color: color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dbd7d1));
+    box-shadow: var(
+      --shadow-md,
+      0 4px 6px -1px rgba(42, 28, 16, 0.14),
+      0 2px 4px -2px rgba(52, 37, 26, 0.07)
+    );
   }
   .dre-card__thumb {
     display: block;
@@ -167,8 +171,8 @@
     height: 7rem;
     border-radius: var(--radius-sm, 0.375rem);
     overflow: hidden;
-    background: var(--surface-sunken, #f1ede6);
-    border: 1px solid var(--border-light, #eae5dd);
+    background: var(--surface-sunken, #f3f0eb);
+    border: 1px solid var(--border-light, #eae8e3);
   }
   .dre-card__thumb img {
     width: 100%;
@@ -176,7 +180,7 @@
     object-fit: cover;
     display: block;
     filter: saturate(0.82) contrast(0.96);
-    transition: filter var(--transition-base, 200ms ease);
+    transition: filter var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1));
   }
   .dre-card:hover .dre-card__thumb img {
     filter: saturate(1) contrast(1);
@@ -184,8 +188,8 @@
   .dre-card__thumb--empty {
     background: linear-gradient(
       135deg,
-      var(--surface-sunken, #f1ede6),
-      var(--border-light, #eae5dd)
+      var(--surface-sunken, #f3f0eb),
+      var(--border-light, #eae8e3)
     );
   }
   .dre-card--gallery {
@@ -210,13 +214,17 @@
   .dre-card--gallery :global(.dre-matched-in) {
     display: none;
   }
-  @media (prefers-color-scheme: dark) {
-    .dre-card__thumb {
-      border-color: var(--border, #dcd6cb);
-    }
-    .dre-card__thumb img {
-      filter: saturate(0.72) brightness(0.9) contrast(1.08);
-    }
+  /* Mode comes from the THEME, never from the OS. The DRE theme's head script
+     resolves the mode (stored choice, else OS preference) and writes it to
+     [data-theme] on <html> and <body> before first paint, so this is the same
+     switch the rest of the client follows. Asking prefers-color-scheme here
+     instead meant a system-dark visitor who chose light got a light page with
+     dark-tuned thumbnails. See DESIGN.md §9 "Mode selectors". */
+  :global([data-theme='dark']) .dre-card__thumb {
+    border-color: var(--border, #2c3531);
+  }
+  :global([data-theme='dark']) .dre-card__thumb img {
+    filter: saturate(0.72) brightness(0.9) contrast(1.08);
   }
 
   .dre-card__body {
@@ -233,8 +241,8 @@
     min-height: 1.1rem;
   }
   .dre-card__eyebrow {
-    color: var(--muted, #7a7164);
-    font-size: var(--text-xs, 0.75rem);
+    color: var(--muted, #716a66);
+    font-size: var(--text-xs, 0.8125rem);
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -244,10 +252,10 @@
     display: inline-flex;
     align-items: center;
     padding: 0.1rem 0.5rem;
-    background: color-mix(in srgb, var(--primary, #007a50) 14%, var(--surface, #fdfcfa));
-    color: var(--ink-strong, var(--ink, #33291f));
+    background: color-mix(in srgb, var(--primary, #007a50) 14%, var(--surface, #fdfcf9));
+    color: var(--ink-strong, #261d15);
     border-radius: var(--radius-full, 9999px);
-    font-size: var(--text-xs, 0.7rem);
+    font-size: var(--text-xs, 0.8125rem);
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -255,10 +263,10 @@
   }
   .dre-card__title {
     margin: 0;
-    font-size: var(--text-lg, 1.125rem);
-    line-height: 1.35;
-    font-family: var(--font-display, Georgia, serif);
-    color: var(--ink-strong, var(--ink, #33291f));
+    font-size: var(--text-lg, 1.1875rem);
+    line-height: var(--leading-snug, 1.25);
+    font-family: var(--font-display, 'Spectral', Georgia, 'Times New Roman', serif);
+    color: var(--ink-strong, #261d15);
   }
   .dre-card__title a {
     color: inherit;
@@ -271,14 +279,14 @@
   }
   .dre-card__byline {
     margin: 0;
-    font-size: var(--text-sm, 0.9rem);
-    color: var(--ink-light, var(--ink, #5f5648));
+    font-size: var(--text-sm, 0.9375rem);
+    color: var(--ink-light, #5f5650);
   }
   .dre-card__snippet {
     margin: var(--space-xs, 0.25rem) 0 0;
-    font-size: var(--text-sm, 0.9rem);
-    color: var(--ink-light, var(--ink, #5f5648));
-    line-height: 1.5;
+    font-size: var(--text-sm, 0.9375rem);
+    color: var(--ink-light, #5f5650);
+    line-height: var(--leading-normal, 1.6);
     display: -webkit-box;
     -webkit-line-clamp: 2;
     line-clamp: 2;
@@ -298,43 +306,43 @@
     display: inline-flex;
     align-items: center;
     padding: 0.1rem 0.5rem;
-    background: var(--surface-sunken, #f1ede6);
-    color: var(--ink-light, var(--ink, #5f5648));
+    background: var(--surface-sunken, #f3f0eb);
+    color: var(--ink-light, #5f5650);
     border: none;
     border-radius: var(--radius-sm, 0.375rem);
     font-family: inherit;
-    font-size: var(--text-xs, 0.75rem);
+    font-size: var(--text-xs, 0.8125rem);
     font-weight: 500;
-    line-height: 1.5;
+    line-height: var(--leading-normal, 1.6);
     cursor: pointer;
     transition:
-      background var(--transition-fast, 150ms ease),
-      color var(--transition-fast, 150ms ease);
+      background var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1)),
+      color var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
   }
   .dre-card__chip:hover {
-    background: color-mix(in srgb, var(--primary, #007a50) 18%, var(--surface, #fdfcfa));
-    color: var(--ink-strong, var(--ink, #33291f));
+    background: color-mix(in srgb, var(--primary, #007a50) 18%, var(--surface, #fdfcf9));
+    color: var(--ink-strong, #261d15);
   }
   .dre-card__chip:focus-visible {
     outline: none;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3));
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
   .dre-card__chip--project {
-    background: color-mix(in srgb, var(--accent, #d57912) 16%, var(--surface, #fdfcfa));
-    color: var(--ink-strong, var(--ink, #33291f));
+    background: color-mix(in srgb, var(--accent, #ca7210) 16%, var(--surface, #fdfcf9));
+    color: var(--ink-strong, #261d15);
     font-weight: 600;
   }
   .dre-card__chip--project:hover {
-    background: color-mix(in srgb, var(--accent, #d57912) 30%, var(--surface, #fdfcfa));
+    background: color-mix(in srgb, var(--accent, #ca7210) 30%, var(--surface, #fdfcf9));
   }
   .dre-card__geo {
     margin: 0;
-    font-size: var(--text-xs, 0.78rem);
-    line-height: 1.5;
-    color: var(--ink-light, var(--ink, #5f5648));
+    font-size: var(--text-xs, 0.8125rem);
+    line-height: var(--leading-normal, 1.6);
+    color: var(--ink-light, #5f5650);
   }
   .dre-card__geo-label {
-    color: var(--muted, #7a7164);
+    color: var(--muted, #716a66);
     font-weight: 600;
   }
   .dre-card__geo-label::after {

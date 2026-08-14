@@ -135,7 +135,7 @@
 <style>
   .dre-yr {
     padding-block: var(--space-md, 1rem);
-    border-bottom: 1px solid var(--border-light, #eae5dd);
+    border-bottom: 1px solid var(--border-light, #eae8e3);
   }
   .dre-yr__heading {
     display: flex;
@@ -148,8 +148,8 @@
     border: none;
     cursor: pointer;
     font: inherit;
-    color: var(--ink-strong, var(--ink, #33291f));
-    font-size: var(--text-xs, 0.75rem);
+    color: var(--ink-strong, #261d15);
+    font-size: var(--text-xs, 0.8125rem);
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -163,20 +163,20 @@
   }
   .dre-yr__badge {
     background: var(--primary, #007a50);
-    color: var(--primary-contrast, #fdfcfa);
+    color: var(--primary-contrast, #fcfcf9);
     border-radius: var(--radius-full, 9999px);
     padding: 0 0.45rem;
     height: 1.25rem;
     display: inline-flex;
     align-items: center;
-    font-size: var(--text-xs, 0.7rem);
+    font-size: var(--text-xs, 0.8125rem);
     font-weight: 600;
     letter-spacing: 0;
     font-variant-numeric: tabular-nums;
   }
   .dre-yr__chevron {
-    color: var(--muted, #938979);
-    font-size: var(--text-xs, 0.75rem);
+    color: var(--muted, #716a66);
+    font-size: var(--text-xs, 0.8125rem);
   }
 
   .dre-yr__body {
@@ -185,8 +185,8 @@
   .dre-yr__values {
     display: flex;
     justify-content: space-between;
-    color: var(--muted, #7a7164);
-    font-size: var(--text-xs, 0.75rem);
+    color: var(--muted, #716a66);
+    font-size: var(--text-xs, 0.8125rem);
     font-variant-numeric: tabular-nums;
     margin-bottom: 0.25rem;
   }
@@ -206,7 +206,7 @@
   .dre-yr__track {
     left: 0;
     right: 0;
-    background: var(--border, #dcd6cb);
+    background: var(--border, #dbd7d1);
   }
   .dre-yr__fill {
     background: var(--primary, #007a50);
@@ -256,7 +256,7 @@
     width: 1rem;
     height: 1rem;
     border-radius: 50%;
-    background: var(--surface, #fdfcfa);
+    background: var(--surface, #fdfcf9);
     border: 2px solid var(--primary, #007a50);
     cursor: pointer;
     margin-top: -0.375rem;
@@ -266,14 +266,14 @@
     width: 1rem;
     height: 1rem;
     border-radius: 50%;
-    background: var(--surface, #fdfcfa);
+    background: var(--surface, #fdfcf9);
     border: 2px solid var(--primary, #007a50);
     cursor: pointer;
   }
   .dre-yr__input:focus-visible::-webkit-slider-thumb {
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3));
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
   .dre-yr__input:focus-visible::-moz-range-thumb {
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.3));
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
 </style>

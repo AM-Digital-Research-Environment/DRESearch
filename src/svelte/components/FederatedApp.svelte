@@ -345,7 +345,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-md, 1rem);
-    color: var(--ink, #33291f);
+    color: var(--ink, #3c342d);
   }
   .dre-fed__search {
     position: relative;
@@ -357,16 +357,16 @@
     height: 2.75rem;
     margin: 0;
     padding-inline: 1rem 3rem;
-    border: 1px solid var(--border, #dcd6cb);
+    border: 1px solid var(--border, #dbd7d1);
     border-radius: var(--radius-md, 0.5rem);
-    background: var(--surface, #fdfcfa);
-    color: var(--ink, #33291f);
+    background: var(--surface, #fdfcf9);
+    color: var(--ink, #3c342d);
     font: inherit;
   }
   .dre-fed__search input:focus {
     outline: 0;
     border-color: var(--primary, #007a50);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.1));
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
   .dre-fed__search > button {
     position: absolute;
@@ -379,8 +379,8 @@
     border: 0;
     border-radius: 50%;
     background: transparent;
-    color: var(--muted, #938979);
-    font-size: 1.25rem;
+    color: var(--muted, #716a66);
+    font-size: var(--text-lg, 1.1875rem);
     cursor: pointer;
   }
   /*
@@ -396,7 +396,7 @@
     flex-wrap: wrap;
     gap: 0.3rem;
     padding-block-end: 0.6rem;
-    border-bottom: 1px solid var(--border, #dcd6cb);
+    border-bottom: 1px solid var(--border, #dbd7d1);
   }
   .dre-fed__tabs button {
     display: flex;
@@ -405,19 +405,19 @@
     flex: none;
     margin: 0;
     padding: 0.35rem 0.7rem;
-    border: 1px solid var(--border, #dcd6cb);
-    border-radius: 999px;
+    border: 1px solid var(--border, #dbd7d1);
+    border-radius: var(--radius-full, 9999px);
     /* The host theme paints every bare <button> as a filled primary button, and
        its button:hover bleeds green — !important is this module's fix idiom. */
-    background: var(--surface, #fdfcfa) !important;
+    background: var(--surface, #fdfcf9) !important;
     box-shadow: none !important;
     transform: none !important;
-    color: var(--muted, #7a7164);
+    color: var(--muted, #716a66);
     font: inherit;
     /* em, not rem: the host theme's body face runs at 17px, and a chip strip this
        dense wants to sit just under it rather than at an unrelated absolute size. */
     font-size: 0.9em;
-    line-height: 1.25;
+    line-height: var(--leading-snug, 1.25);
     cursor: pointer;
   }
   .dre-fed__tabs button:hover {
@@ -428,20 +428,20 @@
   .dre-fed__tabs button.active:hover {
     border-color: var(--primary, #007a50);
     background: var(--primary, #007a50) !important;
-    color: var(--primary-contrast, #fdfcfa);
+    color: var(--primary-contrast, #fcfcf9);
     font-weight: 600;
   }
   .dre-fed__tabs button:focus-visible {
     outline: none;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 0, 0, 0.15)) !important;
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32)) !important;
   }
   .dre-fed__tabs small {
     padding: 0.05rem 0.35rem;
-    border-radius: 999px;
-    background: var(--surface-sunken, #f1ede6);
-    color: var(--muted, #7a7164);
-    font-size: 0.75rem;
-    line-height: 1.4;
+    border-radius: var(--radius-full, 9999px);
+    background: var(--surface-sunken, #f3f0eb);
+    color: var(--muted, #716a66);
+    font-size: var(--text-xs, 0.8125rem);
+    line-height: var(--leading-snug, 1.25);
     font-variant-numeric: tabular-nums;
   }
   /* Outline, not fill. The badge sits on the filled pill, so any tint pulls its
@@ -462,7 +462,7 @@
       font-size: 0.82em;
     }
     .dre-fed__tabs small {
-      font-size: 0.72rem;
+      font-size: var(--text-2xs, 0.6875rem);
     }
   }
   .dre-fed__panel {
@@ -476,12 +476,12 @@
     flex-wrap: wrap;
     justify-content: space-between;
     padding-block: 0.65rem;
-    border-block: 1px solid var(--border-light, #eae5dd);
-    color: var(--muted, #7a7164);
-    font-size: 0.9rem;
+    border-block: 1px solid var(--border-light, #eae8e3);
+    color: var(--muted, #716a66);
+    font-size: var(--text-sm, 0.9375rem);
   }
   .dre-fed__all-summary strong {
-    color: var(--ink, #33291f);
+    color: var(--ink, #3c342d);
   }
   .dre-fed__mixed {
     display: flex;
@@ -495,12 +495,14 @@
   .dre-fed__notice,
   .dre-fed__error {
     padding: 1rem;
-    border: 1px solid var(--border-light, #eae5dd);
+    border: 1px solid var(--border-light, #eae8e3);
     border-radius: 0.75rem;
-    background: var(--surface, #fdfcfa);
+    background: var(--surface, #fdfcf9);
   }
   .dre-fed__error {
-    border-color: var(--danger, #b42318);
+    /* --error, not --danger: the theme has never defined --danger, so this was
+       permanently on its fallback and painted the same cold red in both modes. */
+    border-color: var(--error, #cc272e);
   }
   @media (max-width: 40rem) {
     .dre-fed__all-summary {
