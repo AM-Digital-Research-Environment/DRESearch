@@ -42,7 +42,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
-    min-height: 2.5rem;
+    min-height: var(--size-control-lg, 2.75rem);
     margin: 0;
     padding: 0.35rem 0.6rem;
     border: 0;

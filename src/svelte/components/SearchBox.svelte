@@ -283,23 +283,17 @@
    * The clear control is a quiet, transparent × — its own background/color reset
    * the native button chrome (the host theme no longer styles bare <button>s).
    *
-   * Centre on the INPUT's height, not the flex wrapper's: the theme also gives
-   * inputs a bottom margin, which makes the wrapper taller than the input, so a
-   * %-based centre lands a few px low. Anchoring to --size-control-lg (the input's
-   * own height) keeps the × on the input's true vertical centre.
+   * Match the input's full 44px height so the quiet × has a reliable touch target.
    */
   .dre-search-box__clear {
     position: absolute;
-    inset-inline-end: var(--space-sm, 0.5rem);
-    top: calc(var(--size-control-lg, 2.75rem) / 2);
-    transform: translateY(-50%);
+    inset-inline-end: 0;
+    top: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    min-width: 0;
-    min-height: 0;
+    width: var(--size-control-lg, 2.75rem);
+    height: var(--size-control-lg, 2.75rem);
     margin: 0;
     padding: 0;
     border: 0;

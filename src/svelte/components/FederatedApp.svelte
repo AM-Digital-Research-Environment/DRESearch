@@ -354,7 +354,7 @@
   }
   .dre-fed__search input {
     width: 100%;
-    height: 2.75rem;
+    height: var(--size-control-lg, 2.75rem);
     margin: 0;
     padding-inline: 1rem 3rem;
     border: 1px solid var(--border, #dbd7d1);
@@ -370,10 +370,10 @@
   }
   .dre-fed__search > button {
     position: absolute;
-    inset-inline-end: 0.5rem;
-    top: 0.35rem;
-    width: 2rem;
-    height: 2rem;
+    inset-inline-end: 0;
+    top: 0;
+    width: var(--size-control-lg, 2.75rem);
+    height: var(--size-control-lg, 2.75rem);
     margin: 0;
     padding: 0;
     border: 0;

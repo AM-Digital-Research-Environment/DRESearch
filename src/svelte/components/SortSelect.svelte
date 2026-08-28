@@ -35,7 +35,7 @@
     color: var(--muted, #716a66);
   }
   .dre-sort__select {
-    height: var(--size-control-md, 2.5rem);
+    height: var(--size-control-lg, 2.75rem);
     /* The host theme's `select` rule adds margin-bottom:8px, which knocks this
        off-centre inside the toolbar; zero it. */
     margin: 0;

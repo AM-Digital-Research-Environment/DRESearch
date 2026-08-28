@@ -194,7 +194,7 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-xs, 0.25rem);
-    height: var(--size-control-md, 2.5rem);
+    height: var(--size-control-lg, 2.75rem);
     margin: 0;
     padding-inline: var(--space-md, 1rem);
     border: 1px solid var(--border, #dbd7d1);
@@ -244,6 +244,7 @@
     overflow: hidden;
   }
   .dre-export__item {
+    min-height: var(--size-control-lg, 2.75rem);
     display: block;
     width: 100%;
     margin: 0;

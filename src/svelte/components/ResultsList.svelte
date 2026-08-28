@@ -197,8 +197,8 @@
     justify-content: center;
   }
   .dre-pager__btn {
-    min-width: 2.25rem;
-    height: 2.25rem;
+    min-width: var(--size-control-lg, 2.75rem);
+    height: var(--size-control-lg, 2.75rem);
     padding: 0 0.5rem;
     border: 1px solid var(--border, #dbd7d1);
     border-radius: var(--radius-md, 0.5rem);

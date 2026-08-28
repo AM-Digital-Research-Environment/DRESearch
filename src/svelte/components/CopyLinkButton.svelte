@@ -21,7 +21,7 @@
 
 <style>
   button {
-    min-height: 2.5rem;
+    min-height: var(--size-control-lg, 2.75rem);
     margin: 0;
     padding: 0.35rem 0.65rem;
     border: 1px solid var(--border, #dbd7d1);

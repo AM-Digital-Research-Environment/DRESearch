@@ -3,6 +3,22 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.20.1] - 2026-08-28
+
+### Changed
+
+- High-frequency search controls now meet the theme's 44px touch-target contract:
+  both search fields and their clear buttons, the collapsed header search toggle,
+  sort and view controls, export actions, copy-link action, federated-search clear
+  action, and both pagination implementations.
+- Compact corpus tabs remain deliberately exempt because expanding thirteen tabs
+  would make the mobile selector substantially harder to scan.
+
+### Internal
+
+- Added a source-level regression test for the shared `--size-control-lg` contract.
+- Corrected the package-lock root version, which had remained on 1.18.1.
+
 ## [1.20.0] - 2026-08-14
 
 ### Fixed
