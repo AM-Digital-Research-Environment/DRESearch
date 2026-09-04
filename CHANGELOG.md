@@ -3,6 +3,21 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.20.2] - 2026-09-04
+
+### Documentation
+
+- The publications corpus description said publications span "~10 type-specific
+  resource templates". The cluster bibliography now spans **19**, on a
+  non-contiguous id range (11-20, 24-32) that grows whenever a new upstream EP3
+  type appears in ERef/EPub. No code change: the profile already scopes by
+  `item_set_id` 29918 with `template_id: null`, which is exactly why nine new
+  publication templates and 285 new publications needed no work here.
+
+> Reindex `research_publications` after upgrading — the upstream harvest grew
+> from 277 to 562 publications, and the Typesense collection is only as current
+> as its last reindex.
+
 ## [1.20.1] - 2026-08-28
 
 ### Changed

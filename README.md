@@ -317,9 +317,12 @@ list, and each block's facet picker all derive from the profile config.
 
 ### Publications (`research_publications`) — item set 29918
 
-Publications span ~10 type-specific resource templates (article, book, chapter,
-thesis, …) but share one item set, so this profile scopes by **`item_set_id`
-(29918)** with **`template_id: null`** — the only profile with no template filter.
+Publications span 19 type-specific resource templates (article, book, chapter,
+thesis, preprint, …) on a **non-contiguous** id range (11–20, 24–32) that grows
+whenever a new upstream EP3 type appears. They share one item set, so this
+profile scopes by **`item_set_id` (29918)** with **`template_id: null`** — the
+only profile with no template filter, and the reason new publication types need
+no change here.
 
 | Field                  | Omeka property                                          | Notes                                                        |
 | ---------------------- | ------------------------------------------------------- | ------------------------------------------------------------ |
