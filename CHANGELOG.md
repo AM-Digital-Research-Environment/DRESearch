@@ -3,6 +3,31 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.20.3] - 2026-09-04
+
+### Fixed
+
+- **Typing in a search block's main field dropped characters.** The box keeps a
+  local copy of the query and hands it to the parent only after a 250 ms
+  debounce, so the `value` prop is a debounce behind the field the whole time
+  someone is typing. The prop-to-local sync effect also read that local copy, so
+  every keystroke re-ran it and rewound the field to the parent's stale value:
+  typing `religion` on a publications block left `n`. The sync now depends on
+  `value` alone, and ignores the parent echoing back a query the box itself just
+  committed. The facet type-to-filter boxes were never affected — they own their
+  state outright, which is why they always felt responsive.
+
+### Changed
+
+- **A search no longer buries the page it started from in browser history.** A
+  block committed its query to the URL with `pushState`, so every 250 ms typing
+  pause left a back-button step behind and escaping a search took as many Back
+  presses as the visitor had hesitations. Typing and paging now replace the
+  current entry; only a change of scope — a facet, a sort, a year window, a view
+  — pushes a step worth going back to. The URL still carries the whole state, so
+  links stay as shareable as before, and this is what the federated "Search all"
+  page already did.
+
 ## [1.20.2] - 2026-09-04
 
 ### Documentation

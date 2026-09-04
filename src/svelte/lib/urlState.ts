@@ -191,8 +191,15 @@ export function writeUrlState(
 
 /**
  * Push or replace history depending on what changed:
- *   - new query / sort / filter / year → pushState (a back-button-able step)
- *   - only the page changed            → replaceState (don't spam history)
+ *   - sort / filter / year / view changed → pushState (a back-button-able step)
+ *   - only the query text or the page     → replaceState (don't spam history)
+ *
+ * Typing is a refinement of one search, not a sequence of navigations: the box
+ * commits every 250 ms, so a hesitant typist would otherwise bury the page they
+ * came from under an entry per pause and have to hit Back a dozen times to
+ * escape. The federated shell already replaces on a typed query
+ * ({@link syncFederatedShell}); this keeps embedded blocks consistent with it.
+ * The URL still carries the query, so the link stays shareable either way.
  *
  * The first call after mount (`prev === null`) is always replaceState — we're
  * synchronising URL ↔ memory, not navigating. Reads the LIVE
@@ -210,16 +217,17 @@ export function syncToUrl(
   if (newUrl === window.location.pathname + window.location.search) {
     return;
   }
-  const onlyPaginationChanged =
+  // Scoping the results a different way is a step worth going back to; typing
+  // or paging through the same scope is not.
+  const scopeChanged =
     prev !== null &&
-    prev.q === next.q &&
-    prev.sort === next.sort &&
-    prev.yearFrom === next.yearFrom &&
-    prev.yearTo === next.yearTo &&
-    (prev.view ?? null) === (next.view ?? null) &&
-    sameFilters(prev.filters, next.filters);
+    (prev.sort !== next.sort ||
+      prev.yearFrom !== next.yearFrom ||
+      prev.yearTo !== next.yearTo ||
+      (prev.view ?? null) !== (next.view ?? null) ||
+      !sameFilters(prev.filters, next.filters));
 
-  if (prev === null || onlyPaginationChanged) {
+  if (!scopeChanged) {
     window.history.replaceState(window.history.state, '', newUrl);
   } else {
     window.history.pushState(window.history.state, '', newUrl);

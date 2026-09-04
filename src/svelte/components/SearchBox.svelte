@@ -39,9 +39,20 @@
   let controller: AbortController | null = null;
   let inputEl = $state<HTMLInputElement>();
   let recent = $state<string[]>([]);
+  // Last query we handed to the parent. The parent echoes it back through
+  // `value`, and that echo must not be mistaken for an outside change — see the
+  // sync effect at the bottom of this script.
+  // svelte-ignore state_referenced_locally
+  let emitted = value;
 
   function itemUrl(id: string): string {
     return `${itemUrlBase}/${encodeURIComponent(id)}`;
+  }
+
+  /** Commit a query upward, remembering it so the echo can't clobber `local`. */
+  function emit(next: string): void {
+    emitted = next;
+    onQueryChange(next);
   }
 
   function scheduleQuery(next: string): void {
@@ -50,7 +61,7 @@
     }
     timer = window.setTimeout(() => {
       timer = null;
-      onQueryChange(next);
+      emit(next);
       void fetchSuggestions(next);
     }, 250);
   }
@@ -82,7 +93,7 @@
       clearTimeout(timer);
       timer = null;
     }
-    onQueryChange('');
+    emit('');
   }
 
   function handleFocus(): void {
@@ -115,13 +126,13 @@
     }
     open = false;
     activeIndex = -1;
-    onQueryChange(local);
+    emit(local);
   }
 
   function reuseRecent(query: string): void {
     local = query;
     open = false;
-    onQueryChange(query);
+    emit(query);
   }
 
   function handleKeydown(e: KeyboardEvent): void {
@@ -154,8 +165,21 @@
     }
   }
 
+  /*
+   * Accept a query pushed from OUTSIDE the box — a removed query chip, a "did
+   * you mean" correction, a back/forward navigation.
+   *
+   * This must depend on `value` ALONE. Reading `local` here would re-run the
+   * effect on every keystroke and reset the field to the parent's copy, which is
+   * a debounce behind — characters vanish as they are typed. Comparing against
+   * `emitted` (a plain let, so not a dependency) also ignores the parent echoing
+   * back our own committed query, which would otherwise rewind whatever was
+   * typed during that round trip.
+   */
   $effect(() => {
-    if (value !== local) local = value;
+    if (value === emitted) return;
+    emitted = value;
+    local = value;
   });
 
   $effect(() => {
