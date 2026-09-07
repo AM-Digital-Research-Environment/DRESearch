@@ -43,6 +43,7 @@ const ENGLISH_STRINGS: Record<string, string> = {
   view_list: 'List',
   view_gallery: 'Gallery',
   view_map: 'Map',
+  result_actions: 'Share and export',
   copy_link: 'Copy link',
   copied_link: 'Link copied',
   recent_searches: 'Recent searches',

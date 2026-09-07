@@ -188,7 +188,7 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
         $view->headLink()->appendStylesheet($view->assetUrl('dist/dre-search.css', 'DRESearch'));
         $view->headScript()->appendFile(
             $view->assetUrl('dist/dre-search.js', 'DRESearch'),
-            'text/javascript',
+            'module',
             ['defer' => true]
         );
 

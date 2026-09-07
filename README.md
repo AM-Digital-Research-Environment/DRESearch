@@ -588,3 +588,11 @@ version. See [LICENSE](LICENSE) for the full text.
 SPDX-License-Identifier: `GPL-3.0-or-later`
 
 [MongoDB2OmekaS]: https://github.com/AM-Digital-Research-Environment/MongoDB2OmekaS
+
+### Deploying compiled search assets
+
+Deploy the complete asset/dist/ directory together with the PHP helpers. The ESM entry loads page-specific JavaScript and CSS chunks on demand; copying only dre-search.js and dre-search.css is insufficient. Keep the previous hashed chunks available during a rolling deployment so already-open pages can finish loading. Header-only pages load the small entry stylesheet and do not request the faceted search chunks.
+
+### Collection count contract
+
+The optional CorpusCounts service uses the same source predicate as indexing, including configured extra sources. It counts public items once and, when a site id is supplied, restricts counts to that public site's assigned items. The theme and visualization module consume these counts when available; installations without the service retain their existing fallback definitions. Search indexes, cached theme counts, and generated snapshots have different refresh times, so matching membership rules do not guarantee simultaneous totals. Multi-site public counts intentionally differ from installation-wide Search totals.

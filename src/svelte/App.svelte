@@ -28,6 +28,7 @@
   import ResultSummary from './components/ResultSummary.svelte';
   import ResultSkeleton from './components/ResultSkeleton.svelte';
   import ViewToggle from './components/ViewToggle.svelte';
+  import ResultActions from './components/ResultActions.svelte';
   import CopyLinkButton from './components/CopyLinkButton.svelte';
   import MapView from './components/MapView.svelte';
 
@@ -557,20 +558,22 @@
                 options={viewOptions}
                 onChange={handleViewChange}
               />{/if}
-            <CopyLinkButton />
-            {#if (response?.found ?? 0) > 0}
-              <ExportMenu
-                fetchDocs={handleExportFetch}
-                {query}
-                found={response?.found ?? 0}
-                kind={bootstrap.card_kind}
-                itemUrlBase={bootstrap.item_url_base}
-                {filters}
-                {yearFrom}
-                {yearTo}
-                facetLabels={bootstrap.facet_labels}
-              />
-            {/if}
+            <ResultActions>
+              <CopyLinkButton />
+              {#if (response?.found ?? 0) > 0}
+                <ExportMenu
+                  fetchDocs={handleExportFetch}
+                  {query}
+                  found={response?.found ?? 0}
+                  kind={bootstrap.card_kind}
+                  itemUrlBase={bootstrap.item_url_base}
+                  {filters}
+                  {yearFrom}
+                  {yearTo}
+                  facetLabels={bootstrap.facet_labels}
+                />
+              {/if}
+            </ResultActions>
           {/snippet}
           <ResultSummary
             found={view === 'map' ? (mapResponse?.found ?? response.found) : response.found}

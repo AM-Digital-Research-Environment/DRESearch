@@ -277,6 +277,22 @@
       <p>{t('search_unavailable_hint')}</p>
     </div>
   {:else}
+    <label class="dre-fed__chooser">
+      <span>{t('result_types')}</span>
+      <select value={activeProfile} onchange={(event) => selectTab(event.currentTarget.value)}>
+        {#each tabs as tab (tab.name)}
+          <option value={tab.name}
+            >{tab.label}{tab.name === ALL
+              ? unionResponse
+                ? ' (' + formatNumber(unionResponse.found) + ')'
+                : ''
+              : count(tab.name)
+                ? ' (' + count(tab.name) + ')'
+                : ''}</option
+          >
+        {/each}
+      </select>
+    </label>
     <div class="dre-fed__tabs" role="tablist" aria-label={t('result_types')}>
       {#each tabs as tab (tab.name)}<button
           type="button"
@@ -298,7 +314,7 @@
       class="dre-fed__panel"
       id="dre-fed-panel"
       role="tabpanel"
-      aria-labelledby="dre-fed-tab-{activeProfile}"
+      aria-label={tabs.find((tab) => tab.name === activeProfile)?.label}
       tabindex="0"
     >
       {#if error}<div class="dre-fed__error" role="alert">
@@ -383,14 +399,29 @@
     font-size: var(--text-lg, 1.1875rem);
     cursor: pointer;
   }
-  /*
-   * Thirteen corpora don't fit on one line: they measure ~1885px against a
-   * ~1236px column, so a single-row scroller kept five tabs (and their counts)
-   * behind a horizontal scrollbar — the corpora most people never think to look
-   * for. Wrapping shows all of them at every width (2 rows desktop, 5 at 390px).
-   * Since the active tab can then land on any row, its state reads as a filled
-   * pill rather than an underline that no longer meets the container's border.
-   */
+  /* Desktop exposes corpus tabs; narrow screens use the labelled chooser. */
+  .dre-fed__chooser {
+    display: none;
+  }
+  @media (max-width: 48rem) {
+    .dre-fed__chooser {
+      display: grid;
+      gap: 0.35rem;
+    }
+    .dre-fed__chooser select {
+      width: 100%;
+      min-height: 2.75rem;
+      padding: 0.5rem;
+      font: inherit;
+      color: var(--ink, #3c342d);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+    }
+    .dre-fed__tabs {
+      display: none !important;
+    }
+  }
   .dre-fed__tabs {
     display: flex;
     flex-wrap: wrap;
@@ -453,17 +484,6 @@
     background: none;
     border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
     color: inherit;
-  }
-  /* Phones need six rows for thirteen chips; tighten them rather than drop the
-     counts, which are the whole reason to look at an empty corpus's tab. */
-  @media (max-width: 30rem) {
-    .dre-fed__tabs button {
-      padding: 0.28rem 0.6rem;
-      font-size: 0.82em;
-    }
-    .dre-fed__tabs small {
-      font-size: var(--text-2xs, 0.6875rem);
-    }
   }
   .dre-fed__panel {
     min-width: 0;

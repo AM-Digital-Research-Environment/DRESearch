@@ -10,9 +10,7 @@
  */
 
 import { mount } from 'svelte';
-import App from './App.svelte';
 import SearchBar from './components/SearchBar.svelte';
-import FederatedApp from './components/FederatedApp.svelte';
 import type { Bootstrap, FederatedBootstrap, SearchBarBootstrap } from './lib/types';
 
 /**
@@ -24,10 +22,10 @@ function mountRoots(
   selector: string,
   idAttr: string,
   statePrefix: string,
-  mountInto: (root: HTMLElement, bootstrap: unknown) => void,
+  mountInto: (root: HTMLElement, bootstrap: unknown) => void | Promise<void>,
 ): void {
   document.querySelectorAll<HTMLElement>(selector).forEach((root) => {
-    if (root.dataset.dreMounted === '1') {
+    if (root.dataset.dreMounted) {
       return;
     }
     const id = root.getAttribute(idAttr) ?? '';
@@ -43,9 +41,18 @@ function mountRoots(
       console.error('[dre-search] malformed state JSON for', selector, id, err);
       return;
     }
-    root.innerHTML = ''; // drop the server-rendered skeleton
-    root.dataset.dreMounted = '1';
-    mountInto(root, bootstrap);
+    root.dataset.dreMounted = 'loading';
+    const fallback = root.innerHTML;
+    Promise.resolve()
+      .then(() => mountInto(root, bootstrap))
+      .then(() => {
+        root.dataset.dreMounted = '1';
+      })
+      .catch((err: unknown) => {
+        root.innerHTML = fallback;
+        delete root.dataset.dreMounted;
+        console.error('[dre-search] could not mount', selector, id, err);
+      });
   });
 }
 
@@ -54,7 +61,9 @@ function mountAll(): void {
     '[data-dre-search-root]',
     'data-dre-block-id',
     'dre-search-state-',
-    (root, bootstrap) => {
+    async (root, bootstrap) => {
+      const { default: App } = await import('./App.svelte');
+      root.innerHTML = '';
       mount(App, { target: root, props: { bootstrap: bootstrap as Bootstrap } });
     },
   );
@@ -63,6 +72,7 @@ function mountAll(): void {
     'data-dre-bar-id',
     'dre-search-bar-state-',
     (root, bootstrap) => {
+      root.innerHTML = '';
       mount(SearchBar, { target: root, props: { bootstrap: bootstrap as SearchBarBootstrap } });
     },
   );
@@ -70,7 +80,9 @@ function mountAll(): void {
     '[data-dre-federated-root]',
     'data-dre-fed-id',
     'dre-federated-state-',
-    (root, bootstrap) => {
+    async (root, bootstrap) => {
+      const { default: FederatedApp } = await import('./components/FederatedApp.svelte');
+      root.innerHTML = '';
       mount(FederatedApp, { target: root, props: { bootstrap: bootstrap as FederatedBootstrap } });
     },
   );

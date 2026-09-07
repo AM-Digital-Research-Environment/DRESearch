@@ -3,6 +3,7 @@ parameters:
     paths:
         - src/Indexer/ImportResult.php
         - src/Indexer/ValueBag.php
+        - src/Search/CorpusCounts.php
         - src/Search/QueryBuilder.php
         - src/Search/SearchRequest.php
         - src/Search/Exception

@@ -60,7 +60,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: dom, json, mbstring
+          extensions: dom, json, mbstring, pdo_sqlite
           coverage: none
           tools: composer:v2
       - run: composer validate --strict

@@ -14,6 +14,7 @@ namespace DRESearch;
 return [
     'service_manager' => [
         'factories' => [
+            Search\CorpusCounts::class => Service\CorpusCountsFactory::class,
             // Lazily builds the Typesense client from settings → env → config
             // defaults. Reports isConfigured(); getClient() returns null when
             // Typesense is not set up, so every consumer degrades gracefully.
