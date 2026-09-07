@@ -3,6 +3,13 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.21.2] - 2026-09-07
+
+### Fixed
+
+- Keep result view toggles at least 44 by 44 pixels when mobile layouts hide their text labels. Centre the existing icons without enlarging them.
+- Verified keyboard corpus selection, filtered and empty-result recovery, secondary-action disclosure, light/dark layouts at 320/390/1280 pixels, and 200% text reflow with long labels against real Omeka markup using local asset overrides.
+
 ## [1.21.1] - 2026-09-07
 
 ### Fixed

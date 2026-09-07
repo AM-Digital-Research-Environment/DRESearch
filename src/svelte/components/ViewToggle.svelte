@@ -43,6 +43,8 @@
     align-items: center;
     gap: 0.3rem;
     min-height: var(--size-control-lg, 2.75rem);
+    min-width: var(--size-control-lg, 2.75rem);
+    justify-content: center;
     margin: 0;
     padding: 0.35rem 0.6rem;
     border: 0;
