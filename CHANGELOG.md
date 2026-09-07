@@ -3,6 +3,17 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.21.1] - 2026-09-07
+
+### Fixed
+
+- Fix blank search results under Omeka's versioned script URL. Page chunks imported shared Svelte state from the unversioned entry, while Omeka loaded that entry with a version query. Browsers treated these as separate modules and raised effect_orphan during mounting. Shared state now lives in a separate hashed chunk, with a build regression contract preventing imports back into the entry.
+- Preserve the smaller header payload and page-specific lazy loading.
+
+### Upgrade
+
+Replace 1.21.0 with the complete **DRESearch.zip** asset, including all asset/dist/chunks files and vendor/. This patch is required for the new split build on Omeka.
+
 ## [1.21.0] - 2026-09-07
 
 ### Changed

@@ -22,6 +22,8 @@ export default defineConfig({
     sourcemap: false,
     target: 'es2022',
     rollupOptions: {
+      // Omeka versions the entry URL; chunks must never import runtime exports from it.
+      preserveEntrySignatures: 'strict',
       input: { 'dre-search': resolve(import.meta.dirname, 'src/svelte/main.ts') },
       output: {
         entryFileNames: 'dre-search.js',
