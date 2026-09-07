@@ -101,3 +101,27 @@ describe('inline filter values', () => {
     expect(document.querySelector('.dre-bcard__authors')?.textContent).toBe('Madore, Frédérick');
   });
 });
+
+describe('publication languages', () => {
+  it('shows every language and applies the language filter by pointer and keyboard', async () => {
+    const onAddFilter = vi.fn();
+    const { getByRole } = render(PublicationCard, {
+      doc: { ...doc, language_ss: ['English', 'French'] },
+      itemUrlBase: '/s/site/item',
+      onAddFilter,
+    });
+    await fireEvent.click(getByRole('button', { name: 'English' }));
+    expect(onAddFilter).toHaveBeenLastCalledWith('language_ss', 'English');
+    await fireEvent.keyDown(getByRole('button', { name: 'French' }), { key: 'Enter' });
+    expect(onAddFilter).toHaveBeenLastCalledWith('language_ss', 'French');
+  });
+
+  it('omits the language row when metadata is absent', () => {
+    const { container } = render(PublicationCard, {
+      doc,
+      itemUrlBase: '/s/site/item',
+      onAddFilter: vi.fn(),
+    });
+    expect(container.querySelector('.dre-bcard__languages')).toBeNull();
+  });
+});

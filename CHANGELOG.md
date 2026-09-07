@@ -3,6 +3,13 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.21.3] - 2026-09-07
+
+### Fixed
+
+- Show available languages on publication result cards below the bibliographic reference. Each language applies the existing Language filter, including keyboard activation. Records without language metadata omit the row.
+- Uses the already indexed language field; no reindex or visualization regeneration is needed.
+
 ## [1.21.2] - 2026-09-07
 
 ### Fixed

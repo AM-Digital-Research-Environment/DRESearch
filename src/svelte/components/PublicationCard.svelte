@@ -48,6 +48,7 @@
   const keywords = $derived((doc.keyword_ss ?? []).slice(0, 8));
   const keywordHl = $derived(markedLookup(doc, 'keyword_ss'));
   const doi = $derived(safeExternalUrl(doc.doi_s));
+  const languages = $derived(doc.language_ss ?? []);
 
   // Authors — filter buttons (click adds the person to the creator_ss facet,
   // which unifies authors + editors). Literals filter fine by name.
@@ -150,6 +151,15 @@
             onclick={() => onAddFilter('publisher_ss', publisher)}
             ><Highlight value={publisherHl.get(publisher) ?? publisher} /></FilterLink
           >{/if}
+      </p>
+    {/if}
+
+    {#if languages.length > 0}
+      <p class="dre-bcard__languages">
+        <span>{t('language_label')}</span>
+        {#each languages as language, i (language + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
+            onclick={() => onAddFilter('language_ss', language)}>{language}</FilterLink
+          >{/each}
       </p>
     {/if}
 
@@ -266,6 +276,7 @@
     text-decoration: underline;
     text-underline-offset: 2px;
   }
+  .dre-bcard__languages,
   .dre-bcard__authors {
     margin: 0;
     font-size: var(--text-sm, 0.9375rem);
