@@ -3,6 +3,23 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.21.0] - 2026-09-07
+
+### Changed
+
+- Load the full faceted search interface only on pages that use it. Header JavaScript drops from about 161 KB to 59 KB and its component stylesheet from 72 KB to 4.4 KB before compression.
+- Use a labelled corpus chooser on mobile, retaining result counts and desktop keyboard navigation. Group sharing and export actions in a mobile disclosure.
+- Expose public corpus counts using the same membership rules as indexing, with optional site scope. The updated DRE theme and Visualizations module consume these definitions.
+
+### Fixed
+
+- Discard obsolete autocomplete responses after edits, clearing, submission or external query changes.
+- Preserve server-rendered search fallbacks when a page chunk cannot load.
+
+### Upgrade
+
+Install the complete **DRESearch.zip** release asset, including vendor/ and every asset/dist/chunks file. Do not copy just the entry JavaScript/CSS or use GitHub's source archive as the installable module. Keep older hashed chunks available while replacing assets during rolling deployments. Upgrade the theme to 2.30.2 and Visualizations to 2.28.3, then regenerate visualization data. The release includes Composer's refreshed class map for the new count services.
+
 ## [1.20.3] - 2026-09-04
 
 ### Fixed
