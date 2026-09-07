@@ -66,6 +66,16 @@
     }, 250);
   }
 
+  function cancelSuggestions(): void {
+    controller?.abort();
+    controller = null;
+    if (timer !== null) clearTimeout(timer);
+    timer = null;
+    suggestions = [];
+    open = false;
+    activeIndex = -1;
+  }
+
   async function fetchSuggestions(q: string): Promise<void> {
     if (q.trim().length < 2) {
       suggestions = [];
@@ -73,26 +83,24 @@
       return;
     }
     controller?.abort();
-    controller = new AbortController();
-    const results = await api.suggest(q, controller.signal);
+    const request = new AbortController();
+    controller = request;
+    const results = await api.suggest(q, request.signal);
+    if (request.signal.aborted || controller !== request || local !== q) return;
     suggestions = results;
     activeIndex = -1;
     open = focused && results.length > 0;
   }
 
   function handleInput(e: Event): void {
+    cancelSuggestions();
     local = (e.target as HTMLInputElement).value;
     scheduleQuery(local);
   }
 
   function handleClear(): void {
+    cancelSuggestions();
     local = '';
-    suggestions = [];
-    open = false;
-    if (timer !== null) {
-      clearTimeout(timer);
-      timer = null;
-    }
     emit('');
   }
 
@@ -120,16 +128,12 @@
    * suggestion to be selected.
    */
   function submitQuery(): void {
-    if (timer !== null) {
-      clearTimeout(timer);
-      timer = null;
-    }
-    open = false;
-    activeIndex = -1;
+    cancelSuggestions();
     emit(local);
   }
 
   function reuseRecent(query: string): void {
+    cancelSuggestions();
     local = query;
     open = false;
     emit(query);
@@ -178,6 +182,7 @@
    */
   $effect(() => {
     if (value === emitted) return;
+    cancelSuggestions();
     emitted = value;
     local = value;
   });

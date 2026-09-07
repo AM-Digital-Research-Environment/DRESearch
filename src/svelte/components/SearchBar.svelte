@@ -72,6 +72,16 @@
   const suggestId = `${uid}-suggest`;
   const optionId = (i: number): string => `${uid}-opt-${i}`;
 
+  function cancelSuggestions(): void {
+    controller?.abort();
+    controller = null;
+    if (timer !== null) clearTimeout(timer);
+    timer = null;
+    groups = [];
+    open = false;
+    activeIndex = -1;
+  }
+
   async function fetchSuggestions(q: string): Promise<void> {
     if (q.trim().length < 2) {
       groups = [];
@@ -79,8 +89,10 @@
       return;
     }
     controller?.abort();
-    controller = new AbortController();
-    const res = await suggestAll(bootstrap.endpoints.suggest_all, q, controller.signal);
+    const request = new AbortController();
+    controller = request;
+    const res = await suggestAll(bootstrap.endpoints.suggest_all, q, request.signal);
+    if (request.signal.aborted || controller !== request || local !== q) return;
     groups = res;
     activeIndex = -1;
     open = focused && res.length > 0;
@@ -115,19 +127,15 @@
   }
 
   function handleInput(e: Event): void {
+    cancelSuggestions();
     pinScroll();
     local = (e.target as HTMLInputElement).value;
     schedule(local);
   }
 
   function handleClear(): void {
+    cancelSuggestions();
     local = '';
-    groups = [];
-    open = false;
-    if (timer !== null) {
-      clearTimeout(timer);
-      timer = null;
-    }
     inputEl?.focus();
   }
 
@@ -214,6 +222,10 @@
     if (expanded && bootstrap.collapsible) {
       inputEl?.focus();
     }
+  });
+  $effect(() => () => {
+    controller?.abort();
+    if (timer !== null) clearTimeout(timer);
   });
 </script>
 
