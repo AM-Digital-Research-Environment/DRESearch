@@ -1,0 +1,75 @@
+<?php
+
+namespace Laminas\Mvc\Controller;
+
+/**
+ * Omeka and Laminas register these invokable controller plugins.
+ * @method \Laminas\Form\Form getForm(string $name, array<string,mixed> $options = [])
+ * @method \Omeka\Mvc\Controller\Plugin\Messenger messenger()
+ * @method \Omeka\Job\Dispatcher jobDispatcher()
+ * @method string translate(string $message)
+ * @method \Laminas\Mvc\Controller\Plugin\Params params()
+ * @method \Laminas\Mvc\Controller\Plugin\Redirect redirect()
+ * @method \Laminas\Mvc\Controller\Plugin\Url url()
+ */
+abstract class AbstractController
+{
+    /** @return \Laminas\Http\PhpEnvironment\Request */
+    public function getRequest() {}
+}
+
+namespace Laminas\View\Renderer;
+
+/**
+ * Invokable helpers used by this module, including the inherited Laminas helpers.
+ * @method string translate(string $message)
+ * @method string assetUrl(string $path, string $module = null)
+ * @method string formCollection(\Laminas\Form\FieldsetInterface $form, bool $wrap = true)
+ * @method string dreBootstrapJson(array<string,mixed> $data)
+ * @method \Omeka\Api\Representation\SiteRepresentation|null currentSite()
+ * @method string escapeHtml(mixed $value)
+ * @method string escapeHtmlAttr(mixed $value)
+ * @method string basePath(string $path)
+ * @method string url(string $route, array<string,mixed> $params = [], array<string,mixed> $options = [])
+ * @method string partial(string $name, array<string,mixed> $values = [])
+ * @method \Laminas\View\Helper\HeadLink headLink()
+ * @method \Laminas\View\Helper\HeadScript headScript()
+ */
+class PhpRenderer {}
+
+namespace Omeka\Api\Representation;
+
+class SitePageBlockRepresentation
+{
+    /** @return SitePageRepresentation Core 4.2.1 documents the wrong representation. */
+    public function page() {}
+}
+class SitePageRepresentation {}
+class SiteRepresentation {}
+
+namespace Omeka\Mvc\Controller\Plugin;
+class Messenger
+{
+    /** @param string|\Omeka\Stdlib\Message $message
+     * @return void
+     */
+    public function addSuccess($message) {}
+}
+
+// Stub files are analysed independently; name their foreign types explicitly.
+namespace Omeka\Stdlib;
+class Message {}
+namespace Omeka\Job;
+class Dispatcher {}
+namespace Laminas\Http\PhpEnvironment;
+class Request {}
+namespace Laminas\Form;
+class Form {}
+interface FieldsetInterface {}
+namespace Laminas\Mvc\Controller\Plugin;
+class Params {}
+class Redirect {}
+class Url {}
+namespace Laminas\View\Helper;
+class HeadLink {}
+class HeadScript {}

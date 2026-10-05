@@ -1,5 +1,4 @@
 <?php
-declare(strict_types=1);
 
 /**
  * DRESearch — Omeka S module.
@@ -14,6 +13,8 @@ declare(strict_types=1);
  * "search unavailable" notice instead of erroring. Nothing here assumes
  * Typesense is reachable at request time.
  */
+
+declare(strict_types=1);
 
 namespace DRESearch;
 
@@ -53,8 +54,17 @@ class Module extends AbstractModule
 
     public function upgrade($oldVersion, $newVersion, ServiceLocatorInterface $services): void
     {
-        if (version_compare((string) $oldVersion, '1.17.0', '<')) {
+        if (version_compare((string) $oldVersion, '1.22.0', '<')) {
             $this->installOperationalTables($services);
+            $connection = $services->get('Omeka\Connection');
+            $columns = $connection->getSchemaManager()->listTableColumns('dre_search_profile_state');
+            if (!isset($columns['dirty_revision'])) {
+                $connection->executeStatement("ALTER TABLE dre_search_profile_state ADD dirty_revision CHAR(32) NOT NULL DEFAULT ''");
+            }
+            $services->get(Indexer\RebuildStateStore::class)->markDirty(
+                $services->get(Settings\ProfileRegistry::class)->names(),
+                'Visibility rules changed. Rebuild all profiles before serving search.',
+            );
         }
     }
 
@@ -74,7 +84,7 @@ class Module extends AbstractModule
         $acl->allow(
             null,
             [Controller\SearchController::class],
-            ['apiSearch', 'apiExport', 'apiSuggest', 'apiSuggestAll', 'apiSearchAll', 'apiUnion', 'apiMap', 'results']
+            ['apiSearch', 'apiFacet', 'apiExport', 'apiSuggest', 'apiSuggestAll', 'apiSearchAll', 'apiUnion', 'apiMap', 'results']
         );
 
         $acl->allow(
@@ -85,12 +95,9 @@ class Module extends AbstractModule
     }
 
     /**
-     * Live incremental indexing: re-map (create/update) or remove (delete) a
-     * single item in its matching profile collection(s) when Omeka commits an
-     * item save. Handler bodies live in Indexer\ItemEventListener so the logic
-     * stays testable and Module.php keeps to lifecycle concerns. Typesense stays
-     * optional — with no client configured every handler is a no-op, and any
-     * Typesense error is swallowed inside the indexer so a save never fails.
+     * Queue changed items and their dependencies after Omeka writes. Handler
+     * bodies live in Indexer\ItemEventListener; background jobs perform the
+     * Typesense writes. With no connection configured no work is queued.
      */
     public function attachListeners(SharedEventManagerInterface $sharedEventManager): void
     {
@@ -119,6 +126,9 @@ class Module extends AbstractModule
             'api.delete.post',
             [$listener, 'onItemDelete']
         );
+        foreach (['api.update.pre', 'api.batch_update.pre'] as $eventName) {
+            $sharedEventManager->attach(\Omeka\Api\Adapter\ItemAdapter::class, $eventName, [$listener, 'onItemUpdatePre']);
+        }
         foreach (['api.batch_create.post', 'api.batch_update.post'] as $eventName) {
             $sharedEventManager->attach(\Omeka\Api\Adapter\ItemAdapter::class, $eventName, [$listener, 'onItemBatch']);
         }
@@ -128,6 +138,7 @@ class Module extends AbstractModule
         foreach (['api.create.post', 'api.update.post'] as $eventName) {
             $sharedEventManager->attach(\Omeka\Api\Adapter\MediaAdapter::class, $eventName, [$listener, 'onMediaSave']);
         }
+        $sharedEventManager->attach(\Omeka\Api\Adapter\MediaAdapter::class, 'api.update.pre', [$listener, 'onMediaDeletePre']);
         $sharedEventManager->attach(\Omeka\Api\Adapter\MediaAdapter::class, 'api.delete.pre', [$listener, 'onMediaDeletePre']);
         $sharedEventManager->attach(\Omeka\Api\Adapter\MediaAdapter::class, 'api.delete.post', [$listener, 'onMediaDelete']);
 
@@ -216,6 +227,8 @@ class Module extends AbstractModule
             $settings->delete($key);
         }
         $connection = $services->get('Omeka\Connection');
+        $connection->executeStatement('DROP TABLE IF EXISTS dre_search_change');
+        $connection->executeStatement('DROP TABLE IF EXISTS dre_search_cache');
         $connection->executeStatement('DROP TABLE IF EXISTS dre_search_rate_limit');
         $connection->executeStatement('DROP TABLE IF EXISTS dre_search_generation');
         $connection->executeStatement('DROP TABLE IF EXISTS dre_search_profile_state');
@@ -238,6 +251,7 @@ CREATE TABLE IF NOT EXISTS dre_search_profile_state (
     active_collection VARCHAR(255) NULL,
     dirty TINYINT(1) NOT NULL DEFAULT 0,
     dirty_reason VARCHAR(255) NULL,
+    dirty_revision CHAR(32) NOT NULL DEFAULT '',
     started_at DATETIME NULL,
     finished_at DATETIME NULL,
     last_success_at DATETIME NULL,
@@ -272,6 +286,23 @@ CREATE TABLE IF NOT EXISTS dre_search_rate_limit (
     window_started DATETIME NOT NULL,
     request_count INT NOT NULL DEFAULT 0,
     INDEX idx_dre_search_rate_window (window_started)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL);
+        $connection->executeStatement(<<<'SQL'
+CREATE TABLE IF NOT EXISTS dre_search_change (
+    profile VARCHAR(100) NOT NULL,
+    item_id INT NOT NULL,
+    revision CHAR(32) NOT NULL,
+    queued_at DATETIME NOT NULL,
+    PRIMARY KEY (profile, item_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL);
+        $connection->executeStatement(<<<'SQL'
+CREATE TABLE IF NOT EXISTS dre_search_cache (
+    cache_key CHAR(64) NOT NULL PRIMARY KEY,
+    payload MEDIUMTEXT NOT NULL,
+    expires_at DATETIME NOT NULL,
+    INDEX idx_dre_cache_expiry (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL);
     }

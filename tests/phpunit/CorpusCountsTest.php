@@ -17,7 +17,7 @@ final class CorpusCountsTest extends TestCase
         $db->exec('CREATE TABLE resource (id INTEGER, resource_type TEXT,'
             . ' is_public INTEGER, resource_template_id INTEGER)');
         $db->exec('CREATE TABLE item_item_set (item_id INTEGER, item_set_id INTEGER)');
-        $db->exec('CREATE TABLE value (resource_id INTEGER, property_id INTEGER)');
+        $db->exec('CREATE TABLE value (resource_id INTEGER, property_id INTEGER, is_public INTEGER DEFAULT 1)');
         $db->exec('CREATE TABLE item_site (item_id INTEGER, site_id INTEGER)');
         $db->exec('CREATE TABLE site (id INTEGER, is_public INTEGER)');
         $db->exec('CREATE TABLE property (id INTEGER, vocabulary_id INTEGER, local_name TEXT)');
@@ -32,7 +32,7 @@ final class CorpusCountsTest extends TestCase
             $insert->execute([$id, 'Omeka\\Entity\\Item', $public, $template]);
         }
         $db->exec('INSERT INTO item_item_set VALUES (1, 7), (2, 7), (5, 7)');
-        $db->exec('INSERT INTO value VALUES (1, 5), (5, 5), (5, 5)');
+        $db->exec('INSERT INTO value (resource_id, property_id) VALUES (1, 5), (5, 5), (5, 5)');
         $db->exec('INSERT INTO site VALUES (1, 1), (2, 1), (3, 0)');
         $db->exec('INSERT INTO item_site VALUES (1, 1), (2, 1), (3, 1), (4, 2), (5, 1), (1, 3)');
         $profiles = ProfileRegistry::fromArray(['research_locations' => [

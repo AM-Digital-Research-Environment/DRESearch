@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Indexer;
@@ -139,5 +140,4 @@ final class PodcastMapper implements MapperInterface
 
         return $doc;
     }
-
 }

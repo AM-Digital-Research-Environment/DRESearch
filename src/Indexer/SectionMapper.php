@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Indexer;
@@ -89,5 +90,4 @@ final class SectionMapper implements MapperInterface
 
         return $doc;
     }
-
 }

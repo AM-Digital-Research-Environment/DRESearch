@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Settings\Definition;
@@ -62,8 +63,17 @@ final class SourceScope
         );
     }
 
-    public function templateId(): ?int { return $this->templateId; }
-    public function itemSetId(): ?int { return $this->itemSetId; }
+    public function templateId(): ?int
+    {
+        return $this->templateId;
+    }
+    public function itemSetId(): ?int
+    {
+        return $this->itemSetId;
+    }
     /** @return list<array{template_id:?int,item_set_id:?int,require_property:?string}> */
-    public function extraSources(): array { return $this->extraSources; }
+    public function extraSources(): array
+    {
+        return $this->extraSources;
+    }
 }

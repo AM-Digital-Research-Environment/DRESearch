@@ -45,3 +45,5 @@ asset/dist/*.js -whitespace
 /phpunit.xml.dist  export-ignore
 /package.json      export-ignore
 /package-lock.json export-ignore
+
+/phpcs.xml.dist    export-ignore

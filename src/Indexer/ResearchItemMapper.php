@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Indexer;
@@ -35,7 +36,7 @@ final class ResearchItemMapper implements MapperInterface
 
     /**
      * @param array{id:int, title:string, is_public:bool} $item
-     * @param array<string, list<array{vrid:?int, value:?string, title:?string}>> $values
+     * @param array<string, list<array{vrid:?int, value:?string, uri:?string, title:?string}>> $values
      */
     public function map(array $item, array $values, ?string $thumbnailUrl): array
     {
@@ -82,7 +83,8 @@ final class ResearchItemMapper implements MapperInterface
         // project_s — single dcterms:isPartOf target that is a project (set).
         // (isPartOf is reused for inter-item relations, so the set check matters.)
         foreach ($values[$pProject] ?? [] as $v) {
-            if ($v['vrid'] !== null
+            if (
+                $v['vrid'] !== null
                 && $this->auth->inSet($v['vrid'], $setProject)
                 && ($v['title'] ?? '') !== ''
             ) {
@@ -169,7 +171,8 @@ final class ResearchItemMapper implements MapperInterface
         // only (genres, also on dcterms:format, are excluded).
         $digitisation = [];
         foreach ($values[$pFormat] ?? [] as $v) {
-            if ($v['vrid'] !== null
+            if (
+                $v['vrid'] !== null
                 && $this->auth->inSet($v['vrid'], $setDigital)
                 && ($v['title'] ?? '') !== ''
             ) {
@@ -196,7 +199,7 @@ final class ResearchItemMapper implements MapperInterface
         return $doc;
     }
 
-    /** @param array<string, list<array{vrid:?int, value:?string, title:?string}>> $values */
+    /** @param array<string, list<array{vrid:?int, value:?string, uri:?string, title:?string}>> $values */
     private function addMulti(array &$doc, array $values, string $term, string $field): void
     {
         if ($term === '') {
@@ -215,7 +218,7 @@ final class ResearchItemMapper implements MapperInterface
     }
 
     /**
-     * @param array<string, list<array{vrid:?int, value:?string, title:?string}>> $values
+     * @param array<string, list<array{vrid:?int, value:?string, uri:?string, title:?string}>> $values
      * @return array{0:?int, 1:?int} [year, epochSeconds]
      */
     private function resolveDate(array $values): array

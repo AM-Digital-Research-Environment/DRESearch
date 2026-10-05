@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Indexer;
@@ -123,5 +124,4 @@ final class VideoMapper implements MapperInterface
 
         return $doc;
     }
-
 }

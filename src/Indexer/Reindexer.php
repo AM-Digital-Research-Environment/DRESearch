@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Indexer;
@@ -9,7 +10,6 @@ use DRESearch\Indexer\Exception\BatchImportException;
 use DRESearch\Indexer\Exception\ReindexCancelledException;
 use DRESearch\Indexer\Exception\VerificationException;
 use DRESearch\Settings\SearchProfile;
-use Omeka\Entity\Item;
 use Typesense\Client;
 
 /**
@@ -34,10 +34,6 @@ final class Reindexer
     private const BATCH = 100;
 
     private readonly string $alias;
-    /** @var list<string> */
-    private readonly array $valueTerms;
-    /** @var array<string,?int> */
-    private array $propIdCache = [];
 
     /** @param Closure(string):void $log */
     public function __construct(
@@ -51,7 +47,6 @@ final class Reindexer
         private readonly ?Closure $cancel = null,
     ) {
         $this->alias = $profile->collection();
-        $this->valueTerms = $profile->readProperties();
     }
 
     /**
@@ -75,6 +70,8 @@ final class Reindexer
         $attempted = 0;
         $imported = 0;
         $failed = 0;
+        $queue = $this->stateStore !== null ? new ChangeQueue($this->connection) : null;
+        $dirtyRevision = $this->stateStore?->dirtyRevision($this->profile->name());
 
         try {
             $previous = $this->aliasTarget();
@@ -84,7 +81,8 @@ final class Reindexer
                 . '_' . bin2hex(random_bytes(3));
             $token = bin2hex(random_bytes(16));
             $this->throwIfCancelled();
-            $mapper = $this->buildMapper();
+            $source = new OmekaSourceRepository($this->connection, $this->profile);
+            $assembler = new DocumentAssembler($source, (new MapperFactory($this->connection, $this->profile))->create(), $this->profile);
             $this->stateStore?->markBuilding(
                 $this->profile->name(),
                 $this->alias,
@@ -98,56 +96,20 @@ final class Reindexer
             $this->client->collections->create((new SchemaProvider())->collection($collection, $this->profile));
             ($this->log)(sprintf('Created staging collection %s', $collection));
 
-            $itemLink = $this->profile->itemLink();
-            $reverseLinks = $this->profile->reverseLinks();
             $lastId = 0;
             $batch = [];
 
-            $predicate = $this->sourcePredicate();
-            $sql = 'SELECT id, title, is_public FROM resource'
-                . ' WHERE resource_type = :rt AND id > :lastId'
-                . ($predicate !== '' ? ' AND ' . $predicate : '')
-                . ' ORDER BY id ASC LIMIT ' . self::PAGE;
-            $params = ['rt' => Item::class];
-
             while (true) {
                 $this->throwIfCancelled();
-                $rows = $this->connection
-                    ->executeQuery($sql, ['lastId' => $lastId] + $params)
-                    ->fetchAllAssociative();
+                $rows = $source->rows(after: $lastId, limit: self::PAGE);
                 if (!$rows) {
                     break;
                 }
 
                 $ids = array_map(static fn(array $r): int => (int) $r['id'], $rows);
                 $lastId = (int) end($ids);
-                $valuesByItem = $this->loadValues($ids);
-                $thumbnails = $this->loadThumbnails($ids);
-                $counts = $itemLink !== null ? $this->loadItemCounts($ids, $itemLink) : [];
-                [$reverseCounts, $reverseRoles] = $reverseLinks !== null
-                    ? $this->loadReverseLinks($ids, $reverseLinks)
-                    : [[], []];
-
-                foreach ($rows as $r) {
-                    $id = (int) $r['id'];
-                    $item = [
-                        'id'        => $id,
-                        'title'     => (string) ($r['title'] ?? ''),
-                        'is_public' => (bool) $r['is_public'],
-                    ];
-                    if ($itemLink !== null) {
-                        $item['item_count'] = $counts[$id] ?? 0;
-                    }
-                    if ($reverseLinks !== null) {
-                        $item['counts'] = [];
-                        foreach ($reverseCounts as $field => $map) {
-                            $item['counts'][$field] = $map[$id] ?? 0;
-                        }
-                        $item['roles'] = $reverseRoles[$id] ?? [];
-                    }
-                    $batch[] = $this->decorateDoc(
-                        $mapper->map($item, $valuesByItem[$id] ?? [], $thumbnails[$id] ?? null)
-                    );
+                foreach ($assembler->documents($rows) as $doc) {
+                    $batch[] = $doc;
                     if (count($batch) >= self::BATCH) {
                         $attempted += count($batch);
                         try {
@@ -193,8 +155,22 @@ final class Reindexer
             }
 
             $this->throwIfCancelled();
-            $this->client->aliases->upsert($this->alias, ['collection_name' => $collection]);
+            if ($queue !== null) {
+                $this->replayQueue($queue, $collection);
+                // Replay can add or remove resources after the initial SQL scan.
+                $info = $this->client->collections[$collection]->retrieve();
+                $verified = (int) $info['num_documents'];
+            }
+            $this->throwIfCancelled();
+            (new GenerationPublisher($this->client, $this->alias))->promote($collection);
             $promoted = true;
+            try {
+                if ($this->stateStore !== null) {
+                    (new \DRESearch\Search\SearchCache($this->connection))->invalidate();
+                }
+            } catch (\Throwable $error) {
+                ($this->log)('Could not invalidate search cache: ' . $error->getMessage());
+            }
             $durationMs = $this->durationMs($started);
             try {
                 $this->stateStore?->markLive(
@@ -205,6 +181,8 @@ final class Reindexer
                     $attempted,
                     $imported,
                     $failed,
+                    $dirtyRevision,
+                    $verified,
                 );
             } catch (\Throwable $stateError) {
                 // The verified alias is already live. Do not report the rebuild as
@@ -213,11 +191,22 @@ final class Reindexer
             }
             ($this->log)(sprintf("Promoted alias '%s' → '%s' (rollback: %s)", $this->alias, $collection, $previous ?? 'none'));
 
-            $this->cleanupRetiredCollections($collection, $previous);
-            ($this->log)(sprintf('Done — %d documents verified and promoted.', $imported));
+            if ($queue !== null) {
+                try {
+                    $this->drainQueue($queue, $collection, $this->cancel);
+                } catch (\Throwable $error) {
+                    ($this->log)('Live generation has pending changes; retry the queue: ' . $error->getMessage());
+                }
+            }
+            try {
+                $this->cleanupRetiredCollections($collection, $previous);
+            } catch (\Throwable $error) {
+                ($this->log)('Alias promoted; retired collection cleanup deferred: ' . $error->getMessage());
+            }
+            ($this->log)(sprintf('Done — %d documents at promotion.', $verified));
 
             return [
-                'documents' => $imported,
+                'documents' => $verified,
                 'attempted' => $attempted,
                 'failed' => $failed,
                 'collection' => $collection,
@@ -263,21 +252,10 @@ final class Reindexer
     }
 
     /**
-     * Incremental path: re-map ONE source item and upsert it straight into the
-     * live collection (the alias), reusing the same per-item loaders + mapper as
-     * {@see run()}. The production {@see run()} path is untouched.
-     *
-     * Returns false when the id isn't a source resource of THIS profile (so the
-     * caller can try the next profile); true after a successful upsert.
-     *
-     * Scope note: this refreshes the saved item's OWN document. The reverse-link
-     * aggregates it contributes to on OTHER records (e.g. a person's item_count
-     * when a research item that credits them is edited) are corpus-wide and are
-     * left to drift until the next full reindex — the same trade-off the bulk
-     * reindexer implies.
-     *
-     * Throws on a Typesense import failure so the caller can log it; never blocks
-     * the Omeka save (the IncrementalIndexer wraps this in try/catch).
+     * Compatibility helper for direct callers that already hold the profile
+     * lock. Omeka event handlers use IncrementalIndexer to queue this item and
+     * its dependencies, then a background worker reconciles them in batches.
+     * Returns true after an upsert and false for an absent/out-of-scope item.
      */
     public function indexOne(int $id): bool
     {
@@ -298,33 +276,9 @@ final class Reindexer
             return 'missing_alias';
         }
 
-        $predicate = $this->sourcePredicate();
-        $sql = 'SELECT id, title, is_public FROM resource'
-            . ' WHERE resource_type = :rt AND id = :id'
-            . ($predicate !== '' ? ' AND ' . $predicate : '');
-        $row = $this->connection
-            ->executeQuery($sql, ['rt' => Item::class, 'id' => $id])
-            ->fetchAssociative();
-        if ($row === false) {
-            $this->deleteOne($id);
-            return 'deleted';
-        }
-
-        $doc = $this->buildDoc($row, $this->buildMapper());
-
-        $result = ImportResult::fromResponse(
-            $this->client->collections[$this->alias]->documents->import([$doc], ['action' => 'upsert']),
-            [$doc],
-        );
-        if (!$result->isComplete()) {
-            throw new BatchImportException(
-                $this->alias,
-                $result->successful(),
-                $result->failedIds(),
-                $result->errors(),
-            );
-        }
-        return 'upserted';
+        $rows = (new OmekaSourceRepository($this->connection, $this->profile))->rows([$id]);
+        $this->syncBatch([$id], $this->alias);
+        return $rows === [] ? 'deleted' : 'upserted';
     }
 
     /**
@@ -344,112 +298,6 @@ final class Reindexer
     }
 
     /**
-     * Build one Typesense document from a source `resource` row, loading just
-     * that item's values / thumbnail / reverse-link figures. The single-item
-     * counterpart to {@see run()}'s page loop; kept separate so run() keeps its
-     * page-level batch loading (loading per-item there would be N× the queries).
-     *
-     * @param array{id:int|string, title:?string, is_public:int|bool} $row
-     * @return array<string,mixed>
-     */
-    private function buildDoc(array $row, MapperInterface $mapper): array
-    {
-        $id = (int) $row['id'];
-        $ids = [$id];
-
-        $valuesByItem = $this->loadValues($ids);
-        $thumbnails   = $this->loadThumbnails($ids);
-        $itemLink     = $this->profile->itemLink();
-        $reverseLinks = $this->profile->reverseLinks();
-        $counts = $itemLink !== null ? $this->loadItemCounts($ids, $itemLink) : [];
-        [$reverseCounts, $reverseRoles] = $reverseLinks !== null
-            ? $this->loadReverseLinks($ids, $reverseLinks)
-            : [[], []];
-
-        $item = [
-            'id'        => $id,
-            'title'     => (string) ($row['title'] ?? ''),
-            'is_public' => (bool) $row['is_public'],
-        ];
-        if ($itemLink !== null) {
-            $item['item_count'] = $counts[$id] ?? 0;
-        }
-        if ($reverseLinks !== null) {
-            $item['counts'] = [];
-            foreach ($reverseCounts as $field => $map) {
-                $item['counts'][$field] = $map[$id] ?? 0;
-            }
-            $item['roles'] = $reverseRoles[$id] ?? [];
-        }
-
-        return $this->decorateDoc(
-            $mapper->map($item, $valuesByItem[$id] ?? [], $thumbnails[$id] ?? null)
-        );
-    }
-
-    /** Add the collection-independent source metadata required by union search. */
-    private function decorateDoc(array $doc): array
-    {
-        $doc['_profile'] = $this->profile->name();
-        $doc['_kind'] = $this->profile->kind();
-        return $doc;
-    }
-
-    /**
-     * The source-resource WHERE predicate for {@see run()}: the profile's base
-     * template/item-set scope, plus each configured `extra_sources` entry OR'd
-     * in. Returns '' when the corpus has no scope at all (index every item).
-     *
-     * Validated integers (template ids, item-set ids, resolved property ids) are
-     * inlined — as in {@see reverseRolesPerProperty()} — so the paged source
-     * query keeps :rt and :lastId as its only bound parameters. An extra source
-     * whose `require_property` is unknown on this instance is skipped, so the
-     * corpus still indexes its primary set. Places and the geocoded institutions
-     * are disjoint, and a single SELECT over `(A OR B)` returns each id once, so
-     * no de-duplication is needed.
-     */
-    private function sourcePredicate(): string
-    {
-        return \DRESearch\Settings\SourcePredicate::compile(
-            $this->profile,
-            fn (string $term): ?int => $this->propertyId($term),
-        );
-    }
-
-    private function buildMapper(): MapperInterface
-    {
-        if ($this->profile->kind() === 'project') {
-            return new ProjectMapper($this->profile);
-        }
-        if ($this->profile->kind() === 'publication') {
-            return new PublicationMapper($this->profile);
-        }
-        if ($this->profile->kind() === 'podcast') {
-            return new PodcastMapper($this->profile);
-        }
-        if ($this->profile->kind() === 'video') {
-            return new VideoMapper($this->profile);
-        }
-        if ($this->profile->kind() === 'person') {
-            return new PersonMapper($this->profile);
-        }
-        if ($this->profile->kind() === 'section') {
-            return new SectionMapper($this->profile);
-        }
-        if ($this->profile->kind() === 'organisation') {
-            return new OrganisationMapper($this->profile);
-        }
-        if ($this->profile->kind() === 'term') {
-            return new TermMapper($this->profile);
-        }
-
-        $auth = new AuthorityResolver($this->connection, $this->profile);
-        $auth->load();
-        ($this->log)(sprintf('Authority lookup: %d items', $auth->count()));
-        return new ResearchItemMapper($auth, $this->profile);
-    }
-
-    /**
      * Versioned-collection prefix, derived from the alias so renaming the
      * collection in config keeps versioning + cleanup consistent. Alias
      * "foo_current" → prefix "foo_"; an alias without that suffix → "<alias>_".
@@ -462,375 +310,50 @@ final class Reindexer
         return $this->alias . '_';
     }
 
-    /**
-     * @param list<int> $ids
-     * @return array<int, array<string, list<array{vrid:?int, value:?string, uri:?string, title:?string}>>>
-     */
-    private function loadValues(array $ids): array
+    /** Replay without acknowledging: a failed/cancelled promotion must retain all work. */
+    private function replayQueue(ChangeQueue $queue, string $collection): void
     {
-        $idList = implode(',', array_map('intval', $ids));
-        if ($idList === '' || $this->valueTerms === []) {
-            return [];
+        $after = 0;
+        while ($rows = $queue->page($this->profile->name(), $after)) {
+            $this->throwIfCancelled();
+            $ids = array_map('intval', array_column($rows, 'item_id'));
+            $this->syncBatch($ids, $collection);
+            $after = max($ids);
         }
-        $termList = "'" . implode("','", $this->valueTerms) . "'";
-
-        $sql = "SELECT v.resource_id AS rid, CONCAT(vo.prefix, ':', p.local_name) AS term,"
-            . ' v.value_resource_id AS vrid, v.value AS val, v.uri AS turi, t.title AS ttitle'
-            . ' FROM value v'
-            . ' JOIN property p ON v.property_id = p.id'
-            . ' JOIN vocabulary vo ON p.vocabulary_id = vo.id'
-            . ' LEFT JOIN resource t ON v.value_resource_id = t.id'
-            . " WHERE v.resource_id IN ($idList)"
-            . " AND CONCAT(vo.prefix, ':', p.local_name) IN ($termList)"
-            . ' ORDER BY v.resource_id ASC, v.property_id ASC, v.id ASC';
-
-        $out = [];
-        foreach ($this->connection->executeQuery($sql)->fetchAllAssociative() as $row) {
-            $rid = (int) $row['rid'];
-            $out[$rid][(string) $row['term']][] = [
-                'vrid'  => $row['vrid'] !== null ? (int) $row['vrid'] : null,
-                'value' => $row['val'] !== null ? (string) $row['val'] : null,
-                'uri'   => $row['turi'] !== null ? (string) $row['turi'] : null,
-                'title' => $row['ttitle'] !== null ? (string) $row['ttitle'] : null,
-            ];
-        }
-        return $out;
     }
 
-    /**
-     * Project item-count: how many research items belong to each project
-     * (a single reverse-link rule). Thin wrapper over {@see reverseCount}.
-     *
-     * @param list<int> $ids
-     * @param array{from_template:int,property:string,public_only:bool} $itemLink
-     * @return array<int, int>
-     */
-    private function loadItemCounts(array $ids, array $itemLink): array
+    /** Caller holds the profile lock so an older batch cannot overwrite a newer one. */
+    public function drainQueue(ChangeQueue $queue, string $collection, ?Closure $cancel = null): void
     {
-        return $this->reverseCount($ids, [
-            'properties'    => [$itemLink['property']],
-            'from_template' => $itemLink['from_template'],
-            'public_only'   => !empty($itemLink['public_only']),
-        ]);
+        while ($rows = $queue->page($this->profile->name())) {
+            if ($cancel !== null && $cancel()) {
+                return;
+            }
+            $this->syncBatch(array_map('intval', array_column($rows, 'item_id')), $collection);
+            (new \DRESearch\Search\SearchCache($this->connection))->invalidate();
+            $queue->acknowledge($this->profile->name(), $rows);
+        }
     }
 
-    /**
-     * Reverse-links (person & organisation corpora): compute (a) per-bucket counts
-     * of the records that reference each indexed entity and (b) the set of role
-     * labels it earns from the relationships configured in `reverse_links`. Each
-     * fixed-label role rule (and each count bucket) is one {@see reverseCount}
-     * query; a `per_property` role rule is one {@see reverseRolesPerProperty} query
-     * that fans out into one label per relator property in use.
-     *
-     * @param list<int> $ids
-     * @param array{counts?:array<string,array<string,mixed>>,roles?:list<array<string,mixed>>} $links
-     * @return array{0:array<string,array<int,int>>, 1:array<int,list<string>>}
-     *         [ field => [entityId => count], entityId => [role labels] ]
-     */
-    private function loadReverseLinks(array $ids, array $links): array
+    /** Reconcile a bounded batch against current SQL state, including deletions. */
+    public function syncBatch(array $ids, string $collection): void
     {
-        $counts = [];
-        foreach (($links['counts'] ?? []) as $field => $rule) {
-            $counts[(string) $field] = $this->reverseCount($ids, $rule);
-        }
-
-        $roleSets = [];
-        foreach (($links['roles'] ?? []) as $rule) {
-            // Per-property rule: one role per DISTINCT property referencing the
-            // entity (e.g. every marcrel:* relator a person holds on research
-            // items), labelled by the source template's alternate label — instead
-            // of collapsing them into a single fixed-label bucket.
-            if (!empty($rule['per_property'])) {
-                foreach ($this->reverseRolesPerProperty($ids, $rule) as $pid => $labels) {
-                    foreach ($labels as $label) {
-                        $roleSets[$pid][$label] = true; // set semantics — dedupe shared labels
-                    }
-                }
-                continue;
+        $source = new OmekaSourceRepository($this->connection, $this->profile);
+        $assembler = new DocumentAssembler($source, (new MapperFactory($this->connection, $this->profile))->create(), $this->profile);
+        foreach (array_chunk(array_unique(array_map('intval', $ids)), self::BATCH) as $chunk) {
+            $rows = $source->rows($chunk);
+            $docs = $assembler->documents($rows);
+            if ($docs !== []) {
+                $this->flush($collection, $docs);
             }
-            $label = (string) ($rule['label'] ?? '');
-            if ($label === '') {
-                continue;
-            }
-            foreach ($this->reverseCount($ids, $rule) as $pid => $cnt) {
-                if ($cnt > 0) {
-                    $roleSets[$pid][$label] = true; // set semantics — dedupe shared labels
-                }
+            $present = array_map(static fn(array $row): int => (int) $row['id'], $rows);
+            $removed = array_diff($chunk, $present);
+            if ($removed !== []) {
+                $this->client->collections[$collection]->documents->delete([
+                    'filter_by' => 'id:=[' . implode(',', $removed) . ']',
+                ]);
             }
         }
-        $roles = [];
-        foreach ($roleSets as $pid => $labelSet) {
-            $roles[$pid] = array_keys($labelSet);
-        }
-
-        return [$counts, $roles];
-    }
-
-    /**
-     * Count, per referenced target id, the DISTINCT source resources that point
-     * at it — optionally narrowed to specific properties and/or a source template
-     * or item set, and to public sources only. The reverse-link primitive behind
-     * both the project item-count and the person counts/roles. One query per rule.
-     *
-     * @param list<int> $ids
-     * @param array{properties?:?list<string>, from_template?:?int, from_item_set?:?int, public_only?:bool} $rule
-     * @return array<int, int>
-     */
-    private function reverseCount(array $ids, array $rule): array
-    {
-        $idList = implode(',', array_map('intval', $ids));
-        if ($idList === '') {
-            return [];
-        }
-
-        $where = ["v.value_resource_id IN ($idList)"];
-        $params = [];
-
-        $props = $rule['properties'] ?? null;
-        if (is_array($props) && $props !== []) {
-            $propIds = [];
-            foreach ($props as $term) {
-                $pid = $this->propertyId($term);
-                if ($pid !== null) {
-                    $propIds[] = $pid;
-                }
-            }
-            if ($propIds === []) {
-                return []; // none of the rule's properties exist on this instance
-            }
-            $where[] = 'v.property_id IN (' . implode(',', $propIds) . ')';
-        }
-        if (!empty($rule['from_template'])) {
-            $where[] = 'r.resource_template_id = :tpl';
-            $params['tpl'] = (int) $rule['from_template'];
-        }
-        if (!empty($rule['from_item_set'])) {
-            $where[] = 'r.id IN (SELECT item_id FROM item_item_set WHERE item_set_id = :setId)';
-            $params['setId'] = (int) $rule['from_item_set'];
-        }
-        if (!empty($rule['public_only'])) {
-            $where[] = 'r.is_public = 1';
-        }
-
-        $sql = 'SELECT v.value_resource_id AS pid, COUNT(DISTINCT v.resource_id) AS cnt'
-            . ' FROM value v'
-            . ' JOIN resource r ON v.resource_id = r.id'
-            . ' WHERE ' . implode(' AND ', $where)
-            . ' GROUP BY v.value_resource_id';
-
-        $out = [];
-        foreach ($this->connection->executeQuery($sql, $params)->fetchAllAssociative() as $row) {
-            $out[(int) $row['pid']] = (int) $row['cnt'];
-        }
-        return $out;
-    }
-
-    /**
-     * Per-property reverse roles. Like {@see reverseCount}, but instead of one
-     * fixed label for the whole rule it emits one role label PER distinct property
-     * that references the entity — so a person credited on research items surfaces
-     * every marcrel relator they actually hold (Author, Photographer, Interviewee,
-     * Translator, …), not a single "contributor" bucket. Only properties in use
-     * yield a label (an empty relator simply produces no row), so the role facet
-     * lists exactly the roles present in the data.
-     *
-     * Each role label is the source template's alternate label for the property
-     * (the curator-facing role name), falling back to the property's own label,
-     * then its local name. The rule narrows the same way {@see reverseCount} does —
-     * by `vocabulary` (prefix, e.g. all marcrel:* roles) and/or an explicit
-     * `properties` allowlist, an optional `from_template` / `from_item_set`, and
-     * `public_only`. One query for the whole page.
-     *
-     * @param list<int> $ids
-     * @param array{vocabulary?:string, properties?:?list<string>, from_template?:?int, from_item_set?:?int, public_only?:bool} $rule
-     * @return array<int, list<string>> entityId => role labels (alphabetical)
-     */
-    private function reverseRolesPerProperty(array $ids, array $rule): array
-    {
-        $idList = implode(',', array_map('intval', $ids));
-        if ($idList === '') {
-            return [];
-        }
-
-        $where = ["v.value_resource_id IN ($idList)"];
-        $params = [];
-
-        // Narrow to a whole vocabulary (e.g. the marcrel contributor-role family) …
-        if (!empty($rule['vocabulary'])) {
-            $where[] = 'vo.prefix = :vocab';
-            $params['vocab'] = (string) $rule['vocabulary'];
-        }
-        // … and/or to an explicit property allowlist.
-        $props = $rule['properties'] ?? null;
-        if (is_array($props) && $props !== []) {
-            $propIds = [];
-            foreach ($props as $term) {
-                $pid = $this->propertyId($term);
-                if ($pid !== null) {
-                    $propIds[] = $pid;
-                }
-            }
-            if ($propIds === []) {
-                return []; // none of the rule's properties exist on this instance
-            }
-            $where[] = 'v.property_id IN (' . implode(',', $propIds) . ')';
-        }
-        // from_template is a validated int, inlined (so it can also drive the
-        // alternate-label join without colliding on a reused named parameter).
-        $tpl = !empty($rule['from_template']) ? (int) $rule['from_template'] : null;
-        if ($tpl !== null) {
-            $where[] = 'r.resource_template_id = ' . $tpl;
-        }
-        if (!empty($rule['from_item_set'])) {
-            $where[] = 'r.id IN (SELECT item_id FROM item_item_set WHERE item_set_id = :setId)';
-            $params['setId'] = (int) $rule['from_item_set'];
-        }
-        if (!empty($rule['public_only'])) {
-            $where[] = 'r.is_public = 1';
-        }
-
-        // Curator-facing role label: the source template's alternate label for the
-        // property, else the property's own label, else its local name.
-        $altJoin = $tpl !== null
-            ? ' LEFT JOIN resource_template_property rtp'
-                . ' ON rtp.resource_template_id = ' . $tpl . ' AND rtp.property_id = v.property_id'
-            : '';
-        $labelExpr = 'COALESCE('
-            . ($tpl !== null ? "NULLIF(rtp.alternate_label, ''), " : '')
-            . "NULLIF(p.label, ''), p.local_name)";
-
-        $sql = "SELECT DISTINCT v.value_resource_id AS pid, $labelExpr AS lbl"
-            . ' FROM value v'
-            . ' JOIN resource r ON v.resource_id = r.id'
-            . ' JOIN property p ON v.property_id = p.id'
-            . ' JOIN vocabulary vo ON p.vocabulary_id = vo.id'
-            . $altJoin
-            . ' WHERE ' . implode(' AND ', $where)
-            . ' ORDER BY lbl';
-
-        $out = [];
-        foreach ($this->connection->executeQuery($sql, $params)->fetchAllAssociative() as $row) {
-            $label = trim((string) ($row['lbl'] ?? ''));
-            if ($label !== '') {
-                $out[(int) $row['pid']][] = $label;
-            }
-        }
-        return $out;
-    }
-
-    /** Resolve (and cache) a property id from its "prefix:local" term. */
-    private function propertyId(string $term): ?int
-    {
-        if (array_key_exists($term, $this->propIdCache)) {
-            return $this->propIdCache[$term];
-        }
-        [$prefix, $local] = array_pad(explode(':', $term, 2), 2, '');
-        $id = $this->connection->executeQuery(
-            'SELECT p.id FROM property p JOIN vocabulary vo ON p.vocabulary_id = vo.id'
-            . ' WHERE vo.prefix = :prefix AND p.local_name = :local',
-            ['prefix' => $prefix, 'local' => $local],
-        )->fetchOne();
-        return $this->propIdCache[$term] = ($id !== false ? (int) $id : null);
-    }
-
-    /**
-     * Thumbnail derivative URL per source item. By default the item's own first
-     * thumbnailed media; when the profile sets `thumbnail_property`, the thumbnail
-     * is taken from the resource that property links to instead (podcasts hop
-     * dcterms:isPartOf → the series item, whose image is the episode's logo, since
-     * the episode's own media is the audio file).
-     *
-     * @param list<int> $ids
-     * @return array<int, string>
-     */
-    private function loadThumbnails(array $ids): array
-    {
-        $via = $this->profile->thumbnailFromProperty();
-        if ($via !== null) {
-            return $this->loadThumbnailsVia($ids, $via);
-        }
-        return $this->mediaThumbnails($ids);
-    }
-
-    /**
-     * First thumbnailed media per item → a relative derivative URL, for the given
-     * item ids. The shared primitive behind both the direct and the linked-resource
-     * thumbnail paths.
-     *
-     * @param list<int> $ids
-     * @return array<int, string>
-     */
-    private function mediaThumbnails(array $ids): array
-    {
-        $idList = implode(',', array_map('intval', $ids));
-        if ($idList === '') {
-            return [];
-        }
-        $sql = 'SELECT m.item_id AS iid, m.storage_id AS sid FROM media m'
-            . " WHERE m.item_id IN ($idList) AND m.has_thumbnails = 1"
-            . ' ORDER BY m.item_id ASC, m.position ASC, m.id ASC';
-
-        $out = [];
-        foreach ($this->connection->executeQuery($sql)->fetchAllAssociative() as $row) {
-            $iid = (int) $row['iid'];
-            if (isset($out[$iid])) {
-                continue; // keep the first (lowest position) only
-            }
-            $sid = (string) ($row['sid'] ?? '');
-            if ($sid !== '') {
-                $out[$iid] = '/files/medium/' . $sid . '.jpg';
-            }
-        }
-        return $out;
-    }
-
-    /**
-     * Resolve each source item's thumbnail from the resource its `$term` property
-     * links to (its first linked target), using that target's own first thumbnailed
-     * media. Used by the podcasts corpus to show the series logo on every episode.
-     * The property id is a validated int, inlined like the other source predicates.
-     *
-     * @param list<int> $ids
-     * @return array<int, string>
-     */
-    private function loadThumbnailsVia(array $ids, string $term): array
-    {
-        $propId = $this->propertyId($term);
-        if ($propId === null) {
-            return [];
-        }
-        $idList = implode(',', array_map('intval', $ids));
-        if ($idList === '') {
-            return [];
-        }
-
-        // Each source item → its first linked target (lowest value id).
-        $sql = 'SELECT resource_id AS rid, value_resource_id AS vrid FROM value'
-            . " WHERE resource_id IN ($idList) AND property_id = $propId"
-            . ' AND value_resource_id IS NOT NULL'
-            . ' ORDER BY resource_id ASC, id ASC';
-
-        $targetByItem = [];
-        foreach ($this->connection->executeQuery($sql)->fetchAllAssociative() as $row) {
-            $rid = (int) $row['rid'];
-            if (isset($targetByItem[$rid])) {
-                continue; // keep the first linked target only
-            }
-            $targetByItem[$rid] = (int) $row['vrid'];
-        }
-        if ($targetByItem === []) {
-            return [];
-        }
-
-        $targetThumbs = $this->mediaThumbnails(array_values(array_unique($targetByItem)));
-
-        $out = [];
-        foreach ($targetByItem as $rid => $tid) {
-            if (isset($targetThumbs[$tid])) {
-                $out[$rid] = $targetThumbs[$tid];
-            }
-        }
-        return $out;
     }
 
     /** @param list<array<string,mixed>> $docs */
@@ -853,22 +376,15 @@ final class Reindexer
 
     private function aliasTarget(): ?string
     {
-        try {
-            $alias = $this->client->aliases[$this->alias]->retrieve();
-            $target = is_array($alias) ? (string) ($alias['collection_name'] ?? '') : '';
-            return $target !== '' ? $target : null;
-        } catch (\Throwable $e) {
-            if ($this->isNotFound($e)) {
-                return null;
-            }
-            throw $e;
-        }
+        return (new GenerationPublisher($this->client, $this->alias))->target();
     }
 
     private function deleteOwnedStaging(string $collection): bool
     {
         try {
-            $this->client->collections[$collection]->delete();
+            if (!(new GenerationPublisher($this->client, $this->alias))->deleteUnaliased($collection)) {
+                return false;
+            }
             ($this->log)(sprintf('Deleted session staging collection %s', $collection));
             return true;
         } catch (\Throwable $e) {
@@ -888,7 +404,9 @@ final class Reindexer
         $keep = array_values(array_filter([$live, $rollback], 'is_string'));
         foreach ($this->stateStore->cleanupCandidates($this->profile->name(), $keep, $this->retentionDays) as $name) {
             try {
-                $this->client->collections[$name]->delete();
+                if (!(new GenerationPublisher($this->client, $this->alias))->deleteUnaliased($name)) {
+                    continue;
+                }
                 $this->stateStore->forgetGeneration($name);
                 ($this->log)(sprintf('Deleted retired owned collection %s', $name));
             } catch (\Throwable $e) {
@@ -913,7 +431,9 @@ final class Reindexer
                 continue;
             }
             try {
-                $this->client->collections[$name]->delete();
+                if (!(new GenerationPublisher($this->client, $this->alias))->deleteUnaliased($name)) {
+                    continue;
+                }
                 $this->stateStore->forgetGeneration($name);
                 ($this->log)(sprintf('Removed orphaned staging collection %s', $name));
             } catch (\Throwable $e) {

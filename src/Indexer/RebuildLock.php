@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Indexer;
@@ -21,11 +22,11 @@ final class RebuildLock
         $this->name = 'dre_search:' . substr(hash('sha256', $alias), 0, 48);
     }
 
-    public function acquire(): void
+    public function acquire(int $waitSeconds = 0): void
     {
         $acquired = $this->connection->executeQuery(
-            'SELECT GET_LOCK(:lockName, 0)',
-            ['lockName' => $this->name],
+            'SELECT GET_LOCK(:lockName, :waitSeconds)',
+            ['lockName' => $this->name, 'waitSeconds' => max(0, $waitSeconds)],
         )->fetchOne();
         if ((int) $acquired !== 1) {
             throw new RebuildLockedException($this->profile, $this->stateStore?->activeJobId($this->profile));

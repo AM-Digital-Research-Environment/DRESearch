@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Search;
@@ -25,10 +26,13 @@ final class SearchRequest
     {
         $allowed = [
             'profile', 'q', 'page', 'per_page', 'sort', 'filters', 'facets',
-            'year_from', 'year_to', 'block_id', 'include_counts',
+            'year_from', 'year_to', 'block_id', 'include_counts', 'record_query', 'analytics_id',
         ];
+        if ($mode === 'facet') {
+            $allowed = array_merge($allowed, ['facet_field', 'facet_query']);
+        }
         if ($mode === 'export') {
-            $allowed = array_values(array_diff($allowed, ['page', 'per_page', 'facets', 'include_counts']));
+            $allowed = array_values(array_diff($allowed, ['page', 'per_page', 'facets', 'include_counts', 'record_query', 'analytics_id']));
         }
         $unknown = array_values(array_diff(array_keys($input), $allowed));
         if ($unknown !== []) {
@@ -89,6 +93,23 @@ final class SearchRequest
             $data['block_id'] = self::integer($input['block_id'], 'block_id', 1, PHP_INT_MAX);
         }
 
+        if (isset($input['record_query']) && !is_bool($input['record_query'])) {
+            throw new RequestValidationException('invalid_record_query', 'Invalid analytics flag.');
+        }
+        if (isset($input['analytics_id']) && (!is_string($input['analytics_id']) || !preg_match('/^[a-f0-9]{32}$/D', $input['analytics_id']))) {
+            throw new RequestValidationException('invalid_analytics_id', 'Invalid anonymous analytics identifier.');
+        }
+        $data['record_query'] = $mode === 'search' && ($input['record_query'] ?? false);
+        $data['analytics_id'] = $input['analytics_id'] ?? null;
+
+        if ($mode === 'facet') {
+            $field = self::boundedString($input['facet_field'] ?? '', 'facet_field', 100);
+            if (!in_array($field, $profile->fieldNames(), true)) {
+                throw new RequestValidationException('invalid_facet_field', 'Unknown sidebar facet.');
+            }
+            $data['facet_field'] = $field;
+            $data['facet_query'] = self::boundedString($input['facet_query'] ?? '', 'facet_query', 100);
+        }
         return new self($data);
     }
 

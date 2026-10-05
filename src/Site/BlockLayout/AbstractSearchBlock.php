@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Site\BlockLayout;
@@ -109,7 +110,7 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
                 <div class="field-description"><?= $esc($t('Which facets appear in the sidebar.')) ?></div>
             </div>
             <div class="inputs">
-                <?php if ($hasYearFacet): ?>
+                <?php if ($hasYearFacet) : ?>
                     <input type="hidden" name="<?= $escAttr($prefix) ?>[show_year]" value="0">
                     <label style="display:block;">
                         <input type="checkbox"
@@ -119,7 +120,7 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
                         <code style="opacity:.6"><?= $esc($t('range slider')) ?></code>
                     </label>
                 <?php endif; ?>
-                <?php foreach ($allFacets as $field => $def): ?>
+                <?php foreach ($allFacets as $field => $def) : ?>
                     <label style="display:block;">
                         <input type="checkbox"
                                name="<?= $escAttr($prefix) ?>[facets][]"
@@ -138,7 +139,7 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
             </div>
             <div class="inputs">
                 <select id="<?= $escAttr($idPrefix) ?>sort" name="<?= $escAttr($prefix) ?>[default_sort]">
-                    <?php foreach ($sortOptions as $option): ?>
+                    <?php foreach ($sortOptions as $option) : ?>
                         <option value="<?= $escAttr($option['value']) ?>"<?= $option['value'] === $defaultSort ? ' selected' : '' ?>>
                             <?= $esc($option['label']) ?>
                         </option>
@@ -234,6 +235,7 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
             // Client builds result links as `${item_url_base}/${id}`.
             'item_url_base' => $view->basePath('/s/' . $siteSlug . '/item'),
             'endpoints'     => [
+                'facet' => $view->basePath('/dre-search/api/facet'),
                 'search'  => $view->basePath('/dre-search/api/search'),
                 'export'  => $view->basePath('/dre-search/api/export'),
                 'suggest' => $view->basePath('/dre-search/api/suggest'),

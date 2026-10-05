@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Indexer;
@@ -42,7 +43,7 @@ final class AuthorityResolver
         $setList = implode(',', array_map('intval', $sets));
 
         // 1. Item-set membership.
-        $sql = "SELECT item_id, item_set_id FROM item_item_set WHERE item_set_id IN ($setList)";
+        $sql = "SELECT item_id, item_set_id FROM item_item_set JOIN resource r ON r.id = item_id AND r.is_public = 1 WHERE item_set_id IN ($setList)";
         foreach ($this->connection->executeQuery($sql)->fetchAllNumeric() as [$itemId, $setId]) {
             $itemId = (int) $itemId;
             $this->byId[$itemId] ??= ['title' => '', 'sets' => [], 'typeItemId' => null, 'partOfId' => null];
@@ -54,13 +55,9 @@ final class AuthorityResolver
         }
         $idList = implode(',', array_map('intval', array_keys($this->byId)));
 
-        // 2. Titles.
-        $sql = "SELECT id, title FROM resource WHERE id IN ($idList)";
-        foreach ($this->connection->executeQuery($sql)->fetchAllNumeric() as [$id, $title]) {
-            $id = (int) $id;
-            if (isset($this->byId[$id])) {
-                $this->byId[$id]['title'] = (string) $title;
-            }
+        // 2. Public title values (the cached Omeka title may originate from a private value).
+        foreach ((new OmekaSourceRepository($this->connection, $this->profile))->publicTitles(array_keys($this->byId)) as $id => $title) {
+            $this->byId[$id]['title'] = $title;
         }
 
         // 3. dcterms:type and dcterms:isPartOf targets (the discriminators).
@@ -69,7 +66,8 @@ final class AuthorityResolver
                 JOIN property p ON v.property_id = p.id
                 JOIN vocabulary vo ON p.vocabulary_id = vo.id
                 WHERE v.resource_id IN ($idList)
-                  AND v.value_resource_id IS NOT NULL
+                  AND v.is_public = 1
+                  AND v.value_resource_id IN (SELECT id FROM resource WHERE is_public = 1)
                   AND CONCAT(vo.prefix, ':', p.local_name) IN ('dcterms:type', 'dcterms:isPartOf')";
         foreach ($this->connection->executeQuery($sql)->fetchAllNumeric() as [$rid, $term, $vrid]) {
             $rid = (int) $rid;

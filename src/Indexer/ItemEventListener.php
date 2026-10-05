@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Indexer;
@@ -8,6 +9,8 @@ use Laminas\EventManager\Event;
 use Omeka\Api\Representation\ItemRepresentation;
 use Omeka\Api\Representation\MediaRepresentation;
 use Omeka\Api\Response as OmekaApiResponse;
+use Omeka\Entity\Item;
+use Omeka\Entity\Media;
 
 /**
  * Defensive Omeka event adapter covering single/batch items, media parents,
@@ -18,6 +21,8 @@ final class ItemEventListener
 {
     /** @var list<int> */
     private array $pendingItemDeletes = [];
+    /** @var array<int,list<int>> */
+    private array $beforeDependencies = [];
     /** @var list<int> */
     private array $pendingDeleteDependencies = [];
     /** @var list<int> */
@@ -33,14 +38,24 @@ final class ItemEventListener
 
     public function onItemCreate(Event $event): void
     {
-        foreach ($this->itemIdsFromResponse($event) as $id) {
+        foreach (array_unique(array_merge($this->itemIdsFromResponse($event), $this->requestIds($event))) as $id) {
             $this->indexer->syncItemWithDependencies($id);
+        }
+    }
+
+    public function onItemUpdatePre(Event $event): void
+    {
+        foreach ($this->requestIds($event) as $id) {
+            $this->beforeDependencies[$id] = $this->indexer->dependencies($id);
         }
     }
 
     public function onItemUpdate(Event $event): void
     {
-        $this->onItemCreate($event);
+        foreach (array_unique(array_merge($this->requestIds($event), $this->itemIdsFromResponse($event))) as $id) {
+            $this->indexer->syncItems(array_merge([$id], $this->beforeDependencies[$id] ?? [], $this->indexer->dependencies($id)));
+            unset($this->beforeDependencies[$id]);
+        }
     }
 
     public function onItemDeletePre(Event $event): void
@@ -48,10 +63,7 @@ final class ItemEventListener
         $ids = $this->requestIds($event);
         $this->pendingItemDeletes = array_values(array_unique(array_merge($this->pendingItemDeletes, $ids)));
         foreach ($ids as $id) {
-            $dependencies = $this->fetchFirstColumn(
-                'SELECT DISTINCT resource_id FROM value WHERE value_resource_id = :id',
-                ['id' => $id],
-            );
+            $dependencies = $this->indexer->dependencies($id);
             $this->pendingDeleteDependencies = array_merge(
                 $this->pendingDeleteDependencies,
                 array_map('intval', $dependencies),
@@ -77,8 +89,7 @@ final class ItemEventListener
 
     public function onItemBatch(Event $event): void
     {
-        $ids = array_values(array_unique(array_merge($this->requestIds($event), $this->itemIdsFromResponse($event))));
-        $this->indexer->syncItems($ids, 'item batch update');
+        $this->onItemUpdate($event);
     }
 
     public function onItemBatchDeletePre(Event $event): void
@@ -99,9 +110,12 @@ final class ItemEventListener
         }
         foreach ($this->flatten($response->getContent()) as $content) {
             if ($content instanceof MediaRepresentation && $content->item() !== null) {
-                $this->indexer->syncItemWithDependencies((int) $content->item()->id());
+                $this->pendingMediaParents[] = (int) $content->item()->id();
+            } elseif ($content instanceof Media && $content->getItem() !== null) {
+                $this->pendingMediaParents[] = (int) $content->getItem()->getId();
             }
         }
+        $this->onMediaDelete($event);
     }
 
     public function onMediaDeletePre(Event $event): void
@@ -121,7 +135,9 @@ final class ItemEventListener
     {
         $parents = array_values(array_unique($this->pendingMediaParents));
         $this->pendingMediaParents = [];
-        $this->indexer->syncItems($parents, 'media deletion');
+        foreach ($parents as $id) {
+            $this->indexer->syncItemWithDependencies($id);
+        }
     }
 
     public function onItemSetPre(Event $event): void
@@ -139,7 +155,9 @@ final class ItemEventListener
     {
         $members = array_values(array_unique($this->pendingItemSetMembers));
         $this->pendingItemSetMembers = [];
-        $this->indexer->syncItems($members, 'item-set membership change');
+        foreach ($members as $id) {
+            $this->indexer->syncItemWithDependencies($id);
+        }
     }
 
     /** @return list<int> */
@@ -153,6 +171,8 @@ final class ItemEventListener
         foreach ($this->flatten($response->getContent()) as $content) {
             if ($content instanceof ItemRepresentation) {
                 $ids[] = (int) $content->id();
+            } elseif ($content instanceof Item) {
+                $ids[] = (int) $content->getId();
             }
         }
         return array_values(array_unique(array_filter($ids)));

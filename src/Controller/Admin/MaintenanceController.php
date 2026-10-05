@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Controller\Admin;
@@ -23,10 +24,13 @@ use Omeka\Stdlib\Message;
  */
 class MaintenanceController extends AbstractActionController
 {
+    private ?bool $healthy = null;
+    private ?string $healthError = null;
     public function __construct(
         private readonly TypesenseClientProvider $provider,
         private readonly ProfileRegistry $registry,
         private readonly RebuildStateStore $stateStore,
+        private readonly \DRESearch\Indexer\ChangeQueue $queue,
     ) {
     }
 
@@ -57,6 +61,12 @@ class MaintenanceController extends AbstractActionController
 
         if (!$this->provider->isConfigured()) {
             $this->messenger()->addError('Typesense is not configured. Set the connection under Modules → DRE Search → Configure.'); // @translate
+            return $this->redirect()->toRoute('admin/dre-search');
+        }
+
+        if ($this->params()->fromPost('drain_queue')) {
+            $this->jobDispatcher()->dispatch(\DRESearch\Job\DrainSearchChanges::class);
+            $this->messenger()->addSuccess('Pending search changes queued for retry. Track progress under Jobs.'); // @translate
             return $this->redirect()->toRoute('admin/dre-search');
         }
 
@@ -139,6 +149,8 @@ class MaintenanceController extends AbstractActionController
     {
         $client = $this->provider->getClient();
         $states = $this->stateStore->all();
+        $pending = $this->queue->counts();
+        $healthy = $this->probeHealth();
         $rows = [];
 
         foreach ($this->registry->all() as $profile) {
@@ -150,26 +162,27 @@ class MaintenanceController extends AbstractActionController
                 'documents'  => null,
                 'error'      => null,
                 'state'      => $states[$profile->name()] ?? [],
+                'pending' => $pending[$profile->name()] ?? 0,
             ];
 
-            if ($client !== null) {
+            if ($client !== null && $healthy) {
                 try {
                     $info = $client->collections[$profile->collection()]->retrieve();
                     $row['reachable'] = true;
                     $row['documents'] = isset($info['num_documents']) ? (int) $info['num_documents'] : null;
                 } catch (\Throwable $e) {
-                    // The collection may simply not exist yet (never reindexed).
-                    // Probe health to tell "server down" from "collection absent".
-                    try {
-                        $client->health->retrieve();
-                        $row['reachable'] = true;
+                    $row['reachable'] = true;
+                    if ($e instanceof \Typesense\Exceptions\ObjectNotFound) {
                         $row['documents'] = 0;
-                    } catch (\Throwable $inner) {
-                        $row['error'] = $inner->getMessage();
+                    } else {
+                        $row['error'] = $e->getMessage();
                     }
                 }
             }
 
+            if (!$healthy) {
+                $row['error'] = $this->healthError;
+            }
             $rows[] = $row;
         }
 
@@ -180,36 +193,51 @@ class MaintenanceController extends AbstractActionController
     private function collectAnalytics(): array
     {
         $client = $this->provider->getClient();
-        if ($client === null) {
+        if ($client === null || !$this->probeHealth()) {
+            return ['enabled' => false, 'rows' => []];
+        }
+        $searches = [];
+        $labels = [];
+        foreach ($this->registry->all() as $profile) {
+            foreach (['popular' => 'Popular', 'nohits' => 'No results'] as $suffix => $kind) {
+                $labels[] = ['profile' => $profile->label(), 'kind' => $kind];
+                $searches[] = [
+                    'collection' => AnalyticsSync::collectionName($profile->name(), $suffix),
+                    'q' => '*', 'query_by' => 'q', 'sort_by' => 'count:desc', 'per_page' => 5,
+                    'enable_analytics' => false, 'highlight_fields' => 'none',
+                ];
+            }
+        }
+        try {
+            $response = $client->multiSearch->perform(['searches' => $searches]);
+        } catch (\Throwable) {
             return ['enabled' => false, 'rows' => []];
         }
         $rows = [];
-        $reachable = false;
-        foreach ($this->registry->all() as $profile) {
-            foreach (['popular' => 'Popular', 'nohits' => 'No results'] as $suffix => $kind) {
-                try {
-                    $result = $client->collections[AnalyticsSync::collectionName($profile->name(), $suffix)]
-                        ->documents->search([
-                            'q' => '*',
-                            'query_by' => 'q',
-                            'sort_by' => 'count:desc',
-                            'per_page' => 5,
-                        ]);
-                    $reachable = true;
-                    foreach ($result['hits'] ?? [] as $hit) {
-                        $document = $hit['document'] ?? [];
-                        $rows[] = [
-                            'profile' => $profile->label(),
-                            'kind' => $kind,
-                            'q' => (string) ($document['q'] ?? ''),
-                            'count' => (int) ($document['count'] ?? 0),
-                        ];
-                    }
-                } catch (\Throwable) {
-                    // Analytics is optional; an absent collection is an empty state.
-                }
+        $enabled = false;
+        foreach ($response['results'] ?? [] as $i => $result) {
+            if (!isset($result['error'])) {
+                $enabled = true;
+            }
+            foreach ($result['hits'] ?? [] as $hit) {
+                $doc = $hit['document'];
+                $rows[] = $labels[$i] + ['q' => (string) $doc['q'], 'count' => (int) $doc['count']];
             }
         }
-        return ['enabled' => $reachable, 'rows' => $rows];
+        return ['enabled' => $enabled, 'rows' => $rows];
+    }
+
+    private function probeHealth(): bool
+    {
+        if ($this->healthy !== null) {
+            return $this->healthy;
+        }
+        try {
+            $client = $this->provider->getClient();
+            return $this->healthy = $client !== null && !empty($client->health->retrieve()['ok']);
+        } catch (\Throwable $error) {
+            $this->healthError = $error->getMessage();
+            return $this->healthy = false;
+        }
     }
 }

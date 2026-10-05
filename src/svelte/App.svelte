@@ -215,6 +215,21 @@
   // Mirror state → URL whenever anything observable changes. The first run is a
   // no-op (the URL already reflects the seeded state); pagination-only changes
   // replace history, everything else pushes a back-button-able step.
+  const searchFacetValues = $derived.by(() => {
+    const scope = {
+      q: query,
+      sort,
+      filters,
+      year_from: yearFrom,
+      year_to: yearTo,
+      page: 1,
+      per_page: 1,
+      facets: bootstrap.facets,
+    };
+    return (field: string, value: string, signal: AbortSignal) =>
+      api.facet(scope, field, value, signal);
+  });
+
   $effect(() => {
     if (!syncUrl) return;
     const next: UrlSearchState = { q: query, page, sort, filters, yearFrom, yearTo, view };
@@ -259,9 +274,8 @@
       return;
     }
 
-    // Always request counts for the configured facets plus any currently
-    // selected field, so a selected value never vanishes from the sidebar.
-    const facetFields = Array.from(new Set([...bootstrap.facets, ...Object.keys(f)]));
+    // Card chips may filter display fields that are not sidebar facets.
+    const facetFields = bootstrap.facets;
     const myId = ++reqId;
     const controller = new AbortController();
     isLoading = true;
@@ -341,6 +355,7 @@
     api
       .map({ q: query, sort, filters, year_from: yearFrom, year_to: yearTo }, controller.signal)
       .then((result) => {
+        if (controller.signal.aborted) return;
         mapResponse = result;
       })
       .catch((reason: Error) => {
@@ -537,6 +552,7 @@
           aria-label={t('filters')}
         >
           <FacetPanel
+            searchValues={bootstrap.endpoints.facet ? searchFacetValues : undefined}
             {facets}
             order={bootstrap.facets}
             labels={bootstrap.facet_labels}

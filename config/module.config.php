@@ -112,6 +112,13 @@ return [
             ],
             // Bulk citation export of the current result set (txt/json/ris/bibtex
             // are serialized client-side from the returned documents).
+            'dre-search-api-facet' => [
+                'type' => \Laminas\Router\Http\Literal::class,
+                'options' => [
+                    'route' => '/dre-search/api/facet',
+                    'defaults' => ['controller' => Controller\SearchController::class, 'action' => 'apiFacet'],
+                ],
+            ],
             'dre-search-api-export' => [
                 'type'    => \Laminas\Router\Http\Literal::class,
                 'options' => [
@@ -272,7 +279,6 @@ return [
             // retired session-owned generations become eligible after this age.
             'retention_days' => 30,
             // Maximum dependency/event fan-out performed inline after a save.
-            'inline_sync_cap' => 200,
         ],
         'federated' => [
             // Keep authority-only term corpora on their dedicated tabs so a

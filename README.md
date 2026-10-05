@@ -48,6 +48,11 @@ cleanly and the site runs normally; the search blocks just show a quiet
 "search unavailable" notice. This keeps the module reusable on installs that
 don't want a search backend.
 
+> **1.22.0 upgrade:** run the Omeka module upgrade and **Reindex all corpora**.
+> This rebuild applies corrected privacy rules. Search pauses while profiles are
+> dirty or have pending changes; **Retry pending changes** recovers interrupted
+> background indexing. See [the operations runbook](docs/operations.md).
+
 ## What you get
 
 - A **Research items search** page block: full-text search with autocomplete,
@@ -274,7 +279,8 @@ Facet behaviour is the same across every block, with nothing to configure:
   value that no longer matches under the other filters stays listed at zero rather
   than vanishing — so a filter combination with no results still shows the way out.
 - A facet with many values shows a **type-to-filter** box (scroll or type to find a
-  value — no "show N more").
+  value — no "show N more"). Typing searches the full scoped facet on the server,
+  including values beyond the initial 100 shown.
 - On narrow screens the whole filter sidebar collapses behind a **Filters** toggle
   (with an active-filter count) that opens and closes it.
 

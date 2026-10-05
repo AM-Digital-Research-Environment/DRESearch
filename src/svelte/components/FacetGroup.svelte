@@ -1,21 +1,51 @@
 <script lang="ts">
-  import type { FacetCount } from '../lib/types';
+  import type { FacetCount, FacetSearch } from '../lib/types';
   import { formatNumber, t } from '../lib/i18n';
   import { foldAccents } from '../lib/text';
 
   interface Props {
     field: string;
+    searchValues?: FacetSearch;
     label: string;
     counts: FacetCount[];
     selected: string[];
     onToggle: (field: string, value: string, checked: boolean) => void;
   }
 
-  const { field, label, counts, selected, onToggle }: Props = $props();
+  const { field, label, counts, selected, onToggle, searchValues }: Props = $props();
 
   const COLLAPSED = 8;
   let open = $state(true);
   let query = $state('');
+  let remote = $state<FacetCount[] | null>(null);
+  let loading = $state(false);
+  let failed = $state(false);
+
+  $effect(() => {
+    const value = query.trim();
+    const search = searchValues;
+    const controller = new AbortController();
+    remote = null;
+    failed = false;
+    loading = value !== '' && !!search;
+    if (!value || !search) return;
+    const timer = window.setTimeout(() => {
+      search(field, value, controller.signal)
+        .then((result) => {
+          if (!controller.signal.aborted) remote = result;
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) failed = true;
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) loading = false;
+        });
+    }, 250);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  });
 
   // Once a facet has more values than fit comfortably, offer a type-to-filter box
   // and scroll the list — no "show N more" expander.
@@ -29,6 +59,7 @@
     if (q === '') {
       return counts;
     }
+    if (searchValues) return remote ?? [];
     return counts.filter((c) => foldAccents(c.value).includes(q));
   });
 </script>
@@ -60,6 +91,12 @@
       </div>
     {/if}
 
+    {#if loading}
+      <p role="status">{t('loading_results')}</p>
+    {:else if failed}
+      <p role="status">{t('facet_search_failed')}</p>
+    {/if}
+
     {#if visible.length > 0}
       <ul class="dre-facet__list">
         {#each visible as c (c.value)}
@@ -77,7 +114,7 @@
           </li>
         {/each}
       </ul>
-    {:else if searching}
+    {:else if searching && !loading && !failed}
       <p class="dre-facet__nomatch">{t('facet_no_matches')}</p>
     {/if}
   {/if}

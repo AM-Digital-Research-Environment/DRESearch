@@ -3,6 +3,19 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.22.0] - 2026-10-05
+
+- Enforce public resource, value, linked authority and media visibility throughout indexing.
+- Queue and batch incremental updates durably, capture former dependencies, replay changes across rebuilds and protect live aliases after ambiguous promotion responses.
+- Fix contributor filters, full-text snippets, stale federated tab responses and long-tail facet search.
+- Align stopwords across result modes; disable internal analytics, add anonymous deliberate-query capture, shared cache invalidation, bounded HTTP timeouts and recovery controls.
+- Expand lifecycle and Typesense regression coverage and enforce PHP style in CI.
+- Preserve Omeka's PSR Log compatibility with Monolog 2, append the module autoloader after core, and update PHP_CodeSniffer to its patched release.
+- Update Vitest and affected build/test transitive dependencies within their existing major versions; the npm dependency audit is clean.
+
+**Upgrade:** run Omeka's module upgrade, then **Reindex all corpora**. Search pauses
+until the new visibility rules have been applied. See [the operations runbook](docs/operations.md#upgrading-to-1220).
+
 ## [1.21.3] - 2026-09-07
 
 ### Fixed

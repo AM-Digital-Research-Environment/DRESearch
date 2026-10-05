@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Indexer;
@@ -97,5 +98,4 @@ final class ProjectMapper implements MapperInterface
 
         return $doc;
     }
-
 }

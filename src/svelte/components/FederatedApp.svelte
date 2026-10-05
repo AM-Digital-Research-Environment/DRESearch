@@ -83,14 +83,16 @@
       cacheQuery = q;
       countsQuery = null;
     }
+    const id = ++requestId;
+    controller?.abort();
+    isLoading = false;
+    error = null;
     const cacheKey = `${profile}:${page}`;
     if (cache[cacheKey]) {
       if (profile === ALL) unionResponse = cache[cacheKey];
       else activeResponse = cache[cacheKey];
       return;
     }
-    const id = ++requestId;
-    controller?.abort();
     controller = new AbortController();
     isLoading = true;
     error = null;
@@ -112,6 +114,7 @@
                   q,
                   per_page: 1,
                   include_counts: true,
+                  record_query: false,
                 },
                 controller.signal,
               );
@@ -240,6 +243,7 @@
       per_page: meta.per_page,
       item_url_base: bootstrap.item_url_base,
       endpoints: {
+        facet: bootstrap.endpoints.facet,
         search: bootstrap.endpoints.search,
         export: bootstrap.endpoints.export,
         suggest: bootstrap.endpoints.suggest,

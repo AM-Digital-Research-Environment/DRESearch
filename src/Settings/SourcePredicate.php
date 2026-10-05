@@ -52,7 +52,7 @@ final class SourcePredicate
             $parts[] = 'id IN (SELECT item_id FROM item_item_set WHERE item_set_id = ' . $itemSetId . ')';
         }
         if ($requirePropId !== null) {
-            $parts[] = 'id IN (SELECT resource_id FROM value WHERE property_id = ' . $requirePropId . ')';
+            $parts[] = 'id IN (SELECT resource_id FROM value WHERE property_id = ' . $requirePropId . ' AND is_public = 1)';
         }
         if ($parts === []) {
             return '';

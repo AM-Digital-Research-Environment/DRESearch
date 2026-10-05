@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Search;
@@ -95,8 +96,7 @@ final class QueryBuilder
     public function __construct(
         private readonly SearchProfile $profile,
         private readonly ?string $serverFilter = null,
-    )
-    {
+    ) {
     }
 
     /** @param array<string,mixed> $req */
@@ -109,6 +109,7 @@ final class QueryBuilder
         $perPage = max(1, min(self::PER_PAGE_MAX, $perPage));
 
         $params = [
+            'enable_analytics' => false,
             'q'         => $isBrowse ? '*' : $q,
             'query_by'  => $this->profile->queryBy(),
             'filter_by' => $this->buildFilter($req),
@@ -154,12 +155,18 @@ final class QueryBuilder
                 $queryFields,
                 static fn(string $f): bool => !in_array($f, $longTextFields, true)
             ));
+            $params['highlight_fields'] = implode(',', $queryFields);
+            $params['enable_highlight_v1'] = false;
             $params['highlight_start_tag'] = self::HL_START;
             $params['highlight_end_tag'] = self::HL_END;
             $params['highlight_affix_num_tokens'] = 8;
             if ($fullFields !== []) {
                 $params['highlight_full_fields'] = implode(',', $fullFields);
             }
+        }
+        if (!$isBrowse && !empty($req['record_query']) && !empty($req['analytics_id'])) {
+            $params['enable_analytics'] = true;
+            $params['x-typesense-user-id'] = $req['analytics_id'];
         }
         return $params;
     }
@@ -185,6 +192,8 @@ final class QueryBuilder
             $displayFields,
         );
         return [
+            'enable_analytics' => false,
+            'highlight_fields' => 'none',
             'q'              => $q,
             'query_by'       => 'title',
             'prefix'         => true,
@@ -233,19 +242,18 @@ final class QueryBuilder
         // total regardless, and include_fields:id avoids shipping document bodies.
         $params['per_page'] = 1;
         $params['include_fields'] = 'id';
-        // Drop stopwords from the federated tab counts (like the highlight/facet
-        // params): a badge is an approximate count, and not referencing the set
-        // keeps the multi_search resilient if it isn't provisioned yet.
+        // Keep matching semantics identical while dropping presentation work.
         unset(
             $params['facet_by'],
             $params['max_facet_values'],
             $params['exclude_fields'],
-            $params['stopwords'],
             $params['highlight_full_fields'],
             $params['highlight_start_tag'],
             $params['highlight_end_tag'],
             $params['highlight_affix_num_tokens'],
         );
+        $params['highlight_fields'] = 'none';
+        $params['enable_analytics'] = false;
         return $params;
     }
 
@@ -269,9 +277,7 @@ final class QueryBuilder
         ]);
         $params['collection'] = $this->profile->collection();
         $params['sort_by'] = $isBrowse ? 'title:asc' : '_text_match:desc,title:asc';
-        // A union across many collections should not fail because a fresh
-        // server is missing the optional stopword set.
-        unset($params['page'], $params['per_page'], $params['stopwords']);
+        unset($params['page'], $params['per_page']);
         return $params;
     }
 
@@ -293,12 +299,13 @@ final class QueryBuilder
         unset(
             $params['facet_by'],
             $params['max_facet_values'],
-            $params['stopwords'],
             $params['highlight_full_fields'],
             $params['highlight_start_tag'],
             $params['highlight_end_tag'],
             $params['highlight_affix_num_tokens'],
         );
+        $params['highlight_fields'] = 'none';
+        $params['enable_analytics'] = false;
         return $params;
     }
 
@@ -333,6 +340,8 @@ final class QueryBuilder
             ['is_public'],
         )));
         $params['exclude_fields'] = implode(',', $exclude);
+        $params['highlight_fields'] = 'none';
+        $params['enable_analytics'] = false;
         return $params;
     }
 
@@ -399,6 +408,17 @@ final class QueryBuilder
             $params['highlight_end_tag'],
             $params['highlight_affix_num_tokens'],
         );
+        $params['highlight_fields'] = 'none';
+        $params['enable_analytics'] = false;
+        return $params;
+    }
+
+    public function facetSearch(array $req, string $field, string $query): array
+    {
+        $params = $this->facetCountsFor($req, $field);
+        if ($query !== '') {
+            $params['facet_query'] = $field . ':' . $query;
+        }
         return $params;
     }
 
@@ -410,9 +430,11 @@ final class QueryBuilder
     public function yearStats(): array
     {
         return [
+            'enable_analytics' => false,
+            'highlight_fields' => 'none',
             'q'          => '*',
             'query_by'   => 'title',
-            'filter_by'  => 'is_public:=true',
+            'filter_by'  => $this->buildFilter([]),
             'facet_by'   => implode(',', $this->profile->yearStatFields()),
             'page'       => 1,
             'per_page'   => 1,

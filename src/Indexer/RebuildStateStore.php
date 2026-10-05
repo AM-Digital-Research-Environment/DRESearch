@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Indexer;
@@ -10,6 +11,14 @@ final class RebuildStateStore
 {
     public function __construct(private readonly Connection $connection)
     {
+    }
+
+    public function dirtyRevision(string $profile): string
+    {
+        return (string) $this->connection->executeQuery(
+            'SELECT dirty_revision FROM dre_search_profile_state WHERE profile = :profile',
+            ['profile' => $profile],
+        )->fetchOne();
     }
 
     public function activeJobId(string $profile): ?string
@@ -81,6 +90,8 @@ final class RebuildStateStore
         int $attempted,
         int $imported,
         int $failed,
+        ?string $dirtyRevision = null,
+        ?int $documents = null,
     ): void {
         $now = gmdate('Y-m-d H:i:s');
         $this->connection->transactional(function (Connection $connection) use (
@@ -91,6 +102,8 @@ final class RebuildStateStore
             $attempted,
             $imported,
             $failed,
+            $dirtyRevision,
+            $documents,
             $now,
         ): void {
             $connection->executeStatement(
@@ -113,17 +126,19 @@ final class RebuildStateStore
             $connection->executeStatement(
                 'UPDATE dre_search_profile_state SET status = :status, live_collection = :collection,'
                 . ' previous_collection = :previous, active_job_id = NULL, active_collection = NULL,'
-                . ' dirty = 0, dirty_reason = NULL, last_success_at = :now, finished_at = :now,'
+                . ' dirty_reason = IF(dirty_revision = :revision, NULL, dirty_reason),'
+                . ' dirty = IF(dirty_revision = :revision, 0, dirty), last_success_at = :now, finished_at = :now,'
                 . ' last_duration_ms = :duration, last_documents = :documents, documents_attempted = :attempted,'
                 . ' documents_imported = :imported, documents_failed = :failed, last_error_code = NULL,'
                 . ' updated_at = :now WHERE profile = :profile',
                 [
+                    'revision' => $dirtyRevision ?? '',
                     'status' => 'live',
                     'collection' => $collection,
                     'previous' => $previous,
                     'now' => $now,
                     'duration' => $durationMs,
-                    'documents' => $imported,
+                    'documents' => $documents ?? $imported,
                     'attempted' => $attempted,
                     'imported' => $imported,
                     'failed' => $failed,
@@ -184,10 +199,10 @@ final class RebuildStateStore
         $now = gmdate('Y-m-d H:i:s');
         foreach ($profiles as $profile) {
             $this->connection->executeStatement(
-                'INSERT INTO dre_search_profile_state (profile, status, dirty, dirty_reason, updated_at)'
-                . ' VALUES (:profile, :status, 1, :reason, :now)'
-                . ' ON DUPLICATE KEY UPDATE dirty = 1, dirty_reason = VALUES(dirty_reason), updated_at = VALUES(updated_at)',
-                ['profile' => $profile, 'status' => 'stale', 'reason' => mb_substr($reason, 0, 255), 'now' => $now],
+                'INSERT INTO dre_search_profile_state (profile, status, dirty, dirty_reason, dirty_revision, updated_at)'
+                . ' VALUES (:profile, :status, 1, :reason, :revision, :now)'
+                . ' ON DUPLICATE KEY UPDATE dirty = 1, dirty_revision = VALUES(dirty_revision), dirty_reason = VALUES(dirty_reason), updated_at = VALUES(updated_at)',
+                ['revision' => bin2hex(random_bytes(16)), 'profile' => $profile, 'status' => 'stale', 'reason' => mb_substr($reason, 0, 255), 'now' => $now],
             );
         }
     }

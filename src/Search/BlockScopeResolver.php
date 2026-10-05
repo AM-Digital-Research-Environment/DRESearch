@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Search;
@@ -9,21 +10,6 @@ use DRESearch\Search\Exception\RequestValidationException;
 /** Resolves enforceable block scope from persisted server-side block data. */
 final class BlockScopeResolver
 {
-    private const LAYOUT_PROFILES = [
-        'dreSearch' => 'research_items',
-        'dreSearchProjects' => 'research_projects',
-        'dreSearchPublications' => 'research_publications',
-        'dreSearchPodcasts' => 'research_podcasts',
-        'dreSearchVideos' => 'research_videos',
-        'dreSearchPeople' => 'research_people',
-        'dreSearchSections' => 'research_sections',
-        'dreSearchOrganisations' => 'research_organisations',
-        'dreSearchGenres' => 'research_genres',
-        'dreSearchLanguages' => 'research_languages',
-        'dreSearchLocations' => 'research_locations',
-        'dreSearchSubjects' => 'research_subjects',
-    ];
-
     public function __construct(private readonly Connection $connection)
     {
     }
@@ -40,7 +26,7 @@ final class BlockScopeResolver
         if ($row === false) {
             throw new RequestValidationException('unknown_block_scope', 'The requested block scope does not exist.');
         }
-        $expected = self::LAYOUT_PROFILES[(string) ($row['layout'] ?? '')] ?? null;
+        $expected = \DRESearch\Settings\BlockProfiles::PROFILES[(string) ($row['layout'] ?? '')] ?? null;
         if ($expected === null || $expected !== $profile) {
             throw new RequestValidationException('block_scope_mismatch', 'The block scope does not match the requested profile.');
         }

@@ -13,6 +13,7 @@ const ENGLISH_STRINGS: Record<string, string> = {
   search_placeholder_term: 'Search terms…',
   clear_search: 'Clear search',
 
+  facet_search_failed: 'Could not load facet values. Edit your search to retry.',
   filters: 'Filters',
   clear_all: 'Clear all',
   active_filters: 'Active filters',

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Service\Controller;
@@ -18,6 +19,7 @@ final class MaintenanceControllerFactory implements FactoryInterface
             $container->get(TypesenseClientProvider::class),
             $container->get(ProfileRegistry::class),
             $container->get(RebuildStateStore::class),
+            new \DRESearch\Indexer\ChangeQueue($container->get('Omeka\Connection')),
         );
     }
 }

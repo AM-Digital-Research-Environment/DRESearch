@@ -35,6 +35,16 @@ jobs:
       matrix:
         php: ['8.2', '8.3', '8.4', '8.5']
     services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: dre-search-ci-password
+          MYSQL_ROOT_HOST: '%'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pdre-search-ci-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
       typesense:
         # Keep this on the version the DRE stack actually runs (currently the
         # latest stable, 30.2). The schema test asserts what the *server*
@@ -52,6 +62,9 @@ jobs:
           TYPESENSE_API_KEY: dre-search-ci-key
           TYPESENSE_DATA_DIR: /data
     env:
+      OMEKA_VENDOR: /tmp/omeka-s/vendor/autoload.php
+      DRE_TEST_MYSQL_HOST: 127.0.0.1
+      DRE_TEST_MYSQL_PASSWORD: dre-search-ci-password
       TYPESENSE_HOST: 127.0.0.1
       TYPESENSE_PORT: 8108
       TYPESENSE_API_KEY: dre-search-ci-key
@@ -60,13 +73,19 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: dom, json, mbstring, pdo_sqlite
+          extensions: dom, json, mbstring, pdo_sqlite, pdo_mysql
           coverage: none
           tools: composer:v2
+      - name: Load released Omeka runtime (framework dependencies belong to core)
+        run: |
+          curl --fail --location --retry 3 https://github.com/omeka/omeka-s/releases/download/v4.2.1/omeka-s-4.2.1.zip -o /tmp/omeka-s.zip
+          unzip -q /tmp/omeka-s.zip -d /tmp
+          test -f "$OMEKA_VENDOR"
       - run: composer validate --strict
       - run: composer install --no-interaction --prefer-dist
       - name: PHP syntax
         run: find Module.php config src scripts tests/phpunit -name '*.php' -print0 | xargs -0 -n1 php -l
+      - run: composer lint
       - run: composer test
       - run: composer analyse
 

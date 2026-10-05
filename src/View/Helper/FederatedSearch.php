@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\View\Helper;
@@ -56,6 +57,7 @@ class FederatedSearch extends AbstractDreSearchHelper
             'default_profile' => $default !== null ? $default->name() : '',
             'profiles'        => $profiles,
             'endpoints'       => [
+                'facet' => $view->basePath('/dre-search/api/facet'),
                 'search'      => $view->basePath('/dre-search/api/search'),
                 'export'      => $view->basePath('/dre-search/api/export'),
                 'search_all'  => $view->basePath('/dre-search/api/search-all'),

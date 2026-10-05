@@ -6,6 +6,7 @@
 
 import type {
   Bootstrap,
+  FacetCount,
   ExportRequest,
   ExportResponse,
   MapRequest,
@@ -20,6 +21,23 @@ import type {
   UnionSearchRequest,
 } from './types';
 
+// Ephemeral per-page identity: no IP address, cookie, account ID, or persistent storage.
+let analyticsId: string | undefined;
+const recordedQueries = new Map<string, string>();
+function analytics(q: string, scope: string): { record_query: boolean; analytics_id?: string } {
+  const record = q.trim() !== '' && recordedQueries.get(scope) !== q;
+  recordedQueries.set(scope, q);
+  if (record && !analyticsId && typeof globalThis.crypto !== 'undefined') {
+    analyticsId = Array.from(crypto.getRandomValues(new Uint8Array(16)), (v) =>
+      v.toString(16).padStart(2, '0'),
+    ).join('');
+  }
+  return {
+    record_query: record && !!analyticsId,
+    ...(analyticsId ? { analytics_id: analyticsId } : {}),
+  };
+}
+
 export class SearchApi {
   constructor(
     private readonly endpoints: Bootstrap['endpoints'],
@@ -31,18 +49,32 @@ export class SearchApi {
     const res = await fetch(this.endpoints.search, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(this.withScope(req)),
+      body: JSON.stringify({ ...this.withScope(req), ...analytics(req.q, this.profile) }),
       signal,
     });
     await requireOk(res, 'Search request failed');
     return (await res.json()) as SearchResponse;
   }
 
-  /**
-   * Fetch the CURRENT result set (same query / filters / sort / year scope) for a
-   * client-side export. The server pages internally and caps the count, returning
-   * citation-only documents; the export menu serializes them to txt/json/ris/bibtex.
-   */
+  /** Search facet values beyond the initial top counts, retaining the current scope. */
+  async facet(
+    req: SearchRequest,
+    field: string,
+    query: string,
+    signal: AbortSignal,
+  ): Promise<FacetCount[]> {
+    if (!this.endpoints.facet) return [];
+    const res = await fetch(this.endpoints.facet, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ ...this.withScope(req), facet_field: field, facet_query: query }),
+      signal,
+    });
+    await requireOk(res, 'Facet search failed');
+    return ((await res.json()) as { counts: FacetCount[] }).counts;
+  }
+
+  /** Fetch capped citation documents for the current query, filters, sort and year scope. */
   async export(req: ExportRequest): Promise<ExportResponse> {
     const res = await fetch(this.endpoints.export, {
       method: 'POST',
@@ -142,7 +174,10 @@ export async function searchAll(
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify(req),
+    body: JSON.stringify({
+      ...req,
+      ...(req.record_query === false ? {} : analytics(req.q, req.profile)),
+    }),
     signal,
   });
   await requireOk(res, 'Federated search failed');

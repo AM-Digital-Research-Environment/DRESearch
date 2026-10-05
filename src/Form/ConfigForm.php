@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Form;
@@ -64,13 +65,15 @@ class ConfigForm extends Form
         // Everything optional — a blank host simply disables search. Collection
         // aliases are per-profile config (dre_search.profiles), not set here.
         $inputFilter = $this->getInputFilter();
-        foreach ([
+        foreach (
+            [
             'dre_search_typesense_host',
             'dre_search_typesense_port',
             'dre_search_typesense_protocol',
             'dre_search_typesense_api_key',
             'dre_search_clear_api_key',
-        ] as $name) {
+            ] as $name
+        ) {
             $inputFilter->add(['name' => $name, 'required' => false]);
         }
     }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Search;
@@ -17,10 +18,7 @@ use Laminas\Log\LoggerInterface;
  */
 final class SearchProxy
 {
-    /** @var array<string,array{expires:int,counts:array<string,int>}> */
-    private static array $countCache = [];
-    /** @var array<string,array{expires:int,bounds:?array{min:int,max:int}}> */
-    private static array $yearCache = [];
+    private readonly ?SearchCache $cache;
 
     public function __construct(
         private readonly TypesenseClientProvider $provider,
@@ -29,7 +27,9 @@ final class SearchProxy
         private readonly LoggerInterface $logger,
         /** @var list<string> */
         private readonly array $unionProfiles = [],
+        private readonly ?\Doctrine\DBAL\Connection $connection = null,
     ) {
+        $this->cache = $connection !== null ? new SearchCache($connection) : null;
     }
 
     public function isAvailable(): bool
@@ -42,7 +42,7 @@ final class SearchProxy
     {
         [$profile, $req, $serverFilter] = $this->prepare($profileName, $req, 'search');
         $client = $this->provider->getClient();
-        if ($client === null) {
+        if ($client === null || !$this->ready([$profile->name()])) {
             return $this->unavailable($requestId);
         }
         $started = hrtime(true);
@@ -85,18 +85,9 @@ final class SearchProxy
         ?string $requestId,
     ): ?array {
         try {
-            return $collection->documents->search($params);
-        } catch (\Throwable $e) {
-            if (isset($params['stopwords']) && $this->isStopwordError($e)) {
-                unset($params['stopwords']);
-                try {
-                    return $collection->documents->search($params);
-                } catch (\Throwable $retry) {
-                    $this->logBackendFailure('search', $retry, $profile, $requestId);
-                    return null;
-                }
-            }
-            $this->logBackendFailure('search', $e, $profile, $requestId);
+            return SearchExecutor::single($collection, $params);
+        } catch (\Throwable $error) {
+            $this->logBackendFailure('search', $error, $profile, $requestId);
             return null;
         }
     }
@@ -126,7 +117,7 @@ final class SearchProxy
             $searches[] = $builder->facetCountsFor($req, $field);
         }
         try {
-            $response = $client->multiSearch->perform(['searches' => $searches]);
+            $response = SearchExecutor::multi($client, ['searches' => $searches]);
         } catch (\Throwable $e) {
             // Non-fatal: log once, then let the caller run the plain search.
             $this->logBackendFailure('facet_recount', $e, $profile, $requestId);
@@ -240,7 +231,7 @@ final class SearchProxy
     {
         [$profile, $req, $serverFilter] = $this->prepare($profileName, $req, 'export');
         $client = $this->provider->getClient();
-        if ($client === null) {
+        if ($client === null || !$this->ready([$profile->name()])) {
             return $this->unavailableExport($requestId);
         }
         $started = hrtime(true);
@@ -251,22 +242,11 @@ final class SearchProxy
 
         $docs = [];
         $found = 0;
-        // Mirror search()'s missing-stopword-set degradation: drop stopwords and
-        // retry the page once, then carry on without them.
-        $useStopwords = true;
         for ($page = 1; $page <= $pages; $page++) {
             $params = $builder->export($req, $page);
-            if (!$useStopwords) {
-                unset($params['stopwords']);
-            }
             try {
-                $result = $collection->documents->search($params);
+                $result = SearchExecutor::single($collection, $params);
             } catch (\Throwable $e) {
-                if ($useStopwords && isset($params['stopwords']) && $this->isStopwordError($e)) {
-                    $useStopwords = false;
-                    $page--; // retry this page without stopwords
-                    continue;
-                }
                 $this->logBackendFailure('export', $e, $profile, $requestId);
                 return $this->unavailableExport($requestId);
             }
@@ -307,8 +287,7 @@ final class SearchProxy
         string $q,
         ?int $blockId = null,
         ?string $requestId = null,
-    ): array
-    {
+    ): array {
         $q = SearchRequest::query($q);
         $profile = $this->registry->get($profileName);
         if ($profile === null) {
@@ -316,8 +295,8 @@ final class SearchProxy
         }
         $serverFilter = $this->scopeResolver->resolve($blockId, $profile->name());
         $client = $this->provider->getClient();
-        if ($client === null || $q === '') {
-            return ['available' => $client !== null, 'suggestions' => []];
+        if ($client === null || !$this->ready([$profile->name()]) || $q === '') {
+            return ['available' => $client !== null && $this->ready([$profile->name()]), 'suggestions' => []];
         }
         try {
             $result = $client->collections[$profile->collection()]
@@ -355,12 +334,11 @@ final class SearchProxy
         string $q,
         ?callable $translate = null,
         ?string $requestId = null,
-    ): array
-    {
+    ): array {
         $q = SearchRequest::query($q);
         $client = $this->provider->getClient();
-        if ($client === null || $q === '') {
-            return ['available' => $client !== null, 'groups' => []];
+        if ($client === null || !$this->ready($this->registry->names()) || $q === '') {
+            return ['available' => $client !== null && $this->ready($this->registry->names()), 'groups' => []];
         }
         $translate ??= static fn(string $s): string => $s;
 
@@ -371,7 +349,7 @@ final class SearchProxy
         }
 
         try {
-            $response = $client->multiSearch->perform(['searches' => $searches]);
+            $response = SearchExecutor::multi($client, ['searches' => $searches]);
         } catch (\Throwable $e) {
             $profile = $profiles[0] ?? $this->registry->default();
             if ($profile !== null) {
@@ -425,7 +403,7 @@ final class SearchProxy
         [$profile, $req] = $this->prepare($activeProfile, $req, 'search');
         $activeProfile = $profile->name();
         $client = $this->provider->getClient();
-        if ($client === null) {
+        if ($client === null || !$this->ready($this->registry->names())) {
             return ['available' => false, 'counts' => [], 'active' => $this->unavailable($requestId)];
         }
 
@@ -437,21 +415,23 @@ final class SearchProxy
         ];
         $counts = [];
         if (!empty($req['include_counts'])) {
-            $cacheKey = hash('sha256', json_encode($countReq, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '');
-            $cached = self::$countCache[$cacheKey] ?? null;
-            if ($cached !== null && $cached['expires'] >= time()) {
-                $counts = $cached['counts'];
+            $cacheKey = $this->cacheKey('counts:' . serialize([$profiles, $countReq]));
+            $cached = $this->cacheGet($cacheKey);
+            if ($cached !== null) {
+                $counts = $cached;
             } else {
                 $searches = [];
                 foreach ($profiles as $countProfile) {
                     $searches[] = (new QueryBuilder($countProfile))->countOnly($countReq);
                 }
                 try {
-                    $response = $client->multiSearch->perform(['searches' => $searches]);
+                    $response = SearchExecutor::multi($client, ['searches' => $searches]);
                     foreach ($profiles as $i => $countProfile) {
-                        $counts[$countProfile->name()] = (int) ($response['results'][$i]['found'] ?? 0);
+                        if (isset($response['results'][$i]['found'])) {
+                            $counts[$countProfile->name()] = (int) $response['results'][$i]['found'];
+                        }
                     }
-                    self::$countCache[$cacheKey] = ['expires' => time() + 30, 'counts' => $counts];
+                    $this->cachePut($cacheKey, $counts, 30);
                 } catch (\Throwable $e) {
                     $this->logBackendFailure('federated_count', $e, $profile, $requestId);
                     $counts = [];
@@ -479,7 +459,7 @@ final class SearchProxy
     {
         $validated = SearchRequest::union($req);
         $client = $this->provider->getClient();
-        if ($client === null) {
+        if ($client === null || !$this->ready($this->registry->names())) {
             return $this->unavailable($requestId);
         }
 
@@ -501,7 +481,8 @@ final class SearchProxy
         }
         $started = hrtime(true);
         try {
-            $result = $client->multiSearch->perform(
+            $result = SearchExecutor::multi(
+                $client,
                 ['union' => true, 'searches' => $searches],
                 ['page' => $validated['page'], 'per_page' => $validated['per_page']],
             );
@@ -535,7 +516,7 @@ final class SearchProxy
             throw new RequestValidationException('map_unavailable', 'This search profile does not provide map coordinates.');
         }
         $client = $this->provider->getClient();
-        if ($client === null) {
+        if ($client === null || !$this->ready([$profile->name()])) {
             return $this->unavailableMap($requestId);
         }
 
@@ -547,7 +528,7 @@ final class SearchProxy
         $started = hrtime(true);
         for ($page = 1; $page <= $pages; $page++) {
             try {
-                $result = $collection->documents->search($builder->map($validated, $page));
+                $result = SearchExecutor::single($collection, $builder->map($validated, $page));
             } catch (\Throwable $e) {
                 $this->logBackendFailure('map', $e, $profile, $requestId);
                 return $this->unavailableMap($requestId);
@@ -563,6 +544,9 @@ final class SearchProxy
             }
         }
         $docs = array_slice($docs, 0, QueryBuilder::MAP_MAX_HITS);
+        if (count($docs) !== min($found, QueryBuilder::MAP_MAX_HITS)) {
+            return $this->unavailableMap($requestId);
+        }
         $this->logMetric('map', $started, $profile, $requestId, ['found' => $found, 'mapped' => count($docs)]);
         return [
             'available' => true,
@@ -584,13 +568,13 @@ final class SearchProxy
     {
         $profile = $this->registry->get($profileName);
         $client = $this->provider->getClient();
-        if ($profile === null || $client === null || !$profile->hasYearFacet()) {
+        if ($profile === null || $client === null || !$this->ready([$profile->name()]) || !$profile->hasYearFacet()) {
             return null;
         }
-        $cacheKey = $profile->name();
-        $cached = self::$yearCache[$cacheKey] ?? null;
-        if ($cached !== null && $cached['expires'] >= time()) {
-            return $cached['bounds'];
+        $cacheKey = $this->cacheKey('years:' . serialize($profile));
+        $cached = $this->cacheGet($cacheKey);
+        if ($cached !== null) {
+            return $cached;
         }
         try {
             $result = $client->collections[$profile->collection()]
@@ -619,8 +603,77 @@ final class SearchProxy
             return null;
         }
         $bounds = ['min' => $min, 'max' => $max];
-        self::$yearCache[$cacheKey] = ['expires' => time() + 300, 'bounds' => $bounds];
+        $this->cachePut($cacheKey, $bounds, 300);
         return $bounds;
+    }
+
+    public function facet(string $profileName, array $input, ?string $requestId = null): array
+    {
+        [$profile, $req, $scope] = $this->prepare($profileName, $input, 'facet');
+        $client = $this->provider->getClient();
+        if ($client === null || !$this->ready([$profile->name()])) {
+            return ['available' => false, 'counts' => []];
+        }
+        $field = $req['facet_field'];
+        $params = (new QueryBuilder($profile, $scope))->facetSearch($req, $field, $req['facet_query']);
+        $result = $this->runSearch($client->collections[$profile->collection()], $params, $profile, $requestId);
+        if ($result === null) {
+            return ['available' => false, 'counts' => []];
+        }
+        return ['available' => true, 'counts' => array_map(
+            static fn(array $row): array => ['value' => (string) $row['value'], 'count' => (int) $row['count']],
+            $this->keepSelectedListed($this->facetCountsOf($result, $field) ?? [], $req['filters'][$field] ?? []),
+        )];
+    }
+
+    private function ready(array $profiles): bool
+    {
+        if ($this->connection === null || $profiles === []) {
+            return true;
+        }
+        try {
+            $placeholders = implode(',', array_fill(0, count($profiles), '?'));
+            $pending = $this->connection->executeQuery(
+                'SELECT 1 FROM dre_search_change WHERE profile IN (' . $placeholders . ') LIMIT 1',
+                $profiles,
+            )->fetchOne();
+            $dirty = $this->connection->executeQuery(
+                'SELECT 1 FROM dre_search_profile_state WHERE dirty = 1 AND profile IN (' . $placeholders . ') LIMIT 1',
+                $profiles,
+            )->fetchOne();
+            return $pending === false && $dirty === false;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    private function cacheKey(string $context): ?string
+    {
+        try {
+            return $this->cache?->key($this->provider->cacheNamespace() . ':' . $context);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function cacheGet(?string $key): ?array
+    {
+        try {
+            return $key !== null ? $this->cache?->get($key) : null;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function cachePut(?string $key, array $value, int $ttl): void
+    {
+        try {
+            if ($key !== null) {
+                $this->cache?->put($key, $value, $ttl);
+            }
+        } catch (\Throwable) {
+            // Cache failure must not hide an otherwise valid search result.
+        }
     }
 
     private function normalize(array $result, SearchProfile $profile): array
@@ -755,16 +808,7 @@ final class SearchProxy
         return ($end !== null && $end !== $start) ? $start . '–' . $end : (string) $start;
     }
 
-    /** Whether a Typesense error is a missing-stopword-set failure (message-based). */
-    private function isStopwordError(\Throwable $e): bool
-    {
-        return stripos($e->getMessage(), 'stopword') !== false;
-    }
-
-    /**
-     * @param array<string,mixed> $req
-     * @return array{0:SearchProfile,1:array<string,mixed>,2:?string}
-     */
+    /** Validate public input before resolving trusted persisted block scope. */
     private function prepare(string $profileName, array $req, string $mode): array
     {
         $profile = $this->registry->get($profileName);

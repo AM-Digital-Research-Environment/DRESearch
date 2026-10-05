@@ -49,8 +49,11 @@ $form->prepare();
             <td>
                 <?php $state = $p['state']; ?>
                 <strong><?= $this->escapeHtml($this->translate((string) ($state['status'] ?? 'Not built'))) ?></strong>
+                <?php if (!empty($p['pending'])): ?>
+                    <div><?= $this->escapeHtml(sprintf($this->translate('%d pending changes'), $p['pending'])) ?></div>
+                <?php endif; ?>
                 <?php if (!empty($state['dirty'])): ?>
-                    <div class="warning"><?= $this->translate('Content changed; a full rebuild is recommended.') ?></div>
+                    <div class="warning"><?= $this->translate('Search is paused until a full rebuild completes.') ?></div>
                 <?php endif; ?>
                 <?php if (!empty($state['live_collection'])): ?>
                     <div><code><?= $this->escapeHtml((string) $state['live_collection']) ?></code></div>
@@ -114,6 +117,7 @@ $form->prepare();
     <?= $this->form()->openTag($form) ?>
     <?= $this->formHidden($form->get('csrf')) ?>
     <p class="dre-search-reindex-all">
+        <button type="submit" class="button" name="drain_queue" value="1"><?= $this->translate('Retry pending changes') ?></button>
         <button type="submit" class="button" name="reindex_all" value="1">
             <?= $this->translate('Reindex all corpora') ?>
         </button>

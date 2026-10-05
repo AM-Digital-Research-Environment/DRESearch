@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Test;
@@ -17,7 +18,7 @@ final class ValueBagTest extends TestCase
         ]]);
 
         self::assertSame(['Jane Doe', 'John Smith'], $bag->labels('p'));
-        self::assertSame([['Jane Doe', 'John Smith'], ['7', '']], $bag->people('p'));
+        self::assertSame([['Jane Doe', 'Jane Doe', 'John Smith'], ['7', '8', '']], $bag->people('p'));
     }
 
     public function testAllowsOnlyHttpLinksAndNormalizesDoi(): void

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\View\Helper;
@@ -13,6 +14,14 @@ use Laminas\View\Helper\AbstractHelper;
  */
 abstract class AbstractDreSearchHelper extends AbstractHelper
 {
+    /** @return \Laminas\View\Renderer\PhpRenderer */
+    public function getView()
+    {
+        /** @var \Laminas\View\Renderer\PhpRenderer $view */
+        $view = parent::getView();
+        return $view;
+    }
+
     /**
      * Inject the compiled Svelte bundle + styles. headLink/headScript dedupe by
      * URL, so a page that also carries a search *block* loads the bundle once.

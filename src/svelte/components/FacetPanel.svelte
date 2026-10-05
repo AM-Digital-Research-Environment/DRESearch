@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import type { ActiveFilters, Facet } from '../lib/types';
+  import type { ActiveFilters, Facet, FacetSearch } from '../lib/types';
   import { t, matchFieldLabel } from '../lib/i18n';
   import FacetGroup from './FacetGroup.svelte';
   import FilterChip from './FilterChip.svelte';
@@ -9,6 +9,7 @@
   interface Props {
     /** Facet counts from the latest response (arbitrary order). */
     facets: Facet[];
+    searchValues?: FacetSearch;
     /** Display order (the block's configured facet list). */
     order: string[];
     /** field => label. */
@@ -21,8 +22,17 @@
     prepend?: Snippet;
   }
 
-  const { facets, order, labels, selected, activeCount, onToggle, onClearAll, prepend }: Props =
-    $props();
+  const {
+    facets,
+    order,
+    labels,
+    selected,
+    activeCount,
+    onToggle,
+    onClearAll,
+    prepend,
+    searchValues,
+  }: Props = $props();
 
   function labelFor(field: string): string {
     // Sidebar facets carry a server-translated label; a filter added from a result
@@ -89,6 +99,7 @@
             counts={facet.counts}
             selected={selected[facet.field] ?? []}
             {onToggle}
+            {searchValues}
           />
         {/if}
       {/each}

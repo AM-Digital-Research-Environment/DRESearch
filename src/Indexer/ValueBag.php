@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Indexer;
@@ -49,15 +50,18 @@ final class ValueBag
     {
         $names = [];
         $ids = [];
+        $seen = [];
         foreach ($this->rows($term) as $row) {
             $name = trim((string) (($row['title'] ?? '') !== '' ? $row['title'] : ($row['value'] ?? '')));
-            if ($name === '' || isset($names[$name])) {
+            $key = $row['vrid'] !== null ? 'id:' . $row['vrid'] : 'name:' . $name;
+            if ($name === '' || isset($seen[$key])) {
                 continue;
             }
-            $names[$name] = true;
+            $seen[$key] = true;
+            $names[] = $name;
             $ids[] = $row['vrid'] !== null ? (string) $row['vrid'] : '';
         }
-        return [array_keys($names), $ids];
+        return [$names, $ids];
     }
 
     public function firstResourceId(?string $term): ?int

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Settings;
@@ -255,20 +256,44 @@ final class SearchProfile
     }
 
     // ── Identity ────────────────────────────────────────────────────────────
-    public function name(): string { return $this->name; }
-    public function label(): string { return $this->label; }
+    public function name(): string
+    {
+        return $this->name;
+    }
+    public function label(): string
+    {
+        return $this->label;
+    }
 
     /**
      * Optional search-box placeholder ('' = none). Lets corpora that share a card
      * `kind` (e.g. the authority-term corpora) still show a corpus-specific hint;
      * the client falls back to a kind-derived default when this is empty.
      */
-    public function placeholder(): string { return $this->placeholder; }
-    public function collection(): string { return $this->collection; }
-    public function kind(): string { return $this->kind; }
-    public function templateId(): ?int { return $this->templateId; }
-    public function itemSetId(): ?int { return $this->itemSetId; }
-    public function queryBy(): string { return $this->queryBy; }
+    public function placeholder(): string
+    {
+        return $this->placeholder;
+    }
+    public function collection(): string
+    {
+        return $this->collection;
+    }
+    public function kind(): string
+    {
+        return $this->kind;
+    }
+    public function templateId(): ?int
+    {
+        return $this->templateId;
+    }
+    public function itemSetId(): ?int
+    {
+        return $this->itemSetId;
+    }
+    public function queryBy(): string
+    {
+        return $this->queryBy;
+    }
 
     // ── Facets ────────────────────────────────────────────────────────────────
     /** @return list<string> Facet field names, in display order. */
@@ -384,10 +409,22 @@ final class SearchProfile
     }
 
     // ── Dates ─────────────────────────────────────────────────────────────────
-    public function dateMode(): string { return $this->date['mode']; }
-    public function dateProperty(): ?string { return $this->date['property']; }
-    public function dateLabel(): string { return $this->date['label']; }
-    public function isRangeDate(): bool { return $this->date['mode'] === 'range'; }
+    public function dateMode(): string
+    {
+        return $this->date['mode'];
+    }
+    public function dateProperty(): ?string
+    {
+        return $this->date['property'];
+    }
+    public function dateLabel(): string
+    {
+        return $this->date['label'];
+    }
+    public function isRangeDate(): bool
+    {
+        return $this->date['mode'] === 'range';
+    }
 
     /** Whether this corpus has any date at all (single or range). */
     public function hasDate(): bool

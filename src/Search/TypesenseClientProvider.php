@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Search;
@@ -34,6 +35,11 @@ final class TypesenseClientProvider
     ) {
     }
 
+    public function cacheNamespace(): string
+    {
+        return hash('sha256', $this->protocol . '://' . $this->host . ':' . $this->port . ':' . $this->apiKey);
+    }
+
     public function isConfigured(): bool
     {
         return $this->host !== '' && $this->apiKey !== '';
@@ -62,7 +68,9 @@ final class TypesenseClientProvider
                     'port'     => (string) $this->port,
                     'protocol' => $this->protocol,
                 ]],
-                'connection_timeout_seconds' => 5,
+                'client' => new \GuzzleHttp\Client(['connect_timeout' => 2.0, 'timeout' => 10.0]),
+                'num_retries' => 0,
+                'retry_interval_seconds' => 0.1,
             ]);
         } catch (\Throwable) {
             $this->client = null;

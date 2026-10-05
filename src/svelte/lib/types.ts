@@ -61,7 +61,7 @@ export interface Bootstrap {
   per_page: number;
   /** Result links are built as `${item_url_base}/${doc.id}`. */
   item_url_base: string;
-  endpoints: { search: string; export: string; suggest: string; map: string };
+  endpoints: { facet?: string; search: string; export: string; suggest: string; map: string };
   /** Server-rendered first page, so the block paints without a round-trip. */
   initial_response?: SearchResponse;
   /** Seed query (federated results page reuses App per corpus with a shared query). */
@@ -347,6 +347,7 @@ export interface FederatedBootstrap {
   default_profile: string;
   profiles: ProfileMeta[];
   endpoints: {
+    facet?: string;
     search: string;
     export: string;
     search_all: string;
@@ -366,6 +367,7 @@ export interface SearchAllResponse {
 
 /** Shared request for the federated search: free-text + optional year only. */
 export interface SearchAllRequest {
+  record_query?: boolean;
   profile: string;
   q: string;
   page?: number;
@@ -384,3 +386,9 @@ export interface UnionSearchRequest {
   page?: number;
   per_page?: number;
 }
+
+export type FacetSearch = (
+  field: string,
+  query: string,
+  signal: AbortSignal,
+) => Promise<FacetCount[]>;

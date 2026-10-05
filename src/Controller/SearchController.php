@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Controller;
@@ -32,6 +33,16 @@ class SearchController extends AbstractActionController
         });
     }
 
+    public function apiFacetAction(): Response
+    {
+        return $this->respond(function (string $requestId): array {
+            $this->requireMethod(['POST']);
+            $this->requireRateLimit('facet', 120);
+            $body = $this->readJsonBody();
+            return $this->proxy->facet(SearchRequest::profile($body['profile'] ?? ''), $body, $requestId);
+        });
+    }
+
     public function apiExportAction(): Response
     {
         return $this->respond(function (string $requestId): array {
@@ -46,6 +57,7 @@ class SearchController extends AbstractActionController
     {
         return $this->respond(function (string $requestId): array {
             $this->requireMethod(['GET', 'POST']);
+            $this->requireRateLimit('suggest', 120);
             $profile = SearchRequest::profile(
                 $this->params()->fromQuery('profile') ?? $this->params()->fromPost('profile') ?? '',
             );
@@ -56,13 +68,14 @@ class SearchController extends AbstractActionController
                 $this->params()->fromQuery('block_id') ?? $this->params()->fromPost('block_id')
             );
             return $this->proxy->suggest($profile, $q, $blockId, $requestId);
-        }, 'public, max-age=15, stale-while-revalidate=30');
+        }, 'no-store');
     }
 
     public function apiSuggestAllAction(): Response
     {
         return $this->respond(function (string $requestId): array {
             $this->requireMethod(['GET', 'POST']);
+            $this->requireRateLimit('suggest', 120);
             $q = SearchRequest::query(
                 $this->params()->fromQuery('q') ?? $this->params()->fromPost('q') ?? '',
             );
@@ -71,7 +84,7 @@ class SearchController extends AbstractActionController
                 fn(string $s): string => (string) $this->translate($s),
                 $requestId,
             );
-        }, 'public, max-age=15, stale-while-revalidate=30');
+        }, 'no-store');
     }
 
     public function apiSearchAllAction(): Response

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Indexer;
@@ -68,7 +69,6 @@ final class StopwordsSync
         // typesense-php v6: $client->stopwords->put($stopwordSet) is the single
         // create-or-update method; the set name travels in the payload (`name`),
         // not as a separate argument. Verified identical to v5.
-        // @phpstan-ignore-next-line  property access on Typesense\Client
         $this->typesense->stopwords->put([
             'name'      => self::SET_NAME,
             'stopwords' => $words,

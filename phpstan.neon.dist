@@ -1,12 +1,11 @@
 parameters:
     level: 5
+    treatPhpDocTypesAsCertain: false
+    stubFiles:
+        - tests/stubs/omeka.stub
     paths:
-        - src/Indexer/ImportResult.php
-        - src/Indexer/ValueBag.php
-        - src/Search/CorpusCounts.php
-        - src/Search/QueryBuilder.php
-        - src/Search/SearchRequest.php
-        - src/Search/Exception
-        - src/Security
-        - src/Settings
+        - src
+        - Module.php
+    bootstrapFiles:
+        - tests/bootstrap.php
     tmpDir: .phpstan-cache

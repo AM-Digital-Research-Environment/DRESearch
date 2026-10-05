@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRESearch\Service;
@@ -20,6 +21,7 @@ final class SearchProxyFactory implements FactoryInterface
             $container->get(BlockScopeResolver::class),
             $container->get('Omeka\Logger'),
             (array) ($container->get('Config')['dre_search']['federated']['union_profiles'] ?? []),
+            $container->get('Omeka\Connection'),
         );
     }
 }
