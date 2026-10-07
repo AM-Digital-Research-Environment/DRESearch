@@ -67,6 +67,61 @@ final class SynonymsTest extends TestCase
         self::assertSame('dre_default', $multi->calls[1]['searches'][0]['stopwords'], 'Only the missing set is dropped.');
     }
 
+    /**
+     * Typesense reports one missing set per answer: on a fresh volume the
+     * stopword error comes first and the synonym error only on the retry. A
+     * single retry turned every search on such a volume into an error.
+     */
+    public function testEachMissingSetIsDroppedInTurn(): void
+    {
+        $multi = new class {
+            public array $calls = [];
+            public function perform(array $body, array $params = []): array
+            {
+                $this->calls[] = $body;
+                $search = $body['searches'][0];
+                if (isset($search['stopwords'])) {
+                    return ['results' => [['code' => 404, 'error' => 'Could not find the stopword set named `dre_default`.']]];
+                }
+                if (isset($search['synonym_sets'])) {
+                    return ['results' => [['code' => 404, 'error' => 'Synonym index not found']]];
+                }
+                return ['results' => [['found' => 3, 'hits' => []]]];
+            }
+        };
+        $result = SearchExecutor::single((object) ['multiSearch' => $multi], 'c', [
+            'q' => 'ivory coast', 'synonym_sets' => 'dre_synonyms', 'stopwords' => 'dre_default',
+        ]);
+        self::assertSame(3, $result['found']);
+        self::assertCount(3, $multi->calls);
+
+        $collection = new class {
+            public object $documents;
+            public function __construct()
+            {
+                $this->documents = new class {
+                    public int $calls = 0;
+                    public function search(array $params): array
+                    {
+                        $this->calls++;
+                        if (isset($params['stopwords'])) {
+                            throw new \RuntimeException('Could not find the stopword set named `dre_default`.');
+                        }
+                        if (isset($params['synonym_sets'])) {
+                            throw new \RuntimeException('Synonym index not found');
+                        }
+                        return ['found' => 4, 'hits' => []];
+                    }
+                };
+            }
+        };
+        $result = SearchExecutor::single((object) ['collections' => ['c' => $collection], 'multiSearch' => $multi], 'c', [
+            'q' => 'ivory coast', 'synonym_sets' => 'dre_synonyms', 'stopwords' => 'dre_default', 'enable_analytics' => true,
+        ]);
+        self::assertSame(4, $result['found'], 'The analytics GET path drops each missing set too.');
+        self::assertSame(3, $collection->documents->calls);
+    }
+
     public function testIvoryCoastFindsCoteDivoireOnTypesense(): void
     {
         if (!getenv('TYPESENSE_HOST')) {

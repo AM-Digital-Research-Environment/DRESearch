@@ -73,28 +73,35 @@ final class SearchExecutor
      */
     public static function multi(object $client, array $body, array $params = []): array
     {
-        try {
-            // @phpstan-ignore property.notFound (a Typesense\Client, duck-typed so tests can fake it)
-            $response = $client->multiSearch->perform($body, $params);
-        } catch (\Throwable $error) {
-            if (self::missingSet($error->getMessage()) === []) {
-                throw $error;
+        // Typesense names one missing set per answer, so a fresh volume with
+        // neither the stopword nor the synonym set needs a retry for each. Every
+        // pass drops at least one new key, so this ends.
+        $dropped = [];
+        while (true) {
+            try {
+                // @phpstan-ignore property.notFound (a Typesense\Client, duck-typed so tests can fake it)
+                $response = $client->multiSearch->perform($body, $params);
+            } catch (\Throwable $error) {
+                if (array_diff(self::missingSet($error->getMessage()), $dropped) === []) {
+                    throw $error;
+                }
+                $response = ['error' => $error->getMessage()];
             }
-            $response = ['error' => $error->getMessage()];
-        }
-        $drop = self::missingSet((string) ($response['error'] ?? ''));
-        foreach ($response['results'] ?? [] as $result) {
-            $drop = array_merge($drop, self::missingSet((string) ($result['error'] ?? '')));
-        }
-        if ($drop !== []) {
+            $missing = self::missingSet((string) ($response['error'] ?? ''));
+            foreach ($response['results'] ?? [] as $result) {
+                $missing = array_merge($missing, self::missingSet((string) ($result['error'] ?? '')));
+            }
+            $drop = array_values(array_diff(array_unique($missing), $dropped));
+            if ($drop === []) {
+                break;
+            }
             foreach ($body['searches'] as &$search) {
-                foreach (array_unique($drop) as $key) {
+                foreach ($drop as $key) {
                     unset($search[$key]);
                 }
             }
             unset($search);
-            // @phpstan-ignore property.notFound (see above)
-            $response = $client->multiSearch->perform($body, $params);
+            $dropped = array_merge($dropped, $drop);
         }
         if (isset($response['error'])) {
             throw new \RuntimeException((string) $response['error']);
@@ -108,19 +115,20 @@ final class SearchExecutor
      */
     private static function get(object $collection, array $params): array
     {
-        try {
-            // @phpstan-ignore property.notFound (a Typesense\Collection, duck-typed for tests)
-            return $collection->documents->search($params);
-        } catch (\Throwable $error) {
-            $drop = array_intersect(self::missingSet($error->getMessage()), array_keys($params));
-            if ($drop === []) {
-                throw $error;
+        // One retry per missing set, as in multi(); each pass removes a key.
+        while (true) {
+            try {
+                // @phpstan-ignore property.notFound (a Typesense\Collection, duck-typed for tests)
+                return $collection->documents->search($params);
+            } catch (\Throwable $error) {
+                $drop = array_intersect(self::missingSet($error->getMessage()), array_keys($params));
+                if ($drop === []) {
+                    throw $error;
+                }
+                foreach ($drop as $key) {
+                    unset($params[$key]);
+                }
             }
-            foreach ($drop as $key) {
-                unset($params[$key]);
-            }
-            // @phpstan-ignore property.notFound (see above)
-            return $collection->documents->search($params);
         }
     }
 
