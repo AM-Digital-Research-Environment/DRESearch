@@ -16,10 +16,33 @@
  * DashboardAssets helper). Reading them is loose coupling, not a dependency:
  * every step degrades, and the CDN remains the floor for a host that has
  * neither module's assets.
+ *
+ * MapLibre 6 ships ES modules only — an entry, a chunk it shares with its
+ * worker, and the worker — and no browser global, so every copy is loaded with
+ * import() and published as `window.maplibregl`, the shape DRE-Visualizations
+ * reads too. (The CDN floor used to request `dist/maplibre-gl.js`, the 5.x UMD
+ * file, which 6.x no longer has: it was a 404.)
  */
 const VERSION = '6.1.0';
-const CDN_JS = `https://cdn.jsdelivr.net/npm/maplibre-gl@${VERSION}/dist/maplibre-gl.js`;
-const CDN_CSS = `https://cdn.jsdelivr.net/npm/maplibre-gl@${VERSION}/dist/maplibre-gl.css`;
+const CDN = `https://cdn.jsdelivr.net/npm/maplibre-gl@${VERSION}/dist/`;
+
+/**
+ * Subresource Integrity for the pinned CDN files: sha384 of jsDelivr's copies
+ * of maplibre-gl@6.1.0 (whose sha256 matched jsDelivr's published hashes).
+ * Changing VERSION means recomputing every one, e.g.
+ *   curl -s <CDN>maplibre-gl.mjs | openssl dgst -sha384 -binary | openssl base64 -A
+ */
+export const CDN_INTEGRITY = {
+  'maplibre-gl.mjs': 'sha384-B+i5EH9X6DFG74Gd1GkROEzOm3aLc7V8zms51GRKlG8Ps7pLTH7atCPGvDmAYntA',
+  'maplibre-gl-shared.mjs':
+    'sha384-zNrUlI/+Cwz2Cn8Fa8SU+hIYgaJqGBpcHcdhn/iOeDoHfh1RxBrXrGeJM34+GEHO',
+  'maplibre-gl-worker.mjs':
+    'sha384-hg+edc019GbBgondUUO+KJzV7jAJOs9nKW8wn0Vwvjr2jTY4edLXIG2dmbn5d7qv',
+  'maplibre-gl.css': 'sha384-Gy41S0IRKagep76pE/h7l/Ptg2JLgQzXwshjlqZOghGGDeDKuJyxmCndqvWZ/vLm',
+} as const;
+
+/** How the entry and the worker import the shared chunk. */
+const SHARED_SPECIFIER = '"./maplibre-gl-shared.mjs"';
 
 /** Carto styles — the fallback when no self-hosted basemap is configured. */
 export const LIGHT_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
@@ -79,52 +102,104 @@ export interface MapLibreGlobal {
   setWorkerUrl?: (url: string) => void;
 }
 
-function addStylesheet(href: string): void {
+function addStylesheet(href: string, integrity?: string): void {
   if (document.querySelector(`link[href="${CSS.escape(href)}"]`)) return;
   const link = document.createElement('link');
   link.rel = 'stylesheet';
+  if (integrity) {
+    link.integrity = integrity;
+    link.crossOrigin = 'anonymous';
+  }
   link.href = href;
   document.head.append(link);
+}
+
+type Global = { maplibregl?: MapLibreGlobal };
+
+function isMapLibre(value: unknown): value is MapLibreGlobal {
+  return typeof (value as Partial<MapLibreGlobal> | null)?.Map === 'function';
+}
+
+/** 2. The copy DRE-Visualizations vendors same-origin (an ES module, like ours). */
+async function loadVendored(libs: RvLibs & { maplibre: string }): Promise<MapLibreGlobal> {
+  if (libs.maplibreCss) addStylesheet(libs.maplibreCss);
+  const namespace: unknown = await import(/* @vite-ignore */ libs.maplibre);
+  // An older vendored UMD build sets the global instead of exporting.
+  const lib = isMapLibre(namespace) ? namespace : (window as unknown as Global).maplibregl;
+  if (!isMapLibre(lib)) {
+    throw new Error('MapLibre loaded without exposing its browser API.');
+  }
+  // The vendored build renames its worker chunk, which it then cannot locate on
+  // its own from a module asset path.
+  if (libs.maplibreWorker && typeof lib.setWorkerUrl === 'function') {
+    lib.setWorkerUrl(libs.maplibreWorker);
+  }
+  return lib;
+}
+
+async function fetchVerified(file: keyof typeof CDN_INTEGRITY): Promise<string> {
+  // A response that does not match its hash rejects here, before any of it runs.
+  const response = await fetch(CDN + file, {
+    integrity: CDN_INTEGRITY[file],
+    credentials: 'omit',
+  });
+  if (!response.ok) throw new Error(`MapLibre: ${file} answered ${response.status}.`);
+  return response.text();
+}
+
+function moduleUrl(code: string): string {
+  return URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
+}
+
+/**
+ * 3. The CDN floor, with every file checked against CDN_INTEGRITY.
+ *
+ * A dynamic import() cannot carry an integrity hash, and neither can the
+ * imports inside the modules it loads. So the three modules are fetched with
+ * `integrity` instead, and linked to each other through blob: URLs — the entry
+ * and the worker import the verified shared chunk — before anything is
+ * imported. The worker URL is handed over explicitly, as for the vendored copy.
+ */
+async function loadFromCdn(): Promise<MapLibreGlobal> {
+  addStylesheet(CDN + 'maplibre-gl.css', CDN_INTEGRITY['maplibre-gl.css']);
+  const [entry, shared, worker] = await Promise.all([
+    fetchVerified('maplibre-gl.mjs'),
+    fetchVerified('maplibre-gl-shared.mjs'),
+    fetchVerified('maplibre-gl-worker.mjs'),
+  ]);
+  const sharedUrl = JSON.stringify(moduleUrl(shared));
+  const link = (code: string): string => {
+    if (!code.includes(SHARED_SPECIFIER)) {
+      throw new Error('MapLibre: unexpected build layout.');
+    }
+    return moduleUrl(code.replaceAll(SHARED_SPECIFIER, sharedUrl));
+  };
+  const lib: unknown = await import(/* @vite-ignore */ link(entry));
+  if (!isMapLibre(lib) || typeof lib.setWorkerUrl !== 'function') {
+    throw new Error('MapLibre loaded without exposing its browser API.');
+  }
+  lib.setWorkerUrl(link(worker));
+  return lib;
 }
 
 let promise: Promise<MapLibreGlobal> | null = null;
 
 export function loadMapLibre(): Promise<MapLibreGlobal> {
-  promise ??= new Promise((resolve, reject) => {
+  promise ??= (async () => {
     // 1. Already on the page — the sibling module loaded it, or we did.
-    const existing = (window as unknown as { maplibregl?: MapLibreGlobal }).maplibregl;
-    if (existing) {
-      resolve(existing);
-      return;
-    }
+    const existing = (window as unknown as Global).maplibregl;
+    if (existing) return existing;
 
     // 2. Vendored same-origin by DRE-Visualizations; 3. the CDN floor.
     const libs = rvLibs();
-    const jsUrl = libs.maplibre ?? CDN_JS;
-    addStylesheet(libs.maplibreCss ?? CDN_CSS);
-
-    const script = document.createElement('script');
-    script.src = jsUrl;
-    script.defer = true;
-    script.onload = () => {
-      const loaded = (window as unknown as { maplibregl?: MapLibreGlobal }).maplibregl;
-      if (!loaded) {
-        promise = null;
-        reject(new Error('MapLibre loaded without exposing its browser API.'));
-        return;
-      }
-      // The vendored build splits its worker into a separate file, which it
-      // cannot locate on its own when loaded from a module asset path.
-      if (libs.maplibreWorker && typeof loaded.setWorkerUrl === 'function') {
-        loaded.setWorkerUrl(libs.maplibreWorker);
-      }
-      resolve(loaded);
-    };
-    script.onerror = () => {
-      promise = null;
-      reject(new Error('MapLibre could not be loaded.'));
-    };
-    document.head.append(script);
+    const lib = libs.maplibre
+      ? await loadVendored({ ...libs, maplibre: libs.maplibre })
+      : await loadFromCdn();
+    (window as unknown as Global).maplibregl = lib;
+    return lib;
+  })().catch((error: unknown) => {
+    promise = null;
+    throw error instanceof Error ? error : new Error('MapLibre could not be loaded.');
   });
   return promise;
 }

@@ -83,6 +83,7 @@ jobs:
           # And assert the things that MUST be there actually are.
           for required in DRESearch/Module.php DRESearch/config/module.ini \
                           DRESearch/asset/dist/dre-search.js DRESearch/asset/dist/dre-search.css \
+                          DRESearch/asset/dist/manifest.json \
                           DRESearch/vendor/autoload.php DRESearch/language/template.pot \
                           DRESearch/data/client-strings.json DRESearch/bin/dre-search; do
             grep -qx "$required" entries.txt || {
@@ -92,6 +93,19 @@ jobs:
           # blank search (asset/dist is built here, not tracked in git).
           grep -q '^DRESearch/asset/dist/chunks/App-.*\.js$' entries.txt || {
             echo "::error::DRESearch.zip carries no App chunk"; exit 1; }
+          # The head preloads what the manifest names (src/View/BundleAssets.php);
+          # a stale manifest would preload chunks the archive does not carry.
+          unzip -p DRESearch.zip DRESearch/asset/dist/manifest.json > dist-manifest.json
+          python3 - <<'PY'
+          import json, sys
+          entries = set(open('entries.txt', encoding='utf-8').read().split())
+          chunks = json.load(open('dist-manifest.json', encoding='utf-8')).values()
+          missing = [f for c in chunks for f in [c['file'], *c.get('css', [])]
+                     if f'DRESearch/asset/dist/{f}' not in entries]
+          if missing:
+              sys.exit('::error::manifest.json names files missing from DRESearch.zip: ' + ', '.join(missing))
+          PY
+          rm -f dist-manifest.json
           echo "Archive shape OK ($(wc -l < entries.txt) entries, $(du -h DRESearch.zip | cut -f1))."
           rm -f entries.txt
       - uses: actions/attest-build-provenance@v4

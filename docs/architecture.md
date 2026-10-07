@@ -107,7 +107,12 @@ search merges a curated set of collection aliases into the federated All tab;
 source markers stored on each document select the safe client card and support
 handoff to its corpus. Location maps page through at most 1,000 matching
 documents carrying a validated `geopoint`; MapLibre loads only after the user
-selects Map.
+selects Map. It prefers a copy already on the page, then the one
+DRE-Visualizations vendors same-origin (`window.RV_LIBS`), and only then
+jsDelivr. MapLibre 6 is ES modules only, so each copy is imported; the CDN's
+three modules are fetched with Subresource Integrity hashes and linked through
+`blob:` URLs, because an `import()` cannot carry a hash itself. A host whose
+Content Security Policy forbids `blob:` scripts should serve the vendored copy.
 
 `ReindexOrchestrator` is the single construction path for one/all rebuild jobs:
 it provisions stopwords, rebuilds profiles, and then attempts optional per-profile

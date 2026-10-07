@@ -5,12 +5,21 @@ import { readUrlState, writeUrlState } from '../../src/svelte/lib/urlState';
 
 describe('improvement contracts', () => {
   it('selects Omeka derivatives without inventing IIIF URLs', () => {
-    const source = 'https://example.test/files/square/abc.jpg';
-    expect(thumbnailFor(source, 'list')).toContain('/files/medium/');
-    expect(thumbnailFor(source, 'gallery')).toContain('/files/large/');
-    expect(thumbnailFor('https://example.test/original.jpg', 'gallery')).toBe(
-      'https://example.test/original.jpg',
-    );
+    const source = 'https://example.test/files/medium/abc.jpg';
+    expect(thumbnailFor(source, 'list')).toEqual({ src: source });
+    expect(thumbnailFor(source, 'avatar')).toEqual({
+      src: 'https://example.test/files/square/abc.jpg',
+    });
+    expect(thumbnailFor(source, 'gallery')).toEqual({
+      src: 'https://example.test/files/large/abc.jpg',
+      srcset:
+        'https://example.test/files/medium/abc.jpg 200w, https://example.test/files/large/abc.jpg 800w',
+      sizes: expect.stringContaining('100vw') as unknown as string,
+    });
+    expect(thumbnailFor('https://example.test/original.jpg', 'gallery')).toEqual({
+      src: 'https://example.test/original.jpg',
+    });
+    expect(thumbnailFor(undefined, 'list')).toBeUndefined();
   });
 
   it('uses one chip model for query, facets, and year scope', () => {

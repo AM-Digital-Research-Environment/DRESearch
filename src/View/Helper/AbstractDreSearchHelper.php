@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DRESearch\View\Helper;
 
+use DRESearch\View\BundleAssets;
 use Laminas\View\Helper\AbstractHelper;
 
 /**
@@ -25,21 +26,14 @@ abstract class AbstractDreSearchHelper extends AbstractHelper
     /**
      * Inject the compiled Svelte bundle + styles. headLink/headScript dedupe by
      * URL, so a page that also carries a search *block* loads the bundle once.
+     *
+     * @param string|null $surface The page chunk this surface mounts, to preload
+     *                             ({@see BundleAssets}); null for the header bar,
+     *                             which mounts from the entry itself.
      */
-    protected function injectBundle(): void
+    protected function injectBundle(?string $surface = null): void
     {
-        $view = $this->getView();
-        // Skeleton + bar-shell styles: the server-rendered placeholder is above
-        // the fold, so these must be present at first paint — keep render-blocking.
-        $view->headLink()->appendStylesheet($view->assetUrl('css/dre-search.css', 'DRESearch'));
-        // The entry stylesheet contains the header UI; page chunks load their own CSS.
-        $view->headLink()->appendStylesheet($view->assetUrl('dist/dre-search.css', 'DRESearch'));
-        $view->headScript()->appendFile(
-            $view->assetUrl('dist/dre-search.js', 'DRESearch'),
-            'module',
-            ['defer' => true]
-        );
-        \DRESearch\View\ClientStrings::inject($view);
+        BundleAssets::inject($this->getView(), $surface);
     }
 
     /**

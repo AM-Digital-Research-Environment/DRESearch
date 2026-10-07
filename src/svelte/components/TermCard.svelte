@@ -3,6 +3,7 @@
   import { t, researchItemsLabel, publicationsLabel } from '../lib/i18n';
   import Highlight from './Highlight.svelte';
   import Sparkline from './Sparkline.svelte';
+  import '../styles/card.css';
   import { associationSeries } from '../lib/sparkline';
 
   /**
@@ -48,25 +49,25 @@
   const series = $derived(associationSeries(doc.item_count, doc.publication_count));
 </script>
 
-<article class="dre-term">
+<article class="dre-shell dre-term">
   <div class="dre-term__head">
-    <h3 class="dre-term__name">
+    <h3 class="dre-shell__title dre-term__name">
       <a href={url}><Highlight value={nameHl ?? name} /></a>
     </h3>
     {#if type}
-      <button type="button" class="dre-term__type" onclick={() => onAddFilter('type_s', type)}>
+      <button type="button" class="dre-shell__tag" onclick={() => onAddFilter('type_s', type)}>
         {type}
       </button>
     {/if}
   </div>
 
   {#if roles.length > 0}
-    <ul class="dre-term__chips">
+    <ul class="dre-shell__chips">
       {#each roles as role (role)}
         <li>
           <button
             type="button"
-            class="dre-term__chip"
+            class="dre-shell__chip dre-shell__chip--role"
             onclick={() => onAddFilter('roles_ss', role)}
           >
             {role}
@@ -79,34 +80,18 @@
   {#if counts.length > 0}
     <div class="dre-term__association">
       <Sparkline values={series} label={t('association_counts', { values: counts.join(', ') })} />
-      <p class="dre-term__counts">{counts.join(' · ')}</p>
+      <p class="dre-shell__counts">{counts.join(' · ')}</p>
     </div>
   {/if}
 </article>
 
 <style>
+  /* The shell, name, tag, chips and counts are styles/card.css. */
   .dre-term {
     display: flex;
     flex-direction: column;
     gap: var(--space-xs, 0.25rem);
-    padding: var(--space-md, 1rem);
-    background: var(--surface, #fdfcf9);
-    border: 1px solid var(--border-light, #eae8e3);
-    border-radius: var(--radius-lg, 0.75rem);
-    box-shadow: var(--shadow-xs, 0 1px 2px 0 rgba(52, 37, 26, 0.07));
-    transition:
-      border-color var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1)),
-      box-shadow var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1));
   }
-  .dre-term:hover {
-    border-color: color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dbd7d1));
-    box-shadow: var(
-      --shadow-md,
-      0 4px 6px -1px rgba(42, 28, 16, 0.14),
-      0 2px 4px -2px rgba(52, 37, 26, 0.07)
-    );
-  }
-
   .dre-term__head {
     display: flex;
     align-items: baseline;
@@ -114,83 +99,7 @@
     gap: var(--space-sm, 0.5rem);
   }
   .dre-term__name {
-    margin: 0;
-    font-size: var(--text-lg, 1.1875rem);
-    line-height: var(--leading-snug, 1.25);
-    font-family: var(--font-display, 'Spectral', Georgia, 'Times New Roman', serif);
-    color: var(--ink-strong, #261d15);
     min-width: 0;
-  }
-  .dre-term__name a {
-    color: inherit;
-    text-decoration: none;
-  }
-  .dre-term__name a:hover {
-    color: var(--primary, #007a50);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-  .dre-term__type {
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    padding: 0.1rem 0.5rem;
-    background: color-mix(in srgb, var(--accent, #ca7210) 16%, var(--surface, #fdfcf9));
-    color: var(--ink-strong, #261d15);
-    border: none;
-    border-radius: var(--radius-full, 9999px);
-    font-family: inherit;
-    font-size: var(--text-xs, 0.8125rem);
-    font-weight: 600;
-    line-height: var(--leading-normal, 1.6);
-    white-space: nowrap;
-    cursor: pointer;
-    transition: background var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
-  }
-  .dre-term__type:hover {
-    background: color-mix(in srgb, var(--accent, #ca7210) 30%, var(--surface, #fdfcf9));
-  }
-  .dre-term__type:focus-visible {
-    outline: 2px solid var(--primary, #007a50);
-    outline-offset: 2px;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
-  }
-  .dre-term__chips {
-    list-style: none;
-    margin: var(--space-xs, 0.25rem) 0 0;
-    padding: 0;
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-xs, 0.25rem);
-  }
-  .dre-term__chip {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.1rem 0.5rem;
-    background: color-mix(in srgb, var(--primary, #007a50) 14%, var(--surface, #fdfcf9));
-    color: var(--ink-strong, #261d15);
-    border: none;
-    border-radius: var(--radius-sm, 0.375rem);
-    font-family: inherit;
-    font-size: var(--text-xs, 0.8125rem);
-    font-weight: 600;
-    line-height: var(--leading-normal, 1.6);
-    cursor: pointer;
-    transition: background var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
-  }
-  .dre-term__chip:hover {
-    background: color-mix(in srgb, var(--primary, #007a50) 28%, var(--surface, #fdfcf9));
-  }
-  .dre-term__chip:focus-visible {
-    outline: 2px solid var(--primary, #007a50);
-    outline-offset: 2px;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
-  }
-  .dre-term__counts {
-    margin: 0;
-    font-size: var(--text-xs, 0.8125rem);
-    color: var(--muted, #716a66);
-    font-variant-numeric: tabular-nums;
   }
   .dre-term__association {
     display: flex;

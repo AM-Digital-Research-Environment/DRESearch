@@ -23,7 +23,7 @@ namespace Laminas\View\Renderer;
 /**
  * Invokable helpers used by this module, including the inherited Laminas helpers.
  * @method string translate(string $message)
- * @method string assetUrl(string $path, string $module = null)
+ * @method string|null assetUrl(string $file, string|null $module = null, bool $override = false, bool $versioned = true, bool $absolute = false)
  * @method string formCollection(\Laminas\Form\FieldsetInterface $form, bool $wrap = true)
  * @method string dreBootstrapJson(array<string,mixed> $data)
  * @method \Omeka\Api\Representation\SiteRepresentation|null currentSite()

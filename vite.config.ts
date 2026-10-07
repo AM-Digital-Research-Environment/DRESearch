@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 
 /**
  * ESM entry with page-specific chunks. asset/dist is not tracked: the release
- * archive carries the complete tree (entry + every hashed chunk).
+ * archive carries the complete tree (entry + every hashed chunk + manifest).
  */
 export default defineConfig({
   base: './',
@@ -24,6 +24,9 @@ export default defineConfig({
     cssCodeSplit: true,
     sourcemap: false,
     target: 'es2022',
+    // Read by src/View/BundleAssets.php to preload the chunks a page will import.
+    // Not under .vite/: a dot-directory is easy to drop when copying the build.
+    manifest: 'manifest.json',
     rollupOptions: {
       // Omeka versions the entry URL; chunks must never import runtime exports from it.
       preserveEntrySignatures: 'strict',

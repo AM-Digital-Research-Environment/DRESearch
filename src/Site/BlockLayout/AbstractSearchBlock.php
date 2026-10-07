@@ -11,6 +11,7 @@ use DRESearch\Security\HtmlSanitizer;
 use DRESearch\Settings\ProfileRegistry;
 use DRESearch\Settings\SearchProfile;
 use DRESearch\Settings\SortOptions;
+use DRESearch\View\BundleAssets;
 use Laminas\View\Renderer\PhpRenderer;
 use Omeka\Api\Representation\SitePageBlockRepresentation;
 use Omeka\Api\Representation\SitePageRepresentation;
@@ -182,17 +183,10 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout implements Templa
         return (string) ob_get_clean();
     }
 
-    /** Inject the bundle once per page that uses this layout. */
+    /** Inject the bundle once per page that uses this layout, preloading the block's chunk. */
     public function prepareRender(PhpRenderer $view): void
     {
-        $view->headLink()->appendStylesheet($view->assetUrl('css/dre-search.css', 'DRESearch'));
-        $view->headLink()->appendStylesheet($view->assetUrl('dist/dre-search.css', 'DRESearch'));
-        $view->headScript()->appendFile(
-            $view->assetUrl('dist/dre-search.js', 'DRESearch'),
-            'module',
-            ['defer' => true]
-        );
-        \DRESearch\View\ClientStrings::inject($view);
+        BundleAssets::inject($view, BundleAssets::SEARCH_BLOCK);
     }
 
     /**

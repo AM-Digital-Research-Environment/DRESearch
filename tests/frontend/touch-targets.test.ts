@@ -12,8 +12,7 @@ describe('touch-target contracts', () => {
     ['SearchBox.svelte', '.dre-search-box__clear'],
     ['ExportMenu.svelte', '.dre-export__trigger'],
     ['ExportMenu.svelte', '.dre-export__item'],
-    ['Pagination.svelte', '.dre-pager button'],
-    ['ResultsList.svelte', '.dre-pager__btn'],
+    ['Pagination.svelte', '.dre-pager__btn'],
     ['FederatedApp.svelte', '.dre-fed__search > button'],
   ])('%s gives %s a 44px control token', (file, selector) => {
     const source = component(file);

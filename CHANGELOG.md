@@ -3,6 +3,19 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- **The search client loads in one round trip instead of three.** The page used to find the bundle one request at a time: the entry, then the shared runtime chunk it imports, then — once the entry had run — the page chunk and its stylesheet. The build now writes `asset/dist/manifest.json`, and the head announces those files up front: a `modulepreload` for the shared chunk on every page, plus the search block's or federated page's own chunk and a stylesheet `preload` on those pages (`View\BundleAssets`, shared by the block, the header bar and the federated page). Measured on the dev site with a cold cache at 150 ms RTT and 1.6 Mbps, median of five interleaved runs, from the entry request: the research-items block's chunk is ready after 1.17 s instead of 2.32 s and the first card renders after 1.61 s instead of 2.35 s; on the federated page the chunks are ready after 1.27 s instead of 2.24 s and the search request leaves 0.53 s sooner; on a page with only the header bar, the shared chunk arrives 1.16 s sooner. Deploy `manifest.json` with the rest of `asset/dist`; without it the bundle loads as before, minus the hints. The release check now fails if the archive lacks a file the manifest names.
+- **The result cards share one stylesheet.** The nine card components repeated the same frame, thumbnail, title, byline, chip and footer rules; they now live once in `styles/card.css` (`dre-shell__*` classes) and each card keeps only its differences. The search-block stylesheet shrinks from 67.7 kB to 42.8 kB (8.0 to 6.7 kB gzipped). A computed-style comparison of 3,822 rendered elements — all twelve corpora, the gallery and the federated page, light and dark, desktop and phone, hovered and keyboard-focused — found no difference.
+- **One pager.** The search block and the federated "All" list drew pagers from two implementations; both now use `Pagination.svelte`, with 44 px targets, the 250-page clamp and a hover that a host theme's button fill cannot override. The "All" list's pager gains the focus ring and matches the block's.
+- **Thumbnails come from one helper.** Every card takes its image through `CardThumb` and `thumbnailFor`. People and organisations use Omeka's `square` derivative, a centre crop that fills their round or square box at full resolution; gallery cards add `srcset`/`sizes` over the medium (200 px) and large (800 px) derivatives, and the first gallery row still loads eagerly. At today's gallery widths (about 310 px) the browser still picks the 800 px file: Omeka makes no size in between.
+
+### Fixed
+
+- **The map loads without DRE-Visualizations again.** MapLibre 6 ships only ES modules, so the jsDelivr fallback's `dist/maplibre-gl.js` was a 404, and a vendored 6.x copy published through `RV_LIBS` was loaded as a classic script and failed. Every copy is now imported as a module. The CDN copy is pinned with Subresource Integrity: the stylesheet carries `integrity`, and the three modules are fetched with their sha384 hashes and linked through `blob:` URLs before anything runs, because an `import()` cannot carry a hash. A host whose Content Security Policy forbids `blob:` scripts should serve the vendored copy.
+
 ## [1.23.0] - 2026-10-07
 
 ### Added

@@ -8,6 +8,7 @@ use DRESearch\Search\SearchProxy;
 use DRESearch\Settings\ProfileRegistry;
 use DRESearch\Settings\SearchProfile;
 use DRESearch\Settings\SortOptions;
+use DRESearch\View\BundleAssets;
 
 /**
  * Renders the federated results page surface: a mount point + a bootstrap that
@@ -39,7 +40,7 @@ class FederatedSearch extends AbstractDreSearchHelper
         if ($slug === null) {
             return '';
         }
-        $this->injectBundle();
+        $this->injectBundle(BundleAssets::FEDERATED);
 
         $t = fn(string $s): string => (string) $view->translate($s);
 

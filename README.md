@@ -606,6 +606,8 @@ SPDX-License-Identifier: `GPL-3.0-or-later`
 
 Deploy the complete asset/dist/ directory together with the PHP helpers. The ESM entry loads page-specific JavaScript and CSS chunks on demand; copying only dre-search.js and dre-search.css is insufficient. Keep the previous hashed chunks available during a rolling deployment so already-open pages can finish loading. Header-only pages load the small entry stylesheet and do not request the faceted search chunks.
 
+asset/dist/manifest.json is part of the build: the PHP helpers (`View\BundleAssets`) read it to put `<link rel="modulepreload">` hints for the shared runtime chunk on every page, and for the search block's or federated page's own chunk plus a stylesheet preload on those pages, so the browser fetches them in parallel instead of one round trip after another. A missing manifest only loses the hints. It is read on each request, so a new build needs no PHP restart.
+
 ### Collection count contract
 
 The optional CorpusCounts service uses the same source predicate as indexing, including configured extra sources. It counts public items once and, when a site id is supplied, restricts counts to that public site's assigned items. The theme and visualization module consume these counts when available; installations without the service retain their existing fallback definitions. Search indexes, cached theme counts, and generated snapshots have different refresh times, so matching membership rules do not guarantee simultaneous totals. Multi-site public counts intentionally differ from installation-wide Search totals.

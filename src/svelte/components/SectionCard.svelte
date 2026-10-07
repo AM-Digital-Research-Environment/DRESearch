@@ -5,6 +5,7 @@
   import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
   import MatchedIn from './MatchedIn.svelte';
+  import '../styles/card.css';
 
   /**
    * One research-section card:
@@ -58,9 +59,9 @@
   });
 </script>
 
-<article class="dre-scard">
-  <div class="dre-scard__body">
-    <header class="dre-scard__head">
+<article class="dre-shell dre-scard">
+  <div class="dre-shell__body">
+    <header class="dre-shell__head">
       {#if phase}
         <button
           type="button"
@@ -75,12 +76,12 @@
       {/if}
     </header>
 
-    <h3 class="dre-scard__title">
+    <h3 class="dre-shell__title">
       <a href={url}><Highlight value={titleHl ?? title} /></a>
     </h3>
 
     {#if leaders}
-      <p class="dre-scard__leaders">
+      <p class="dre-shell__line">
         <span class="dre-scard__leaders-label">{leaders.label}</span>
         {#each leaders.names as nm, i (nm + '|' + i)}{i > 0 ? ', ' : ''}<FilterLink
             onclick={() => onAddFilter('people_ss', nm)}
@@ -90,11 +91,11 @@
     {/if}
 
     {#if memberCount > 0}
-      <p class="dre-scard__members">{membersLabel(memberCount)}</p>
+      <p class="dre-shell__counts">{membersLabel(memberCount)}</p>
     {/if}
 
     {#if snippet}
-      <p class="dre-scard__snippet"><Highlight value={snippet} /></p>
+      <p class="dre-shell__snippet"><Highlight value={snippet} /></p>
     {/if}
 
     <MatchedIn {doc} exclude={['title', 'abstract', 'pi_ss', 'spokesperson_ss']} />
@@ -102,38 +103,7 @@
 </article>
 
 <style>
-  .dre-scard {
-    padding: var(--space-md, 1rem);
-    background: var(--surface, #fdfcf9);
-    border: 1px solid var(--border-light, #eae8e3);
-    border-radius: var(--radius-lg, 0.75rem);
-    box-shadow: var(--shadow-xs, 0 1px 2px 0 rgba(52, 37, 26, 0.07));
-    transition:
-      border-color var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1)),
-      box-shadow var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1));
-  }
-  .dre-scard:hover {
-    border-color: color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dbd7d1));
-    box-shadow: var(
-      --shadow-md,
-      0 4px 6px -1px rgba(42, 28, 16, 0.14),
-      0 2px 4px -2px rgba(52, 37, 26, 0.07)
-    );
-  }
-
-  .dre-scard__body {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xs, 0.25rem);
-  }
-  .dre-scard__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-sm, 0.5rem);
-    min-height: 1.1rem;
-  }
+  /* The shell, title, byline, counts and snippet are styles/card.css. */
   .dre-scard__phase {
     display: inline-flex;
     align-items: center;
@@ -167,27 +137,6 @@
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
-  .dre-scard__title {
-    margin: 0;
-    font-size: var(--text-lg, 1.1875rem);
-    line-height: var(--leading-snug, 1.25);
-    font-family: var(--font-display, 'Spectral', Georgia, 'Times New Roman', serif);
-    color: var(--ink-strong, #261d15);
-  }
-  .dre-scard__title a {
-    color: inherit;
-    text-decoration: none;
-  }
-  .dre-scard__title a:hover {
-    color: var(--primary, #007a50);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-  .dre-scard__leaders {
-    margin: 0;
-    font-size: var(--text-sm, 0.9375rem);
-    color: var(--ink-light, #5f5650);
-  }
   .dre-scard__leaders-label {
     font-weight: 700;
     font-size: var(--text-xs, 0.8125rem);
@@ -197,21 +146,4 @@
     margin-inline-end: 0.3rem;
   }
   /* The leader names are FilterLink spans — see that component for the styling. */
-  .dre-scard__members {
-    margin: 0;
-    font-size: var(--text-xs, 0.8125rem);
-    color: var(--muted, #716a66);
-    font-variant-numeric: tabular-nums;
-  }
-  .dre-scard__snippet {
-    margin: var(--space-xs, 0.25rem) 0 0;
-    font-size: var(--text-sm, 0.9375rem);
-    color: var(--ink-light, #5f5650);
-    line-height: var(--leading-normal, 1.6);
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
 </style>

@@ -4,6 +4,8 @@
   import { markedLookup } from '../lib/highlight';
   import Highlight from './Highlight.svelte';
   import FilterLink from './FilterLink.svelte';
+  import CardThumb from './CardThumb.svelte';
+  import '../styles/card.css';
 
   /**
    * One person card:
@@ -50,20 +52,19 @@
   });
 </script>
 
-<article class="dre-person" class:dre-person--no-thumb={!doc.thumbnail_url}>
-  {#if doc.thumbnail_url}
-    <a class="dre-person__avatar" href={url} tabindex="-1" aria-hidden="true">
-      <img src={doc.thumbnail_url} alt="" loading="lazy" />
-    </a>
-  {/if}
+<article
+  class="dre-shell dre-shell--media dre-person"
+  class:dre-shell--no-thumb={!doc.thumbnail_url}
+>
+  <CardThumb href={url} url={doc.thumbnail_url} shape="avatar" />
 
-  <div class="dre-person__body">
-    <h3 class="dre-person__name">
+  <div class="dre-shell__body">
+    <h3 class="dre-shell__title">
       <a href={url}><Highlight value={nameHl ?? name} /></a>
     </h3>
 
     {#if affiliations.length > 0}
-      <p class="dre-person__affil">
+      <p class="dre-shell__line">
         {#each affiliations as aff, i (aff + '|' + i)}{i > 0 ? '; ' : ''}<FilterLink
             onclick={() => onAddFilter('affiliation_ss', aff)}
             ><Highlight value={affilHl.get(aff) ?? aff} /></FilterLink
@@ -72,12 +73,12 @@
     {/if}
 
     {#if roles.length > 0}
-      <ul class="dre-person__chips">
+      <ul class="dre-shell__chips">
         {#each roles as role (role)}
           <li>
             <button
               type="button"
-              class="dre-person__chip dre-person__chip--role"
+              class="dre-shell__chip dre-shell__chip--role"
               onclick={() => onAddFilter('roles_ss', role)}
             >
               <Highlight value={roleHl.get(role) ?? role} />
@@ -88,134 +89,17 @@
     {/if}
 
     {#if counts.length > 0}
-      <p class="dre-person__counts">{counts.join(' · ')}</p>
+      <p class="dre-shell__counts dre-person__counts">{counts.join(' · ')}</p>
     {/if}
   </div>
 </article>
 
 <style>
+  /* The shell, avatar, name, chips and counts are styles/card.css. */
   .dre-person {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: var(--space-md, 1rem);
     align-items: start;
-    padding: var(--space-md, 1rem);
-    background: var(--surface, #fdfcf9);
-    border: 1px solid var(--border-light, #eae8e3);
-    border-radius: var(--radius-lg, 0.75rem);
-    box-shadow: var(--shadow-xs, 0 1px 2px 0 rgba(52, 37, 26, 0.07));
-    transition:
-      border-color var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1)),
-      box-shadow var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1));
-  }
-  .dre-person:hover {
-    border-color: color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dbd7d1));
-    box-shadow: var(
-      --shadow-md,
-      0 4px 6px -1px rgba(42, 28, 16, 0.14),
-      0 2px 4px -2px rgba(52, 37, 26, 0.07)
-    );
-  }
-  .dre-person--no-thumb {
-    grid-template-columns: 1fr;
-  }
-
-  .dre-person__avatar {
-    display: block;
-    width: 3.25rem;
-    height: 3.25rem;
-    border-radius: 50%;
-    overflow: hidden;
-    background: var(--surface-sunken, #f3f0eb);
-    border: 1px solid var(--border-light, #eae8e3);
-  }
-  .dre-person__avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-
-  .dre-person__body {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xs, 0.25rem);
-  }
-  .dre-person__name {
-    margin: 0;
-    font-size: var(--text-lg, 1.1875rem);
-    line-height: var(--leading-snug, 1.25);
-    font-family: var(--font-display, 'Spectral', Georgia, 'Times New Roman', serif);
-    color: var(--ink-strong, #261d15);
-  }
-  .dre-person__name a {
-    color: inherit;
-    text-decoration: none;
-  }
-  .dre-person__name a:hover {
-    color: var(--primary, #007a50);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-  .dre-person__affil {
-    margin: 0;
-    font-size: var(--text-sm, 0.9375rem);
-    color: var(--ink-light, #5f5650);
-  }
-  .dre-person__chips {
-    list-style: none;
-    margin: var(--space-xs, 0.25rem) 0 0;
-    padding: 0;
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-xs, 0.25rem);
-  }
-  .dre-person__chip {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.1rem 0.5rem;
-    background: var(--surface-sunken, #f3f0eb);
-    color: var(--ink-light, #5f5650);
-    border: none;
-    border-radius: var(--radius-sm, 0.375rem);
-    font-family: inherit;
-    font-size: var(--text-xs, 0.8125rem);
-    font-weight: 500;
-    line-height: var(--leading-normal, 1.6);
-    cursor: pointer;
-    transition:
-      background var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1)),
-      color var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
-  }
-  .dre-person__chip:hover {
-    background: color-mix(in srgb, var(--primary, #007a50) 18%, var(--surface, #fdfcf9));
-    color: var(--ink-strong, #261d15);
-  }
-  .dre-person__chip:focus-visible {
-    outline: 2px solid var(--primary, #007a50);
-    outline-offset: 2px;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
-  }
-  .dre-person__chip--role {
-    background: color-mix(in srgb, var(--primary, #007a50) 14%, var(--surface, #fdfcf9));
-    color: var(--ink-strong, #261d15);
-    font-weight: 600;
-  }
-  .dre-person__chip--role:hover {
-    background: color-mix(in srgb, var(--primary, #007a50) 28%, var(--surface, #fdfcf9));
   }
   .dre-person__counts {
-    margin: var(--space-xs, 0.25rem) 0 0;
-    font-size: var(--text-xs, 0.8125rem);
-    color: var(--muted, #716a66);
-    font-variant-numeric: tabular-nums;
-  }
-
-  @media (max-width: 32rem) {
-    .dre-person {
-      grid-template-columns: 1fr;
-      gap: var(--space-sm, 0.5rem);
-    }
+    margin-top: var(--space-xs, 0.25rem);
   }
 </style>

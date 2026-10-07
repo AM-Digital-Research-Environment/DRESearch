@@ -7,6 +7,7 @@
   import Highlight from './Highlight.svelte';
   import MatchedIn from './MatchedIn.svelte';
   import CiteMenu from './CiteMenu.svelte';
+  import '../styles/card.css';
 
   /**
    * One publication card — a bibliographic reference:
@@ -104,23 +105,23 @@
   const hasReference = $derived(Boolean(container || metrics || publisher));
 </script>
 
-<article class="dre-bcard">
-  <div class="dre-bcard__body">
-    <header class="dre-bcard__head">
+<article class="dre-shell dre-bcard">
+  <div class="dre-shell__body">
+    <header class="dre-shell__head">
       {#if year != null}
         <span class="dre-bcard__year">{year}</span>
       {/if}
       {#if type}
-        <span class="dre-bcard__type">{type}</span>
+        <span class="dre-shell__pill dre-bcard__type">{type}</span>
       {/if}
     </header>
 
-    <h3 class="dre-bcard__title">
+    <h3 class="dre-shell__title">
       <a href={url}><Highlight value={titleHl ?? title} /></a>
     </h3>
 
     {#if authors.length > 0}
-      <p class="dre-bcard__authors">
+      <p class="dre-shell__line dre-bcard__authors">
         {#each authors as name, i (name + '|' + i)}{i > 0 ? ', ' : ''}<FilterLink
             onclick={() => onAddFilter('creator_ss', name)}
             ><Highlight value={authorHl.get(name) ?? name} /></FilterLink
@@ -129,7 +130,7 @@
     {/if}
 
     {#if editorsAsByline}
-      <p class="dre-bcard__authors">
+      <p class="dre-shell__line dre-bcard__authors">
         {#each editors as name, i (name + '|' + i)}{i > 0 ? '; ' : ''}<FilterLink
             onclick={() => onAddFilter('creator_ss', name)}
             ><Highlight value={editorHl.get(name) ?? name} /></FilterLink
@@ -156,7 +157,7 @@
     {/if}
 
     {#if languages.length > 0}
-      <p class="dre-bcard__languages">
+      <p class="dre-shell__line dre-bcard__languages">
         <span>{t('language_label')}</span>
         {#each languages as language, i (language + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
             onclick={() => onAddFilter('language_ss', language)}>{language}</FilterLink
@@ -165,18 +166,18 @@
     {/if}
 
     {#if snippet}
-      <p class="dre-bcard__snippet"><Highlight value={snippet} /></p>
+      <p class="dre-shell__snippet"><Highlight value={snippet} /></p>
     {/if}
 
     {#if keywords.length > 0 || doi}
       <div class="dre-bcard__footer">
         {#if keywords.length > 0}
-          <ul class="dre-bcard__chips">
+          <ul class="dre-shell__chips dre-bcard__chips">
             {#each keywords as kw (kw)}
               <li>
                 <button
                   type="button"
-                  class="dre-bcard__chip"
+                  class="dre-shell__chip"
                   onclick={() => onAddFilter('keyword_ss', kw)}
                 >
                   <Highlight value={keywordHl.get(kw) ?? kw} />
@@ -210,38 +211,7 @@
 </article>
 
 <style>
-  .dre-bcard {
-    padding: var(--space-md, 1rem);
-    background: var(--surface, #fdfcf9);
-    border: 1px solid var(--border-light, #eae8e3);
-    border-radius: var(--radius-lg, 0.75rem);
-    box-shadow: var(--shadow-xs, 0 1px 2px 0 rgba(52, 37, 26, 0.07));
-    transition:
-      border-color var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1)),
-      box-shadow var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1));
-  }
-  .dre-bcard:hover {
-    border-color: color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dbd7d1));
-    box-shadow: var(
-      --shadow-md,
-      0 4px 6px -1px rgba(42, 28, 16, 0.14),
-      0 2px 4px -2px rgba(52, 37, 26, 0.07)
-    );
-  }
-
-  .dre-bcard__body {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xs, 0.25rem);
-  }
-  .dre-bcard__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-sm, 0.5rem);
-    min-height: 1.1rem;
-  }
+  /* The shell, title, bylines, snippet and chips are styles/card.css. */
   .dre-bcard__year {
     color: var(--muted, #716a66);
     font-size: var(--text-xs, 0.8125rem);
@@ -250,39 +220,7 @@
     font-variant-numeric: tabular-nums;
   }
   .dre-bcard__type {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.1rem 0.5rem;
-    background: color-mix(in srgb, var(--primary, #007a50) 14%, var(--surface, #fdfcf9));
-    color: var(--ink-strong, #261d15);
-    border-radius: var(--radius-full, 9999px);
-    font-size: var(--text-xs, 0.8125rem);
-    font-weight: 600;
-    letter-spacing: 0.04em;
     text-transform: capitalize;
-    white-space: nowrap;
-  }
-  .dre-bcard__title {
-    margin: 0;
-    font-size: var(--text-lg, 1.1875rem);
-    line-height: var(--leading-snug, 1.25);
-    font-family: var(--font-display, 'Spectral', Georgia, 'Times New Roman', serif);
-    color: var(--ink-strong, #261d15);
-  }
-  .dre-bcard__title a {
-    color: inherit;
-    text-decoration: none;
-  }
-  .dre-bcard__title a:hover {
-    color: var(--primary, #007a50);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-  .dre-bcard__languages,
-  .dre-bcard__authors {
-    margin: 0;
-    font-size: var(--text-sm, 0.9375rem);
-    color: var(--ink-light, #5f5650);
   }
   /* Author / editor names, venue and publisher are FilterLink spans — see that
      component for the styling and for why they are not <button>s. */
@@ -295,17 +233,6 @@
   .dre-bcard__venue {
     font-style: italic;
   }
-  .dre-bcard__snippet {
-    margin: var(--space-xs, 0.25rem) 0 0;
-    font-size: var(--text-sm, 0.9375rem);
-    color: var(--ink-light, #5f5650);
-    line-height: var(--leading-normal, 1.6);
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
   .dre-bcard__footer {
     display: flex;
     align-items: center;
@@ -315,39 +242,8 @@
     margin-top: var(--space-xs, 0.25rem);
   }
   .dre-bcard__chips {
-    list-style: none;
     margin: 0;
-    padding: 0;
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-xs, 0.25rem);
     min-width: 0;
-  }
-  .dre-bcard__chip {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.1rem 0.5rem;
-    background: var(--surface-sunken, #f3f0eb);
-    color: var(--ink-light, #5f5650);
-    border: none;
-    border-radius: var(--radius-sm, 0.375rem);
-    font-family: inherit;
-    font-size: var(--text-xs, 0.8125rem);
-    font-weight: 500;
-    line-height: var(--leading-normal, 1.6);
-    cursor: pointer;
-    transition:
-      background var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1)),
-      color var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
-  }
-  .dre-bcard__chip:hover {
-    background: color-mix(in srgb, var(--primary, #007a50) 18%, var(--surface, #fdfcf9));
-    color: var(--ink-strong, #261d15);
-  }
-  .dre-bcard__chip:focus-visible {
-    outline: 2px solid var(--primary, #007a50);
-    outline-offset: 2px;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
   .dre-bcard__doi {
     display: inline-flex;

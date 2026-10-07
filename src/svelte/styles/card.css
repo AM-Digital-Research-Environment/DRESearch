@@ -1,0 +1,383 @@
+/*
+ * The result-card shell every card shares — frame, thumbnail, body, title,
+ * bylines, chips, footer pills — written once instead of once per card. Each card
+ * keeps only its own differences, in its component <style>.
+ *
+ * Global on purpose: the shared elements are rendered by each card (and the
+ * thumbnail by CardThumb), so a component-scoped sheet could not reach them.
+ * Every class is dre-shell-prefixed. These rules are single-class (0,1,0), so a
+ * card's scoped rule (0,2,0) always overrides them, whatever the bundle order.
+ */
+
+/* ── Frame ─────────────────────────────────────────────────────────────────── */
+
+.dre-shell {
+  padding: var(--space-md, 1rem);
+  background: var(--surface, #fdfcf9);
+  border: 1px solid var(--border-light, #eae8e3);
+  border-radius: var(--radius-lg, 0.75rem);
+  box-shadow: var(--shadow-xs, 0 1px 2px 0 rgba(52, 37, 26, 0.07));
+  transition:
+    border-color var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1)),
+    box-shadow var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1));
+}
+.dre-shell:hover {
+  border-color: color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dbd7d1));
+  box-shadow: var(
+    --shadow-md,
+    0 4px 6px -1px rgba(42, 28, 16, 0.14),
+    0 2px 4px -2px rgba(52, 37, 26, 0.07)
+  );
+}
+/* A thumbnail column beside the body. */
+.dre-shell--media {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-md, 1rem);
+}
+.dre-shell--no-thumb {
+  grid-template-columns: 1fr;
+}
+/* Gallery view (research items): the image on top, edge to edge. */
+.dre-shell--gallery {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* ── Thumbnail (rendered by CardThumb) ─────────────────────────────────────── */
+
+.dre-shell__thumb {
+  display: block;
+  border-radius: var(--radius-sm, 0.375rem);
+  overflow: hidden;
+  background: var(--surface-sunken, #f3f0eb);
+  border: 1px solid var(--border-light, #eae8e3);
+}
+.dre-shell__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+/* Research item: a square crop, muted until the card is hovered. */
+.dre-shell__thumb--item {
+  width: 7rem;
+  height: 7rem;
+}
+.dre-shell__thumb--item img {
+  filter: saturate(0.82) contrast(0.96);
+  transition: filter var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1));
+}
+.dre-shell:hover .dre-shell__thumb--item img {
+  filter: saturate(1) contrast(1);
+}
+.dre-shell__thumb--empty {
+  background: linear-gradient(135deg, var(--surface-sunken, #f3f0eb), var(--border-light, #eae8e3));
+}
+/* Podcast: the series logo. */
+.dre-shell__thumb--logo {
+  width: 6rem;
+  height: 6rem;
+}
+/* Video: a 16:9 poster frame (YouTube's native ratio). */
+.dre-shell__thumb--poster {
+  width: 10.5rem;
+  aspect-ratio: 16 / 9;
+}
+/* People: a round portrait. Organisations: a rounded emblem. */
+.dre-shell__thumb--avatar,
+.dre-shell__thumb--emblem {
+  width: 3.25rem;
+  height: 3.25rem;
+}
+.dre-shell__thumb--avatar {
+  border-radius: 50%;
+}
+.dre-shell__thumb--emblem {
+  border-radius: var(--radius-md, 0.5rem);
+}
+.dre-shell--gallery .dre-shell__thumb {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4/3;
+  border: 0;
+  border-radius: 0;
+}
+/* Mode comes from the THEME, never from the OS. The DRE theme's head script
+   resolves the mode (stored choice, else OS preference) and writes it to
+   [data-theme] on <html> and <body> before first paint, so this is the same
+   switch the rest of the client follows. Asking prefers-color-scheme here
+   instead meant a system-dark visitor who chose light got a light page with
+   dark-tuned thumbnails. See DESIGN.md §9 "Mode selectors". These tie with the
+   gallery rule on specificity and must stay after it, as they always won. */
+[data-theme='dark'] .dre-shell__thumb--item {
+  border-color: var(--border, #2c3531);
+}
+[data-theme='dark'] .dre-shell__thumb--item img {
+  filter: saturate(0.72) brightness(0.9) contrast(1.08);
+}
+
+/* ── Body ──────────────────────────────────────────────────────────────────── */
+
+.dre-shell__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs, 0.25rem);
+}
+.dre-shell--gallery .dre-shell__body {
+  padding: var(--space-md, 1rem);
+}
+.dre-shell__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm, 0.5rem);
+  min-height: 1.1rem;
+}
+.dre-shell__eyebrow {
+  color: var(--muted, #716a66);
+  font-size: var(--text-xs, 0.8125rem);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+/* A non-interactive label pill (research-item type, publication type). */
+.dre-shell__pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.5rem;
+  background: color-mix(in srgb, var(--primary, #007a50) 14%, var(--surface, #fdfcf9));
+  color: var(--ink-strong, #261d15);
+  border-radius: var(--radius-full, 9999px);
+  font-size: var(--text-xs, 0.8125rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.dre-shell__title {
+  margin: 0;
+  font-size: var(--text-lg, 1.1875rem);
+  line-height: var(--leading-snug, 1.25);
+  font-family: var(--font-display, 'Spectral', Georgia, 'Times New Roman', serif);
+  color: var(--ink-strong, #261d15);
+}
+.dre-shell__title a {
+  color: inherit;
+  text-decoration: none;
+}
+.dre-shell__title a:hover {
+  color: var(--primary, #007a50);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+/* Bylines: authors, PIs, people, affiliations, leaders. */
+.dre-shell__line {
+  margin: 0;
+  font-size: var(--text-sm, 0.9375rem);
+  color: var(--ink-light, #5f5650);
+}
+/* Small labelled metadata: places, language. */
+.dre-shell__meta {
+  margin: 0;
+  font-size: var(--text-xs, 0.8125rem);
+  line-height: var(--leading-normal, 1.6);
+  color: var(--ink-light, #5f5650);
+}
+.dre-shell__label {
+  color: var(--muted, #716a66);
+  font-weight: 600;
+  font-size: var(--text-xs, 0.8125rem);
+}
+.dre-shell__label::after {
+  content: ': ';
+}
+/* The abstract, clamped. */
+.dre-shell__snippet {
+  margin: var(--space-xs, 0.25rem) 0 0;
+  font-size: var(--text-sm, 0.9375rem);
+  color: var(--ink-light, #5f5650);
+  line-height: var(--leading-normal, 1.6);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.dre-shell__counts {
+  margin: 0;
+  font-size: var(--text-xs, 0.8125rem);
+  color: var(--muted, #716a66);
+  font-variant-numeric: tabular-nums;
+}
+/* Person links — underlined, brand-coloured on hover. */
+.dre-shell__person {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+}
+.dre-shell__person:hover {
+  color: var(--primary, #007a50);
+  text-decoration-color: currentColor;
+}
+
+/* ── Chips: buttons that add a facet filter; reset the native button chrome ── */
+
+.dre-shell__chips {
+  list-style: none;
+  margin: var(--space-xs, 0.25rem) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs, 0.25rem);
+}
+.dre-shell__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.5rem;
+  background: var(--surface-sunken, #f3f0eb);
+  color: var(--ink-light, #5f5650);
+  border: none;
+  border-radius: var(--radius-sm, 0.375rem);
+  font-family: inherit;
+  font-size: var(--text-xs, 0.8125rem);
+  font-weight: 500;
+  line-height: var(--leading-normal, 1.6);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1)),
+    color var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
+}
+.dre-shell__chip:hover {
+  background: color-mix(in srgb, var(--primary, #007a50) 18%, var(--surface, #fdfcf9));
+  color: var(--ink-strong, #261d15);
+}
+/* The card's own grouping (project, section, series, playlist). */
+.dre-shell__chip--accent {
+  background: color-mix(in srgb, var(--accent, #ca7210) 16%, var(--surface, #fdfcf9));
+  color: var(--ink-strong, #261d15);
+  font-weight: 600;
+}
+.dre-shell__chip--accent:hover {
+  background: color-mix(in srgb, var(--accent, #ca7210) 30%, var(--surface, #fdfcf9));
+}
+/* A role or relationship. */
+.dre-shell__chip--role {
+  background: color-mix(in srgb, var(--primary, #007a50) 14%, var(--surface, #fdfcf9));
+  color: var(--ink-strong, #261d15);
+  font-weight: 600;
+}
+.dre-shell__chip--role:hover {
+  background: color-mix(in srgb, var(--primary, #007a50) 28%, var(--surface, #fdfcf9));
+}
+/* The type tag beside an authority name (organisations, terms). */
+.dre-shell__tag {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.5rem;
+  background: color-mix(in srgb, var(--accent, #ca7210) 16%, var(--surface, #fdfcf9));
+  color: var(--ink-strong, #261d15);
+  border: none;
+  border-radius: var(--radius-full, 9999px);
+  font-family: inherit;
+  font-size: var(--text-xs, 0.8125rem);
+  font-weight: 600;
+  line-height: var(--leading-normal, 1.6);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
+}
+.dre-shell__tag:hover {
+  background: color-mix(in srgb, var(--accent, #ca7210) 30%, var(--surface, #fdfcf9));
+}
+.dre-shell__chip:focus-visible,
+.dre-shell__tag:focus-visible {
+  outline: 2px solid var(--primary, #007a50);
+  outline-offset: 2px;
+  box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
+}
+
+/* ── Footer: transcript badge + external link (podcasts, videos) ───────────── */
+
+.dre-shell__footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm, 0.5rem);
+  margin-top: var(--space-xs, 0.25rem);
+}
+/* Transcript-available badge — a neutral pill (distinct from the green link
+   pill) flagging that the record is full-text searchable. */
+.dre-shell__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.6rem;
+  background: var(--surface-sunken, #f3f0eb);
+  color: var(--muted, #716a66);
+  border-radius: var(--radius-full, 9999px);
+  font-size: var(--text-xs, 0.8125rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.dre-shell__badge::before {
+  content: '';
+  width: 0.7rem;
+  height: 0.7rem;
+  background-color: currentColor;
+  /* A small document glyph — pure CSS mask, no asset dependency. */
+  --dre-doc: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.5'%3E%3Cpath d='M4 1.75h5l3 3v9.5H4z'/%3E%3Cpath d='M6 6.5h4M6 9h4M6 11.5h2.5'/%3E%3C/svg%3E");
+  -webkit-mask: var(--dre-doc) center / contain no-repeat;
+  mask: var(--dre-doc) center / contain no-repeat;
+}
+/* "Listen" / "Watch" — a brand-coloured outline pill that fills on hover, with
+   an external-link arrow. */
+.dre-shell__external {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dbd7d1));
+  border-radius: var(--radius-full, 9999px);
+  color: var(--primary, #007a50);
+  font-size: var(--text-xs, 0.8125rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1)),
+    color var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
+}
+.dre-shell__external::after {
+  content: '↗';
+  font-weight: 400;
+}
+.dre-shell__external:hover {
+  background: var(--primary, #007a50);
+  color: var(--primary-contrast, #fcfcf9);
+}
+
+/* ── Narrow screens: the thumbnail goes above the text ─────────────────────── */
+
+@media (max-width: 32rem) {
+  .dre-shell--media {
+    grid-template-columns: 1fr;
+    gap: var(--space-sm, 0.5rem);
+  }
+  .dre-shell__thumb--item,
+  .dre-shell__thumb--logo {
+    width: 100%;
+    height: 8rem;
+  }
+  .dre-shell__thumb--poster {
+    width: 100%;
+  }
+}

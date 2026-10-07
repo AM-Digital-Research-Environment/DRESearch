@@ -167,7 +167,7 @@ msgstr ""
 msgid "DRE Search: all results"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:145
+#: src/Site/BlockLayout/AbstractSearchBlock.php:146
 msgid "Default sort"
 msgstr ""
 
@@ -231,7 +231,7 @@ msgstr ""
 msgid "Filters"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:116
+#: src/Site/BlockLayout/AbstractSearchBlock.php:117
 msgid "Filters to show"
 msgstr ""
 
@@ -303,7 +303,7 @@ msgstr ""
 msgid "Institution"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:105
+#: src/Site/BlockLayout/AbstractSearchBlock.php:106
 msgid "Intro HTML (optional)"
 msgstr ""
 
@@ -375,7 +375,7 @@ msgstr ""
 msgid "Locations search"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:170
+#: src/Site/BlockLayout/AbstractSearchBlock.php:171
 msgid "Locked filter (optional)"
 msgstr ""
 
@@ -508,7 +508,7 @@ msgstr ""
 msgid "Phase"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:172
+#: src/Site/BlockLayout/AbstractSearchBlock.php:173
 msgid "Pins this block to a subset, Typesense filter_by syntax. Example: section_ss:=`Mobilities`"
 msgstr ""
 
@@ -516,7 +516,7 @@ msgstr ""
 msgid "Place of origin"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:106
+#: src/Site/BlockLayout/AbstractSearchBlock.php:107
 msgid "Plain HTML rendered above the search."
 msgstr ""
 
@@ -678,7 +678,7 @@ msgstr ""
 msgid "Results for “{q}”"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:160
+#: src/Site/BlockLayout/AbstractSearchBlock.php:161
 msgid "Results per page"
 msgstr ""
 
@@ -898,7 +898,7 @@ msgstr ""
 msgid "Title (A–Z)"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:95
+#: src/Site/BlockLayout/AbstractSearchBlock.php:96
 msgid "Title (optional)"
 msgstr ""
 
@@ -959,7 +959,7 @@ msgstr ""
 msgid "Watch"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:117
+#: src/Site/BlockLayout/AbstractSearchBlock.php:118
 msgid "Which facets appear in the sidebar."
 msgstr ""
 
@@ -1000,7 +1000,7 @@ msgstr ""
 msgid "not set"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:127
+#: src/Site/BlockLayout/AbstractSearchBlock.php:128
 msgid "range slider"
 msgstr ""
 
