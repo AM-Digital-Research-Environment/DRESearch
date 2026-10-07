@@ -129,7 +129,7 @@ final class RebuildStateStore
                 . ' dirty_reason = IF(dirty_revision = :revision, NULL, dirty_reason),'
                 . ' dirty = IF(dirty_revision = :revision, 0, dirty), last_success_at = :now, finished_at = :now,'
                 . ' last_duration_ms = :duration, last_documents = :documents, documents_attempted = :attempted,'
-                . ' documents_imported = :imported, documents_failed = :failed, last_error_code = NULL,'
+                . ' documents_imported = :imported, documents_failed = :failed, last_error_code = NULL, rejected_ids = NULL,'
                 . ' updated_at = :now WHERE profile = :profile',
                 [
                     'revision' => $dirtyRevision ?? '',
@@ -207,6 +207,28 @@ final class RebuildStateStore
         }
     }
 
+    /**
+     * Documents Typesense refused during an incremental drain. They are out of
+     * the live index until their source record is fixed and saved again (or a
+     * rebuild succeeds); the admin page lists them.
+     *
+     * @param list<int> $ids
+     */
+    public function recordRejected(string $profile, array $ids): void
+    {
+        $now = gmdate('Y-m-d H:i:s');
+        $this->connection->executeStatement(
+            'UPDATE dre_search_profile_state SET last_error_code = :code, last_failure_at = :now,'
+            . ' rejected_ids = :ids, updated_at = :now WHERE profile = :profile',
+            [
+                'code' => 'documents_rejected',
+                'now' => $now,
+                'ids' => mb_substr(implode(',', array_slice(array_map('intval', $ids), 0, 500)), 0, 4000),
+                'profile' => $profile,
+            ],
+        );
+    }
+
     /** @return array<string,array<string,mixed>> */
     public function all(): array
     {
@@ -218,10 +240,21 @@ final class RebuildStateStore
         return $out;
     }
 
-    /** @param list<string> $keep @return list<string> */
+    /**
+     * Retired, failed and cancelled generations eligible for deletion. With the
+     * default retention of 0 days they go at the next promotion: every retained
+     * generation is a full corpus copy in Typesense RAM, and older ones may hold
+     * metadata that has since been made private. The live generation and the
+     * single rollback target are always kept ($keep).
+     *
+     * @param list<string> $keep
+     * @return list<string>
+     */
     public function cleanupCandidates(string $profile, array $keep, int $retentionDays): array
     {
-        $cutoff = gmdate('Y-m-d H:i:s', time() - max(1, $retentionDays) * 86400);
+        $cutoff = $retentionDays <= 0
+            ? '9999-12-31 23:59:59'
+            : gmdate('Y-m-d H:i:s', time() - $retentionDays * 86400);
         $rows = $this->connection->executeQuery(
             'SELECT collection_name FROM dre_search_generation'
             . ' WHERE profile = :profile AND status IN (:retired, :failed, :cancelled) AND created_at < :cutoff',

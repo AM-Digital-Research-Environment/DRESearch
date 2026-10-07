@@ -18,8 +18,19 @@ If alias verification is unavailable, cleanup preserves the collection for a lat
 - `document_count_mismatch`: compare the source query with import responses; the
   previous alias is still live.
 - `rebuild_locked`: find the active job in Admin → Jobs before retrying.
-- Pending changes: restore connectivity, then select **Retry pending changes**. Failed jobs retain their queue rows.
-- Dirty/stale: dependency capture failed or visibility rules changed. Rebuild fully; public search stays paused until a successful rebuild clears the marker.
+- **Records hidden from public search**: their changes are queued and the worker
+  applies them within seconds. If the oldest pending change keeps ageing, check
+  **Admin → Jobs** for a failed `DrainSearchChanges` job; search requests restart
+  a stranded worker after two minutes, and **Retry pending changes** does so now.
+- **Public search paused** with pending changes: more than
+  `pending_exclusion_limit` records are waiting (a bulk sync); it resumes as the
+  worker catches up. With a dirty marker: dependency capture failed or visibility
+  rules changed — rebuild fully.
+- `documents_rejected`: Typesense refused the listed records (a schema violation
+  in the source data). They are out of search until fixed and saved again.
+- `document_count_mismatch` with "Refusing to promote": the rebuild would keep
+  less than half of the live documents. Check the profile scope; if the drop is
+  intended, rebuild with **Allow a smaller corpus**.
 - Public errors include `X-Request-ID`; correlate it with the server log.
 
 ## Backup and rollback
@@ -50,9 +61,17 @@ new mapper now excludes. Pending changes are replayed into the new generations.
 
 The background job runner must be operational. Inspect failed jobs under
 **Admin → Jobs** and use **Retry pending changes** after fixing connectivity.
-A stopped worker or an unavailable Typesense server leaves public search paused
-for the affected profiles. Direct SQL imports bypass Omeka events and must be
+While the worker is stopped or Typesense is unavailable, the changed records are
+hidden from public search (the whole corpus pauses beyond
+`pending_exclusion_limit`). Direct SQL imports bypass Omeka events and must be
 followed by a full rebuild. A first build is required for every enabled profile.
+
+## Upgrading to 1.23
+
+The migration adds the worker lease table and the rejected-records column; no
+rebuild is needed. Retired generations older than the rollback target are now
+deleted at the next promotion (`retention_days` 0); set it in local.config.php to
+keep them longer.
 
 Guzzle limits connection establishment to 2 seconds and each request to 10
 seconds; automatic SDK transport retries are disabled. Queue jobs provide the

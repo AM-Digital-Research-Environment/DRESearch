@@ -19,6 +19,7 @@ use Laminas\Log\LoggerInterface;
 final class SearchProxy
 {
     private readonly ?SearchCache $cache;
+    private readonly ReadinessGate $gate;
 
     public function __construct(
         private readonly TypesenseClientProvider $provider,
@@ -28,8 +29,10 @@ final class SearchProxy
         /** @var list<string> */
         private readonly array $unionProfiles = [],
         private readonly ?\Doctrine\DBAL\Connection $connection = null,
+        ?ReadinessGate $gate = null,
     ) {
         $this->cache = $connection !== null ? new SearchCache($connection) : null;
+        $this->gate = $gate ?? new ReadinessGate($connection);
     }
 
     public function isAvailable(): bool
@@ -40,15 +43,16 @@ final class SearchProxy
     /** @param array<string,mixed> $req */
     public function search(string $profileName, array $req, ?string $requestId = null): array
     {
+        $this->gate->reset();
         [$profile, $req, $serverFilter] = $this->prepare($profileName, $req, 'search');
         $client = $this->provider->getClient();
-        if ($client === null || !$this->ready([$profile->name()])) {
+        $state = $this->state($profile);
+        if ($client === null || !$state['ready']) {
             return $this->unavailable($requestId);
         }
         $started = hrtime(true);
-        $builder = new QueryBuilder($profile, $serverFilter);
+        $builder = new QueryBuilder($profile, $serverFilter, $state['exclude']);
         $params = $builder->search($req);
-        $collection = $client->collections[$profile->collection()];
 
         // Facets stay multi-select: any facet the user has already refined is
         // recounted alongside the main search with its own clause lifted, so its
@@ -59,7 +63,7 @@ final class SearchProxy
         $result = $refined === []
             ? null
             : $this->searchWithOpenFacets($client, $builder, $params, $req, $refined, $profile, $requestId);
-        $result ??= $this->runSearch($collection, $params, $profile, $requestId);
+        $result ??= $this->runSearch($client, $params, $profile, $requestId);
         if ($result === null) {
             return $this->unavailable($requestId);
         }
@@ -79,13 +83,13 @@ final class SearchProxy
      * @return array<string,mixed>|null null once the failure has been logged
      */
     private function runSearch(
-        object $collection,
+        object $client,
         array $params,
         SearchProfile $profile,
         ?string $requestId,
     ): ?array {
         try {
-            return SearchExecutor::single($collection, $params);
+            return SearchExecutor::single($client, $profile->collection(), $params);
         } catch (\Throwable $error) {
             $this->logBackendFailure('search', $error, $profile, $requestId);
             return null;
@@ -229,14 +233,15 @@ final class SearchProxy
      */
     public function export(string $profileName, array $req, ?string $requestId = null): array
     {
+        $this->gate->reset();
         [$profile, $req, $serverFilter] = $this->prepare($profileName, $req, 'export');
         $client = $this->provider->getClient();
-        if ($client === null || !$this->ready([$profile->name()])) {
+        $state = $this->state($profile);
+        if ($client === null || !$state['ready']) {
             return $this->unavailableExport($requestId);
         }
         $started = hrtime(true);
-        $collection = $client->collections[$profile->collection()];
-        $builder = new QueryBuilder($profile, $serverFilter);
+        $builder = new QueryBuilder($profile, $serverFilter, $state['exclude']);
         $maxHits = QueryBuilder::EXPORT_MAX_HITS;
         $pages = (int) ceil($maxHits / QueryBuilder::EXPORT_PER_PAGE);
 
@@ -245,21 +250,24 @@ final class SearchProxy
         for ($page = 1; $page <= $pages; $page++) {
             $params = $builder->export($req, $page);
             try {
-                $result = SearchExecutor::single($collection, $params);
+                $result = SearchExecutor::single($client, $profile->collection(), $params);
             } catch (\Throwable $e) {
                 $this->logBackendFailure('export', $e, $profile, $requestId);
                 return $this->unavailableExport($requestId);
             }
             $found = (int) ($result['found'] ?? 0);
             foreach ($result['hits'] ?? [] as $hit) {
-                $docs[] = $hit['document'] ?? [];
+                $doc = $hit['document'] ?? [];
+                // Keyed by id: if a drain re-ranks between pages, a document can
+                // move across the page boundary; never export it twice.
+                $docs[(string) ($doc['id'] ?? count($docs))] = $doc;
             }
             if (count($docs) >= $found || count($docs) >= $maxHits) {
                 break;
             }
         }
 
-        $docs = array_slice($docs, 0, $maxHits);
+        $docs = array_slice(array_values($docs), 0, $maxHits);
         $expected = min($found, $maxHits);
         if (count($docs) !== $expected) {
             $error = new \RuntimeException(sprintf(
@@ -295,13 +303,16 @@ final class SearchProxy
         }
         $serverFilter = $this->scopeResolver->resolve($blockId, $profile->name());
         $client = $this->provider->getClient();
-        if ($client === null || !$this->ready([$profile->name()]) || $q === '') {
-            return ['available' => $client !== null && $this->ready([$profile->name()]), 'suggestions' => []];
+        $state = $this->state($profile);
+        if ($client === null || !$state['ready'] || $q === '') {
+            return ['available' => $client !== null && $state['ready'], 'suggestions' => []];
         }
         try {
-            $result = $client->collections[$profile->collection()]
-                ->documents
-                ->search((new QueryBuilder($profile, $serverFilter))->suggest($q));
+            $result = SearchExecutor::single(
+                $client,
+                $profile->collection(),
+                (new QueryBuilder($profile, $serverFilter, $state['exclude']))->suggest($q),
+            );
         } catch (\Throwable $e) {
             $this->logBackendFailure('suggest', $e, $profile, $requestId);
             return ['available' => false, 'suggestions' => []];
@@ -337,15 +348,17 @@ final class SearchProxy
     ): array {
         $q = SearchRequest::query($q);
         $client = $this->provider->getClient();
-        if ($client === null || !$this->ready($this->registry->names()) || $q === '') {
-            return ['available' => $client !== null && $this->ready($this->registry->names()), 'groups' => []];
+        // A corpus with queued work beyond the exclusion limit drops out of the
+        // dropdown; the others keep answering.
+        $profiles = $this->readyProfiles(array_values($this->registry->all()));
+        if ($client === null || $profiles === [] || $q === '') {
+            return ['available' => $client !== null && $profiles !== [], 'groups' => []];
         }
         $translate ??= static fn(string $s): string => $s;
 
-        $profiles = array_values($this->registry->all());
         $searches = [];
         foreach ($profiles as $profile) {
-            $searches[] = (new QueryBuilder($profile))->suggestSearch($q);
+            $searches[] = (new QueryBuilder($profile, null, $this->state($profile)['exclude']))->suggestSearch($q);
         }
 
         try {
@@ -400,14 +413,19 @@ final class SearchProxy
      */
     public function searchAll(string $activeProfile, array $req, ?string $requestId = null): array
     {
+        $this->gate->reset();
+        $this->gate->reset();
+        $this->gate->reset();
         [$profile, $req] = $this->prepare($activeProfile, $req, 'search');
         $activeProfile = $profile->name();
         $client = $this->provider->getClient();
-        if ($client === null || !$this->ready($this->registry->names())) {
+        if ($client === null) {
             return ['available' => false, 'counts' => [], 'active' => $this->unavailable($requestId)];
         }
 
-        $profiles = array_values($this->registry->all());
+        // Paused corpora (queued work beyond the exclusion limit, or a pending
+        // rebuild) simply have no count on their tab; the rest still answer.
+        $profiles = $this->readyProfiles(array_values($this->registry->all()));
         $countReq = [
             'q'         => (string) ($req['q'] ?? ''),
             'year_from' => $req['year_from'] ?? null,
@@ -415,14 +433,14 @@ final class SearchProxy
         ];
         $counts = [];
         if (!empty($req['include_counts'])) {
-            $cacheKey = $this->cacheKey('counts:' . serialize([$profiles, $countReq]));
+            $cacheKey = $this->cacheKey('counts:' . serialize([$profiles, $countReq, array_map(fn(SearchProfile $p): array => $this->state($p)['exclude'], $profiles)]));
             $cached = $this->cacheGet($cacheKey);
             if ($cached !== null) {
                 $counts = $cached;
             } else {
                 $searches = [];
                 foreach ($profiles as $countProfile) {
-                    $searches[] = (new QueryBuilder($countProfile))->countOnly($countReq);
+                    $searches[] = (new QueryBuilder($countProfile, null, $this->state($countProfile)['exclude']))->countOnly($countReq);
                 }
                 try {
                     $response = SearchExecutor::multi($client, ['searches' => $searches]);
@@ -455,29 +473,39 @@ final class SearchProxy
      * @param array<string,mixed> $req
      * @return array<string,mixed>
      */
-    public function union(array $req, ?string $requestId = null): array
+    /**
+     * @param callable(string):string|null $translate translates corpus badges
+     */
+    public function union(array $req, ?string $requestId = null, ?callable $translate = null): array
     {
+        $this->gate->reset();
         $validated = SearchRequest::union($req);
         $client = $this->provider->getClient();
-        if ($client === null || !$this->ready($this->registry->names())) {
+        if ($client === null) {
             return $this->unavailable($requestId);
         }
+        $translate ??= static fn(string $s): string => $s;
 
-        $profiles = [];
+        $configured = [];
         $names = $this->unionProfiles !== [] ? $this->unionProfiles : $this->registry->names();
         foreach ($names as $name) {
             $profile = $this->registry->get((string) $name);
             if ($profile !== null) {
-                $profiles[] = $profile;
+                $configured[] = $profile;
             }
         }
-        if ($profiles === []) {
+        if ($configured === []) {
             throw new RequestValidationException('empty_union_scope', 'No search profiles are configured for merged search.');
+        }
+        // Merge whatever is ready; a corpus paused for a rebuild just drops out.
+        $profiles = $this->readyProfiles($configured);
+        if ($profiles === []) {
+            return $this->unavailable($requestId);
         }
 
         $searches = [];
         foreach ($profiles as $profile) {
-            $searches[] = (new QueryBuilder($profile))->union($validated['q']);
+            $searches[] = (new QueryBuilder($profile, null, $this->state($profile)['exclude']))->union($validated['q']);
         }
         $started = hrtime(true);
         try {
@@ -492,9 +520,10 @@ final class SearchProxy
         }
 
         $normalized = $this->normalize($result, $profiles[0]);
+        $normalized['partial'] = count($profiles) < count($configured);
         foreach ($normalized['hits'] as &$doc) {
             $profile = $this->registry->get((string) ($doc['_profile'] ?? ''));
-            $doc['_profile_label'] = $profile?->label() ?? (string) ($doc['_profile'] ?? '');
+            $doc['_profile_label'] = $profile !== null ? $translate($profile->label()) : (string) ($doc['_profile'] ?? '');
         }
         unset($doc);
         $this->logMetric('union', $started, $profiles[0], $requestId, ['found' => $normalized['found']]);
@@ -511,24 +540,25 @@ final class SearchProxy
      */
     public function map(string $profileName, array $req, ?string $requestId = null): array
     {
+        $this->gate->reset();
         [$profile, $validated, $serverFilter] = $this->prepare($profileName, $req, 'search');
         if (!isset($profile->displayFields()['geo'], $profile->displayFields()['has_coords'])) {
             throw new RequestValidationException('map_unavailable', 'This search profile does not provide map coordinates.');
         }
         $client = $this->provider->getClient();
-        if ($client === null || !$this->ready([$profile->name()])) {
+        $state = $this->state($profile);
+        if ($client === null || !$state['ready']) {
             return $this->unavailableMap($requestId);
         }
 
-        $builder = new QueryBuilder($profile, $serverFilter);
-        $collection = $client->collections[$profile->collection()];
+        $builder = new QueryBuilder($profile, $serverFilter, $state['exclude']);
         $docs = [];
         $found = 0;
         $pages = (int) ceil(QueryBuilder::MAP_MAX_HITS / QueryBuilder::EXPORT_PER_PAGE);
         $started = hrtime(true);
         for ($page = 1; $page <= $pages; $page++) {
             try {
-                $result = SearchExecutor::single($collection, $builder->map($validated, $page));
+                $result = SearchExecutor::single($client, $profile->collection(), $builder->map($validated, $page));
             } catch (\Throwable $e) {
                 $this->logBackendFailure('map', $e, $profile, $requestId);
                 return $this->unavailableMap($requestId);
@@ -536,14 +566,14 @@ final class SearchProxy
             $found = (int) ($result['found'] ?? 0);
             foreach ($result['hits'] ?? [] as $hit) {
                 if (is_array($hit['document'] ?? null)) {
-                    $docs[] = $hit['document'];
+                    $docs[(string) ($hit['document']['id'] ?? count($docs))] = $hit['document'];
                 }
             }
             if (count($docs) >= $found || count($docs) >= QueryBuilder::MAP_MAX_HITS) {
                 break;
             }
         }
-        $docs = array_slice($docs, 0, QueryBuilder::MAP_MAX_HITS);
+        $docs = array_slice(array_values($docs), 0, QueryBuilder::MAP_MAX_HITS);
         if (count($docs) !== min($found, QueryBuilder::MAP_MAX_HITS)) {
             return $this->unavailableMap($requestId);
         }
@@ -566,9 +596,10 @@ final class SearchProxy
      */
     public function yearBounds(string $profileName): ?array
     {
+        $this->gate->reset();
         $profile = $this->registry->get($profileName);
         $client = $this->provider->getClient();
-        if ($profile === null || $client === null || !$this->ready([$profile->name()]) || !$profile->hasYearFacet()) {
+        if ($profile === null || $client === null || !$profile->hasYearFacet() || !$this->state($profile)['ready']) {
             return null;
         }
         $cacheKey = $this->cacheKey('years:' . serialize($profile));
@@ -577,9 +608,7 @@ final class SearchProxy
             return $cached;
         }
         try {
-            $result = $client->collections[$profile->collection()]
-                ->documents
-                ->search((new QueryBuilder($profile))->yearStats());
+            $result = SearchExecutor::single($client, $profile->collection(), (new QueryBuilder($profile))->yearStats());
         } catch (\Throwable $e) {
             return null;
         }
@@ -609,14 +638,16 @@ final class SearchProxy
 
     public function facet(string $profileName, array $input, ?string $requestId = null): array
     {
+        $this->gate->reset();
         [$profile, $req, $scope] = $this->prepare($profileName, $input, 'facet');
         $client = $this->provider->getClient();
-        if ($client === null || !$this->ready([$profile->name()])) {
+        $state = $this->state($profile);
+        if ($client === null || !$state['ready']) {
             return ['available' => false, 'counts' => []];
         }
         $field = $req['facet_field'];
-        $params = (new QueryBuilder($profile, $scope))->facetSearch($req, $field, $req['facet_query']);
-        $result = $this->runSearch($client->collections[$profile->collection()], $params, $profile, $requestId);
+        $params = (new QueryBuilder($profile, $scope, $state['exclude']))->facetSearch($req, $field, $req['facet_query']);
+        $result = $this->runSearch($client, $params, $profile, $requestId);
         if ($result === null) {
             return ['available' => false, 'counts' => []];
         }
@@ -626,25 +657,23 @@ final class SearchProxy
         )];
     }
 
-    private function ready(array $profiles): bool
+    /** @return array{ready:bool,exclude:list<int>} */
+    private function state(SearchProfile $profile): array
     {
-        if ($this->connection === null || $profiles === []) {
-            return true;
-        }
-        try {
-            $placeholders = implode(',', array_fill(0, count($profiles), '?'));
-            $pending = $this->connection->executeQuery(
-                'SELECT 1 FROM dre_search_change WHERE profile IN (' . $placeholders . ') LIMIT 1',
-                $profiles,
-            )->fetchOne();
-            $dirty = $this->connection->executeQuery(
-                'SELECT 1 FROM dre_search_profile_state WHERE dirty = 1 AND profile IN (' . $placeholders . ') LIMIT 1',
-                $profiles,
-            )->fetchOne();
-            return $pending === false && $dirty === false;
-        } catch (\Throwable) {
-            return false;
-        }
+        return $this->gate->check([$profile->name()])[$profile->name()] ?? ['ready' => false, 'exclude' => []];
+    }
+
+    /**
+     * @param list<SearchProfile> $profiles
+     * @return list<SearchProfile> those that may answer now (one gate query)
+     */
+    private function readyProfiles(array $profiles): array
+    {
+        $states = $this->gate->check(array_map(static fn(SearchProfile $p): string => $p->name(), $profiles));
+        return array_values(array_filter(
+            $profiles,
+            static fn(SearchProfile $p): bool => $states[$p->name()]['ready'] ?? false,
+        ));
     }
 
     private function cacheKey(string $context): ?string

@@ -22,36 +22,41 @@ final class ReindexOrchestrator
         private readonly ProfileRegistry $registry,
         private readonly RebuildStateStore $stateStore,
         private readonly LoggerInterface $logger,
-        private readonly int $retentionDays = 30,
+        private readonly int $retentionDays = 0,
+        private readonly float $minRetainedRatio = 0.5,
+        /** Seconds to wait for a starting Typesense (it answers 503 while loading). */
+        private readonly int $readyWaitSeconds = 120,
     ) {
     }
 
     /** @param Closure():bool $cancel @return array<string,mixed> */
-    public function runOne(string $profileName, string $jobId, Closure $cancel): array
+    public function runOne(string $profileName, string $jobId, Closure $cancel, bool $allowShrink = false): array
     {
         $client = $this->provider->getClient();
         if ($client === null) {
             $this->logger->warn('DRESearch: Typesense is not configured — reindex skipped.');
             return ['skipped' => true];
         }
+        $this->awaitReady($client, $cancel);
         $profile = $this->registry->get($profileName);
         if ($profile === null) {
             throw new \InvalidArgumentException(sprintf('Unknown search profile "%s".', $profileName));
         }
         $this->syncStopwords($client);
-        $stats = $this->runProfile($client, $profile, $jobId, $cancel);
+        $stats = $this->runProfile($client, $profile, $jobId, $cancel, $allowShrink);
         $stats['analytics'] = (new AnalyticsSync($client, $this->registry, $this->logger))->sync();
         return $stats;
     }
 
     /** @param Closure():bool $cancel @return array<string,mixed> */
-    public function runAll(string $jobId, Closure $cancel): array
+    public function runAll(string $jobId, Closure $cancel, bool $allowShrink = false): array
     {
         $client = $this->provider->getClient();
         if ($client === null) {
             $this->logger->warn('DRESearch: Typesense is not configured — reindex skipped.');
             return ['skipped' => true];
         }
+        $this->awaitReady($client, $cancel);
         $this->syncStopwords($client);
         $profiles = $this->registry->all();
         $total = count($profiles);
@@ -67,7 +72,7 @@ final class ReindexOrchestrator
                 ));
             }
             try {
-                $results[$profile->name()] = $this->runProfile($client, $profile, $jobId, $cancel);
+                $results[$profile->name()] = $this->runProfile($client, $profile, $jobId, $cancel, $allowShrink);
                 $done++;
                 $this->logger->info(sprintf(
                     'DRESearch: [%d/%d] "%s" complete',
@@ -107,6 +112,7 @@ final class ReindexOrchestrator
         SearchProfile $profile,
         string $jobId,
         Closure $cancel,
+        bool $allowShrink = false,
     ): array {
         $log = function (string $message): void {
             $this->logger->info('DRESearch: ' . $message);
@@ -120,7 +126,39 @@ final class ReindexOrchestrator
             $this->retentionDays,
             $jobId,
             $cancel,
+            $this->minRetainedRatio,
+            $allowShrink,
         ))->run();
+    }
+
+    /**
+     * A Typesense that has just (re)started answers "Not Ready or Lagging"
+     * while it loads its collections; starting a rebuild then fails every
+     * corpus. Wait for /health instead (bounded, cancellable), then proceed
+     * either way so a real outage still surfaces as a rebuild failure.
+     *
+     * @param Closure():bool $cancel
+     */
+    private function awaitReady(Client $client, Closure $cancel): void
+    {
+        $deadline = time() + max(0, $this->readyWaitSeconds);
+        $warned = false;
+        while (true) {
+            try {
+                if (!empty($client->health->retrieve()['ok'])) {
+                    return;
+                }
+            } catch (\Throwable) {
+            }
+            if (time() >= $deadline || $cancel()) {
+                return;
+            }
+            if (!$warned) {
+                $this->logger->info('DRESearch: waiting for Typesense to finish loading before the rebuild.');
+                $warned = true;
+            }
+            sleep(3);
+        }
     }
 
     private function syncStopwords(Client $client): void

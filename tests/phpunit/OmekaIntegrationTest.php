@@ -14,6 +14,7 @@ use DRESearch\Indexer\OmekaSourceRepository;
 use DRESearch\Indexer\RebuildLock;
 use DRESearch\Indexer\RebuildStateStore;
 use DRESearch\Indexer\Reindexer;
+use DRESearch\Indexer\WorkerLease;
 use DRESearch\Search\BlockScopeResolver;
 use DRESearch\Search\SearchCache;
 use DRESearch\Search\SearchProxy;
@@ -190,24 +191,94 @@ final class OmekaIntegrationTest extends TestCase
         self::assertSame([], $source->reverseCount([3], []));
     }
 
-    public function testRealEntityEventsPreserveFormerAndCurrentDependencies(): void
+    public function testEventsQueueOnlyProfilesWhoseScopeHoldsTheItemOrItsDependants(): void
     {
         $listener = new ItemEventListener($this->incremental(), $this->db);
-        $this->value(1, 1, 2, 2);
+        $this->resource(5, 'Volume A');
+        $this->resource(6, 'Volume B');
+        $this->db->insert('item_item_set', ['item_id' => 5, 'item_set_id' => 29918]);
+        $this->db->insert('item_item_set', ['item_id' => 6, 'item_set_id' => 29918]);
+        // Publication 1 moves its isPartOf-style link from publication 5 to 6:
+        // itself plus the former AND the current target are refreshed.
+        $this->value(1, 1, 2, 5);
         $request = new Request('update', 'items');
         $request->setId(1);
         $listener->onItemUpdatePre(new Event('api.update.pre', null, ['request' => $request]));
-        $this->db->executeStatement('UPDATE value SET value_resource_id = 3');
-        $item = $this->entity(1);
-        $listener->onItemUpdate(new Event('api.update.post', null, ['request' => $request, 'response' => new Response($item)]));
-        self::assertSame([1, 2, 3], array_map('intval', array_column($this->queue->page($this->profile->name()), 'item_id')));
+        $this->db->executeStatement('UPDATE value SET value_resource_id = 6 WHERE id = 1');
+        $listener->onItemUpdate(new Event('api.update.post', null, ['request' => $request, 'response' => new Response($this->entity(1))]));
+        self::assertSame([1, 5, 6], $this->queued());
         $this->db->executeStatement('DELETE FROM dre_search_change');
+
+        // Author 3 lives outside the publications scope: editing it queues the
+        // in-scope publication that embeds its name, never the author itself.
+        $this->value(2, 1, 2, 3);
+        $author = new Request('update', 'items');
+        $author->setId(3);
+        $listener->onItemUpdatePre(new Event('api.update.pre', null, ['request' => $author]));
+        $listener->onItemUpdate(new Event('api.update.post', null, ['request' => $author, 'response' => new Response($this->entity(3))]));
+        self::assertSame([1], $this->queued());
+        $this->db->executeStatement('DELETE FROM dre_search_change');
+
+        $this->resource(7, 'New publication');
+        $this->db->insert('item_item_set', ['item_id' => 7, 'item_set_id' => 29918]);
         $listener->onItemCreate(new Event('api.create.post', null, ['response' => new Response($this->entity(7))]));
-        self::assertSame(7, (int) $this->queue->page($this->profile->name())[0]['item_id']);
+        self::assertSame([7], $this->queued());
+        $this->db->executeStatement('DELETE FROM dre_search_change');
+
         $media = new Media();
-        $media->setItem($item);
+        $media->setItem($this->entity(1));
         $listener->onMediaSave(new Event('api.create.post', null, ['response' => new Response($media)]));
-        self::assertSame([1, 3, 7], array_map('intval', array_column($this->queue->page($this->profile->name()), 'item_id')));
+        self::assertSame([1, 6], $this->queued());
+    }
+
+    public function testDeletedOrDescopedItemsAreRemovedFromTheCorpusThatIndexedThem(): void
+    {
+        $this->resource(8, 'Second publication');
+        $this->db->insert('item_item_set', ['item_id' => 8, 'item_set_id' => 29918]);
+        $this->build()->run();
+        $listener = new ItemEventListener($this->incremental(), $this->db);
+
+        // Deleted: the row is gone after the write, so only the scope captured
+        // in the pre event can route the change to this corpus.
+        $request = new Request('delete', 'items');
+        $request->setId(1);
+        $listener->onItemDeletePre(new Event('api.delete.pre', null, ['request' => $request]));
+        $this->db->executeStatement('DELETE FROM item_item_set WHERE item_id = 1');
+        $this->db->executeStatement('DELETE FROM resource WHERE id = 1');
+        $listener->onItemDelete(new Event('api.delete.post', null, ['request' => $request]));
+        self::assertSame([1], $this->queued());
+
+        // Removed from the item set: still public, but no longer in this scope.
+        $update = new Request('update', 'items');
+        $update->setId(8);
+        $listener->onItemUpdatePre(new Event('api.update.pre', null, ['request' => $update]));
+        $this->db->executeStatement('DELETE FROM item_item_set WHERE item_id = 8');
+        $listener->onItemUpdate(new Event('api.update.post', null, ['request' => $update, 'response' => new Response($this->entity(8))]));
+        self::assertSame([1, 8], $this->queued());
+
+        $this->incremental()->drain();
+        self::assertSame(0, $this->client->collections[$this->profile->collection()]->retrieve()['num_documents']);
+        self::assertSame([], $this->queued());
+    }
+
+    public function testItemSetDeletionAndTemplateChangesQueueTheirItems(): void
+    {
+        $listener = new ItemEventListener($this->incremental(), $this->db);
+        $set = new Request('delete', 'item_sets');
+        $set->setId(29918);
+        $listener->onItemSetDeletePre(new Event('api.delete.pre', null, ['request' => $set]));
+        $this->db->executeStatement('DELETE FROM item_item_set WHERE item_set_id = 29918');
+        $listener->onItemSetDelete(new Event('api.delete.post', null, ['request' => $set]));
+        self::assertSame([1], $this->queued());
+        $this->db->executeStatement('DELETE FROM dre_search_change');
+
+        $this->db->insert('item_item_set', ['item_id' => 1, 'item_set_id' => 29918]);
+        $this->db->executeStatement('UPDATE resource SET resource_template_id = 11 WHERE id = 1');
+        $template = new Request('update', 'resource_templates');
+        $template->setId(11);
+        $listener->onResourceTemplatePre(new Event('api.update.pre', null, ['request' => $template]));
+        $listener->onResourceTemplatePost(new Event('api.update.post', null, ['request' => $template]));
+        self::assertSame([1], $this->queued());
     }
 
     public function testQueueAcknowledgementCannotLoseNewerEditOrDeletedThenRecreatedWork(): void
@@ -291,17 +362,168 @@ final class OmekaIntegrationTest extends TestCase
         self::assertNull((new SearchCache($this->db))->get($cache->key('same request')));
     }
 
-    public function testPendingPrivacyChangeClosesPublicSearchUntilDrain(): void
+    public function testPendingChangesHideTheirDocumentsInsteadOfPausingTheCorpus(): void
     {
+        $this->resource(8, 'Public second title');
+        $this->db->insert('item_item_set', ['item_id' => 8, 'item_set_id' => 29918]);
         $this->build()->run();
-        $proxy = new SearchProxy($this->provider, $this->registry, new BlockScopeResolver($this->db), $this->logger, [], $this->db);
-        self::assertTrue($proxy->search($this->profile->name(), [])['available']);
+        $proxy = $this->proxy();
+        self::assertSame(2, $proxy->search($this->profile->name(), [])['found']);
+
+        // Item 1 was just made private; its indexed copy is stale until drained.
         $this->db->executeStatement('UPDATE resource SET is_public = 0 WHERE id = 1');
         $this->queue->enqueue($this->registry->names(), [1]);
-        self::assertFalse($proxy->search($this->profile->name(), [])['available']);
-        self::assertFalse($proxy->suggestAll('Public')['available']);
+        $result = $proxy->search($this->profile->name(), []);
+        self::assertTrue($result['available']);
+        self::assertSame(['8'], array_column($result['hits'], 'id'));
+        foreach ($proxy->suggestAll('Public')['groups'] as $group) {
+            self::assertNotContains('1', array_column($group['suggestions'], 'id'));
+        }
+        $export = $proxy->export($this->profile->name(), []);
+        self::assertSame(['8'], array_column($export['docs'], 'id'));
+
+        // Beyond the exclusion limit the corpus pauses rather than hiding ids.
+        self::assertFalse($this->proxy(0)->search($this->profile->name(), [])['available']);
+        // A dirty marker (unknown impact) pauses it regardless.
+        $this->state->markDirty([$this->profile->name()], 'test');
+        self::assertFalse($this->proxy()->search($this->profile->name(), [])['available']);
+        $this->db->executeStatement('UPDATE dre_search_profile_state SET dirty = 0');
+
         $this->incremental()->drain();
-        self::assertSame(0, $proxy->search($this->profile->name(), [])['found']);
+        $after = $proxy->search($this->profile->name(), []);
+        self::assertSame(['8'], array_column($after['hits'], 'id'));
+        self::assertSame(1, $this->client->collections[$this->profile->collection()]->retrieve()['num_documents']);
+    }
+
+    public function testStrandedQueueWakesOneWorkerThroughTheLease(): void
+    {
+        $woken = 0;
+        $lease = new WorkerLease($this->db);
+        $gate = new \DRESearch\Search\ReadinessGate($this->db, 250, function () use (&$woken, $lease): void {
+            $lease->request();
+            if ($lease->claim()) {
+                $woken++;
+            }
+        }, 60);
+        $this->queue->enqueue($this->registry->names(), [1]);
+        $gate->check($this->registry->names());
+        self::assertSame(0, $woken, 'A fresh queue is the worker\'s job, not the gate\'s.');
+        $this->db->executeStatement("UPDATE dre_search_change SET queued_at = '2000-01-01 00:00:00'");
+        $gate->reset();
+        $gate->check($this->registry->names());
+        $gate->reset();
+        $gate->check($this->registry->names());
+        self::assertSame(1, $woken, 'Only the first stranded check may start a worker.');
+    }
+
+    public function testWorkerLeaseNeverStrandsARequestRaisedDuringAPass(): void
+    {
+        $lease = new WorkerLease($this->db);
+        self::assertTrue($lease->claim());
+        self::assertFalse($lease->claim(), 'A live worker blocks a second dispatch.');
+        $lease->begin();
+        $lease->request(); // a write lands while the pass runs
+        self::assertFalse($lease->finish(), 'The worker must loop for the new request.');
+        $lease->begin();
+        self::assertTrue($lease->finish());
+        self::assertTrue($lease->claim(), 'An exited worker frees the lease.');
+        $lease->backoff();
+        self::assertFalse($lease->claim(), 'A failed pass holds the lease for one stale window.');
+        $this->db->executeStatement("UPDATE dre_search_worker SET heartbeat = '2000-01-01 00:00:00'");
+        self::assertTrue($lease->claim(), 'A dead worker can be replaced.');
+        self::assertTrue($lease->status()['requested']);
+    }
+
+    public function testRejectedDocumentIsRemovedAndCannotBlockTheQueue(): void
+    {
+        $this->resource(8, 'Second publication');
+        $this->db->insert('item_item_set', ['item_id' => 8, 'item_set_id' => 29918]);
+        $live = $this->build()->run()['collection'];
+        $this->queue->enqueue($this->registry->names(), [1, 8]);
+        $transport = new class implements \Psr\Http\Client\ClientInterface {
+            public function sendRequest(\Psr\Http\Message\RequestInterface $request): \Psr\Http\Message\ResponseInterface
+            {
+                if (str_ends_with($request->getUri()->getPath(), '/documents/import')) {
+                    $lines = array_filter(explode("\n", (string) $request->getBody()));
+                    $out = [];
+                    foreach ($lines as $line) {
+                        $doc = json_decode($line, true);
+                        $out[] = json_encode(($doc['id'] ?? '') === '1'
+                            ? ['success' => false, 'code' => 400, 'error' => 'Injected schema violation', 'document' => $line]
+                            : ['success' => true]);
+                    }
+                    return new \GuzzleHttp\Psr7\Response(200, [], implode("\n", $out));
+                }
+                return (new \GuzzleHttp\Client(['timeout' => 3]))->sendRequest($request);
+            }
+        };
+        $client = new Client([
+            'api_key' => getenv('TYPESENSE_API_KEY'), 'num_retries' => 0, 'client' => $transport,
+            'nodes' => [['host' => getenv('TYPESENSE_HOST'), 'port' => (string) (getenv('TYPESENSE_PORT') ?: 8108), 'protocol' => 'http']],
+        ]);
+        $rejected = (new Reindexer($this->db, $client, $this->profile, static function (): void {
+        }))->drainQueue($this->queue, $live);
+        self::assertSame([1], $rejected);
+        self::assertSame([], $this->queued(), 'One bad record must not hold the corpus paused.');
+        $ids = array_column(array_column($this->client->collections[$live]->documents->search(['q' => '*', 'query_by' => 'title'])['hits'], 'document'), 'id');
+        self::assertSame(['8'], $ids, 'The rejected record\'s stale copy is removed.');
+    }
+
+    public function testShrinkGuardRefusesToPromoteAnAlmostEmptyCorpus(): void
+    {
+        foreach ([8, 9] as $id) {
+            $this->resource($id, 'Publication ' . $id);
+            $this->db->insert('item_item_set', ['item_id' => $id, 'item_set_id' => 29918]);
+        }
+        $live = $this->build()->run()['collection'];
+        $this->db->executeStatement('DELETE FROM item_item_set WHERE item_id IN (8, 9)');
+        try {
+            $this->build()->run();
+            self::fail('A 3 → 1 document rebuild was promoted.');
+        } catch (\DRESearch\Indexer\Exception\VerificationException) {
+            self::assertSame($live, (new GenerationPublisher($this->client, $this->profile->collection()))->target());
+        }
+        $forced = new Reindexer($this->db, $this->client, $this->profile, static function (): void {
+        }, $this->state, 0, 'test', null, 0.5, true);
+        self::assertSame(1, $forced->run()['documents']);
+    }
+
+    public function testDrainForgetsQueuedWorkForANeverBuiltProfile(): void
+    {
+        $this->queue->enqueue($this->registry->names(), [1]);
+        $pass = $this->incremental()->drain();
+        self::assertSame([], $pass['failures']);
+        self::assertSame([], $this->queued(), 'Its first rebuild reads current SQL state anyway.');
+    }
+
+    public function testTargetedAuthorityResolutionMatchesTheFullLoad(): void
+    {
+        $config = require dirname(__DIR__, 2) . '/config/module.config.php';
+        $items = SearchProfile::fromArray('research_items', $config['dre_search']['profiles']['research_items']);
+        $this->db->insert('vocabulary', ['id' => 2, 'prefix' => 'dcterms']);
+        $this->db->insert('property', ['id' => 3, 'vocabulary_id' => 2, 'local_name' => 'title']);
+        $this->db->insert('property', ['id' => 4, 'vocabulary_id' => 2, 'local_name' => 'type']);
+        $this->db->insert('property', ['id' => 5, 'vocabulary_id' => 2, 'local_name' => 'isPartOf']);
+        // A city (set 1) that is part of a country (set 1), and a project (set 20).
+        foreach ([[20, 'Nairobi', 1], [21, 'Kenya', 1], [22, 'A project', 20]] as [$id, $title, $setId]) {
+            $this->resource($id, $title);
+            $this->db->insert('item_item_set', ['item_id' => $id, 'item_set_id' => $setId]);
+            $this->value(100 + $id, $id, 3, null, $title);
+        }
+        $this->value(130, 20, 5, 21);
+        $this->value(131, 21, 4, 3168);
+        $this->resource(3168, 'Country');
+        $full = new \DRESearch\Indexer\AuthorityResolver($this->db, $items);
+        $full->load();
+        $targeted = new \DRESearch\Indexer\AuthorityResolver($this->db, $items);
+        $targeted->prime([20, 22]);
+        foreach ([20, 21, 22] as $id) {
+            self::assertSame($full->title($id), $targeted->title($id), "title of $id");
+            self::assertSame($full->partOfId($id), $targeted->partOfId($id), "partOf of $id");
+            self::assertSame($full->typeItemId($id), $targeted->typeItemId($id), "type of $id");
+        }
+        self::assertTrue($targeted->inSet(22, 20));
+        self::assertSame('Kenya', $targeted->title((int) $targeted->partOfId(20)), 'Parents are primed for the country roll-up.');
     }
 
     public function testUpgradeAddsQueueAndRevisionWithoutLosingExistingGeneration(): void
@@ -310,6 +532,8 @@ final class OmekaIntegrationTest extends TestCase
         $this->db->executeStatement('ALTER TABLE dre_search_profile_state DROP COLUMN dirty_revision');
         $this->db->executeStatement('DROP TABLE dre_search_change');
         $this->db->executeStatement('DROP TABLE dre_search_cache');
+        $this->db->executeStatement('DROP TABLE dre_search_worker');
+        $this->db->executeStatement('ALTER TABLE dre_search_profile_state DROP COLUMN rejected_ids');
         // Omeka runs upgrade() while the module is inactive, so the service
         // manager holds ONLY core services — never this module's factories.
         // A local.config.php profile override must still be marked dirty.
@@ -326,6 +550,8 @@ final class OmekaIntegrationTest extends TestCase
         self::assertSame($old, $state['live_collection']);
         self::assertSame(1, (int) $state['dirty']);
         self::assertSame(32, strlen($state['dirty_revision']));
+        self::assertArrayHasKey('rejected_ids', $state);
+        self::assertTrue((new WorkerLease($this->db))->claim(), 'The 1.23 migration creates the worker lease table.');
         self::assertSame([], $this->queue->counts());
         $proxy = new SearchProxy($this->provider, $this->registry, new BlockScopeResolver($this->db), $this->logger, [], $this->db);
         self::assertFalse($proxy->search($this->profile->name(), [])['available']);
@@ -405,6 +631,25 @@ final class OmekaIntegrationTest extends TestCase
     private function incremental(): IncrementalIndexer
     {
         return new IncrementalIndexer($this->db, $this->provider, $this->registry, $this->logger, $this->state);
+    }
+
+    private function proxy(int $exclusionLimit = 250): SearchProxy
+    {
+        return new SearchProxy(
+            $this->provider,
+            $this->registry,
+            new BlockScopeResolver($this->db),
+            $this->logger,
+            [],
+            $this->db,
+            new \DRESearch\Search\ReadinessGate($this->db, $exclusionLimit),
+        );
+    }
+
+    /** @return list<int> ids queued for the test profile */
+    private function queued(): array
+    {
+        return array_map('intval', array_column($this->queue->page($this->profile->name()), 'item_id'));
     }
 
     private function entity(int $id): Item

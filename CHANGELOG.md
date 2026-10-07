@@ -3,6 +3,29 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- **One edit no longer takes all search offline.** Every Omeka write used to queue work for all twelve corpora, and any queued row made that corpus — and the header autocomplete and the federated page — answer "unavailable" until a background job finished; a MongoDB2OmekaS sync kept search down for its whole run. Now work is queued only for the corpora whose scope holds each item, and public search hides just the records whose changes are pending (`id:!=[…]`), pausing a corpus only beyond 250 pending records (`pending_exclusion_limit`) or when it needs a full rebuild. Federated search, union results and autocomplete leave a paused corpus out instead of failing.
+- **One background worker instead of one job per request.** A single `dre_search_worker` lease coordinates draining: a write dispatches a job only when no worker is alive, and the worker loops while new writes arrive. A sync of N items no longer spawns N processes. Long-running imports wake the worker every 30 seconds. A failed pass backs off for two minutes instead of retrying on every save.
+- **Stranded queues heal themselves.** When the oldest pending change is more than two minutes old and no worker is alive, the next search request starts one.
+- **A rejected document cannot block a corpus.** A record Typesense refuses during an incremental update is removed from the live index, acknowledged and listed on the maintenance page with a link to the item; the rest of the queue continues. An integer field outside int32 (e.g. an episode number typo) is now treated as absent rather than rejecting the document.
+- **Rebuilds refuse to empty a corpus by mistake.** Promotion is refused when the new generation keeps less than half of the live documents (`min_retained_ratio`); the maintenance page offers "Allow a smaller corpus" for an intended drop. Rebuilds wait up to 60 seconds for a running drain and up to two minutes for a Typesense that is still loading, instead of failing at once.
+- Retired generations are deleted at the next promotion (`retention_days` now defaults to 0); the live and rollback generations are always kept.
+- The maintenance page distinguishes live, "records hidden" and "public search paused" states, shows the oldest pending change and the worker's state, and its menu entry is visible to editors and site admins.
+
+### Fixed
+
+- Typesense rejects GET query strings over 4,000 bytes, so a long non-Latin query (450 Amharic characters) returned "unavailable". All searches now travel as POST.
+- A block's saved locked filter could escape its parentheses (Typesense gives `&&` and `||` equal precedence) and must now balance; it may not mention `is_public`. Unknown and mismatched block scopes share one error code.
+- Item-set edits, which cannot change any document, no longer re-queue every member synchronously; batch edits no longer process each item twice; resource-template changes now refresh the items using the template.
+- A "not found" check matched any message containing "404", which a timeout on a generated collection name could; cleanup now relies on Typesense's typed not-found error.
+- Incremental batches resolve only the authorities they link to instead of reloading every tracked authority per 100 items.
+- The internal `is_public` flag is no longer sent with every search hit, and the merged "All" results translate their corpus badges.
+
+**Upgrade:** run Omeka's module upgrade. No reindex is needed.
+
 ## [1.22.1] - 2026-10-07
 
 ### Fixed

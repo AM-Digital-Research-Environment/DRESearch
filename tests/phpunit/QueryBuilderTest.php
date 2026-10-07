@@ -120,6 +120,50 @@ final class QueryBuilderTest extends TestCase
         self::assertLessThanOrEqual(250, $params['per_page']);
     }
 
+    public function testFilterIsExactlyTheVisibilityGuardPlusEachConstraint(): void
+    {
+        $params = (new QueryBuilder($this->multiFacetProfile(), 'tenant_s:=`A`', [7, 3]))->search([
+            'filters' => ['type_s' => ['Book', 'Map'], 'language_ss' => ['French']],
+        ]);
+        // Whole-string equality: a substring assertion cannot catch a clause
+        // that escapes its group.
+        self::assertSame(
+            'is_public:=true && id:!=[7,3] && (tenant_s:=`A`) && type_s:=[`Book`,`Map`] && language_ss:=[`French`]',
+            $params['filter_by'],
+        );
+    }
+
+    public function testPendingChangesAreHiddenFromEveryDerivedQuery(): void
+    {
+        $profile = $this->profile(['display_fields' => [
+            'geo' => ['property' => null, 'type' => 'geopoint', 'facet' => false, 'index' => true],
+            'has_coords' => ['property' => null, 'type' => 'bool', 'facet' => true, 'index' => true],
+        ]]);
+        $builder = new QueryBuilder($profile, null, [3, 7]);
+        $req = ['q' => 'river', 'filters' => ['type_s' => ['Book']]];
+        foreach (
+            [
+                $builder->search($req), $builder->suggest('river'), $builder->countOnly($req),
+                $builder->export($req, 1), $builder->map($req, 1), $builder->facetCountsFor($req, 'type_s'),
+                $builder->facetSearch($req, 'type_s', 'Bo'), $builder->union('river'),
+            ] as $params
+        ) {
+            self::assertStringContainsString('id:!=[3,7]', $params['filter_by']);
+        }
+    }
+
+    public function testUnbalancedLockedFilterIsRefusedBeforeReachingTypesense(): void
+    {
+        $this->expectException(\DRESearch\Search\Exception\RequestValidationException::class);
+        (new QueryBuilder($this->profile(), 'type_s:=`A`) || (type_s:=`B`'))->search([]);
+    }
+
+    public function testVisibilityFieldNeverTravelsWithHits(): void
+    {
+        $params = (new QueryBuilder($this->profile()))->search(['q' => 'x']);
+        self::assertContains('is_public', explode(',', $params['exclude_fields']));
+    }
+
     /** Two sidebar facets + a filterable-but-not-faceted display field. */
     private function multiFacetProfile(): \DRESearch\Settings\SearchProfile
     {

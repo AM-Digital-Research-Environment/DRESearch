@@ -24,17 +24,22 @@ final class BlockScopeResolver
             ['id' => $blockId],
         )->fetchAssociative();
         if ($row === false) {
-            throw new RequestValidationException('unknown_block_scope', 'The requested block scope does not exist.');
+            // One code for "absent" and "wrong profile": distinct answers would
+            // let anyone enumerate which block ids exist.
+            throw new RequestValidationException('invalid_block_scope', 'The requested block scope is not available.');
         }
         $expected = \DRESearch\Settings\BlockProfiles::PROFILES[(string) ($row['layout'] ?? '')] ?? null;
         if ($expected === null || $expected !== $profile) {
-            throw new RequestValidationException('block_scope_mismatch', 'The block scope does not match the requested profile.');
+            throw new RequestValidationException('invalid_block_scope', 'The requested block scope is not available.');
         }
         $data = json_decode((string) ($row['data'] ?? ''), true);
         $filter = is_array($data) ? trim((string) ($data['locked_filter'] ?? '')) : '';
-        if (mb_strlen($filter) > 1000) {
-            throw new RequestValidationException('invalid_block_scope', 'The saved block scope is too long.');
+        if ($filter === '') {
+            return null;
         }
-        return $filter !== '' ? $filter : null;
+        if (FilterExpression::problem($filter) !== null) {
+            throw new RequestValidationException('invalid_block_scope', 'The saved block scope is invalid.');
+        }
+        return $filter;
     }
 }

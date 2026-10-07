@@ -32,10 +32,16 @@ cutover, without acknowledging work; the new live generation then drains it.
 Changes arriving during either pass remain queued until their exact revision is
 successfully applied. A dirty marker raised after the build started is retained.
 
+A rebuild waits up to 60 seconds for a drain to release the profile lock, and up
+to two minutes for a starting Typesense to finish loading. Promotion is refused
+when the new generation holds less than `min_retained_ratio` (half) of the live
+one, unless the operator allows a smaller corpus.
+
 `GenerationPublisher` verifies the target after an ambiguous alias PUT. Cleanup
 checks every alias before deleting an owned collection and preserves collections
-when that check fails. The previous generation is retained for rollback; only
-older, unaliased, module-owned generations are eligible for retention cleanup.
+when that check fails. The previous generation is retained for rollback; older, unaliased,
+module-owned generations are deleted at the next promotion (or after
+`retention_days`).
 
 ## Incremental lifecycle
 
@@ -43,18 +49,38 @@ Omeka item and media post events contain entities before representations are
 built. The listener accepts both forms, captures dependencies before updates or
 deletes, and refreshes the union of former and current relationships. Incoming
 two-hop links cover authority hierarchies; media changes refresh their parents
-and dependants. Batch and item-set operations use the same queue.
+and dependants. Item-set deletion and resource-template changes queue the
+affected items. Omeka's batch operations fire the per-resource events for every
+id, so batch events are not observed separately.
+
+Work is queued only for the profiles whose source scope holds each item
+(`ScopeMatcher`, the same `SourcePredicate` the indexer uses, one `UNION ALL`
+query). Scope is captured before a destructive write as well as after it, so a
+deleted, re-templated or descoped item still reaches the profile that indexed it.
 
 `dre_search_change` deduplicates work by profile/item with random revision tokens.
-Omeka writes only SQL work; one job is dispatched when the request or import
-process shuts down. Workers import at most 100 documents per batch, remove
-out-of-scope/deleted/private records and acknowledge only the revision they read.
-Failures leave work available to retry. Interrupted jobs do not erase changes.
+Omeka writes only SQL work. A single coalesced worker drains it, coordinated by
+one `dre_search_worker` lease row: a producer records the request and dispatches
+a `DrainSearchChanges` job only if no live worker holds the lease; the worker
+loops until no request arrived during its pass. Long CLI processes (imports)
+wake it every 30 seconds rather than only at exit. A failed pass holds the lease
+for one stale window (2 minutes) before another attempt, so an outage costs one
+retry per window rather than one job per save. Workers import at most 100
+documents per batch, remove out-of-scope/deleted/private records and acknowledge
+only the revision they read. A document Typesense rejects is removed from the
+live index (fail closed), acknowledged and listed on the admin page, so it cannot
+hold the queue. Incremental batches resolve only the authorities they link to.
 
-The public proxy temporarily returns unavailable for profiles with pending work
-or a dirty marker. This prevents stale private metadata being served while a
-worker is delayed or Typesense is unavailable. Queue recovery is explicit in the
-maintenance UI; no external scheduler is installed by the module.
+## Public availability
+
+`ReadinessGate` decides per profile, in one SQL round trip per public call. Ids
+with queued changes are excluded from every query (`id:!=[…]`), so a stale copy
+— possibly showing metadata that was just made private — is never served while
+the rest of the corpus keeps answering. Above `pending_exclusion_limit` (250) or
+with a dirty marker (unknown impact, e.g. a failed dependency lookup) the profile
+pauses; federated endpoints then leave that corpus out instead of failing. A
+queue whose oldest row is older than two minutes wakes a worker through the same
+lease, so a failed dispatch heals without operator action.
 
 ## Search execution and caching
 
@@ -63,6 +89,11 @@ count, map, export and union searches. Full-text snippets use explicit
 `highlight_fields` even when full document bodies are excluded. Facet search is
 a bounded server query that removes only its own user filter; public visibility,
 saved block scope, text and other filters remain enforced.
+
+All searches are sent as `multi_search` POST requests: the collection search
+endpoint is a GET, and Typesense rejects query strings over 4,000 bytes, which a
+long non-Latin query or an exclusion list exceeds. Queries recorded for analytics
+keep the GET endpoint while they fit.
 
 Count and year caches live in MySQL across PHP workers. Keys include connection
 identity and profile configuration. Epoch changes on enqueue, replay and

@@ -32,6 +32,8 @@ final class Reindexer
     private const PAGE = 500;
     /** Documents per Typesense import call. */
     private const BATCH = 100;
+    /** Seconds a rebuild waits for an incremental drain to release the profile. */
+    private const LOCK_WAIT_SECONDS = 60;
 
     private readonly string $alias;
 
@@ -42,9 +44,17 @@ final class Reindexer
         private readonly SearchProfile $profile,
         private readonly Closure $log,
         private readonly ?RebuildStateStore $stateStore = null,
-        private readonly int $retentionDays = 30,
+        private readonly int $retentionDays = 0,
         private readonly string $jobId = 'manual',
         private readonly ?Closure $cancel = null,
+        /**
+         * Refuse to promote a generation holding less than this fraction of the
+         * live one (0 disables). A mis-scoped template id or an emptied source
+         * otherwise "succeeds" by replacing a full corpus with an empty one.
+         */
+        private readonly float $minRetainedRatio = 0.5,
+        /** Operator override for an intentional large drop. */
+        private readonly bool $allowShrink = false,
     ) {
         $this->alias = $profile->collection();
     }
@@ -62,7 +72,9 @@ final class Reindexer
             $this->alias,
             $this->stateStore,
         );
-        $lock->acquire();
+        // A drain holds the profile lock only for one short batch at a time;
+        // wait for it instead of failing a requested rebuild outright.
+        $lock->acquire(self::LOCK_WAIT_SECONDS);
         $collection = '';
         $previous = null;
         $created = false;
@@ -162,6 +174,7 @@ final class Reindexer
                 $verified = (int) $info['num_documents'];
             }
             $this->throwIfCancelled();
+            $this->guardAgainstShrink($previous, $verified);
             (new GenerationPublisher($this->client, $this->alias))->promote($collection);
             $promoted = true;
             try {
@@ -193,7 +206,11 @@ final class Reindexer
 
             if ($queue !== null) {
                 try {
-                    $this->drainQueue($queue, $collection, $this->cancel);
+                    $rejected = $this->drainQueue($queue, $collection, $this->cancel);
+                    if ($rejected !== []) {
+                        ($this->log)(sprintf('Typesense rejected %d queued document(s), removed until fixed: %s', count($rejected), implode(', ', array_slice($rejected, 0, 50))));
+                        $this->stateStore?->recordRejected($this->profile->name(), $rejected);
+                    }
                 } catch (\Throwable $error) {
                     ($this->log)('Live generation has pending changes; retry the queue: ' . $error->getMessage());
                 }
@@ -252,52 +269,6 @@ final class Reindexer
     }
 
     /**
-     * Compatibility helper for direct callers that already hold the profile
-     * lock. Omeka event handlers use IncrementalIndexer to queue this item and
-     * its dependencies, then a background worker reconciles them in batches.
-     * Returns true after an upsert and false for an absent/out-of-scope item.
-     */
-    public function indexOne(int $id): bool
-    {
-        return $this->syncOne($id) === 'upserted';
-    }
-
-    /**
-     * Converge one document with current profile scope.
-     *
-     * @return 'upserted'|'deleted'|'missing_alias'|'ignored'
-     */
-    public function syncOne(int $id): string
-    {
-        if ($id <= 0) {
-            return 'ignored';
-        }
-        if ($this->aliasTarget() === null) {
-            return 'missing_alias';
-        }
-
-        $rows = (new OmekaSourceRepository($this->connection, $this->profile))->rows([$id]);
-        $this->syncBatch([$id], $this->alias);
-        return $rows === [] ? 'deleted' : 'upserted';
-    }
-
-    /**
-     * Incremental path: remove one document from the live collection by id.
-     * Idempotent on the Typesense side; the caller swallows a 404 (the item was
-     * never indexed, or already cleared by a reindex).
-     */
-    public function deleteOne(int $id): void
-    {
-        try {
-            $this->client->collections[$this->alias]->documents[(string) $id]->delete();
-        } catch (\Throwable $e) {
-            if (!$this->isNotFound($e)) {
-                throw $e;
-            }
-        }
-    }
-
-    /**
      * Versioned-collection prefix, derived from the alias so renaming the
      * collection in config keeps versioning + cleanup consistent. Alias
      * "foo_current" → prefix "foo_"; an alias without that suffix → "<alias>_".
@@ -322,37 +293,107 @@ final class Reindexer
         }
     }
 
-    /** Caller holds the profile lock so an older batch cannot overwrite a newer one. */
-    public function drainQueue(ChangeQueue $queue, string $collection, ?Closure $cancel = null): void
+    /**
+     * Apply and acknowledge queued work on a live generation. Caller holds the
+     * profile lock so an older batch cannot overwrite a newer one.
+     *
+     * A document Typesense rejects (a schema violation in the source data) is
+     * removed from the live generation — fail closed: its old copy may carry
+     * metadata that has since changed — and its queue row is acknowledged, so
+     * one bad record cannot hold the whole corpus paused behind it.
+     *
+     * @param Closure():bool|null $cancel
+     * @param Closure():void|null $beat called after every batch
+     * @return list<int> ids rejected and removed
+     */
+    public function drainQueue(ChangeQueue $queue, string $collection, ?Closure $cancel = null, ?Closure $beat = null): array
     {
+        $rejected = [];
         while ($rows = $queue->page($this->profile->name())) {
             if ($cancel !== null && $cancel()) {
-                return;
+                return $rejected;
             }
-            $this->syncBatch(array_map('intval', array_column($rows, 'item_id')), $collection);
+            $failed = $this->syncBatch(array_map('intval', array_column($rows, 'item_id')), $collection, true);
+            if ($failed !== []) {
+                $this->deleteDocuments($collection, $failed);
+                array_push($rejected, ...$failed);
+            }
             (new \DRESearch\Search\SearchCache($this->connection))->invalidate();
             $queue->acknowledge($this->profile->name(), $rows);
+            if ($beat !== null) {
+                $beat();
+            }
         }
+        return array_values(array_unique($rejected));
     }
 
-    /** Reconcile a bounded batch against current SQL state, including deletions. */
-    public function syncBatch(array $ids, string $collection): void
+    /**
+     * Reconcile a bounded batch against current SQL state, including deletions.
+     *
+     * @param bool $tolerateRejected return Typesense-rejected ids instead of throwing
+     * @return list<int> rejected ids (only when tolerated)
+     */
+    public function syncBatch(array $ids, string $collection, bool $tolerateRejected = false): array
     {
         $source = new OmekaSourceRepository($this->connection, $this->profile);
-        $assembler = new DocumentAssembler($source, (new MapperFactory($this->connection, $this->profile))->create(), $this->profile);
+        // Targeted: resolve only the authorities this batch links to.
+        $assembler = new DocumentAssembler($source, (new MapperFactory($this->connection, $this->profile))->create(true), $this->profile);
+        $rejected = [];
         foreach (array_chunk(array_unique(array_map('intval', $ids)), self::BATCH) as $chunk) {
             $rows = $source->rows($chunk);
             $docs = $assembler->documents($rows);
             if ($docs !== []) {
-                $this->flush($collection, $docs);
+                try {
+                    $this->flush($collection, $docs);
+                } catch (BatchImportException $e) {
+                    if (!$tolerateRejected) {
+                        throw $e;
+                    }
+                    array_push($rejected, ...array_map('intval', $e->failedIds()));
+                }
             }
             $present = array_map(static fn(array $row): int => (int) $row['id'], $rows);
             $removed = array_diff($chunk, $present);
             if ($removed !== []) {
-                $this->client->collections[$collection]->documents->delete([
-                    'filter_by' => 'id:=[' . implode(',', $removed) . ']',
-                ]);
+                $this->deleteDocuments($collection, $removed);
             }
+        }
+        return $rejected;
+    }
+
+    /** @param array<int> $ids */
+    private function deleteDocuments(string $collection, array $ids): void
+    {
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        foreach (array_chunk($ids, 250) as $chunk) {
+            $this->client->collections[$collection]->documents->delete([
+                'filter_by' => 'id:=[' . implode(',', $chunk) . ']',
+            ]);
+        }
+    }
+
+    /**
+     * @throws VerificationException when the new generation is far smaller than
+     *                               the live one and no override was given
+     */
+    private function guardAgainstShrink(?string $previous, int $documents): void
+    {
+        if ($this->allowShrink || $this->minRetainedRatio <= 0 || $previous === null) {
+            return;
+        }
+        try {
+            $live = (int) ($this->client->collections[$previous]->retrieve()['num_documents'] ?? 0);
+        } catch (\Typesense\Exceptions\ObjectNotFound) {
+            return;
+        }
+        if ($live > 0 && $documents < $live * $this->minRetainedRatio) {
+            throw new VerificationException(sprintf(
+                'Refusing to promote: the new generation has %d documents, the live one %d (below %d%%). '
+                . 'Check the profile scope, or rebuild with "Allow a smaller corpus" if the drop is intended.',
+                $documents,
+                $live,
+                (int) round($this->minRetainedRatio * 100),
+            ));
         }
     }
 
@@ -459,11 +500,13 @@ final class Reindexer
         return (int) round((hrtime(true) - $started) / 1_000_000);
     }
 
+    /**
+     * Only Typesense's typed 404. Matching message text also matched transport
+     * errors whose URL contained "404" (generated collection names often do),
+     * which made cleanup forget a collection that still existed.
+     */
     private function isNotFound(\Throwable $e): bool
     {
-        $message = strtolower($e->getMessage());
-        return str_contains($message, 'not found')
-            || str_contains($message, '404')
-            || str_contains($message, 'could not find');
+        return $e instanceof \Typesense\Exceptions\ObjectNotFound;
     }
 }

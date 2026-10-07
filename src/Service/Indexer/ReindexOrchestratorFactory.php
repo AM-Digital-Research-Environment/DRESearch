@@ -21,7 +21,8 @@ final class ReindexOrchestratorFactory implements FactoryInterface
             $container->get(ProfileRegistry::class),
             $container->get(RebuildStateStore::class),
             $container->get('Omeka\Logger'),
-            (int) ($container->get('Config')['dre_search']['operations']['retention_days'] ?? 30),
+            (int) ($container->get('Config')['dre_search']['operations']['retention_days'] ?? 0),
+            (float) ($container->get('Config')['dre_search']['operations']['min_retained_ratio'] ?? 0.5),
         );
     }
 }

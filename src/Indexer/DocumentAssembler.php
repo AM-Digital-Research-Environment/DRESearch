@@ -23,6 +23,9 @@ final class DocumentAssembler
             return [];
         }
         $values = $this->source->loadValues($ids);
+        if ($this->mapper instanceof PreparesBatch) {
+            $this->mapper->prepare($values);
+        }
         $thumbnails = $this->source->loadThumbnails($ids);
         $itemLink = $this->profile->itemLink();
         $reverseLinks = $this->profile->reverseLinks();

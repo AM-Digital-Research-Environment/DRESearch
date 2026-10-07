@@ -61,6 +61,10 @@ class Module extends AbstractModule
         'dre_search_typesense_api_key',
     ];
 
+    /** Built on the first observed write, then reused for the request. */
+    private ?Indexer\ItemEventListener $itemEventListener = null;
+    private bool $itemEventListenerResolved = false;
+
     public function getConfig(): array
     {
         return include __DIR__ . '/config/module.config.php';
@@ -108,6 +112,16 @@ class Module extends AbstractModule
                 $this->profileNames($services),
                 'Visibility rules changed. Rebuild all profiles before serving search.',
             );
+        }
+        if (version_compare((string) $oldVersion, '1.23.0', '<')) {
+            // Coalesced drain worker lease + rejected-document report. No
+            // rebuild needed: the documents and their schema are unchanged.
+            $this->installOperationalTables($services);
+            $connection = $services->get('Omeka\Connection');
+            $columns = $connection->getSchemaManager()->listTableColumns('dre_search_profile_state');
+            if (!isset($columns['rejected_ids'])) {
+                $connection->executeStatement('ALTER TABLE dre_search_profile_state ADD rejected_ids TEXT NULL');
+            }
         }
     }
 
@@ -159,68 +173,66 @@ class Module extends AbstractModule
 
     /**
      * Queue changed items and their dependencies after Omeka writes. Handler
-     * bodies live in Indexer\ItemEventListener; background jobs perform the
-     * Typesense writes. With no connection configured no work is queued.
+     * bodies live in Indexer\ItemEventListener; a coalesced background worker
+     * performs the Typesense writes. The listener (and the indexer, profile
+     * registry and client provider behind it) is built on the first write
+     * event, not on every request: anonymous page views never construct it.
+     *
+     * Omeka's batch create/update/delete fire the per-resource events for each
+     * id, so batch events are deliberately not observed.
      */
     public function attachListeners(SharedEventManagerInterface $sharedEventManager): void
     {
-        $listener = $this->resolveItemEventListener();
-        if ($listener === null) {
-            return;
-        }
-
-        $sharedEventManager->attach(
-            \Omeka\Api\Adapter\ItemAdapter::class,
-            'api.create.post',
-            [$listener, 'onItemCreate']
-        );
-        $sharedEventManager->attach(
-            \Omeka\Api\Adapter\ItemAdapter::class,
-            'api.update.post',
-            [$listener, 'onItemUpdate']
-        );
-        $sharedEventManager->attach(
-            \Omeka\Api\Adapter\ItemAdapter::class,
-            'api.delete.pre',
-            [$listener, 'onItemDeletePre']
-        );
-        $sharedEventManager->attach(
-            \Omeka\Api\Adapter\ItemAdapter::class,
-            'api.delete.post',
-            [$listener, 'onItemDelete']
-        );
-        foreach (['api.update.pre', 'api.batch_update.pre'] as $eventName) {
-            $sharedEventManager->attach(\Omeka\Api\Adapter\ItemAdapter::class, $eventName, [$listener, 'onItemUpdatePre']);
-        }
-        foreach (['api.batch_create.post', 'api.batch_update.post'] as $eventName) {
-            $sharedEventManager->attach(\Omeka\Api\Adapter\ItemAdapter::class, $eventName, [$listener, 'onItemBatch']);
-        }
-        $sharedEventManager->attach(\Omeka\Api\Adapter\ItemAdapter::class, 'api.batch_delete.pre', [$listener, 'onItemBatchDeletePre']);
-        $sharedEventManager->attach(\Omeka\Api\Adapter\ItemAdapter::class, 'api.batch_delete.post', [$listener, 'onItemBatchDelete']);
-
-        foreach (['api.create.post', 'api.update.post'] as $eventName) {
-            $sharedEventManager->attach(\Omeka\Api\Adapter\MediaAdapter::class, $eventName, [$listener, 'onMediaSave']);
-        }
-        $sharedEventManager->attach(\Omeka\Api\Adapter\MediaAdapter::class, 'api.update.pre', [$listener, 'onMediaDeletePre']);
-        $sharedEventManager->attach(\Omeka\Api\Adapter\MediaAdapter::class, 'api.delete.pre', [$listener, 'onMediaDeletePre']);
-        $sharedEventManager->attach(\Omeka\Api\Adapter\MediaAdapter::class, 'api.delete.post', [$listener, 'onMediaDelete']);
-
-        foreach (['api.update.pre', 'api.delete.pre'] as $eventName) {
-            $sharedEventManager->attach(\Omeka\Api\Adapter\ItemSetAdapter::class, $eventName, [$listener, 'onItemSetPre']);
-        }
-        foreach (['api.update.post', 'api.delete.post'] as $eventName) {
-            $sharedEventManager->attach(\Omeka\Api\Adapter\ItemSetAdapter::class, $eventName, [$listener, 'onItemSetPost']);
+        $items = \Omeka\Api\Adapter\ItemAdapter::class;
+        $media = \Omeka\Api\Adapter\MediaAdapter::class;
+        $sets = \Omeka\Api\Adapter\ItemSetAdapter::class;
+        $templates = \Omeka\Api\Adapter\ResourceTemplateAdapter::class;
+        foreach (
+            [
+                [$items, 'api.create.post', 'onItemCreate'],
+                [$items, 'api.update.pre', 'onItemUpdatePre'],
+                [$items, 'api.update.post', 'onItemUpdate'],
+                [$items, 'api.delete.pre', 'onItemDeletePre'],
+                [$items, 'api.delete.post', 'onItemDelete'],
+                [$media, 'api.create.post', 'onMediaSave'],
+                [$media, 'api.update.pre', 'onMediaDeletePre'],
+                [$media, 'api.update.post', 'onMediaSave'],
+                [$media, 'api.delete.pre', 'onMediaDeletePre'],
+                [$media, 'api.delete.post', 'onMediaDelete'],
+                [$sets, 'api.delete.pre', 'onItemSetDeletePre'],
+                [$sets, 'api.delete.post', 'onItemSetDelete'],
+                [$templates, 'api.update.pre', 'onResourceTemplatePre'],
+                [$templates, 'api.update.post', 'onResourceTemplatePost'],
+                [$templates, 'api.delete.pre', 'onResourceTemplatePre'],
+                [$templates, 'api.delete.post', 'onResourceTemplatePost'],
+            ] as [$identifier, $eventName, $method]
+        ) {
+            $sharedEventManager->attach($identifier, $eventName, function (\Laminas\EventManager\EventInterface $event) use ($method): void {
+                $listener = $this->resolveItemEventListener();
+                if ($listener === null || !$event instanceof \Laminas\EventManager\Event) {
+                    return;
+                }
+                try {
+                    $listener->{$method}($event);
+                } catch (\Throwable $error) {
+                    // Indexing must never roll back or break the user's write.
+                    $this->logIndexingFailure('DRESearch: ' . $method . ' failed: ' . $error->getMessage());
+                }
+            });
         }
     }
 
     /**
-     * Resolve the ItemEventListener from the service manager, returning null if
-     * the SL isn't available yet (extreme bootstrap edge cases). attachListeners
-     * runs after the SL is built, so in normal operation this returns a real
-     * listener; the null branch is defensive — a missing SL means we can't attach.
+     * Resolve (once) the ItemEventListener from the service manager. A failure
+     * — e.g. an invalid profile override in local.config.php — disables
+     * incremental indexing for this request and is logged, never silent.
      */
     private function resolveItemEventListener(): ?Indexer\ItemEventListener
     {
+        if ($this->itemEventListenerResolved) {
+            return $this->itemEventListener;
+        }
+        $this->itemEventListenerResolved = true;
         try {
             $sl = $this->getServiceLocator();
             if ($sl === null) {
@@ -228,9 +240,19 @@ class Module extends AbstractModule
             }
             /** @var Indexer\ItemEventListener $listener */
             $listener = $sl->get(Indexer\ItemEventListener::class);
-            return $listener;
-        } catch (\Throwable) {
+            return $this->itemEventListener = $listener;
+        } catch (\Throwable $error) {
+            $this->logIndexingFailure('DRESearch: incremental indexing is disabled for this request: ' . $error->getMessage());
             return null;
+        }
+    }
+
+    private function logIndexingFailure(string $message): void
+    {
+        try {
+            $this->getServiceLocator()?->get('Omeka\Logger')->err($message);
+        } catch (\Throwable) {
+            error_log($message);
         }
     }
 
@@ -291,6 +313,7 @@ class Module extends AbstractModule
         }
         $connection = $services->get('Omeka\Connection');
         $connection->executeStatement('DROP TABLE IF EXISTS dre_search_change');
+        $connection->executeStatement('DROP TABLE IF EXISTS dre_search_worker');
         $connection->executeStatement('DROP TABLE IF EXISTS dre_search_cache');
         $connection->executeStatement('DROP TABLE IF EXISTS dre_search_rate_limit');
         $connection->executeStatement('DROP TABLE IF EXISTS dre_search_generation');
@@ -325,6 +348,7 @@ CREATE TABLE IF NOT EXISTS dre_search_profile_state (
     documents_imported INT NOT NULL DEFAULT 0,
     documents_failed INT NOT NULL DEFAULT 0,
     last_error_code VARCHAR(64) NULL,
+    rejected_ids TEXT NULL,
     updated_at DATETIME NOT NULL,
     INDEX idx_dre_search_state_status (status),
     INDEX idx_dre_search_state_dirty (dirty)
@@ -358,6 +382,14 @@ CREATE TABLE IF NOT EXISTS dre_search_change (
     revision CHAR(32) NOT NULL,
     queued_at DATETIME NOT NULL,
     PRIMARY KEY (profile, item_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL);
+        $connection->executeStatement(<<<'SQL'
+CREATE TABLE IF NOT EXISTS dre_search_worker (
+    name VARCHAR(32) NOT NULL PRIMARY KEY,
+    requested TINYINT(1) NOT NULL DEFAULT 0,
+    heartbeat DATETIME NULL,
+    updated_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL);
         $connection->executeStatement(<<<'SQL'

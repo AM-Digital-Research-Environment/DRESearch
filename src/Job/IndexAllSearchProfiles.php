@@ -20,6 +20,7 @@ class IndexAllSearchProfiles extends AbstractJob
             $stats = $orchestrator->runAll(
                 (string) $this->job->getId(),
                 fn(): bool => $this->shouldStop(),
+                (bool) $this->getArg('allow_shrink', false),
             );
             $logger->info('DRESearch: reindex-all complete', $stats);
         } catch (ReindexCancelledException $e) {

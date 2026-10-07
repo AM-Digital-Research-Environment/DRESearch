@@ -102,7 +102,11 @@ class SearchController extends AbstractActionController
         return $this->respond(function (string $requestId): array {
             $this->requireMethod(['POST']);
             $this->requireRateLimit('union', 60);
-            return $this->proxy->union($this->readJsonBody(), $requestId);
+            return $this->proxy->union(
+                $this->readJsonBody(),
+                $requestId,
+                fn(string $s): string => (string) $this->translate($s),
+            );
         });
     }
 

@@ -251,6 +251,10 @@ return [
                 'label'    => 'DRE Search', // @translate
                 'route'    => 'admin/dre-search',
                 'resource' => Controller\Admin\MaintenanceController::class,
+                // Without a privilege the ACL is asked about ALL privileges, which
+                // editors and site admins (granted index/reindex) do not hold, so
+                // the entry was hidden from them although the page opened.
+                'privilege' => 'index',
                 'class'    => 'o-icon-search',
                 'pages'    => [
                     ['route' => 'admin/dre-search/reindex', 'visible' => false],
@@ -275,10 +279,19 @@ return [
             'protocol' => 'http',
         ],
         'operations' => [
-            // Keep the live generation plus one rollback target indefinitely;
-            // retired session-owned generations become eligible after this age.
-            'retention_days' => 30,
-            // Maximum dependency/event fan-out performed inline after a save.
+            // The live generation and one rollback target are always kept.
+            // Older retired generations are deleted at the next promotion (0),
+            // or after this many days: each one is a full corpus copy in
+            // Typesense RAM and may hold metadata since made private.
+            'retention_days' => 0,
+            // Public search hides records with queued, not-yet-applied changes
+            // (their indexed copy may be stale). Above this many per corpus it
+            // pauses that corpus instead, until the worker catches up.
+            'pending_exclusion_limit' => 250,
+            // A rebuild that would shrink a corpus below this fraction of the
+            // live generation is refused (0 disables); the maintenance page
+            // can override it for an intended drop.
+            'min_retained_ratio' => 0.5,
         ],
         'federated' => [
             // Keep authority-only term corpora on their dedicated tabs so a

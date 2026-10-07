@@ -13,22 +13,34 @@ use Omeka\Entity\Item;
 use Omeka\Entity\Media;
 
 /**
- * Defensive Omeka event adapter covering single/batch items, media parents,
- * and item-set membership/destruction. IDs needed after destructive operations
- * are captured during the corresponding pre event.
+ * Defensive Omeka event adapter covering items, media parents, item-set
+ * destruction and resource-template changes.
+ *
+ * Omeka's batch create/update/delete run every id through the per-resource
+ * `api.{create,update,delete}.{pre,post}` events, so no batch listener is
+ * needed (listening to both did every id's work twice).
+ *
+ * What must be known after a destructive write is captured in its pre event:
+ * the dependants (documents that embed this item), and the profiles whose
+ * scope held it — a deleted or re-templated item no longer matches its old
+ * profile, which must still delete its document.
  */
 final class ItemEventListener
 {
+    /** @var array<int,list<int>> item id => dependants before the write */
+    private array $beforeDependencies = [];
+    /** @var array<string,list<int>> profile => ids scoped before the write */
+    private array $formerScope = [];
     /** @var list<int> */
     private array $pendingItemDeletes = [];
-    /** @var array<int,list<int>> */
-    private array $beforeDependencies = [];
     /** @var list<int> */
     private array $pendingDeleteDependencies = [];
     /** @var list<int> */
     private array $pendingMediaParents = [];
     /** @var list<int> */
-    private array $pendingItemSetMembers = [];
+    private array $pendingSetMembers = [];
+    /** @var list<int> */
+    private array $pendingTemplateItems = [];
 
     public function __construct(
         private readonly IncrementalIndexer $indexer,
@@ -38,37 +50,56 @@ final class ItemEventListener
 
     public function onItemCreate(Event $event): void
     {
-        foreach (array_unique(array_merge($this->itemIdsFromResponse($event), $this->requestIds($event))) as $id) {
-            $this->indexer->syncItemWithDependencies($id);
+        $ids = array_values(array_unique(array_merge($this->itemIdsFromResponse($event), $this->requestIds($event))));
+        if ($ids !== []) {
+            $this->indexer->syncItems(array_merge($ids, $this->indexer->dependenciesOf($ids)));
         }
     }
 
     public function onItemUpdatePre(Event $event): void
     {
-        foreach ($this->requestIds($event) as $id) {
+        $ids = $this->requestIds($event);
+        if ($ids === []) {
+            return;
+        }
+        foreach ($ids as $id) {
             $this->beforeDependencies[$id] = $this->indexer->dependencies($id);
         }
+        $this->formerScope = ScopeMatcher::merge($this->formerScope, $this->indexer->membership($ids));
     }
 
     public function onItemUpdate(Event $event): void
     {
-        foreach (array_unique(array_merge($this->requestIds($event), $this->itemIdsFromResponse($event))) as $id) {
-            $this->indexer->syncItems(array_merge([$id], $this->beforeDependencies[$id] ?? [], $this->indexer->dependencies($id)));
+        $ids = array_values(array_unique(array_merge($this->requestIds($event), $this->itemIdsFromResponse($event))));
+        if ($ids === []) {
+            return;
+        }
+        $affected = array_merge($ids, $this->indexer->dependenciesOf($ids));
+        $former = [];
+        foreach ($ids as $id) {
+            array_push($affected, ...($this->beforeDependencies[$id] ?? []));
             unset($this->beforeDependencies[$id]);
         }
+        foreach ($this->formerScope as $profile => $scoped) {
+            $mine = array_values(array_intersect($scoped, $ids));
+            if ($mine !== []) {
+                $former[$profile] = $mine;
+                $this->formerScope[$profile] = array_values(array_diff($scoped, $ids));
+            }
+        }
+        $this->formerScope = array_filter($this->formerScope);
+        $this->indexer->syncItems($affected, 'Omeka write', $former);
     }
 
     public function onItemDeletePre(Event $event): void
     {
         $ids = $this->requestIds($event);
-        $this->pendingItemDeletes = array_values(array_unique(array_merge($this->pendingItemDeletes, $ids)));
-        foreach ($ids as $id) {
-            $dependencies = $this->indexer->dependencies($id);
-            $this->pendingDeleteDependencies = array_merge(
-                $this->pendingDeleteDependencies,
-                array_map('intval', $dependencies),
-            );
+        if ($ids === []) {
+            return;
         }
+        $this->pendingItemDeletes = array_values(array_unique(array_merge($this->pendingItemDeletes, $ids)));
+        array_push($this->pendingDeleteDependencies, ...$this->indexer->dependenciesOf($ids));
+        $this->formerScope = ScopeMatcher::merge($this->formerScope, $this->indexer->membership($ids));
     }
 
     public function onItemDelete(Event $event): void
@@ -78,28 +109,14 @@ final class ItemEventListener
             $this->itemIdsFromResponse($event),
             $this->requestIds($event),
         )));
+        $dependencies = $this->pendingDeleteDependencies;
         $this->pendingItemDeletes = [];
-        foreach ($ids as $id) {
-            $this->indexer->deleteItem($id);
-        }
-        $dependencies = array_values(array_unique($this->pendingDeleteDependencies));
         $this->pendingDeleteDependencies = [];
-        $this->indexer->syncItems($dependencies, 'item deletion dependency refresh');
-    }
-
-    public function onItemBatch(Event $event): void
-    {
-        $this->onItemUpdate($event);
-    }
-
-    public function onItemBatchDeletePre(Event $event): void
-    {
-        $this->onItemDeletePre($event);
-    }
-
-    public function onItemBatchDelete(Event $event): void
-    {
-        $this->onItemDelete($event);
+        $former = $this->formerScope;
+        $this->formerScope = [];
+        // The deleted rows match no scope any more: $former carries them to
+        // the profiles that indexed them, whose drain deletes the documents.
+        $this->indexer->syncItems(array_merge($ids, $dependencies), 'item deletion', $former);
     }
 
     public function onMediaSave(Event $event): void
@@ -133,30 +150,81 @@ final class ItemEventListener
 
     public function onMediaDelete(Event $event): void
     {
-        $parents = array_values(array_unique($this->pendingMediaParents));
+        $parents = ScopeMatcher::normalize($this->pendingMediaParents);
         $this->pendingMediaParents = [];
-        foreach ($parents as $id) {
-            $this->indexer->syncItemWithDependencies($id);
+        if ($parents !== []) {
+            $this->indexer->syncItems(array_merge($parents, $this->indexer->dependenciesOf($parents)));
         }
     }
 
-    public function onItemSetPre(Event $event): void
+    /**
+     * Deleting an item set removes its members from every set-scoped profile
+     * and changes the authority lookups of the items that link to them. An
+     * item-set UPDATE cannot change any document (scope and authority lookups
+     * use membership, which is edited on the item side) and is not observed.
+     */
+    public function onItemSetDeletePre(Event $event): void
     {
         foreach ($this->requestIds($event) as $id) {
             $members = $this->fetchFirstColumn(
                 'SELECT item_id FROM item_item_set WHERE item_set_id = :id',
                 ['id' => $id],
             );
-            $this->pendingItemSetMembers = array_merge($this->pendingItemSetMembers, array_map('intval', $members));
+            array_push($this->pendingSetMembers, ...array_map('intval', $members));
+        }
+        $members = ScopeMatcher::normalize($this->pendingSetMembers);
+        if ($members !== []) {
+            $this->formerScope = ScopeMatcher::merge($this->formerScope, $this->indexer->membership($members));
+            array_push($this->pendingDeleteDependencies, ...$this->indexer->dependenciesOf($members));
         }
     }
 
-    public function onItemSetPost(Event $event): void
+    public function onItemSetDelete(Event $event): void
     {
-        $members = array_values(array_unique($this->pendingItemSetMembers));
-        $this->pendingItemSetMembers = [];
-        foreach ($members as $id) {
-            $this->indexer->syncItemWithDependencies($id);
+        $members = ScopeMatcher::normalize($this->pendingSetMembers);
+        $dependencies = $this->pendingDeleteDependencies;
+        $former = $this->formerScope;
+        $this->pendingSetMembers = [];
+        $this->pendingDeleteDependencies = [];
+        $this->formerScope = [];
+        if ($members !== []) {
+            $this->indexer->syncItems(array_merge($members, $dependencies), 'item set deletion', $former);
+        }
+    }
+
+    /**
+     * A template's title property drives the computed title of every item
+     * using it (and the linked titles other documents embed); its alternate
+     * labels drive role names; deleting it un-templates its items, moving them
+     * out of template-scoped profiles. Capture the items before the write.
+     */
+    public function onResourceTemplatePre(Event $event): void
+    {
+        foreach ($this->requestIds($event) as $id) {
+            $items = $this->fetchFirstColumn(
+                'SELECT id FROM resource WHERE resource_template_id = :id AND resource_type = :type',
+                ['id' => $id, 'type' => Item::class],
+            );
+            array_push($this->pendingTemplateItems, ...array_map('intval', $items));
+        }
+        $items = ScopeMatcher::normalize($this->pendingTemplateItems);
+        if ($items !== []) {
+            $this->formerScope = ScopeMatcher::merge($this->formerScope, $this->indexer->membership($items));
+        }
+    }
+
+    public function onResourceTemplatePost(Event $event): void
+    {
+        $items = ScopeMatcher::normalize($this->pendingTemplateItems);
+        $former = $this->formerScope;
+        $this->pendingTemplateItems = [];
+        $this->formerScope = [];
+        if ($items !== []) {
+            $this->indexer->syncItems(
+                array_merge($items, $this->indexer->dependenciesOf($items)),
+                'resource template change',
+                $former,
+            );
         }
     }
 
@@ -228,8 +296,8 @@ final class ItemEventListener
 
     /**
      * Event listeners run inside Omeka's write lifecycle. Dependency capture is
-     * best-effort: a metadata-query failure may leave the index marked stale on
-     * the next synchronization, but it must never roll back the user's write.
+     * best-effort: a metadata-query failure marks the index stale, but it must
+     * never roll back the user's write.
      *
      * @param array<string,int|string> $params
      * @return list<mixed>
@@ -237,7 +305,7 @@ final class ItemEventListener
     private function fetchFirstColumn(string $sql, array $params): array
     {
         try {
-            return $this->connection->executeQuery($sql, $params)->fetchFirstColumn();
+            return array_values($this->connection->executeQuery($sql, $params)->fetchFirstColumn());
         } catch (\Throwable) {
             $this->indexer->markDirty('An Omeka event dependency lookup failed; run a full rebuild.');
             return [];

@@ -5,6 +5,7 @@
  * @var list<array{name:string, label:string, collection:string, reachable:bool, documents:?int, error:?string, state:array<string,mixed>}> $profiles
  * @var \DRESearch\Form\MaintenanceForm $form
  * @var array{enabled:bool,rows:list<array{profile:string,kind:string,q:string,count:int}>} $analytics
+ * @var array{requested:bool,heartbeat:?string,alive:bool}|null $worker
  */
 $this->headTitle($this->translate('DRE Search'));
 $form->setAttribute('action', $this->url('admin/dre-search/reindex'));
@@ -49,11 +50,29 @@ $form->prepare();
             <td>
                 <?php $state = $p['state']; ?>
                 <strong><?= $this->escapeHtml($this->translate((string) ($state['status'] ?? 'Not built'))) ?></strong>
-                <?php if (!empty($p['pending'])): ?>
-                    <div><?= $this->escapeHtml(sprintf($this->translate('%d pending changes'), $p['pending'])) ?></div>
+                <?php if ($p['public'] === 'paused'): ?>
+                    <div class="error"><strong><?= $this->translate('Public search paused') ?></strong></div>
+                    <?php if (!empty($state['dirty'])): ?>
+                        <div><?= $this->translate('A full rebuild is required before this corpus answers again.') ?></div>
+                        <?php if (!empty($state['dirty_reason'])): ?>
+                            <div><small><?= $this->escapeHtml((string) $state['dirty_reason']) ?></small></div>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <div><?= $this->escapeHtml(sprintf($this->translate('%d pending changes — more than can be hidden individually. Search resumes once the worker applies them.'), $p['pending'])) ?></div>
+                    <?php endif; ?>
+                <?php elseif ($p['public'] === 'hiding'): ?>
+                    <div class="warning"><?= $this->escapeHtml(sprintf($this->translate('%d records hidden from public search until their changes are applied'), $p['pending'])) ?></div>
                 <?php endif; ?>
-                <?php if (!empty($state['dirty'])): ?>
-                    <div class="warning"><?= $this->translate('Search is paused until a full rebuild completes.') ?></div>
+                <?php if (!empty($p['oldest_pending'])): ?>
+                    <div><small><?= $this->escapeHtml(sprintf($this->translate('Oldest pending change: %s UTC'), $p['oldest_pending'])) ?></small></div>
+                <?php endif; ?>
+                <?php if ($p['rejected'] !== []): ?>
+                    <div class="error">
+                        <?= $this->escapeHtml(sprintf($this->translate('Typesense rejected %d record(s); they are out of search until fixed and saved again:'), count($p['rejected']))) ?>
+                        <?php foreach (array_slice($p['rejected'], 0, 20) as $rejectedId): ?>
+                            <a href="<?= $this->escapeHtmlAttr($this->url('admin/id', ['controller' => 'item', 'id' => $rejectedId])) ?>">#<?= (int) $rejectedId ?></a>
+                        <?php endforeach; ?>
+                    </div>
                 <?php endif; ?>
                 <?php if (!empty($state['live_collection'])): ?>
                     <div><code><?= $this->escapeHtml((string) $state['live_collection']) ?></code></div>
@@ -80,6 +99,19 @@ $form->prepare();
         <?php endforeach; ?>
     </tbody>
 </table>
+
+<h2><?= $this->translate('Incremental worker') ?></h2>
+<p>
+    <?php if ($worker === null): ?>
+        <?= $this->translate('Worker state is unavailable.') ?>
+    <?php elseif ($worker['alive']): ?>
+        <?= $this->escapeHtml(sprintf($this->translate('Applying changes — last heartbeat %s UTC.'), (string) $worker['heartbeat'])) ?>
+    <?php elseif ($worker['requested']): ?>
+        <?= $this->translate('Changes are waiting for a worker. One starts with the next edit or search; use "Retry pending changes" to start it now.') ?>
+    <?php else: ?>
+        <?= $this->translate('Idle — no changes waiting.') ?>
+    <?php endif; ?>
+</p>
 
 <h2><?= $this->translate('Search analytics') ?></h2>
 <p>
@@ -123,6 +155,15 @@ $form->prepare();
         </button>
         <span class="dre-search-reindex-all__hint" style="margin-inline-start:.5rem; color:#6c6357; font-size:.9em;">
             <?= $this->translate('Rebuilds every index in one background job, one corpus at a time.') ?>
+        </span>
+    </p>
+    <p>
+        <label>
+            <input type="checkbox" name="allow_shrink" value="1">
+            <?= $this->translate('Allow a smaller corpus') ?>
+        </label>
+        <span style="margin-inline-start:.5rem; color:#6c6357; font-size:.9em;">
+            <?= $this->translate('A rebuild that would leave less than half of the live documents is refused, in case a scope setting is wrong. Tick this when the drop is intended.') ?>
         </span>
     </p>
 

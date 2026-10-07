@@ -74,10 +74,19 @@ final class ValueBag
         return null;
     }
 
+    /**
+     * First integer found in a literal. Values outside int32 are not a number
+     * the schema can store (Typesense rejects the whole document), so they are
+     * treated as absent rather than clamped into a misleading value.
+     */
     public function firstInt(?string $term): ?int
     {
         foreach ($this->rows($term) as $row) {
             if (preg_match('/\d+/', (string) ($row['value'] ?? ''), $match)) {
+                $digits = ltrim($match[0], '0');
+                if (strlen($digits) > 10 || (int) $digits > 2147483647) {
+                    continue;
+                }
                 return (int) $match[0];
             }
         }

@@ -20,7 +20,7 @@ use DRESearch\Settings\SearchProfile;
  *   ['vrid' => ?int, 'value' => ?string, 'title' => ?string]
  * where vrid/title come from a value_resource link and value is the literal.
  */
-final class ResearchItemMapper implements MapperInterface
+final class ResearchItemMapper implements MapperInterface, PreparesBatch
 {
     /** Roles folded into creator_ss for search + byline. */
     private const CREATOR_TERMS = ['dcterms:creator', 'dcterms:contributor', 'marcrel:aut', 'marcrel:edt'];
@@ -32,6 +32,22 @@ final class ResearchItemMapper implements MapperInterface
         private readonly AuthorityResolver $auth,
         private readonly SearchProfile $profile,
     ) {
+    }
+
+    /** Resolve every authority this batch links to in one pass (no-op after a full load). */
+    public function prepare(array $valuesById): void
+    {
+        $linked = [];
+        foreach ($valuesById as $values) {
+            foreach ($values as $rows) {
+                foreach ($rows as $row) {
+                    if (($row['vrid'] ?? null) !== null) {
+                        $linked[(int) $row['vrid']] = true;
+                    }
+                }
+            }
+        }
+        $this->auth->prime(array_keys($linked));
     }
 
     /**

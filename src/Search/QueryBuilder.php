@@ -93,9 +93,15 @@ final class QueryBuilder
      */
     public const MAX_CANDIDATES = 512;
 
+    /**
+     * @param string|null $serverFilter saved block scope (validated by {@see FilterExpression})
+     * @param list<int> $excludeIds documents with queued, not-yet-applied changes
+     *                              ({@see ReadinessGate}); hidden until reconciled
+     */
     public function __construct(
         private readonly SearchProfile $profile,
         private readonly ?string $serverFilter = null,
+        private readonly array $excludeIds = [],
     ) {
     }
 
@@ -131,14 +137,17 @@ final class QueryBuilder
         // dropped from the returned documents so a large value never bloats every hit.
         // Typesense still returns their highlighted snippet, so a transcript match
         // still surfaces in the card's "Matched in" line.
-        $searchOnly = $this->profile->searchOnlyFields();
-        if ($searchOnly !== []) {
-            $params['exclude_fields'] = implode(',', $searchOnly);
-        }
+        // is_public is the visibility guard, always true in a public result;
+        // shipping it with every hit is noise.
+        $params['exclude_fields'] = implode(',', array_values(array_unique(array_merge(
+            $this->profile->searchOnlyFields(),
+            ['is_public'],
+        ))));
         if (!$isBrowse) {
-            // Strip common FR/EN/DE function words so "le"/"the"/"der" etc. don't
-            // dilute relevance. Only on a real query — browse (q=*) ignores it, and
-            // SearchProxy drops it and retries if the set isn't on the server yet.
+            // Strip common English function words (data/stopwords.json) so "the",
+            // "of", "and" don't dilute relevance. Only on a real query — browse
+            // (q=*) ignores it, and SearchExecutor drops it and retries if the
+            // set isn't on the server yet.
             $params['stopwords'] = self::STOPWORDS_SET;
             // Mark matched terms so each card can show *where* a result matched.
             // Short fields (title, linked-value facets, names) are highlighted in
@@ -453,8 +462,20 @@ final class QueryBuilder
         // Security invariant — always first, never client-controlled.
         $clauses = ['is_public:=true'];
 
+        // Queued changes: the indexed copy may be stale (possibly still showing
+        // metadata just made private), so hide it until the worker applies it.
+        if ($this->excludeIds !== []) {
+            $clauses[] = 'id:!=[' . implode(',', array_map('intval', $this->excludeIds)) . ']';
+        }
+
         $locked = trim((string) ($this->serverFilter ?? ''));
         if ($locked !== '') {
+            // && and || share one precedence level in Typesense, so the group
+            // is only safe because FilterExpression guarantees it balances.
+            $problem = FilterExpression::problem($locked);
+            if ($problem !== null) {
+                throw new Exception\RequestValidationException('invalid_block_scope', $problem);
+            }
             $clauses[] = '(' . $locked . ')';
         }
 

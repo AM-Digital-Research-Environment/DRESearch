@@ -13,7 +13,12 @@ final class MapperFactory
     {
     }
 
-    public function create(): MapperInterface
+    /**
+     * @param bool $targeted incremental batches resolve only the authorities they
+     *                       link to ({@see AuthorityResolver::prime()}); a full
+     *                       rebuild loads them all once.
+     */
+    public function create(bool $targeted = false): MapperInterface
     {
         if ($this->profile->kind() === 'project') {
             return new ProjectMapper($this->profile);
@@ -41,7 +46,9 @@ final class MapperFactory
         }
 
         $auth = new AuthorityResolver($this->connection, $this->profile);
-        $auth->load();
+        if (!$targeted) {
+            $auth->load();
+        }
         return new ResearchItemMapper($auth, $this->profile);
     }
 }

@@ -70,7 +70,7 @@ final class SearchRegressionTest extends TestCase
             $import = \DRESearch\Indexer\ImportResult::fromResponse($client->collections[$collection]->documents->import($docs), $docs);
             self::assertTrue($import->isComplete(), json_encode($import->errors()));
             $builder = new QueryBuilder($profile);
-            $result = SearchExecutor::single($client->collections[$collection], $builder->search(['q' => 'zygomorphic']));
+            $result = SearchExecutor::single($client, $collection, $builder->search(['q' => 'zygomorphic']));
             self::assertSame(101, $result['found']);
             self::assertArrayNotHasKey('fulltext', $result['hits'][0]['document']);
             self::assertStringContainsString(QueryBuilder::HL_START, $result['hits'][0]['highlight']['fulltext']['snippet']);
@@ -80,7 +80,7 @@ final class SearchRegressionTest extends TestCase
             $missing = array_values(array_diff(array_column($docs, 'type_s'), array_column($counts, 'value')))[0];
             $scoped = new QueryBuilder($profile, 'year:>=2020');
             $params = $scoped->facetSearch(['q' => '', 'filters' => ['type_s' => ['Topic 001']]], 'type_s', $missing);
-            $facets = SearchExecutor::single($client->collections[$collection], $params);
+            $facets = SearchExecutor::single($client, $collection, $params);
             self::assertContains($missing, array_column($facets['facet_counts'][0]['counts'], 'value'));
             self::assertStringContainsString('is_public:=true', $params['filter_by']);
             self::assertStringContainsString('year:>=2020', $params['filter_by']);

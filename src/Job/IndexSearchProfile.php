@@ -21,6 +21,7 @@ class IndexSearchProfile extends AbstractJob
                 (string) $this->getArg('profile', ''),
                 (string) $this->job->getId(),
                 fn(): bool => $this->shouldStop(),
+                (bool) $this->getArg('allow_shrink', false),
             );
             $logger->info('DRESearch: reindex complete', $stats);
         } catch (ReindexCancelledException $e) {
