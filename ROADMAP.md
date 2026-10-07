@@ -8,23 +8,16 @@ on it starts or lands.
 Status: **done** (merged, not yet released) · **in progress** · **planned** ·
 **idea** (needs a decision first).
 
-## 1.25.0 (in preparation)
+## Next release
 
-| Item                                                                                                                                                                                                                                                       | Status |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| **PHP 8.3 minimum.** 8.2's security support ends 2026-12-31. Below 8.3 the module degrades (no install; search unavailable) instead of failing the site.                                                                                                   | done   |
-| **Popular-search moderation.** Anyone can inflate the analytics counts (`record_query` with fresh ids), so editors approve each popular search before visitors see it. Also documents the inflation and states that `is_public:=true` is defense in depth. | done   |
-| **Indexer unit tests:** research-item dates, authority lookups, section phase, podcast episode numbers.                                                                                                                                                    | done   |
-| **Delete-path tests:** a media delete queues its item; an item-set delete queues its members.                                                                                                                                                              | done   |
-| **Real Omeka schema** (`application/data/install/schema.sql`) in the integration tests instead of a hand-written one.                                                                                                                                      | done   |
-| **Stricter checks:** PHPStan on `tests/`, type-aware ESLint (`no-floating-promises`), and a CI check that `Psr\Log\LoggerInterface` loads from Omeka core.                                                                                                 | done   |
-| **Bare-year dates.** Items dated "1950" or "1890s" were indexed with today's timestamp in `date` (`strtotime()` reads a bare year as a clock time); found by the new indexer tests. Rebuild research items after upgrading.                                | done   |
+Nothing is in progress. Pick from **Planned** below and record the item here
+when work starts.
 
 ## Planned
 
 | Item                                                                                                                                                                                    | Notes                                                                   |
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| **PHPUnit 12.** 12.5.38 (2026-10-07) needs PHP 8.3, which the new floor allows; 13.x needs PHP 8.4.1.                                                                                   | After 1.25.0.                                                           |
+| **PHPUnit 12.** 12.5.38 (2026-10-07) needs PHP 8.3, which the new floor allows; 13.x needs PHP 8.4.1.                                                                                   | Next.                                                                   |
 | **Autocomplete on the federated page's search box**, reusing `/dre-search/api/suggest-all`.                                                                                             |                                                                         |
 | **Fewer round trips:** the federated search (counts + active corpus) in one `multi_search`; export and map pages in one `multi_search`; Typesense `use_cache` for tab counts.           | Low priority.                                                           |
 | **Smaller server classes:** split `SearchProxy` (result normalising, paged collection) and build `QueryBuilder` modes from a shared core instead of `unset()` on the search parameters. | Prevents a new parameter leaking into counts, export, map and recounts. |
@@ -74,6 +67,12 @@ Status: **done** (merged, not yet released) · **in progress** · **planned** ·
   instead of three), the cards share one stylesheet, one pager, every
   thumbnail through one helper with `srcset`, and the MapLibre CDN fallback
   fixed and pinned with Subresource Integrity.
+- **1.25.0:** PHP 8.3 minimum (an older PHP degrades instead of failing the
+  site); popular searches shown only after an editor approves them; research
+  items dated with a bare year or decade no longer stored with today's date;
+  PHPStan on `tests/`, type-aware ESLint, a CI check on where PSR Log loads
+  from, Omeka's real schema in the integration tests, and new indexer and
+  delete-path tests.
 - **Repository:** Dependabot security updates, secret scanning and push
   protection on (2026-10-07); issue #22 closed; the AMIRA deployment pins
-  v1.23.0.
+  v1.25.0.
