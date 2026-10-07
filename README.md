@@ -180,7 +180,9 @@ header calls; `headScript`/`headLink` dedupe by URL.)
 
 ## Requirements
 
-- Omeka S `^4.2` on PHP 8.2+ (production AMIRA runs PHP 8.5)
+- Omeka S `^4.2` on PHP 8.3+ (production AMIRA runs PHP 8.5). Below 8.3 the
+  module does not install, and an existing install reports search unavailable
+  instead of failing the site.
 - A Typesense 30 server (optional)
 - For development only: Node `^20.19`, `^22.13` or `>=24`, and Composer. Sites
   install the release archive, which carries the compiled bundle and `vendor/`.
@@ -525,6 +527,7 @@ Notes:
 - [Profile configuration](docs/profile-configuration.md)
 - [Public API](docs/public-api.md)
 - [Upgrading to 1.17](docs/upgrade-1.17.md)
+- [Roadmap](ROADMAP.md) and [changelog](CHANGELOG.md)
 
 ## Development
 

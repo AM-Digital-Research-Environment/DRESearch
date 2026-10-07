@@ -20,6 +20,13 @@ declare(strict_types=1);
  * Exit codes: 0 success, 1 failure, 2 usage error.
  */
 
+// The module's minimum PHP (DRESearch\MIN_PHP_VERSION_ID in Module.php). Checked
+// before Omeka boots: below it the module cannot load its dependencies.
+if (PHP_VERSION_ID < 80300) {
+    fwrite(STDERR, 'DRE Search requires PHP 8.3 or newer; this is PHP ' . PHP_VERSION . ".\n");
+    exit(1);
+}
+
 // Resolve every module path before Omeka's bootstrap chdir()s to its root.
 $moduleRoot = dirname(__DIR__);
 $omekaRoot = getenv('OMEKA_PATH') ?: dirname($moduleRoot, 2);

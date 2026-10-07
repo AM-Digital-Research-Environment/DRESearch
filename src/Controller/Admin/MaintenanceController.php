@@ -42,7 +42,13 @@ class MaintenanceController extends AbstractActionController
 
     public function indexAction(): ViewModel
     {
-        if (!\DRESearch\Module::dependenciesAvailable()) {
+        if (!\DRESearch\Module::phpSupported()) {
+            $this->messenger()->addError(sprintf(
+                $this->translate('DRE Search requires PHP %1$s or newer and this server runs PHP %2$s, so search is unavailable.'), // @translate
+                \DRESearch\MIN_PHP_VERSION,
+                PHP_VERSION,
+            ));
+        } elseif (!\DRESearch\Module::dependenciesAvailable()) {
             $this->messenger()->addError('DRE Search is missing its vendor/ directory, so search is unavailable. Install the DRESearch.zip release asset or run "composer install --no-dev" in the module directory.'); // @translate
         }
         $view = new ViewModel([

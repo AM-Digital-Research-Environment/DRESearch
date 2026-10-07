@@ -4,7 +4,7 @@
   "type": "omeka-module",
   "license": "GPL-3.0-or-later",
   "require": {
-    "php": ">=8.2",
+    "php": ">=8.3",
     "ext-json": "*",
     "guzzlehttp/guzzle": "^8.2",
     "monolog/monolog": "^2.11.1",
@@ -33,7 +33,7 @@
   "config": {
     "prepend-autoloader": false,
     "platform": {
-      "php": "8.2.0"
+      "php": "8.3.0"
     },
     "allow-plugins": {
       "php-http/discovery": false

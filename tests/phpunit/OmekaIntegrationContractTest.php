@@ -17,6 +17,38 @@ use PHPUnit\Framework\TestCase;
 final class OmekaIntegrationContractTest extends TestCase
 {
     /**
+     * The PHP minimum is stated in several places, and they must agree: the
+     * release ships dependencies resolved for config.platform, while Module.php
+     * decides below which version to skip the vendor autoloader, whose
+     * platform check would otherwise fail every request on the site.
+     */
+    public function testThePhpMinimumAgreesEverywhere(): void
+    {
+        require_once dirname(__DIR__, 2) . '/Module.php';
+        $root = dirname(__DIR__, 2);
+        $min = \DRESearch\MIN_PHP_VERSION;
+        [$major, $minor] = array_map('intval', explode('.', $min));
+        self::assertSame($major * 10000 + $minor * 100, \DRESearch\MIN_PHP_VERSION_ID);
+
+        $composer = json_decode((string) file_get_contents($root . '/composer.json'), true);
+        self::assertSame('>=' . $min, $composer['require']['php']);
+        self::assertSame($min . '.0', $composer['config']['platform']['php']);
+        $lock = json_decode((string) file_get_contents($root . '/composer.lock'), true);
+        self::assertSame($min . '.0', $lock['platform-overrides']['php']);
+
+        $ci = (string) file_get_contents($root . '/.github/workflows/ci.yml');
+        self::assertStringContainsString("php: ['" . $min . "',", $ci, 'CI tests the minimum.');
+        $release = (string) file_get_contents($root . '/.github/workflows/release.yml');
+        self::assertStringContainsString("php-version: '" . $min . "'", $release, 'The release is packaged on the minimum.');
+        self::assertStringContainsString('PHP >= ' . $min, $release);
+        self::assertStringContainsString(
+            'PHP_VERSION_ID < ' . \DRESearch\MIN_PHP_VERSION_ID,
+            (string) file_get_contents($root . '/bin/dre-search'),
+        );
+        self::assertStringContainsString('PHP ' . $min . '+', (string) file_get_contents($root . '/README.md'));
+    }
+
+    /**
      * Every public controller action must be on the anonymous ACL allow-list:
      * a missing entry makes the endpoint fail with PermissionDenied before the
      * action runs (the v1.12.1 histogram outage).

@@ -3,6 +3,12 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- **PHP 8.3 is the minimum** (was 8.2, whose security support ends on 2026-12-31). Dependencies are resolved for PHP 8.3 (`config.platform`) and CI tests 8.3–8.5. On an older PHP the module no longer loads its `vendor/` autoloader, whose Composer platform check would otherwise fail every request on the site: a fresh install is refused with a message naming the required version, an existing install reports search unavailable (the maintenance page says why), and `bin/dre-search` exits with an error. The code still parses on PHP 8.2 so that this degrade works; syntax newer than 8.2 waits for the next raise.
+
 ## [1.24.0] - 2026-10-07
 
 ### Changed

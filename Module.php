@@ -18,14 +18,28 @@ declare(strict_types=1);
 
 namespace DRESearch;
 
+/**
+ * The lowest supported PHP, matching composer.json ("php" and config.platform);
+ * a test keeps the two, CI and the CLI in step. Below it the vendor
+ * autoloader's Composer platform check throws on every request, so it is not
+ * loaded at all and the module degrades as it does without vendor/. That only
+ * works while this file and src/ still parse on the older PHP, so the floor is
+ * a support policy: hold back syntax newer than PHP 8.2 (typed class
+ * constants, for instance) until the next raise.
+ */
+const MIN_PHP_VERSION_ID = 80300;
+const MIN_PHP_VERSION = '8.3';
+
 // Load the module's Composer autoloader at file scope so DRESearch\… classes
 // resolve even on first-time install, where Omeka instantiates Module and may
 // call install()/getConfigForm() before the ModuleManager autoload pipeline
 // runs. Omeka require_once's every active module's Module.php on EVERY request,
 // so a missing vendor/ (a source checkout without `composer install`, GitHub's
-// "Source code" archive) must degrade this module rather than fatal the whole
-// site: install() refuses, and every runtime path reports search unavailable.
-if (is_readable(__DIR__ . '/vendor/autoload.php')) {
+// "Source code" archive) or a PHP below the minimum must degrade this module
+// rather than fatal the whole site: install() refuses, and every runtime path
+// reports search unavailable.
+// @phpstan-ignore greaterOrEqual.alwaysTrue (true on every supported PHP; it guards an unsupported one)
+if (PHP_VERSION_ID >= MIN_PHP_VERSION_ID && is_readable(__DIR__ . '/vendor/autoload.php')) {
     require_once __DIR__ . '/vendor/autoload.php';
 } else {
     // Keep the module's own classes loadable (view helpers, blocks, the admin
@@ -90,8 +104,22 @@ class Module extends AbstractModule
         return class_exists(\Typesense\Client::class);
     }
 
+    /** Whether this server's PHP meets the module's minimum ({@see MIN_PHP_VERSION}). */
+    public static function phpSupported(): bool
+    {
+        // @phpstan-ignore greaterOrEqual.alwaysTrue (see the autoloader guard above)
+        return PHP_VERSION_ID >= MIN_PHP_VERSION_ID;
+    }
+
     public function install(ServiceLocatorInterface $services): void
     {
+        if (!self::phpSupported()) {
+            throw new ModuleCannotInstallException(sprintf(
+                'DRE Search requires PHP %s or newer; this server runs PHP %s.',
+                MIN_PHP_VERSION,
+                PHP_VERSION,
+            ));
+        }
         if (!self::dependenciesAvailable()) {
             throw new ModuleCannotInstallException(
                 'DRE Search is missing its vendor/ directory. Install the DRESearch.zip release asset, '

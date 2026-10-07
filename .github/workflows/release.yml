@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  # The full CI suite (lint, types, frontend + PHP 8.2–8.5 tests against
+  # The full CI suite (lint, types, frontend + PHP 8.3–8.5 tests against
   # Omeka 4.2.1, MySQL and Typesense) must pass before anything is published.
   ci:
     uses: ./.github/workflows/ci.yml
@@ -36,10 +36,10 @@ jobs:
           cache: npm
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.3'
           tools: composer:v2
       - run: npm ci && npm run build
-      # From the committed lock (resolved for PHP 8.2): the dependency set CI tested.
+      # From the committed lock (resolved for PHP 8.3): the dependency set CI tested.
       - run: composer install --no-dev --classmap-authoritative --no-interaction
       - run: composer audit --no-dev --locked
       - name: Build deterministic module archive
@@ -150,7 +150,7 @@ jobs:
           sha256sum -c DRESearch.zip.sha256
           \`\`\`
 
-          Requires Omeka S ^4.2.0 and PHP >= 8.2. Typesense is optional — with no
+          Requires Omeka S ^4.2.0 and PHP >= 8.3. Typesense is optional — with no
           backend configured the module installs cleanly and the site runs
           normally.
 

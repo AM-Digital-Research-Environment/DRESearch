@@ -115,7 +115,7 @@ msgstr ""
 msgid "Configured"
 msgstr ""
 
-#: Module.php:323
+#: Module.php:351
 msgid "Connection values in effect:"
 msgstr ""
 
@@ -159,8 +159,13 @@ msgstr ""
 msgid "DRE Search"
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:46
+#: src/Controller/Admin/MaintenanceController.php:52
 msgid "DRE Search is missing its vendor/ directory, so search is unavailable. Install the DRESearch.zip release asset or run \"composer install --no-dev\" in the module directory."
+msgstr ""
+
+#: src/Controller/Admin/MaintenanceController.php:47
+#, php-format
+msgid "DRE Search requires PHP %1$s or newer and this server runs PHP %2$s, so search is unavailable."
 msgstr ""
 
 #: src/Site/Navigation/Link/FederatedSearch.php:16
@@ -307,7 +312,7 @@ msgstr ""
 msgid "Intro HTML (optional)"
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:68
+#: src/Controller/Admin/MaintenanceController.php:74
 msgid "Invalid form submission. Please try again."
 msgstr ""
 
@@ -612,12 +617,12 @@ msgstr ""
 msgid "Reindex all corpora"
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:90
+#: src/Controller/Admin/MaintenanceController.php:96
 #, php-format
 msgid "Reindex of all corpora queued. Track progress in %1$sjob #%2$s%3$s."
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:100
+#: src/Controller/Admin/MaintenanceController.php:106
 #, php-format
 msgid "Reindex of “%4$s” queued. Track progress in %1$sjob #%2$s%3$s."
 msgstr ""
@@ -682,7 +687,7 @@ msgstr ""
 msgid "Results per page"
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:80
+#: src/Controller/Admin/MaintenanceController.php:86
 #, php-format
 msgid "Retry of pending changes queued. Track progress in %1$sjob #%2$s%3$s."
 msgstr ""
@@ -712,7 +717,7 @@ msgstr ""
 msgid "Search analytics"
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:86
+#: src/Controller/Admin/MaintenanceController.php:92
 #, php-format
 msgid "Search analytics provisioning queued. Track progress in %1$sjob #%2$s%3$s."
 msgstr ""
@@ -837,7 +842,7 @@ msgstr ""
 msgid "Spokesperson"
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:84
+#: src/Controller/Admin/MaintenanceController.php:90
 #, php-format
 msgid "Stopword and synonym sync queued. Track progress in %1$sjob #%2$s%3$s."
 msgstr ""
@@ -874,7 +879,7 @@ msgstr ""
 msgid "Target audience"
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:120
+#: src/Controller/Admin/MaintenanceController.php:126
 msgid "The background job could not be queued. Check the Omeka job runner (PHP CLI path) under Settings."
 msgstr ""
 
@@ -930,7 +935,7 @@ msgstr ""
 msgid "Typesense host"
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:73
+#: src/Controller/Admin/MaintenanceController.php:79
 msgid "Typesense is not configured. Set the connection under Modules → DRE Search → Configure."
 msgstr ""
 
@@ -943,7 +948,7 @@ msgstr ""
 msgid "Typesense status"
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:94
+#: src/Controller/Admin/MaintenanceController.php:100
 msgid "Unknown search profile."
 msgstr ""
 
@@ -987,16 +992,16 @@ msgstr ""
 msgid "documents imported"
 msgstr ""
 
-#: Module.php:311
+#: Module.php:339
 #, php-format
 msgid "environment variable %s"
 msgstr ""
 
-#: Module.php:313
+#: Module.php:341
 msgid "module default"
 msgstr ""
 
-#: Module.php:315
+#: Module.php:343
 msgid "not set"
 msgstr ""
 
@@ -1004,7 +1009,7 @@ msgstr ""
 msgid "range slider"
 msgstr ""
 
-#: Module.php:309
+#: Module.php:337
 msgid "saved in these settings"
 msgstr ""
 
