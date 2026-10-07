@@ -21,15 +21,34 @@ namespace DRESearch;
 // Load the module's Composer autoloader at file scope so DRESearch\… classes
 // resolve even on first-time install, where Omeka instantiates Module and may
 // call install()/getConfigForm() before the ModuleManager autoload pipeline
-// runs. Matches the ImageServer / IiifServer / IwacSearch pattern.
-require_once __DIR__ . '/vendor/autoload.php';
+// runs. Omeka require_once's every active module's Module.php on EVERY request,
+// so a missing vendor/ (a source checkout without `composer install`, GitHub's
+// "Source code" archive) must degrade this module rather than fatal the whole
+// site: install() refuses, and every runtime path reports search unavailable.
+if (is_readable(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
+} else {
+    // Keep the module's own classes loadable (view helpers, blocks, the admin
+    // page) so the theme's header bar and search blocks render their
+    // "unavailable" state instead of fataling; only the Typesense SDK is absent.
+    spl_autoload_register(static function (string $class): void {
+        if (str_starts_with($class, 'DRESearch\\')) {
+            $file = __DIR__ . '/src/' . str_replace('\\', '/', substr($class, 10)) . '.php';
+            if (is_file($file)) {
+                require $file;
+            }
+        }
+    });
+}
 
 use Laminas\EventManager\SharedEventManagerInterface;
 use Laminas\Mvc\Controller\AbstractController;
 use Laminas\Mvc\MvcEvent;
 use Laminas\ServiceManager\ServiceLocatorInterface;
+use Laminas\Stdlib\ArrayUtils;
 use Laminas\View\Renderer\PhpRenderer;
 use Omeka\Module\AbstractModule;
+use Omeka\Module\Exception\ModuleCannotInstallException;
 use Omeka\Permissions\Acl;
 
 class Module extends AbstractModule
@@ -47,25 +66,69 @@ class Module extends AbstractModule
         return include __DIR__ . '/config/module.config.php';
     }
 
+    /**
+     * True when the module's Composer dependencies are installed. The release
+     * archive (DRESearch.zip) always carries vendor/; a bare source checkout
+     * does not until `composer install` has run.
+     */
+    public static function dependenciesAvailable(): bool
+    {
+        return class_exists(\Typesense\Client::class);
+    }
+
     public function install(ServiceLocatorInterface $services): void
     {
+        if (!self::dependenciesAvailable()) {
+            throw new ModuleCannotInstallException(
+                'DRE Search is missing its vendor/ directory. Install the DRESearch.zip release asset, '
+                . 'or run "composer install --no-dev" in the module directory.'
+            );
+        }
         $this->installOperationalTables($services);
     }
 
+    /**
+     * Omeka runs upgrade() while the module is still in the "needs upgrade"
+     * state, which is NOT active: Omeka merges configuration only for active
+     * modules, so none of this module's service factories are registered here.
+     * Build what the migration needs from core services (the connection and
+     * the application config) — never `$services->get(<module service>)`.
+     */
     public function upgrade($oldVersion, $newVersion, ServiceLocatorInterface $services): void
     {
         if (version_compare((string) $oldVersion, '1.22.0', '<')) {
             $this->installOperationalTables($services);
             $connection = $services->get('Omeka\Connection');
+            // DBAL 2.13 (Omeka 4.2.x core) has no createSchemaManager().
             $columns = $connection->getSchemaManager()->listTableColumns('dre_search_profile_state');
             if (!isset($columns['dirty_revision'])) {
                 $connection->executeStatement("ALTER TABLE dre_search_profile_state ADD dirty_revision CHAR(32) NOT NULL DEFAULT ''");
             }
-            $services->get(Indexer\RebuildStateStore::class)->markDirty(
-                $services->get(Settings\ProfileRegistry::class)->names(),
+            (new Indexer\RebuildStateStore($connection))->markDirty(
+                $this->profileNames($services),
                 'Visibility rules changed. Rebuild all profiles before serving search.',
             );
         }
+    }
+
+    /**
+     * Profile names as the running site will see them: the module's own
+     * profiles plus any `dre_search.profiles` added in config/local.config.php
+     * (which is part of the application config even while this module is
+     * inactive). Names only — a migration must not fail on an invalid override.
+     *
+     * @return list<string>
+     */
+    private function profileNames(ServiceLocatorInterface $services): array
+    {
+        $profiles = $this->getConfig()['dre_search']['profiles'] ?? [];
+        if ($services->has('Config')) {
+            $overrides = $services->get('Config')['dre_search']['profiles'] ?? [];
+            if (is_array($overrides)) {
+                $profiles = ArrayUtils::merge($profiles, $overrides);
+            }
+        }
+        return array_values(array_map('strval', array_keys($profiles)));
     }
 
     /**

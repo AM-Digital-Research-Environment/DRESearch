@@ -3,15 +3,26 @@
          xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.5/phpunit.xsd"
          bootstrap="tests/bootstrap.php"
          colors="true"
-         cacheDirectory=".phpunit.cache">
+         cacheDirectory=".phpunit.cache"
+         failOnDeprecation="true"
+         failOnPhpunitDeprecation="true"
+         failOnWarning="true"
+         failOnNotice="true"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         displayDetailsOnTestsThatTriggerWarnings="true"
+         displayDetailsOnTestsThatTriggerNotices="true">
     <testsuites>
         <testsuite name="DRESearch">
             <directory>tests/phpunit</directory>
         </testsuite>
     </testsuites>
-    <source>
+    <!-- Fail on deprecations/notices/warnings this module's code triggers
+         (PHP 8.5 in production); indirect ones from Omeka core are reported
+         by Omeka, not here. -->
+    <source ignoreIndirectDeprecations="true" restrictNotices="true" restrictWarnings="true">
         <include>
             <directory>src</directory>
+            <file>Module.php</file>
         </include>
     </source>
 </phpunit>

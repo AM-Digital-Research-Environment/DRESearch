@@ -3,6 +3,21 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.22.1] - 2026-10-07
+
+### Fixed
+
+- **Omeka's module upgrade from 1.21.x failed.** The 1.22.0 migration asked the service manager for this module's own services, which Omeka does not register while a module is awaiting its upgrade. The upgrade aborted after its table changes, the module stayed inactive and every retry failed the same way. The migration now builds what it needs from core services and still marks every profile, including `local.config.php` additions, for rebuild.
+- **A missing `vendor/` directory no longer takes down the whole site.** Omeka loads every active module's `Module.php` on each request; an unguarded autoloader include turned a source checkout without `composer install` into a site-wide fatal error. The module's own classes now load regardless, search reports itself unavailable, installation is refused with an explanation, and the admin page shows the cause.
+- **Matches in list fields were never highlighted.** Typesense returns a `string[]` field's highlight as one entry per element, which the proxy ignored, so author, editor, subject, tag, PI and keyword matches produced no "Matched in" line or highlighted chip. Title and abstract highlights were unaffected.
+
+### Internal
+
+- Tests now load Omeka's `bootstrap.php`, as production does, so PHP 8.5 runs Omeka's patched Laminas classes; this removes the two `SplPriorityQueue` deprecations the PHP 8.5 CI job reported. PHPUnit now fails on deprecations, notices and warnings raised by module code.
+- Integration tests accept `DRE_TEST_MYSQL_PORT`. The upgrade test runs with core services only.
+
+**Upgrade:** install the complete DRESearch.zip, run Omeka's module upgrade, then **Reindex all corpora** (required when coming from 1.21.x, as described for 1.22.0). No reindex is needed when coming from a working 1.22.0.
+
 ## [1.22.0] - 2026-10-05
 
 - Enforce public resource, value, linked authority and media visibility throughout indexing.

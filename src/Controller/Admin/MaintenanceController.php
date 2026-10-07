@@ -36,6 +36,9 @@ class MaintenanceController extends AbstractActionController
 
     public function indexAction(): ViewModel
     {
+        if (!\DRESearch\Module::dependenciesAvailable()) {
+            $this->messenger()->addError('DRE Search is missing its vendor/ directory, so search is unavailable. Install the DRESearch.zip release asset or run "composer install --no-dev" in the module directory.'); // @translate
+        }
         $view = new ViewModel([
             'configured' => $this->provider->isConfigured(),
             'profiles'   => $this->collectStatuses(),

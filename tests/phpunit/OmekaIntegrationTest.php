@@ -55,6 +55,7 @@ final class OmekaIntegrationTest extends TestCase
         }
         $this->dbParams = [
             'driver' => 'pdo_mysql', 'host' => getenv('DRE_TEST_MYSQL_HOST'),
+            'port' => (int) (getenv('DRE_TEST_MYSQL_PORT') ?: 3306),
             'user' => getenv('DRE_TEST_MYSQL_USER') ?: 'root',
             'password' => getenv('DRE_TEST_MYSQL_PASSWORD') ?: '', 'charset' => 'utf8mb4',
         ];
@@ -309,12 +310,19 @@ final class OmekaIntegrationTest extends TestCase
         $this->db->executeStatement('ALTER TABLE dre_search_profile_state DROP COLUMN dirty_revision');
         $this->db->executeStatement('DROP TABLE dre_search_change');
         $this->db->executeStatement('DROP TABLE dre_search_cache');
+        // Omeka runs upgrade() while the module is inactive, so the service
+        // manager holds ONLY core services — never this module's factories.
+        // A local.config.php profile override must still be marked dirty.
         $services = new ServiceManager();
         $services->setService('Omeka\\Connection', $this->db);
-        $services->setService(RebuildStateStore::class, $this->state);
-        $services->setService(ProfileRegistry::class, $this->registry);
-        (new \DRESearch\Module())->upgrade('1.21.3', '1.22.0', $services);
-        $state = $this->state->all()[$this->profile->name()];
+        $services->setService('Config', ['dre_search' => ['profiles' => ['local_extra' => ['collection' => 'x']]]]);
+        self::assertFalse($services->has(RebuildStateStore::class));
+        self::assertFalse($services->has(ProfileRegistry::class));
+        (new \DRESearch\Module())->upgrade('1.21.3', '1.22.1', $services);
+        $all = $this->state->all();
+        self::assertSame(1, (int) ($all['local_extra']['dirty'] ?? 0));
+        self::assertSame(1, (int) ($all['research_items']['dirty'] ?? 0));
+        $state = $all[$this->profile->name()];
         self::assertSame($old, $state['live_collection']);
         self::assertSame(1, (int) $state['dirty']);
         self::assertSame(32, strlen($state['dirty_revision']));

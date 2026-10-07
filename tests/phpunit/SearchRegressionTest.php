@@ -90,6 +90,49 @@ final class SearchRegressionTest extends TestCase
         }
     }
 
+    /**
+     * Typesense's v2 highlight format returns a string[] field as one object per
+     * array ELEMENT. A match that only lives in an array field (an author name)
+     * must still reach `_highlights`, keyed by the marked element value.
+     */
+    public function testArrayFieldMatchesReachHighlightsOnTypesense(): void
+    {
+        if (!getenv('TYPESENSE_HOST')) {
+            self::markTestSkipped('Requires disposable Typesense.');
+        }
+        $collection = 'dre_regression_' . bin2hex(random_bytes(6));
+        $profile = $this->profile(['collection' => $collection]);
+        $provider = new \DRESearch\Search\TypesenseClientProvider(
+            (string) getenv('TYPESENSE_HOST'),
+            (int) (getenv('TYPESENSE_PORT') ?: 8108),
+            'http',
+            (string) getenv('TYPESENSE_API_KEY'),
+        );
+        $client = $provider->getClient();
+        self::assertNotNull($client);
+        $client->collections->create((new SchemaProvider())->collection($collection, $profile));
+        try {
+            $docs = [['id' => '1', '_kind' => 'item', '_profile' => 'records', 'title' => 'From the Editor',
+                'is_public' => true, 'type_s' => 'Text', 'creator_ss' => ['Smith, Ann', 'Watkins, Lee']]];
+            $client->collections[$collection]->documents->import($docs);
+            $logger = new \Laminas\Log\Logger();
+            $logger->addWriter(new \Laminas\Log\Writer\Noop());
+            $proxy = new \DRESearch\Search\SearchProxy(
+                $provider,
+                new \DRESearch\Settings\ProfileRegistry(['records' => $profile]),
+                new \DRESearch\Search\BlockScopeResolver(\Doctrine\DBAL\DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true])),
+                $logger,
+            );
+            $result = $proxy->search('records', ['q' => 'Watkins']);
+            self::assertSame(1, $result['found']);
+            $marked = $result['hits'][0]['_highlights']['creator_ss'] ?? [];
+            self::assertSame([QueryBuilder::HL_START . 'Watkins' . QueryBuilder::HL_END . ', Lee'], $marked);
+            self::assertArrayNotHasKey('title', $result['hits'][0]['_highlights']);
+        } finally {
+            $client->collections[$collection]->delete();
+        }
+    }
+
     public function testMissingStopwordRetriesWholeMultiSearchConsistently(): void
     {
         $multi = new class {

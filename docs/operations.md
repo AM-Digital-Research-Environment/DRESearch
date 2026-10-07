@@ -34,10 +34,16 @@ Prefer environment variables in production. A blank admin API-key field leaves
 the stored value unchanged; the clear checkbox removes it. Rotate the Typesense
 key at the server and module together.
 
-## Upgrading to 1.22.0
+## Upgrading to 1.22.x
 
-Install updated Composer dependencies and the compiled assets together, then run
-Omeka's module upgrade. The migration adds the durable queue, shared cache and
+Upgrade from 1.21.x straight to **1.22.1** or later. The 1.22.0 migration looked
+up module services that Omeka does not register while a module awaits its
+upgrade, so Omeka's upgrade button failed and left the module inactive. If a
+site is stuck on 1.22.0 in "needs upgrade", installing 1.22.1 and pressing
+**Upgrade** again completes it; the migration is idempotent.
+
+Install the complete DRESearch.zip (Composer dependencies and compiled assets
+together), then run Omeka's module upgrade. The migration adds the durable queue, shared cache and
 dirty-revision column and marks all profiles dirty. Select **Reindex all corpora**
 before reopening search: older generations can contain private metadata that the
 new mapper now excludes. Pending changes are replayed into the new generations.

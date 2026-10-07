@@ -738,7 +738,22 @@ final class SearchProxy
                 continue;
             }
             $candidates = [];
-            if (isset($info['value']) && is_string($info['value'])) {
+            if (array_is_list($info)) {
+                // A string[] field (creator_ss, subject_ss, …): with the v2
+                // highlight format Typesense returns one {matched_tokens,
+                // snippet[, value]} object per array ELEMENT, unmarked ones
+                // included. Prefer the full value (highlight_full_fields) so the
+                // client can key it back onto the chip it renders.
+                foreach ($info as $element) {
+                    if (!is_array($element)) {
+                        continue;
+                    }
+                    $text = $element['value'] ?? $element['snippet'] ?? null;
+                    if (is_string($text)) {
+                        $candidates[] = $text;
+                    }
+                }
+            } elseif (isset($info['value']) && is_string($info['value'])) {
                 $candidates[] = $info['value'];
             } elseif (isset($info['snippet']) && is_string($info['snippet'])) {
                 $candidates[] = $info['snippet'];
