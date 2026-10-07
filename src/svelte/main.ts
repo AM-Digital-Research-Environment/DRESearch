@@ -52,6 +52,18 @@ function mountRoots(
         root.innerHTML = fallback;
         delete root.dataset.dreMounted;
         console.error('[dre-search] could not mount', selector, id, err);
+        // The restored skeleton is decorative (aria-hidden): without a message
+        // a failed chunk (e.g. a stale cached entry after an upgrade) looked
+        // like a search that never finished loading.
+        const notice = document.createElement('p');
+        notice.className = 'dre-search-mount-error';
+        notice.setAttribute('role', 'alert');
+        notice.textContent = 'Search could not be loaded. ';
+        const reload = document.createElement('a');
+        reload.href = window.location.href;
+        reload.textContent = 'Reload the page';
+        notice.append(reload);
+        root.prepend(notice);
       });
   });
 }

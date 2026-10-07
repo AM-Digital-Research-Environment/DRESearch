@@ -27,6 +27,20 @@ All notable changes to DRE Search are documented here. The project follows
 - Filter values Typesense would reinterpret inside a quoted list (a trailing `*` or `\`, or a value wrapped in double quotes) are refused instead of silently matching something else. Invalid UTF-8 in a request is rejected, and a malformed `?q=` no longer empties the federated page's bootstrap.
 - Unexpected server errors return `500 internal_error` instead of `503`, so monitoring no longer mistakes a bug for an outage.
 
+### Search interface
+
+- **Ticking a value in a searched facet list no longer empties the list.** The facet search was rebuilt on every filter change, so the list turned into "Loading results" and focus fell to the page; it now re-counts in place, keeping the value focused and checked.
+- **Back works after changing view.** Returning from gallery or map restored the old view and wrote it back into the address bar; the automatic gallery switch no longer adds a history step of its own; a hand-edited `?sort=` is ignored instead of failing the search; a `#footnote` link no longer refetches every block.
+- **Paging keeps the results on screen.** The previous page stays visible, dimmed, while the next one loads, focus moves to the results heading instead of the page body, and the facet counts are not recomputed for a page-only change. Clearing filters or removing a chip returns focus there too.
+- **Screen readers hear "45 results".** One atomic status line per block replaces a live region that covered the sort, export and copy-link controls.
+- **Autocomplete follows the combobox pattern.** Recent searches and "See all results" join the arrow-key options, the highlighted option scrolls into view, Enter waits for an IME composition, Escape on the mobile header returns focus to its toggle, and clearing the box keeps focus in it.
+- **The federated page sends fewer requests.** A deep link with corpus filters, or a card chip's hand-off to a corpus, used to search twice; arrow keys across the corpus tabs now move focus and Enter selects, instead of pushing a history step and a search per key press.
+- **Visible keyboard focus.** Buttons, chips, links and tabs draw a solid primary outline (about 6:1 in dark mode) in addition to the soft halo, which alone was about 1.6:1.
+- Facet checkbox lists are named after their facet, each block is a landmark named after its title or corpus, the search fields are `search` landmarks, and the export panel is a plain disclosure that returns focus to its button.
+- The map shows how many matching locations have coordinates and offers the mapped places as a list for keyboard and screen-reader users; it waits for typing to pause, asks the list endpoint for a single hit, and its errors no longer linger after switching back to the list.
+- The pager reaches the 250th page the server serves (it stopped at 100); recent searches keep "colonial" instead of also "colon" and "col"; affiliations on person cards are filter links, listed once; the first gallery row loads eagerly; a failed bundle load shows a reload link instead of a silent skeleton.
+- BibTeX keeps DOIs and URLs verbatim, and a line break in a title can no longer start a forged record in the plain-text export.
+
 ### Robustness
 
 - **Rate limits per visitor behind a proxy.** `X-Forwarded-For` is honoured when the direct peer is in `rate_limits.trusted_proxies` (read from the right, skipping trusted hops); IPv6 clients are bucketed by /64; a `429` carries `Retry-After`; federated searches with counts and cross-corpus suggestions weigh more than one request. Limits are configurable under `dre_search.rate_limits`.

@@ -3,6 +3,7 @@
   import { t, researchItemsLabel, publicationsLabel } from '../lib/i18n';
   import { markedLookup } from '../lib/highlight';
   import Highlight from './Highlight.svelte';
+  import FilterLink from './FilterLink.svelte';
 
   /**
    * One person card:
@@ -14,8 +15,10 @@
    *   │      3 research items · 2 publications               │  ← association counts
    *   └──────────────────────────────────────────────────┘
    *
-   * Name links to the person's Omeka page; role and affiliation chips are buttons
-   * that add that value as a facet filter (onAddFilter).
+   * Name links to the person's Omeka page; each affiliation (in the byline) and
+   * each role chip adds that value as a facet filter (onAddFilter). Affiliations
+   * used to be listed twice when roles existed, and not be clickable at all
+   * when they did not.
    */
 
   interface Props {
@@ -61,9 +64,10 @@
 
     {#if affiliations.length > 0}
       <p class="dre-person__affil">
-        {#each affiliations as aff, i (aff + '|' + i)}{i > 0 ? '; ' : ''}<Highlight
-            value={affilHl.get(aff) ?? aff}
-          />{/each}
+        {#each affiliations as aff, i (aff + '|' + i)}{i > 0 ? '; ' : ''}<FilterLink
+            onclick={() => onAddFilter('affiliation_ss', aff)}
+            ><Highlight value={affilHl.get(aff) ?? aff} /></FilterLink
+          >{/each}
       </p>
     {/if}
 
@@ -77,17 +81,6 @@
               onclick={() => onAddFilter('roles_ss', role)}
             >
               <Highlight value={roleHl.get(role) ?? role} />
-            </button>
-          </li>
-        {/each}
-        {#each affiliations as aff (aff)}
-          <li>
-            <button
-              type="button"
-              class="dre-person__chip"
-              onclick={() => onAddFilter('affiliation_ss', aff)}
-            >
-              <Highlight value={affilHl.get(aff) ?? aff} />
             </button>
           </li>
         {/each}
@@ -200,7 +193,8 @@
     color: var(--ink-strong, #261d15);
   }
   .dre-person__chip:focus-visible {
-    outline: none;
+    outline: 2px solid var(--primary, #007a50);
+    outline-offset: 2px;
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
   .dre-person__chip--role {

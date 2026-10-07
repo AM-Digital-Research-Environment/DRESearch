@@ -181,7 +181,8 @@
     background: color-mix(in srgb, var(--accent, #ca7210) 30%, var(--surface, #fdfcf9));
   }
   .dre-org__type:focus-visible {
-    outline: none;
+    outline: 2px solid var(--primary, #007a50);
+    outline-offset: 2px;
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
   .dre-org__chips {
@@ -214,7 +215,8 @@
     color: var(--ink-strong, #261d15);
   }
   .dre-org__chip:focus-visible {
-    outline: none;
+    outline: 2px solid var(--primary, #007a50);
+    outline-offset: 2px;
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
   .dre-org__chip--role {

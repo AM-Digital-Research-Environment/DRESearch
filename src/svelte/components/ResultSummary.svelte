@@ -12,7 +12,10 @@
   const { found, chips, onRemove, tools }: Props = $props();
 </script>
 
-<header class="dre-summary" aria-live="polite">
+<!-- Not a live region: it also holds sort, view, copy-link and export controls,
+     so announcing it read out stray numbers and open menus. App owns one atomic
+     status line for the count instead. -->
+<header class="dre-summary">
   <div class="dre-summary__scope">
     <span class="dre-summary__count"
       ><strong>{formatNumber(found)}</strong>

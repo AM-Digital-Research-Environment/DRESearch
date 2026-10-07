@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { MAX_PAGE } from '../lib/urlState';
   import { t } from '../lib/i18n';
   interface Props {
     found: number;
@@ -7,7 +8,7 @@
     onPageChange: (next: number) => void;
   }
   const { found, page, perPage, onPageChange }: Props = $props();
-  const total = $derived(Math.min(100, Math.max(1, Math.ceil(found / Math.max(1, perPage)))));
+  const total = $derived(Math.min(MAX_PAGE, Math.max(1, Math.ceil(found / Math.max(1, perPage)))));
   const pages = $derived.by(() => {
     const out: number[] = [];
     for (let n = Math.max(1, page - 2); n <= Math.min(total, page + 2); n++) out.push(n);

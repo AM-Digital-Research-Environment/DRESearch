@@ -8,6 +8,7 @@
     SortOption,
     ViewMode,
   } from './lib/types';
+  import { untrack } from 'svelte';
   import { SearchApi } from './lib/api';
   import {
     onUrlPop,
@@ -181,7 +182,14 @@
   let error = $state<string | null>(null);
   let mapResponse = $state<MapResponse | null>(null);
   let mapLoading = $state(false);
+  let mapError = $state<string | null>(null);
   let correction = $state<string | null>(null);
+  // Visually hidden heading the results region is announced by; focus lands
+  // here after paging or removing filters, so it never falls back to <body>.
+  let resultsHeading = $state<HTMLElement | undefined>(undefined);
+  // The scope (everything but the page) of the response on screen: a page-only
+  // change keeps its facet counts instead of recounting every facet.
+  let shownScope: string | null = null;
 
   // Mobile only: the sidebar is collapsed by default and toggled open. Ignored
   // on wider viewports, where the sidebar is always shown (see styles).
@@ -205,31 +213,49 @@
   // (includeQuery=false), which seedQuery already equals.
   // svelte-ignore state_referenced_locally
   const queryMatchesSeed = !includeQuery || seedQuery === (bootstrap.initial_query ?? '');
+  // The federated page requests the URL's corpus state itself and says so.
+  // svelte-ignore state_referenced_locally
+  const seedAppliesUrl = bootstrap.initial_state_applied === true;
   let skipNextFetch =
-    initialResponse != null && initialResponse.available && corpusPristine && queryMatchesSeed;
+    initialResponse != null &&
+    initialResponse.available &&
+    (corpusPristine || seedAppliesUrl) &&
+    queryMatchesSeed;
   let reqId = 0;
 
   // Previous URL snapshot, so the sync can choose pushState vs replaceState.
   let prevUrlState: UrlSearchState | null = null;
 
+  // Facet value search reads the CURRENT scope when it runs. A stable function
+  // (not a $derived closure) matters: a new closure on every filter change made
+  // each facet group reset its searched list, so ticking a value in a searched
+  // list emptied it and dropped focus. Groups watch facetScopeKey instead.
+  function searchFacetValues(field: string, value: string, signal: AbortSignal) {
+    return api.facet(
+      {
+        q: query,
+        sort,
+        filters,
+        year_from: yearFrom,
+        year_to: yearTo,
+        page: 1,
+        per_page: 1,
+        facets: bootstrap.facets,
+      },
+      field,
+      value,
+      signal,
+    );
+  }
+  const facetScopeKey = $derived(JSON.stringify([query, filters, yearFrom, yearTo]));
+  // The map draws from /map; the list request then only feeds the facets and
+  // the count, so it asks for a single hit. A $derived so that switching
+  // between list and gallery (same value) does not refetch.
+  const listHits = $derived(view === 'map' ? 1 : bootstrap.per_page);
+
   // Mirror state → URL whenever anything observable changes. The first run is a
   // no-op (the URL already reflects the seeded state); pagination-only changes
   // replace history, everything else pushes a back-button-able step.
-  const searchFacetValues = $derived.by(() => {
-    const scope = {
-      q: query,
-      sort,
-      filters,
-      year_from: yearFrom,
-      year_to: yearTo,
-      page: 1,
-      per_page: 1,
-      facets: bootstrap.facets,
-    };
-    return (field: string, value: string, signal: AbortSignal) =>
-      api.facet(scope, field, value, signal);
-  });
-
   $effect(() => {
     if (!syncUrl) return;
     const next: UrlSearchState = { q: query, page, sort, filters, yearFrom, yearTo, view };
@@ -251,13 +277,19 @@
   $effect(() => {
     if (!syncUrl) return;
     return onUrlPop((s) => {
-      if (includeQuery) query = s.q;
-      page = s.page;
-      sort = s.sort;
-      filters = s.filters;
-      yearFrom = s.yearFrom;
-      yearTo = s.yearTo;
-      if (s.view && viewOptions.includes(s.view)) view = s.view;
+      // Assign only what changed: popstate also fires for a #fragment link or
+      // another block's history step, which must not refetch this block.
+      const nextSort = validSorts.size === 0 || validSorts.has(s.sort) ? s.sort : defaultSort;
+      // The URL omits the default view, so "no view" means list — otherwise
+      // Back from map/gallery kept the old view and wrote it back to the URL.
+      const nextView = s.view && viewOptions.includes(s.view) ? s.view : 'list';
+      if (includeQuery && s.q !== query) query = s.q;
+      if (s.page !== page) page = s.page;
+      if (nextSort !== sort) sort = nextSort;
+      if (JSON.stringify(s.filters) !== JSON.stringify(filters)) filters = s.filters;
+      if (s.yearFrom !== yearFrom) yearFrom = s.yearFrom;
+      if (s.yearTo !== yearTo) yearTo = s.yearTo;
+      if (nextView !== view) view = nextView;
     }, urlOptions);
   });
 
@@ -268,14 +300,20 @@
     const f = filters;
     const yf = yearFrom;
     const yt = yearTo;
+    const hitsWanted = listHits;
 
     if (skipNextFetch) {
       skipNextFetch = false;
+      shownScope = JSON.stringify([q, s, f, yf, yt]);
       return;
     }
 
+    const scope = JSON.stringify([q, s, f, yf, yt]);
+    const previous = untrack(() => response);
+    // Paging through the same scope: the facet counts cannot change.
+    const keepFacets = scope === shownScope && previous !== null && previous.available;
     // Card chips may filter display fields that are not sidebar facets.
-    const facetFields = bootstrap.facets;
+    const facetFields = keepFacets ? [] : bootstrap.facets;
     const myId = ++reqId;
     const controller = new AbortController();
     isLoading = true;
@@ -286,7 +324,7 @@
         {
           q,
           page: p,
-          per_page: bootstrap.per_page,
+          per_page: hitsWanted,
           sort: s,
           filters: f,
           facets: facetFields,
@@ -300,11 +338,12 @@
           return; // a newer search has superseded this one
         }
         const lastPage = Math.max(1, Math.ceil(r.found / bootstrap.per_page));
-        if (p > lastPage) {
+        if (p > lastPage && hitsWanted === bootstrap.per_page) {
           page = lastPage;
           return;
         }
-        response = r;
+        response = keepFacets && previous ? { ...r, facets: previous.facets } : r;
+        shownScope = scope;
         if (q.trim() && r.found > 0) rememberSearch(q);
         if (
           !viewExplicit &&
@@ -313,7 +352,13 @@
           r.hits.length >= 4
         ) {
           const ratio = r.hits.filter((hit) => Boolean(hit.thumbnail_url)).length / r.hits.length;
-          if (ratio > 0.6) view = 'gallery';
+          if (ratio > 0.6) {
+            // The visitor did not ask for this switch: record it as already in
+            // the URL snapshot so the sync REPLACES history instead of adding
+            // a Back step they never took.
+            if (prevUrlState) prevUrlState = { ...prevUrlState, view: 'gallery' };
+            view = 'gallery';
+          }
           viewExplicit = true; // one suggestion per mount, regardless of outcome
         }
         correction = null;
@@ -348,24 +393,49 @@
     if (view !== 'map') {
       mapResponse = null;
       mapLoading = false;
+      mapError = null;
       return;
     }
+    const scope = { q: query, sort, filters, year_from: yearFrom, year_to: yearTo };
     const controller = new AbortController();
     mapLoading = true;
-    api
-      .map({ q: query, sort, filters, year_from: yearFrom, year_to: yearTo }, controller.signal)
-      .then((result) => {
-        if (controller.signal.aborted) return;
-        mapResponse = result;
-      })
-      .catch((reason: Error) => {
-        if (reason.name !== 'AbortError') error = reason.message;
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) mapLoading = false;
-      });
-    return () => controller.abort();
+    mapError = null;
+    // Debounced like typing: the map endpoint pulls up to 1,000 documents.
+    const timer = window.setTimeout(() => {
+      api
+        .map(scope, controller.signal)
+        .then((result) => {
+          if (controller.signal.aborted) return;
+          mapResponse = result;
+        })
+        .catch((reason: Error) => {
+          if (reason.name !== 'AbortError') mapError = reason.message;
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) mapLoading = false;
+        });
+    }, 300);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   });
+
+  // Polite, atomic announcement of the result count (or loading) — one per
+  // surface, so screen readers hear "45 results", not a stray number or the
+  // contents of an open menu.
+  const announcement = $derived(
+    isLoading
+      ? t('searching')
+      : response && response.available
+        ? `${response.found} ${response.found === 1 ? t('result_one') : t('result_other')}`
+        : '',
+  );
+
+  /** Move focus to the results heading without jumping the page. */
+  function focusResults(): void {
+    requestAnimationFrame(() => resultsHeading?.focus({ preventScroll: true }));
+  }
 
   const facets = $derived(response?.facets ?? []);
 
@@ -434,6 +504,8 @@
     yearFrom = null;
     yearTo = null;
     page = 1;
+    // The control that was focused just removed itself.
+    focusResults();
   }
 
   function handleRemoveChip(chip: ChipModel): void {
@@ -443,6 +515,7 @@
       yearTo = null;
       page = 1;
     } else handleFacetToggle(chip.field, chip.value, false);
+    focusResults();
   }
 
   function handleViewChange(next: ViewMode): void {
@@ -469,6 +542,7 @@
 
   function handlePageChange(next: number): void {
     page = next;
+    focusResults();
     // Jump back to the top of this block so the new page starts from the first
     // result instead of leaving the viewport down at the pager.
     if (rootEl) {
@@ -553,6 +627,7 @@
         >
           <FacetPanel
             searchValues={bootstrap.endpoints.facet ? searchFacetValues : undefined}
+            scopeKey={facetScopeKey}
             {facets}
             order={bootstrap.facets}
             labels={bootstrap.facet_labels}
@@ -566,6 +641,10 @@
       {/if}
 
       <div class="dre-search__results" aria-busy={isLoading}>
+        <h2 class="dre-search__sr-only" tabindex="-1" bind:this={resultsHeading}>
+          {t('search_results')}
+        </h2>
+        <p class="dre-search__sr-only" role="status" aria-atomic="true">{announcement}</p>
         {#if response}
           {#snippet summaryTools()}
             <SortSelect value={sort} options={sortOptions} onChange={handleSortChange} />
@@ -599,9 +678,9 @@
           />
         {/if}
 
-        {#if isLoading}
+        {#if isLoading && !response}
           <ResultSkeleton {view} count={view === 'gallery' ? 8 : 6} />
-        {:else if response && response.found === 0}
+        {:else if response && response.found === 0 && !isLoading}
           <div class="dre-search__empty" role="status">
             <strong>{t('no_results_title')}</strong>
             {#if activeCount > 0}
@@ -625,25 +704,38 @@
             {/if}
           </div>
         {:else if response && view === 'map'}
+          {#if mapError}
+            <div class="dre-search__error" role="alert">
+              <strong>{t('search_unavailable')}</strong>
+              <span>{mapError}</span>
+            </div>
+          {/if}
           <MapView
             docs={mapResponse?.docs ?? []}
             loading={mapLoading}
             capped={mapResponse?.capped ?? false}
+            found={mapResponse?.found ?? 0}
+            mapped={mapResponse?.mapped ?? 0}
             itemUrlBase={bootstrap.item_url_base}
           />
         {:else if response}
-          <ResultsList
-            hits={response.hits}
-            found={response.found}
-            page={response.page}
-            perPage={bootstrap.per_page}
-            itemUrlBase={bootstrap.item_url_base}
-            cardKind={bootstrap.card_kind}
-            masonry={masonryLayout}
-            {view}
-            onPageChange={handlePageChange}
-            onAddFilter={handleAddFilter}
-          />
+          <!-- Previous results stay visible, dimmed, while the next page or scope
+               loads: swapping them for a skeleton dropped focus and jumped the
+               page. -->
+          <div class="dre-search__stale" class:dre-search__stale--loading={isLoading}>
+            <ResultsList
+              hits={response.hits}
+              found={response.found}
+              page={response.page}
+              perPage={bootstrap.per_page}
+              itemUrlBase={bootstrap.item_url_base}
+              cardKind={bootstrap.card_kind}
+              masonry={masonryLayout}
+              {view}
+              onPageChange={handlePageChange}
+              onAddFilter={handleAddFilter}
+            />
+          </div>
         {/if}
       </div>
     </div>
@@ -731,6 +823,29 @@
     flex-direction: column;
     gap: var(--space-md, 1rem);
     min-width: 0;
+  }
+  .dre-search__sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .dre-search__stale {
+    transition: opacity 0.15s ease;
+  }
+  .dre-search__stale--loading {
+    opacity: 0.55;
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dre-search__stale {
+      transition: none;
+    }
   }
 
   .dre-search__error,

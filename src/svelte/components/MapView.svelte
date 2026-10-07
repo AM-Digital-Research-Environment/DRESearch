@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
-  import { t } from '../lib/i18n';
+  import { formatNumber, t } from '../lib/i18n';
   import {
     basemapStyle,
     loadMapLibre,
@@ -35,8 +35,12 @@
     loading: boolean;
     capped: boolean;
     itemUrlBase: string;
+    /** Matching locations, and how many of them carry coordinates. */
+    found?: number;
+    mapped?: number;
   }
-  const { docs, loading, capped, itemUrlBase }: Props = $props();
+  const { docs, loading, capped, itemUrlBase, found = 0, mapped = 0 }: Props = $props();
+  let listOpen = $state(false);
   let container = $state<HTMLDivElement>();
   let map: MapLike | null = null;
   let lib: MapLibreGlobal | null = null;
@@ -232,6 +236,28 @@
       {t('map_empty')}
     </p>{:else if capped}<p class="dre-map__note">{t('map_capped')}</p>{/if}
 </section>
+{#if !loading && found > 0}
+  <p class="dre-map__coverage">
+    {t('map_coverage', { mapped: formatNumber(mapped), found: formatNumber(found) })}
+  </p>
+{/if}
+{#if docs.length > 0}
+  <!-- The markers are mouse-only; the same places as a list for keyboard and
+       screen-reader users. -->
+  <details class="dre-map__places" bind:open={listOpen}>
+    <summary>{t('map_list', { n: formatNumber(docs.length) })}</summary>
+    {#if listOpen}
+      <ul>
+        {#each docs as doc (doc.id)}
+          <li>
+            <a href={`${itemUrlBase}/${encodeURIComponent(doc.id)}`}>{doc.title}</a
+            >{#if doc.type_s}<span> · {doc.type_s}</span>{/if}
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </details>
+{/if}
 
 <style>
   .dre-map {
@@ -265,6 +291,26 @@
   }
   .dre-map__note {
     font-size: var(--text-xs, 0.8125rem);
+  }
+  .dre-map__coverage {
+    margin: 0;
+    color: var(--muted, #716a66);
+    font-size: var(--text-sm, 0.9375rem);
+  }
+  .dre-map__places summary {
+    cursor: pointer;
+    min-height: var(--size-control-lg, 2.75rem);
+    display: flex;
+    align-items: center;
+    color: var(--primary, #007a50);
+  }
+  .dre-map__places ul {
+    margin: 0;
+    padding-inline-start: 1.25rem;
+    columns: 2 18rem;
+  }
+  .dre-map__places li span {
+    color: var(--muted, #716a66);
   }
   @media (max-width: 40rem) {
     .dre-map {

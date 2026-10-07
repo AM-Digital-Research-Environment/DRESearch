@@ -32,9 +32,11 @@
     itemUrlBase: string;
     onAddFilter: (field: string, value: string) => void;
     view?: ViewMode;
+    /** Above the fold (first gallery row): load now rather than lazily. */
+    eager?: boolean;
   }
 
-  const { doc, itemUrlBase, onAddFilter, view = 'list' }: Props = $props();
+  const { doc, itemUrlBase, onAddFilter, view = 'list', eager = false }: Props = $props();
 
   const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
   const title = $derived(doc.title || t('untitled'));
@@ -65,7 +67,13 @@
 <article class="dre-card" class:dre-card--gallery={view === 'gallery'}>
   {#if thumbnail}
     <a class="dre-card__thumb" href={url} tabindex="-1" aria-hidden="true">
-      <img src={thumbnail} alt="" loading="lazy" />
+      <img
+        src={thumbnail}
+        alt=""
+        loading={eager ? 'eager' : 'lazy'}
+        fetchpriority={eager && view === 'gallery' ? 'high' : 'auto'}
+        decoding="async"
+      />
     </a>
   {:else}
     <div class="dre-card__thumb dre-card__thumb--empty" aria-hidden="true"></div>
@@ -324,7 +332,8 @@
     color: var(--ink-strong, #261d15);
   }
   .dre-card__chip:focus-visible {
-    outline: none;
+    outline: 2px solid var(--primary, #007a50);
+    outline-offset: 2px;
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
   .dre-card__chip--project {

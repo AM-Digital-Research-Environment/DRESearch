@@ -1,7 +1,13 @@
 <script lang="ts">
   import type { Bootstrap, FederatedBootstrap, ProfileMeta, SearchResponse } from '../lib/types';
+  import { untrack } from 'svelte';
   import { searchAll, searchUnion } from '../lib/api';
-  import { readFederatedShell, syncFederatedShell, writeUrlState } from '../lib/urlState';
+  import {
+    readFederatedShell,
+    readUrlState,
+    syncFederatedShell,
+    writeUrlState,
+  } from '../lib/urlState';
   import { formatNumber, t } from '../lib/i18n';
   import { installSlashFocus } from '../lib/keyboard';
   import { rememberSearch } from '../lib/searchHistory';
@@ -130,14 +136,28 @@
       } else {
         activeResponse = null;
         const meta = metaFor(profile);
+        // Ask for the corpus state already in the URL (a deep link, or a card
+        // chip's hand-off): the embedded App then starts from this response
+        // instead of discarding it and searching again with the filters.
+        const corpus = readUrlState(window.location.href, {
+          includeQuery: false,
+          defaultSort: meta?.default_sort ?? 'relevance',
+        });
+        const validSort = meta?.sort_options?.some((o) => o.value === corpus.sort)
+          ? corpus.sort
+          : meta?.default_sort;
         const result = await searchAll(
           bootstrap.endpoints.search_all,
           {
             profile,
             q,
-            sort: meta?.default_sort,
+            sort: validSort,
+            page: corpus.page,
             per_page: meta?.per_page,
             facets: meta?.facets,
+            filters: corpus.filters,
+            year_from: corpus.yearFrom,
+            year_to: corpus.yearTo,
             include_counts: countsQuery !== q,
           },
           controller.signal,
@@ -158,8 +178,14 @@
     }
   }
 
+  // Track only what selects the request. load() reads countsQuery (and writes
+  // state) before its first await; tracking that re-ran this effect when the
+  // counts arrived and re-fed the embedded App a "new" initial response.
   $effect(() => {
-    if (bootstrap.available) void load(activeProfile, query, activeProfile === ALL ? unionPage : 1);
+    const profile = activeProfile;
+    const q = query;
+    const page = activeProfile === ALL ? unionPage : 1;
+    if (bootstrap.available) untrack(() => void load(profile, q, page));
   });
   $effect(() => {
     const remove = installSlashFocus(() => inputEl);
@@ -189,6 +215,11 @@
     activeProfile = name;
     unionPage = 1;
   }
+  /**
+   * Manual activation (WAI-ARIA tabs): arrow keys move focus between the
+   * thirteen tabs, Enter or Space selects. Selecting on every arrow press
+   * pushed a history entry and fired a federated search per key.
+   */
   function tabKey(event: KeyboardEvent, name: string): void {
     const index = tabs.findIndex((tab) => tab.name === name);
     let next: number;
@@ -200,10 +231,7 @@
     else return;
     event.preventDefault();
     const target = tabs[next]?.name;
-    if (target) {
-      selectTab(target);
-      requestAnimationFrame(() => document.getElementById(`dre-fed-tab-${target}`)?.focus());
-    }
+    if (target) document.getElementById(`dre-fed-tab-${target}`)?.focus();
   }
   function handoff(profile: string, field?: string, value?: string): void {
     const meta = metaFor(profile);
@@ -251,6 +279,8 @@
       },
       initial_response: activeResponse ?? undefined,
       initial_query: query,
+      // load() requested the URL's corpus state, so the App need not refetch.
+      initial_state_applied: true,
     };
   }
   const activeMeta = $derived(metaFor(activeProfile));
@@ -259,7 +289,7 @@
 </script>
 
 <div class="dre-fed">
-  <div class="dre-fed__search">
+  <div class="dre-fed__search" role="search">
     <input
       bind:this={inputEl}
       name="q"
@@ -350,7 +380,7 @@
             }}
           />{/if}
       {:else if activeMeta && activeResponse}{#key activeProfile + '::' + query}<App
-            bootstrap={appBootstrap(activeMeta)}
+            bootstrap={untrack(() => appBootstrap(activeMeta))}
             showSearchBox={false}
             syncUrl={true}
             urlPrefix=""
@@ -467,7 +497,8 @@
     font-weight: 600;
   }
   .dre-fed__tabs button:focus-visible {
-    outline: none;
+    outline: 2px solid var(--primary, #007a50);
+    outline-offset: 2px;
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32)) !important;
   }
   .dre-fed__tabs small {

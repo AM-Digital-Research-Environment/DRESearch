@@ -10,29 +10,50 @@
     counts: FacetCount[];
     selected: string[];
     onToggle: (field: string, value: string, checked: boolean) => void;
+    /** Changes with the search scope: a searched list re-counts, kept on screen. */
+    scopeKey?: string;
   }
 
-  const { field, label, counts, selected, onToggle, searchValues }: Props = $props();
+  const { field, label, counts, selected, onToggle, searchValues, scopeKey = '' }: Props = $props();
 
   const COLLAPSED = 8;
+  // Unique per mounted group (several blocks may facet the same field).
+  const uid = $props.id();
+  const headingId = `dre-facet-${uid}`;
+
   let open = $state(true);
   let query = $state('');
   let remote = $state<FacetCount[] | null>(null);
   let loading = $state(false);
   let failed = $state(false);
 
+  // The text the current remote list answers. Not reactive: it only decides
+  // whether a re-run is a new search (clear the list) or a re-count of the same
+  // search under a changed scope (keep the list, swap counts when they arrive —
+  // ticking a value must not empty the list it was ticked in).
+  let answeredQuery = '';
+
   $effect(() => {
     const value = query.trim();
+    void scopeKey;
     const search = searchValues;
     const controller = new AbortController();
-    remote = null;
+    if (value !== answeredQuery) {
+      remote = null;
+    }
     failed = false;
-    loading = value !== '' && !!search;
-    if (!value || !search) return;
+    loading = value !== '' && !!search && remote === null;
+    if (!value || !search) {
+      answeredQuery = '';
+      return;
+    }
     const timer = window.setTimeout(() => {
       search(field, value, controller.signal)
         .then((result) => {
-          if (!controller.signal.aborted) remote = result;
+          if (!controller.signal.aborted) {
+            remote = result;
+            answeredQuery = value;
+          }
         })
         .catch(() => {
           if (!controller.signal.aborted) failed = true;
@@ -67,6 +88,7 @@
 <section class="dre-facet">
   <button
     type="button"
+    id={headingId}
     class="dre-facet__heading"
     aria-expanded={open}
     onclick={() => (open = !open)}
@@ -98,7 +120,7 @@
     {/if}
 
     {#if visible.length > 0}
-      <ul class="dre-facet__list">
+      <ul class="dre-facet__list" role="group" aria-labelledby={headingId}>
         {#each visible as c (c.value)}
           <li>
             <label class="dre-facet__option">
@@ -197,7 +219,8 @@
   }
   .dre-facet__search-input:focus,
   .dre-facet__search-input:focus-visible {
-    outline: none;
+    outline: 2px solid var(--primary, #007a50);
+    outline-offset: 2px;
     border-color: var(--primary, #007a50);
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }

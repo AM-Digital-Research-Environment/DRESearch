@@ -43,13 +43,19 @@
   let timer: number | null = null;
   let controller: AbortController | null = null;
   let inputEl = $state<HTMLInputElement | undefined>(undefined);
+  let toggleEl = $state<HTMLButtonElement | undefined>(undefined);
 
   // Flat view of all suggestions, for keyboard nav across groups.
   const flat = $derived(groups.flatMap((g) => g.suggestions));
-  // Running index of each group's first suggestion in `flat`.
+  // "See all results" is the first option of the keyboard model (index 0)
+  // whenever there is text; suggestions follow it. It used to be a bare link
+  // the arrow keys could not reach.
+  const seeAll = $derived(local.trim() !== '' ? 1 : 0);
+  const optionCount = $derived(flat.length + seeAll);
+  // Running index of each group's first suggestion in the option list.
   const offsets = $derived.by(() => {
     const acc: number[] = [];
-    let n = 0;
+    let n = seeAll;
     for (const g of groups) {
       acc.push(n);
       n += g.suggestions.length;
@@ -152,26 +158,28 @@
   }
 
   function handleKeydown(e: KeyboardEvent): void {
+    // Enter that confirms an IME composition is not a search.
+    if (e.isComposing || e.keyCode === 229) return;
     const has = open && flat.length > 0;
     switch (e.key) {
       case 'ArrowDown':
         if (has) {
           e.preventDefault();
-          activeIndex = (activeIndex + 1) % flat.length;
+          activeIndex = (activeIndex + 1) % optionCount;
         }
         break;
       case 'ArrowUp':
         if (has) {
           e.preventDefault();
-          activeIndex = (activeIndex - 1 + flat.length) % flat.length;
+          activeIndex = (activeIndex - 1 + optionCount) % optionCount;
         }
         break;
       case 'Enter':
         e.preventDefault();
-        if (has && activeIndex >= 0 && activeIndex < flat.length) {
-          goItem(flat[activeIndex].id);
+        if (has && activeIndex >= seeAll && activeIndex < optionCount) {
+          goItem(flat[activeIndex - seeAll].id);
         } else {
-          submit();
+          submit(); // nothing highlighted, or "See all results"
         }
         break;
       case 'Escape':
@@ -179,10 +187,18 @@
         activeIndex = -1;
         if (bootstrap.collapsible) {
           expanded = false;
+          // The input unmounts; hand focus back to the toggle that opened it.
+          requestAnimationFrame(() => toggleEl?.focus());
         }
         break;
     }
   }
+
+  // Keep the highlighted option visible: the list scrolls (max-height).
+  $effect(() => {
+    if (!open || activeIndex < 0) return;
+    document.getElementById(optionId(activeIndex))?.scrollIntoView?.({ block: 'nearest' });
+  });
 
   // A native click on the in-flow desktop field both focuses it and scrolls it
   // "into view" inside the sticky header, yanking the page upward. Focus it
@@ -231,15 +247,17 @@
 
 <div
   class="dre-search-bar"
+  role="search"
   class:dre-search-bar--collapsible={bootstrap.collapsible}
   class:dre-search-bar--expanded={expanded}
 >
   {#if bootstrap.collapsible && !expanded}
     <button
+      bind:this={toggleEl}
       type="button"
       class="dre-search-bar__toggle"
       aria-label={bootstrap.placeholder || t('search_all_placeholder')}
-      aria-expanded="false"
+      aria-expanded={expanded}
       onclick={expand}
     >
       <svg
@@ -323,6 +341,10 @@
         {#if local.trim() !== ''}
           <a
             class="dre-search-bar__see-all"
+            class:dre-search-bar__option--active={activeIndex === 0}
+            id={optionId(0)}
+            role="option"
+            aria-selected={activeIndex === 0}
             href={resultsUrl(local.trim())}
             onmousedown={(e) => e.preventDefault()}
           >
@@ -387,7 +409,8 @@
     color: var(--ink-strong, #261d15);
   }
   .dre-search-bar__toggle:focus-visible {
-    outline: none;
+    outline: 2px solid var(--primary, #007a50);
+    outline-offset: 2px;
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
 
@@ -474,7 +497,8 @@
     color: var(--ink, #3c342d);
   }
   .dre-search-bar__clear:focus-visible {
-    outline: none;
+    outline: 2px solid var(--primary, #007a50);
+    outline-offset: 2px;
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
 

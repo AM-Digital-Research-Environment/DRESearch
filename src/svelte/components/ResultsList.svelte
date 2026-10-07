@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { MAX_PAGE } from '../lib/urlState';
   import type { CardKind, Doc, ViewMode } from '../lib/types';
   import { t } from '../lib/i18n';
   import ResultItem from './ResultItem.svelte';
@@ -38,9 +39,11 @@
     onAddFilter,
   }: Props = $props();
 
-  // Cap at 100 pages — deep pagination past that is rarely useful and keeps
-  // the pager bounded.
-  const totalPages = $derived(Math.min(100, Math.max(1, Math.ceil(found / Math.max(1, perPage)))));
+  // Capped where the server stops serving pages, so a pager never offers (or a
+  // shared link never lands on) a page it cannot load.
+  const totalPages = $derived(
+    Math.min(MAX_PAGE, Math.max(1, Math.ceil(found / Math.max(1, perPage)))),
+  );
 
   const windowPages = $derived.by(() => {
     const span = 2;
@@ -68,7 +71,7 @@
   class:dre-results--two-col={cardKind === 'term' && !masonry}
   class:dre-results--gallery={view === 'gallery'}
 >
-  {#each hits as doc (doc.id)}
+  {#each hits as doc, index (doc.id)}
     <li class="dre-results__item">
       {#if cardKind === 'project'}
         <ProjectCard {doc} {itemUrlBase} {onAddFilter} />
@@ -87,7 +90,7 @@
       {:else if cardKind === 'term'}
         <TermCard {doc} {itemUrlBase} {onAddFilter} />
       {:else}
-        <ResultItem {doc} {itemUrlBase} {onAddFilter} {view} />
+        <ResultItem {doc} {itemUrlBase} {onAddFilter} {view} eager={index < 4} />
       {/if}
     </li>
   {/each}
@@ -229,7 +232,8 @@
     cursor: default;
   }
   .dre-pager__btn:focus-visible {
-    outline: none;
+    outline: 2px solid var(--primary, #007a50);
+    outline-offset: 2px;
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
   .dre-pager__gap {

@@ -235,7 +235,8 @@
      the thumb only. */
   .dre-yr__input:focus,
   .dre-yr__input:focus-visible {
-    outline: none;
+    outline: 2px solid var(--primary, #007a50);
+    outline-offset: 2px;
     border: none;
     box-shadow: none;
   }

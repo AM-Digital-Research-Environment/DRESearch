@@ -19,6 +19,20 @@ describe('export serializers', () => {
     expect(ris).not.toContain('\nAU  - Bad');
   });
 
+  it('keeps one plain-text record per line', () => {
+    const doc: Doc = { id: '3', title: 'Real title\n- Forged record', author_ss: ['Doe'] };
+    const txt = serialize('txt', [doc], meta, 'publication', '/s/site/item');
+    expect(txt).not.toContain('\n- Forged record');
+    expect(txt.split('\n').filter((line) => line.startsWith('- '))).toHaveLength(1);
+  });
+
+  it('leaves BibTeX doi and url verbatim', () => {
+    const doc: Doc = { id: '4', title: 'A_title', doi_s: '10.1000/abc_def%1' };
+    const bib = serialize('bibtex', [doc], meta, 'publication', '/s/site/item');
+    expect(bib).toContain('doi = {10.1000/abc_def%1}');
+    expect(bib).toContain('title = {A\\_title}');
+  });
+
   it('drops unsafe external media URLs', () => {
     const doc: Doc = { id: '2', title: 'Episode', url_s: 'javascript:alert(1)' };
     const ris = serialize('ris', [doc], meta, 'podcast', '/s/site/item');

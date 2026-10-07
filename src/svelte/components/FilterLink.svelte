@@ -55,7 +55,8 @@
     text-decoration-color: currentColor;
   }
   .dre-filter-link:focus-visible {
-    outline: none;
+    outline: 2px solid var(--primary, #007a50);
+    outline-offset: 2px;
     border-radius: var(--radius-sm, 0.375rem);
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
     /* Repeat the ring on every line box when the value wraps, instead of

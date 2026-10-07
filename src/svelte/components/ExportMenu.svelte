@@ -64,6 +64,13 @@
   let busy = $state(false);
   let error = $state<string | null>(null);
   let root: HTMLElement | null = $state(null);
+  let trigger: HTMLButtonElement | null = $state(null);
+
+  /** Close the panel and hand focus back to the button that opened it. */
+  function close(): void {
+    open = false;
+    requestAnimationFrame(() => trigger?.focus());
+  }
 
   // Close when focus/clicks land outside the component.
   $effect(() => {
@@ -75,7 +82,7 @@
     };
     const onKeydown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
-        open = false;
+        close();
       }
     };
     window.addEventListener('pointerdown', onPointerDown);
@@ -113,7 +120,7 @@
         spec.mime,
         serialize(format, res.docs, meta, kind, itemUrlBase),
       );
-      open = false;
+      close();
     } catch (e) {
       error = t('export_failed', { message: e instanceof Error ? e.message : String(e) });
     } finally {
@@ -123,10 +130,12 @@
 </script>
 
 <div class="dre-export" bind:this={root}>
+  <!-- A disclosure, not role="menu": a menu promises arrow-key navigation and
+       focus management this panel of buttons never had. Tab moves through it. -->
   <button
+    bind:this={trigger}
     type="button"
     class="dre-export__trigger"
-    aria-haspopup="true"
     aria-expanded={open}
     aria-controls={open ? menuId : undefined}
     aria-label={t('export_results')}
@@ -154,12 +163,11 @@
   </button>
 
   {#if open}
-    <div class="dre-export__menu" id={menuId} role="menu" aria-label={t('export_results')}>
+    <div class="dre-export__menu" id={menuId} role="group" aria-label={t('export_results')}>
       {#each EXPORT_FORMATS as spec (spec.format)}
         <button
           type="button"
           class="dre-export__item"
-          role="menuitem"
           disabled={busy}
           onclick={() => run(spec.format)}
         >
@@ -215,7 +223,8 @@
     background: var(--surface, #fdfcf9);
   }
   .dre-export__trigger:focus-visible {
-    outline: none;
+    outline: 2px solid var(--primary, #007a50);
+    outline-offset: 2px;
     border-color: var(--primary, #007a50);
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
@@ -267,7 +276,8 @@
   .dre-export__item:focus-visible {
     background: color-mix(in srgb, var(--primary, #007a50) 8%, var(--surface, #fdfcf9));
     color: var(--ink, #3c342d);
-    outline: none;
+    outline: 2px solid var(--primary, #007a50);
+    outline-offset: 2px;
   }
   .dre-export__item:disabled {
     opacity: 0.6;

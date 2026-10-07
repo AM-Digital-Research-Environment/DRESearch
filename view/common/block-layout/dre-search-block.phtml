@@ -5,6 +5,7 @@
  * @var array $data
  * @var array $bootstrap   Config blob the Svelte client reads on mount.
  * @var string $title
+ * @var string $corpus_label Translated corpus name, the landmark's fallback name.
  * @var string $intro_html Admin-authored HTML (not user input).
  *
  * Mount contract (kept in sync with src/svelte/main.ts):
@@ -13,10 +14,13 @@
  */
 $id = (string) (int) $block->id();
 ?>
-<section class="dre-search-block" aria-label="<?= $this->escapeHtmlAttr($this->translate('Research search')) ?>">
-    <?php if ($title !== ''): ?>
-        <h2 class="dre-search-block__title"><?= $this->escapeHtml($title) ?></h2>
-    <?php endif; ?>
+<?php $label = ($corpus_label ?? '') !== '' ? $corpus_label : $this->translate('Research search'); ?>
+<?php if ($title !== ''): ?>
+<section class="dre-search-block" aria-labelledby="dre-search-title-<?= $this->escapeHtmlAttr($id) ?>">
+    <h2 class="dre-search-block__title" id="dre-search-title-<?= $this->escapeHtmlAttr($id) ?>"><?= $this->escapeHtml($title) ?></h2>
+<?php else: ?>
+<section class="dre-search-block" aria-label="<?= $this->escapeHtmlAttr(sprintf($this->translate('Search %s'), $label)) ?>">
+<?php endif; ?>
 
     <?php if (trim($intro_html) !== ''): ?>
         <div class="dre-search-block__intro"><?= $intro_html ?></div>

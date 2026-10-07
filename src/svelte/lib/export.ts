@@ -254,7 +254,9 @@ function toTxt(docs: Doc[], meta: ExportMeta, kind: CardKind, base: string): str
     }
     const url = links(d, kind, base)[0];
     if (url) parts.push(url);
-    lines.push('- ' + parts.filter(Boolean).join('. '));
+    // One record per line: a newline inside a title or venue would otherwise
+    // start a line that reads as a forged record ("- …") of its own.
+    lines.push('- ' + parts.filter(Boolean).map(oneLine).join('. '));
   }
   return lines.join('\n') + '\n';
 }
@@ -369,6 +371,20 @@ function bib(value: string): string {
     .trim();
 }
 
+/**
+ * Verbatim fields (biblatex reads doi and url literally): TeX escapes would
+ * end up inside the identifier (`10.1000/abc\_def`), so only what could break
+ * the braces or the field is dropped.
+ */
+function bibVerbatim(value: string): string {
+  return value.replace(/[{}\s\\]/g, '').trim();
+}
+
+/** Collapse line breaks so a value cannot span (and forge) lines. */
+function oneLine(value: string): string {
+  return value.replace(/[\r\n\u2028\u2029]+/g, ' ').trim();
+}
+
 function toBibtex(docs: Doc[], kind: CardKind, base: string): string {
   const entries: string[] = [];
   for (const d of docs) {
@@ -377,7 +393,7 @@ function toBibtex(docs: Doc[], kind: CardKind, base: string): string {
     const fields: Array<[string, string]> = [];
     const add = (name: string, value: string | undefined | null): void => {
       const v = (value ?? '').trim();
-      if (v !== '') fields.push([name, bib(v)]);
+      if (v !== '') fields.push([name, name === 'doi' || name === 'url' ? bibVerbatim(v) : bib(v)]);
     };
 
     add('title', d.title);

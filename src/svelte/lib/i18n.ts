@@ -34,6 +34,7 @@ const ENGLISH_STRINGS: Record<string, string> = {
   sort_title: 'Title (A–Z)',
 
   searching: 'Searching…',
+  search_results: 'Search results',
   loading_results: 'Loading results',
   result_one: 'result',
   result_other: 'results',
@@ -81,6 +82,8 @@ const ENGLISH_STRINGS: Record<string, string> = {
   map_empty: 'No matching locations have coordinates.',
   map_error: 'The map is unavailable.',
   map_capped: 'The map shows the first 1,000 matching locations.',
+  map_coverage: '{mapped} of {found} matching locations have coordinates.',
+  map_list: 'List the {n} mapped places',
 
   // Federated header bar + results page.
   search_all_placeholder: 'Search everything…',

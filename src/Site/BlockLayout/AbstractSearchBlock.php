@@ -244,20 +244,27 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
         ];
 
         // Server-render the first (browse) page so the block paints immediately.
-        $bootstrap['initial_response'] = $this->proxy->search($profileName, [
-            'q'             => '',
-            'page'          => 1,
-            'per_page'      => $perPage,
-            'sort'          => $defaultSort,
-            'facets'        => $facets,
-            'block_id'      => (int) $block->id(),
-        ]);
+        // A block whose saved scope is invalid (e.g. a locked filter set through
+        // the REST API) must render its "unavailable" state, not 500 the page.
+        try {
+            $bootstrap['initial_response'] = $this->proxy->search($profileName, [
+                'q'             => '',
+                'page'          => 1,
+                'per_page'      => $perPage,
+                'sort'          => $defaultSort,
+                'facets'        => $facets,
+                'block_id'      => (int) $block->id(),
+            ]);
+        } catch (\DRESearch\Search\Exception\RequestValidationException) {
+            $bootstrap['initial_response'] = ['available' => false, 'found' => 0, 'page' => 1, 'hits' => [], 'facets' => []];
+        }
 
         return $view->partial($templateViewScript, [
             'block'      => $block,
             'data'       => $data,
             'bootstrap'  => $bootstrap,
             'title'      => (string) ($data['title'] ?? ''),
+            'corpus_label' => $profile ? (string) $view->translate($profile->label()) : '',
             'intro_html' => HtmlSanitizer::sanitize((string) ($data['intro_html'] ?? '')),
         ]);
     }

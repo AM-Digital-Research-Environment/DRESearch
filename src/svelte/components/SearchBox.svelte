@@ -102,7 +102,17 @@
     cancelSuggestions();
     local = '';
     emit('');
+    // The clear button removes itself; keep the visitor in the field.
+    inputEl?.focus();
   }
+
+  // One option list for the arrow keys: recent searches while the field is
+  // empty, title suggestions once there is text. Recent searches used to be
+  // plain buttons outside the listbox's keyboard model (mouse-only).
+  const showingRecent = $derived(
+    suggestions.length === 0 && local.trim() === '' && recent.length > 0,
+  );
+  const optionCount = $derived(showingRecent ? recent.length : suggestions.length);
 
   function handleFocus(): void {
     focused = true;
@@ -140,24 +150,31 @@
   }
 
   function handleKeydown(e: KeyboardEvent): void {
-    const hasSuggestions = open && suggestions.length > 0;
+    // An IME (Japanese, Chinese, Korean input) uses Enter to confirm the
+    // composed characters; that keystroke is not a search.
+    if (e.isComposing || e.keyCode === 229) return;
+    const hasOptions = open && optionCount > 0;
     switch (e.key) {
       case 'ArrowDown':
-        if (hasSuggestions) {
+        if (hasOptions) {
           e.preventDefault();
-          activeIndex = (activeIndex + 1) % suggestions.length;
+          activeIndex = (activeIndex + 1) % optionCount;
         }
         break;
       case 'ArrowUp':
-        if (hasSuggestions) {
+        if (hasOptions) {
           e.preventDefault();
-          activeIndex = (activeIndex - 1 + suggestions.length) % suggestions.length;
+          activeIndex = (activeIndex - 1 + optionCount) % optionCount;
         }
         break;
       case 'Enter':
         e.preventDefault();
-        if (hasSuggestions && activeIndex >= 0 && activeIndex < suggestions.length) {
-          go(suggestions[activeIndex]); // jump to the highlighted item's page
+        if (hasOptions && activeIndex >= 0 && activeIndex < optionCount) {
+          if (showingRecent) {
+            reuseRecent(recent[activeIndex]);
+          } else {
+            go(suggestions[activeIndex]); // jump to the highlighted item's page
+          }
         } else {
           submitQuery(); // search the typed text
         }
@@ -187,6 +204,14 @@
     local = value;
   });
 
+  // Keep the highlighted option visible: the list scrolls (max-height).
+  $effect(() => {
+    if (activeIndex < 0) return;
+    document
+      .getElementById(`${listboxId}-option-${activeIndex}`)
+      ?.scrollIntoView?.({ block: 'nearest' });
+  });
+
   $effect(() => {
     const removeShortcut = installSlashFocus(() => inputEl);
     return () => {
@@ -197,7 +222,7 @@
   });
 </script>
 
-<div class="dre-search-box">
+<div class="dre-search-box" role="search">
   <div class="dre-search-box__input-wrap">
     <input
       bind:this={inputEl}
@@ -232,17 +257,28 @@
   </div>
 
   {#if open && (suggestions.length > 0 || recent.length > 0)}
-    <ul class="dre-search-box__suggest" id={listboxId} role="listbox" aria-label={t('suggestions')}>
-      {#if suggestions.length === 0 && local.trim() === ''}
-        <li class="dre-search-box__recent-label">{t('recent_searches')}</li>
-        {#each recent as query (query)}
-          <li>
-            <button
-              type="button"
-              class="dre-search-box__recent"
-              onmousedown={(e) => e.preventDefault()}
-              onclick={() => reuseRecent(query)}>{query}</button
-            >
+    <ul
+      class="dre-search-box__suggest"
+      id={listboxId}
+      role="listbox"
+      aria-label={showingRecent ? t('recent_searches') : t('suggestions')}
+    >
+      {#if showingRecent}
+        <li class="dre-search-box__recent-label" role="presentation" aria-hidden="true">
+          {t('recent_searches')}
+        </li>
+        {#each recent as query, i (query)}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <li
+            id="{listboxId}-option-{i}"
+            class="dre-search-box__recent"
+            class:dre-search-box__suggestion--active={i === activeIndex}
+            role="option"
+            aria-selected={i === activeIndex}
+            onmousedown={(e) => e.preventDefault()}
+            onclick={() => reuseRecent(query)}
+          >
+            {query}
           </li>
         {/each}
       {/if}
@@ -341,7 +377,8 @@
     color: var(--ink, #3c342d);
   }
   .dre-search-box__clear:focus-visible {
-    outline: none;
+    outline: 2px solid var(--primary, #007a50);
+    outline-offset: 2px;
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
 

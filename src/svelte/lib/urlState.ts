@@ -32,6 +32,9 @@ const PROFILE_KEY = 'profile';
 const DEFAULT_SORT: SortKey = 'relevance';
 
 /** The slice of search state that round-trips through the URL. */
+/** Deepest page the server serves (QueryBuilder::MAX_PAGE); URLs and pagers clamp to it. */
+export const MAX_PAGE = 250;
+
 export interface UrlSearchState {
   q: string;
   page: number;
@@ -94,7 +97,7 @@ export function readUrlState(
 
   return {
     q: includeQuery ? (params.get(`${prefix}q`) ?? '') : '',
-    page: clampInt(params.get(`${prefix}page`), 1, 250, 1),
+    page: clampInt(params.get(`${prefix}page`), 1, MAX_PAGE, 1),
     sort: (params.get(`${prefix}sort`) as SortKey | null) ?? defaultSort,
     filters,
     yearFrom: parseYearOrNull(params.get(`${prefix}date.from`)),

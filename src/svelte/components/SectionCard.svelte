@@ -155,7 +155,8 @@
     background: color-mix(in srgb, var(--primary, #007a50) 28%, var(--surface, #fdfcf9));
   }
   .dre-scard__phase:focus-visible {
-    outline: none;
+    outline: 2px solid var(--primary, #007a50);
+    outline-offset: 2px;
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
   .dre-scard__count {

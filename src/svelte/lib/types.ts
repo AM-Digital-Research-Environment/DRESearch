@@ -27,7 +27,8 @@ export type CardKind =
   | 'term';
 
 /** Single origin year vs a start/end range. */
-export type DateMode = 'single' | 'range';
+/** 'none': a date-less corpus (people, terms, organisations, sections, …). */
+export type DateMode = 'single' | 'range' | 'none';
 
 /** Global year span for the range slider. */
 export interface YearBounds {
@@ -66,6 +67,11 @@ export interface Bootstrap {
   initial_response?: SearchResponse;
   /** Seed query (federated results page reuses App per corpus with a shared query). */
   initial_query?: string;
+  /**
+   * The initial response already reflects the URL's corpus state (filters,
+   * sort, page, year) — set by the federated page, which requests it itself.
+   */
+  initial_state_applied?: boolean;
 }
 
 /** A Typesense document, trimmed to the fields the cards render. */

@@ -10,6 +10,8 @@
     /** Facet counts from the latest response (arbitrary order). */
     facets: Facet[];
     searchValues?: FacetSearch;
+    /** Changes whenever the search scope does, so searched facet lists refresh. */
+    scopeKey?: string;
     /** Display order (the block's configured facet list). */
     order: string[];
     /** field => label. */
@@ -32,6 +34,7 @@
     onClearAll,
     prepend,
     searchValues,
+    scopeKey = '',
   }: Props = $props();
 
   function labelFor(field: string): string {
@@ -100,6 +103,7 @@
             selected={selected[facet.field] ?? []}
             {onToggle}
             {searchValues}
+            {scopeKey}
           />
         {/if}
       {/each}
