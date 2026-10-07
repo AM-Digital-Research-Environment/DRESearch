@@ -151,7 +151,7 @@ msgstr ""
 msgid "Configured"
 msgstr ""
 
-#: Module.php:356
+#: Module.php:357
 msgid "Connection values in effect:"
 msgstr ""
 
@@ -1109,16 +1109,16 @@ msgstr ""
 msgid "documents imported"
 msgstr ""
 
-#: Module.php:344
+#: Module.php:345
 #, php-format
 msgid "environment variable %s"
 msgstr ""
 
-#: Module.php:346
+#: Module.php:347
 msgid "module default"
 msgstr ""
 
-#: Module.php:348
+#: Module.php:349
 msgid "not set"
 msgstr ""
 
@@ -1126,7 +1126,7 @@ msgstr ""
 msgid "range slider"
 msgstr ""
 
-#: Module.php:342
+#: Module.php:343
 msgid "saved in these settings"
 msgstr ""
 

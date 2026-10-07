@@ -161,9 +161,10 @@ class Module extends AbstractModule
                 $connection->executeStatement('ALTER TABLE dre_search_profile_state ADD rejected_ids TEXT NULL');
             }
         }
-        if (version_compare((string) $oldVersion, '1.24.0', '<')) {
-            // Editors' popular-search decisions. It starts empty, so nothing
-            // reaches visitors until an editor approves it.
+        if (version_compare((string) $oldVersion, '1.25.0', '<')) {
+            // Editors' popular-search decisions (1.24.0 shipped without them).
+            // It starts empty, so nothing reaches visitors until an editor
+            // approves it.
             $this->installOperationalTables($services);
         }
     }

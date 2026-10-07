@@ -76,7 +76,7 @@ corpus's candidates, most-run first, with how often each was run:
 Case and spacing variants share one decision. A decision takes effect on the
 next request: it clears the server's ten-minute cache of the list, though
 browsers may keep their copy for up to five minutes. Decisions are stored per
-corpus in the `dre_search_popular_moderation` table, which the 1.24.0 upgrade
+corpus in the `dre_search_popular_moderation` table, which the 1.25.0 upgrade
 creates empty. After upgrading, the list stays empty until an editor approves
 queries. Twenty candidates awaiting review are listed per corpus at a time; as
 you decide on them, the next ones appear.

@@ -579,7 +579,7 @@ final class OmekaIntegrationTest extends TestCase
         self::assertSame(32, strlen($state['dirty_revision']));
         self::assertArrayHasKey('rejected_ids', $state);
         self::assertTrue((new WorkerLease($this->db))->claim(), 'The 1.23 migration creates the worker lease table.');
-        self::assertSame([], (new PopularModeration($this->db))->decisions('research_items'), 'The 1.24 migration creates the moderation table.');
+        self::assertSame([], (new PopularModeration($this->db))->decisions('research_items'), 'The 1.25 migration creates the moderation table.');
         self::assertSame([], $this->queue->counts());
         $proxy = new SearchProxy($this->provider, $this->registry, new BlockScopeResolver($this->db), $this->logger, [], $this->db);
         self::assertFalse($proxy->search($this->profile->name(), [])['available']);
@@ -587,20 +587,20 @@ final class OmekaIntegrationTest extends TestCase
         self::assertTrue($proxy->search($this->profile->name(), [])['available']);
     }
 
-    public function testUpgradeTo124CreatesTheModerationTableWithoutARebuild(): void
+    public function testUpgradeTo125CreatesTheModerationTableWithoutARebuild(): void
     {
         $old = $this->build()->run()['collection'];
         $this->db->executeStatement('DROP TABLE dre_search_popular_moderation');
         $services = new ServiceManager();
         $services->setService('Omeka\\Connection', $this->db);
-        (new \DRESearch\Module())->upgrade('1.23.0', '1.24.0', $services);
+        (new \DRESearch\Module())->upgrade('1.24.0', '1.25.0', $services);
         $state = $this->state->all()[$this->profile->name()];
         self::assertSame(0, (int) $state['dirty'], 'Moderation needs no rebuild.');
         self::assertSame($old, $state['live_collection']);
         $moderation = new PopularModeration($this->db);
         self::assertSame([], $moderation->decisions($this->profile->name()), 'Nothing starts approved.');
         $moderation->approve($this->profile->name(), 'kenya');
-        (new \DRESearch\Module())->upgrade('1.23.0', '1.24.0', $services);
+        (new \DRESearch\Module())->upgrade('1.24.0', '1.25.0', $services);
         self::assertSame(['kenya' => 'kenya'], $moderation->approved($this->profile->name()), 'Running the migration again keeps decisions.');
     }
 
