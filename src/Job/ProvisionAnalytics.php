@@ -18,7 +18,7 @@ class ProvisionAnalytics extends AbstractJob
         $logger = $services->get('Omeka\Logger');
         /** @var TypesenseClientProvider $provider */
         $provider = $services->get(TypesenseClientProvider::class);
-        $client = $provider->getClient();
+        $client = $provider->getIndexClient();
         /** @var ProfileRegistry $registry */
         $registry = $services->get(ProfileRegistry::class);
         if ($client === null) {

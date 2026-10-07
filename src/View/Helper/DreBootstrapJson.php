@@ -17,6 +17,9 @@ use Laminas\View\Helper\AbstractHelper;
  *   - JSON_HEX_TAG              a stray "</script>" can't break out of the tag
  *   - JSON_HEX_AMP              `&` → `&`
  *   - JSON_HEX_APOS / HEX_QUOT  quote characters can't bust out either
+ *   - JSON_INVALID_UTF8_SUBSTITUTE  one bad byte (e.g. a crafted `?q=%FF`)
+ *                                  degrades to U+FFFD instead of emptying the
+ *                                  whole bootstrap and breaking the page
  */
 class DreBootstrapJson extends AbstractHelper
 {
@@ -25,7 +28,8 @@ class DreBootstrapJson extends AbstractHelper
         | JSON_HEX_TAG
         | JSON_HEX_AMP
         | JSON_HEX_APOS
-        | JSON_HEX_QUOT;
+        | JSON_HEX_QUOT
+        | JSON_INVALID_UTF8_SUBSTITUTE;
 
     public function __invoke(array $bootstrap): string
     {

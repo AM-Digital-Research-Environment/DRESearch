@@ -23,6 +23,16 @@ All notable changes to DRE Search are documented here. The project follows
 - A "not found" check matched any message containing "404", which a timeout on a generated collection name could; cleanup now relies on Typesense's typed not-found error.
 - Incremental batches resolve only the authorities they link to instead of reloading every tracked authority per 100 items.
 - The internal `is_public` flag is no longer sent with every search hit, and the merged "All" results translate their corpus badges.
+- A selected facet value outside the top 100 recounted values showed a false "(0)"; its count is now unknown (`null`) and the sidebar shows no number. While typing in a facet's search box, only matching values are listed.
+- Filter values Typesense would reinterpret inside a quoted list (a trailing `*` or `\`, or a value wrapped in double quotes) are refused instead of silently matching something else. Invalid UTF-8 in a request is rejected, and a malformed `?q=` no longer empties the federated page's bootstrap.
+- Unexpected server errors return `500 internal_error` instead of `503`, so monitoring no longer mistakes a bug for an outage.
+
+### Robustness
+
+- **Rate limits per visitor behind a proxy.** `X-Forwarded-For` is honoured when the direct peer is in `rate_limits.trusted_proxies` (read from the right, skipping trusted hops); IPv6 clients are bucketed by /64; a `429` carries `Retry-After`; federated searches with counts and cross-corpus suggestions weigh more than one request. Limits are configurable under `dre_search.rate_limits`.
+- **Time budgets.** Public searches use a 5-second transport deadline and a 2-second Typesense `search_cutoff_ms`; rebuilds, drains and provisioning use a separate 60-second client (`typesense.search_timeout` / `index_timeout`).
+- **A dead Typesense costs one timeout, not one per block.** After a connection failure the proxy stops calling Typesense for the rest of the request, and for 30 seconds across requests when APCu is available.
+- Count-only and facet-recount queries ask for zero hits.
 
 **Upgrade:** run Omeka's module upgrade. No reindex is needed.
 

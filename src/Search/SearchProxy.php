@@ -18,8 +18,13 @@ use Laminas\Log\LoggerInterface;
  */
 final class SearchProxy
 {
+    /** Seconds to stop calling an unreachable Typesense after a connection failure. */
+    private const BREAKER_SECONDS = 30;
+
     private readonly ?SearchCache $cache;
     private readonly ReadinessGate $gate;
+    /** Connection failure seen in this request (the APCu-less breaker). */
+    private bool $backendDown = false;
 
     public function __construct(
         private readonly TypesenseClientProvider $provider,
@@ -45,7 +50,7 @@ final class SearchProxy
     {
         $this->gate->reset();
         [$profile, $req, $serverFilter] = $this->prepare($profileName, $req, 'search');
-        $client = $this->provider->getClient();
+        $client = $this->client();
         $state = $this->state($profile);
         if ($client === null || !$state['ready']) {
             return $this->unavailable($requestId);
@@ -191,7 +196,9 @@ final class SearchProxy
         }
         foreach ($selected as $value) {
             if (!isset($present[$value])) {
-                $counts[] = ['value' => $value, 'count' => 0];
+                // Outside the top values the recount returned: its count is
+                // unknown, not zero (results do exist — it is selected).
+                $counts[] = ['value' => $value, 'count' => null];
             }
         }
         return array_values($counts);
@@ -235,7 +242,7 @@ final class SearchProxy
     {
         $this->gate->reset();
         [$profile, $req, $serverFilter] = $this->prepare($profileName, $req, 'export');
-        $client = $this->provider->getClient();
+        $client = $this->client();
         $state = $this->state($profile);
         if ($client === null || !$state['ready']) {
             return $this->unavailableExport($requestId);
@@ -302,7 +309,7 @@ final class SearchProxy
             throw new RequestValidationException('unknown_profile', 'Unknown search profile.');
         }
         $serverFilter = $this->scopeResolver->resolve($blockId, $profile->name());
-        $client = $this->provider->getClient();
+        $client = $this->client();
         $state = $this->state($profile);
         if ($client === null || !$state['ready'] || $q === '') {
             return ['available' => $client !== null && $state['ready'], 'suggestions' => []];
@@ -347,7 +354,7 @@ final class SearchProxy
         ?string $requestId = null,
     ): array {
         $q = SearchRequest::query($q);
-        $client = $this->provider->getClient();
+        $client = $this->client();
         // A corpus with queued work beyond the exclusion limit drops out of the
         // dropdown; the others keep answering.
         $profiles = $this->readyProfiles(array_values($this->registry->all()));
@@ -418,7 +425,7 @@ final class SearchProxy
         $this->gate->reset();
         [$profile, $req] = $this->prepare($activeProfile, $req, 'search');
         $activeProfile = $profile->name();
-        $client = $this->provider->getClient();
+        $client = $this->client();
         if ($client === null) {
             return ['available' => false, 'counts' => [], 'active' => $this->unavailable($requestId)];
         }
@@ -480,7 +487,7 @@ final class SearchProxy
     {
         $this->gate->reset();
         $validated = SearchRequest::union($req);
-        $client = $this->provider->getClient();
+        $client = $this->client();
         if ($client === null) {
             return $this->unavailable($requestId);
         }
@@ -545,7 +552,7 @@ final class SearchProxy
         if (!isset($profile->displayFields()['geo'], $profile->displayFields()['has_coords'])) {
             throw new RequestValidationException('map_unavailable', 'This search profile does not provide map coordinates.');
         }
-        $client = $this->provider->getClient();
+        $client = $this->client();
         $state = $this->state($profile);
         if ($client === null || !$state['ready']) {
             return $this->unavailableMap($requestId);
@@ -598,7 +605,7 @@ final class SearchProxy
     {
         $this->gate->reset();
         $profile = $this->registry->get($profileName);
-        $client = $this->provider->getClient();
+        $client = $this->client();
         if ($profile === null || $client === null || !$profile->hasYearFacet() || !$this->state($profile)['ready']) {
             return null;
         }
@@ -610,6 +617,7 @@ final class SearchProxy
         try {
             $result = SearchExecutor::single($client, $profile->collection(), (new QueryBuilder($profile))->yearStats());
         } catch (\Throwable $e) {
+            $this->noteFailure($e);
             return null;
         }
 
@@ -640,7 +648,7 @@ final class SearchProxy
     {
         $this->gate->reset();
         [$profile, $req, $scope] = $this->prepare($profileName, $input, 'facet');
-        $client = $this->provider->getClient();
+        $client = $this->client();
         $state = $this->state($profile);
         if ($client === null || !$state['ready']) {
             return ['available' => false, 'counts' => []];
@@ -651,9 +659,18 @@ final class SearchProxy
         if ($result === null) {
             return ['available' => false, 'counts' => []];
         }
+        $counts = $this->facetCountsOf($result, $field) ?? [];
+        // While the visitor types into a facet's search box, list only what
+        // matches the text; already-selected values stay in the sidebar list.
+        if ($req['facet_query'] === '') {
+            $counts = $this->keepSelectedListed($counts, $req['filters'][$field] ?? []);
+        }
         return ['available' => true, 'counts' => array_map(
-            static fn(array $row): array => ['value' => (string) $row['value'], 'count' => (int) $row['count']],
-            $this->keepSelectedListed($this->facetCountsOf($result, $field) ?? [], $req['filters'][$field] ?? []),
+            static fn(array $row): array => [
+                'value' => (string) $row['value'],
+                'count' => $row['count'] === null ? null : (int) $row['count'],
+            ],
+            $counts,
         )];
     }
 
@@ -727,7 +744,8 @@ final class SearchProxy
             foreach ($facet['counts'] ?? [] as $count) {
                 $counts[] = [
                     'value' => (string) ($count['value'] ?? ''),
-                    'count' => (int) ($count['count'] ?? 0),
+                    // null = selected but outside the recounted top values.
+                    'count' => array_key_exists('count', $count) && $count['count'] === null ? null : (int) ($count['count'] ?? 0),
                 ];
             }
             $facets[] = [
@@ -865,12 +883,49 @@ final class SearchProxy
         return [$profile, $validated, $serverFilter];
     }
 
+    /**
+     * The public client, or null when Typesense is unconfigured or was just
+     * found unreachable. Without the breaker a page rendering several blocks
+     * against a firewalled server waits out one connect timeout per call.
+     */
+    private function client(): ?object
+    {
+        $client = $this->provider->getClient();
+        if ($client === null || $this->backendDown) {
+            return null;
+        }
+        if (function_exists('apcu_fetch') && apcu_fetch($this->breakerKey()) !== false) {
+            $this->backendDown = true;
+            return null;
+        }
+        return $client;
+    }
+
+    private function noteFailure(\Throwable $error): void
+    {
+        for ($e = $error; $e !== null; $e = $e->getPrevious()) {
+            if ($e instanceof \GuzzleHttp\Exception\ConnectException || $e instanceof \Psr\Http\Client\NetworkExceptionInterface) {
+                $this->backendDown = true;
+                if (function_exists('apcu_store')) {
+                    apcu_store($this->breakerKey(), 1, self::BREAKER_SECONDS);
+                }
+                return;
+            }
+        }
+    }
+
+    private function breakerKey(): string
+    {
+        return 'dre_search_down_' . $this->provider->cacheNamespace();
+    }
+
     private function logBackendFailure(
         string $operation,
         \Throwable $error,
         SearchProfile $profile,
         ?string $requestId,
     ): void {
+        $this->noteFailure($error);
         $this->logger->err('DRESearch backend request failed', [
             'request_id' => $requestId,
             'operation' => $operation,

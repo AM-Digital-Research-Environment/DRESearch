@@ -200,7 +200,11 @@ export interface Doc {
 
 export interface FacetCount {
   value: string;
-  count: number;
+  /**
+   * Null for a selected value outside the top values the server recounted:
+   * results exist (it is selected) but the number is unknown — never show 0.
+   */
+  count: number | null;
 }
 
 export interface Facet {

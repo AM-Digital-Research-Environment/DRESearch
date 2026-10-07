@@ -7,31 +7,37 @@ namespace DRESearch\Search;
 use Typesense\Client;
 
 /**
- * Lazily constructs the Typesense client from resolved connection settings.
+ * Lazily constructs the Typesense clients from resolved connection settings.
  *
  * The "Typesense is optional" guarantee lives here: with no host or API key
- * configured, {@see isConfigured()} is false and {@see getClient()} returns
- * null, so every caller (search proxy, reindex job, block render) can show a
- * graceful "search unavailable" state instead of fataling.
+ * configured, {@see isConfigured()} is false and both getters return null, so
+ * every caller (search proxy, reindex job, block render) can show a graceful
+ * "search unavailable" state instead of fataling.
  *
- * A single API key is used for both search and indexing. That key is only ever
- * used server-side (the search proxy enforces is_public:=true and forwards
- * results) and never reaches the browser, so there's no need for a separate
- * search-only / scoped key the way a browser-direct architecture would require.
+ * Two clients share one connection but not one deadline. Public searches hold
+ * a PHP worker while a visitor waits, so they give up quickly
+ * ({@see getClient()}); imports of large documents (full texts, transcripts)
+ * run in background jobs and may take longer ({@see getIndexClient()}).
  *
- * Connection only — the collection alias is a per-profile concern (each
- * SearchProfile carries its own), so this just builds the shared client.
+ * A single API key is used for both. It is only ever used server-side (the
+ * search proxy enforces is_public:=true and forwards results) and never
+ * reaches the browser.
  */
 final class TypesenseClientProvider
 {
     private ?Client $client = null;
     private bool $resolved = false;
+    private ?Client $indexClient = null;
+    private bool $indexResolved = false;
 
     public function __construct(
         private readonly string $host,
         private readonly int $port,
         private readonly string $protocol,
         private readonly string $apiKey,
+        private readonly float $searchTimeout = 5.0,
+        private readonly float $indexTimeout = 60.0,
+        private readonly float $connectTimeout = 2.0,
     ) {
     }
 
@@ -46,35 +52,50 @@ final class TypesenseClientProvider
     }
 
     /**
-     * Build a client, or null when Typesense isn't configured. Constructing the
-     * client opens no connection — the first request does — so a null check
-     * here plus try/catch at call sites is enough to stay non-fatal.
+     * The client for public, interactive requests, or null when Typesense isn't
+     * configured. Constructing it opens no connection — the first request does —
+     * so a null check plus try/catch at call sites is enough to stay non-fatal.
      */
     public function getClient(): ?Client
+    {
+        if (!$this->resolved) {
+            $this->resolved = true;
+            $this->client = $this->build($this->searchTimeout);
+        }
+        return $this->client;
+    }
+
+    /** The client for rebuilds, drains and provisioning jobs. */
+    public function getIndexClient(): ?Client
+    {
+        if (!$this->indexResolved) {
+            $this->indexResolved = true;
+            $this->indexClient = $this->build($this->indexTimeout);
+        }
+        return $this->indexClient;
+    }
+
+    private function build(float $timeout): ?Client
     {
         if (!$this->isConfigured()) {
             return null;
         }
-        if ($this->resolved) {
-            return $this->client;
-        }
-        $this->resolved = true;
-
         try {
-            $this->client = new Client([
+            return new Client([
                 'api_key' => $this->apiKey,
                 'nodes'   => [[
                     'host'     => $this->host,
                     'port'     => (string) $this->port,
                     'protocol' => $this->protocol,
                 ]],
-                'client' => new \GuzzleHttp\Client(['connect_timeout' => 2.0, 'timeout' => 10.0]),
+                // Deadlines live on the transport: the SDK's own timeout options
+                // are not honoured by a caller-supplied PSR-18 client.
+                'client' => new \GuzzleHttp\Client(['connect_timeout' => $this->connectTimeout, 'timeout' => $timeout]),
                 'num_retries' => 0,
                 'retry_interval_seconds' => 0.1,
             ]);
         } catch (\Throwable) {
-            $this->client = null;
+            return null;
         }
-        return $this->client;
     }
 }

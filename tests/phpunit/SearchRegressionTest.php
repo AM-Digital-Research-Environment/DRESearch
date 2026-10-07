@@ -16,6 +16,28 @@ final class SearchRegressionTest extends TestCase
 {
     use ProfileFixture;
 
+    private function provider(): \DRESearch\Search\TypesenseClientProvider
+    {
+        return new \DRESearch\Search\TypesenseClientProvider(
+            (string) getenv('TYPESENSE_HOST'),
+            (int) (getenv('TYPESENSE_PORT') ?: 8108),
+            'http',
+            (string) getenv('TYPESENSE_API_KEY'),
+        );
+    }
+
+    private function proxy(\DRESearch\Search\TypesenseClientProvider $provider, SearchProfile $profile): \DRESearch\Search\SearchProxy
+    {
+        $logger = new \Laminas\Log\Logger();
+        $logger->addWriter(new \Laminas\Log\Writer\Noop());
+        return new \DRESearch\Search\SearchProxy(
+            $provider,
+            new \DRESearch\Settings\ProfileRegistry(['records' => $profile]),
+            new \DRESearch\Search\BlockScopeResolver(\Doctrine\DBAL\DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true])),
+            $logger,
+        );
+    }
+
     public function testChipFiltersDoNotHaveToBeSidebarFacets(): void
     {
         $config = require dirname(__DIR__, 2) . '/config/module.config.php';
@@ -131,6 +153,55 @@ final class SearchRegressionTest extends TestCase
         } finally {
             $client->collections[$collection]->delete();
         }
+    }
+
+    /**
+     * A selected value outside the top values a recount returns is listed with
+     * an unknown (null) count — it has results, so "0" would be false.
+     */
+    public function testLongTailSelectionIsListedWithAnUnknownCountOnTypesense(): void
+    {
+        if (!getenv('TYPESENSE_HOST')) {
+            self::markTestSkipped('Requires disposable Typesense.');
+        }
+        $collection = 'dre_regression_' . bin2hex(random_bytes(6));
+        $profile = $this->profile(['collection' => $collection]);
+        $provider = $this->provider();
+        $client = $provider->getClient();
+        $client->collections->create((new SchemaProvider())->collection($collection, $profile));
+        try {
+            $docs = [];
+            for ($i = 1; $i <= 101; $i++) {
+                // Topic 001 gets two documents so the long tail is well defined.
+                $docs[] = ['id' => (string) $i, '_kind' => 'item', '_profile' => 'records', 'title' => 'Archive', 'is_public' => true,
+                    'type_s' => sprintf('Topic %03d', $i === 101 ? 1 : $i), 'creator_ss' => []];
+            }
+            $docs[] = ['id' => '102', '_kind' => 'item', '_profile' => 'records', 'title' => 'Archive', 'is_public' => true,
+                'type_s' => 'Topic 999', 'creator_ss' => []];
+            $client->collections[$collection]->documents->import($docs);
+            $result = $this->proxy($provider, $profile)->search('records', ['filters' => ['type_s' => ['Topic 999']]]);
+            self::assertSame(1, $result['found']);
+            $listed = array_column($result['facets'][0]['counts'], 'count', 'value');
+            self::assertArrayHasKey('Topic 999', $listed);
+            if (count($listed) > 100) {
+                self::assertNull($listed['Topic 999'], 'Beyond the recounted top values the count is unknown, not zero.');
+            }
+        } finally {
+            $client->collections[$collection]->delete();
+        }
+    }
+
+    public function testUnreachableTypesenseIsCalledOncePerRequest(): void
+    {
+        $provider = new \DRESearch\Search\TypesenseClientProvider('127.0.0.1', 18199, 'http', 'k', 2.0, 2.0, 0.5);
+        $proxy = $this->proxy($provider, $this->profile());
+        $started = microtime(true);
+        self::assertFalse($proxy->search('records', ['q' => 'x'])['available']);
+        $first = microtime(true) - $started;
+        $started = microtime(true);
+        self::assertFalse($proxy->search('records', ['q' => 'y'])['available']);
+        self::assertNull($proxy->yearBounds('records'));
+        self::assertLessThan(0.2, microtime(true) - $started, sprintf('Breaker open after a %.1fs connect failure.', $first));
     }
 
     public function testMissingStopwordRetriesWholeMultiSearchConsistently(): void

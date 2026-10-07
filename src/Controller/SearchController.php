@@ -16,10 +16,23 @@ use Laminas\View\Model\ViewModel;
 /** Public JSON boundary with bounded input, stable errors, and request IDs. */
 class SearchController extends AbstractActionController
 {
+    /** Requests per minute per client, by scope (overridable: dre_search.rate_limits). */
+    public const DEFAULT_LIMITS = [
+        'search' => 120,
+        'facet' => 120,
+        'export' => 10,
+        'suggest' => 120,
+        'federated' => 60,
+        'union' => 60,
+        'map' => 30,
+    ];
+
+    /** @param array<string,int> $limits */
     public function __construct(
         private readonly SearchProxy $proxy,
         private readonly RateLimiter $rateLimiter,
         private readonly LoggerInterface $logger,
+        private readonly array $limits = self::DEFAULT_LIMITS,
     ) {
     }
 
@@ -27,7 +40,7 @@ class SearchController extends AbstractActionController
     {
         return $this->respond(function (string $requestId): array {
             $this->requireMethod(['POST']);
-            $this->requireRateLimit('search', 120);
+            $this->requireRateLimit('search');
             $body = $this->readJsonBody();
             return $this->proxy->search(SearchRequest::profile($body['profile'] ?? ''), $body, $requestId);
         });
@@ -37,7 +50,7 @@ class SearchController extends AbstractActionController
     {
         return $this->respond(function (string $requestId): array {
             $this->requireMethod(['POST']);
-            $this->requireRateLimit('facet', 120);
+            $this->requireRateLimit('facet');
             $body = $this->readJsonBody();
             return $this->proxy->facet(SearchRequest::profile($body['profile'] ?? ''), $body, $requestId);
         });
@@ -47,7 +60,7 @@ class SearchController extends AbstractActionController
     {
         return $this->respond(function (string $requestId): array {
             $this->requireMethod(['POST']);
-            $this->requireRateLimit('export', 10);
+            $this->requireRateLimit('export');
             $body = $this->readJsonBody();
             return $this->proxy->export(SearchRequest::profile($body['profile'] ?? ''), $body, $requestId);
         }, 'no-store');
@@ -57,7 +70,7 @@ class SearchController extends AbstractActionController
     {
         return $this->respond(function (string $requestId): array {
             $this->requireMethod(['GET', 'POST']);
-            $this->requireRateLimit('suggest', 120);
+            $this->requireRateLimit('suggest');
             $profile = SearchRequest::profile(
                 $this->params()->fromQuery('profile') ?? $this->params()->fromPost('profile') ?? '',
             );
@@ -75,7 +88,8 @@ class SearchController extends AbstractActionController
     {
         return $this->respond(function (string $requestId): array {
             $this->requireMethod(['GET', 'POST']);
-            $this->requireRateLimit('suggest', 120);
+            // One multi_search over every corpus: twice the cost of one suggest.
+            $this->requireRateLimit('suggest', 2);
             $q = SearchRequest::query(
                 $this->params()->fromQuery('q') ?? $this->params()->fromPost('q') ?? '',
             );
@@ -91,8 +105,9 @@ class SearchController extends AbstractActionController
     {
         return $this->respond(function (string $requestId): array {
             $this->requireMethod(['POST']);
-            $this->requireRateLimit('federated', 60);
             $body = $this->readJsonBody();
+            // With tab counts this is one search per corpus plus the active one.
+            $this->requireRateLimit('federated', ($body['include_counts'] ?? true) === false ? 1 : 3);
             return $this->proxy->searchAll(SearchRequest::profile($body['profile'] ?? ''), $body, $requestId);
         });
     }
@@ -101,7 +116,7 @@ class SearchController extends AbstractActionController
     {
         return $this->respond(function (string $requestId): array {
             $this->requireMethod(['POST']);
-            $this->requireRateLimit('union', 60);
+            $this->requireRateLimit('union');
             return $this->proxy->union(
                 $this->readJsonBody(),
                 $requestId,
@@ -114,7 +129,7 @@ class SearchController extends AbstractActionController
     {
         return $this->respond(function (string $requestId): array {
             $this->requireMethod(['POST']);
-            $this->requireRateLimit('map', 30);
+            $this->requireRateLimit('map');
             $body = $this->readJsonBody();
             return $this->proxy->map(SearchRequest::profile($body['profile'] ?? ''), $body, $requestId);
         });
@@ -123,6 +138,11 @@ class SearchController extends AbstractActionController
     public function resultsAction(): ViewModel
     {
         $query = (string) $this->params()->fromQuery('q', '');
+        // An invalid byte sequence would make the page's bootstrap JSON fail to
+        // encode, breaking a shareable link; treat it as no query.
+        if (!mb_check_encoding($query, 'UTF-8')) {
+            $query = '';
+        }
         if (mb_strlen($query) > SearchRequest::MAX_QUERY_LENGTH) {
             $query = mb_substr($query, 0, SearchRequest::MAX_QUERY_LENGTH);
         }
@@ -154,13 +174,15 @@ class SearchController extends AbstractActionController
                     'message' => $e->getMessage(),
                     'request_id' => $requestId,
                 ],
-            ], $e->status(), $requestId, 'no-store');
+            ], $e->status(), $requestId, 'no-store', $e->retryAfter());
         } catch (\Throwable $e) {
             $this->logger->err('DRESearch public endpoint failed unexpectedly', [
                 'request_id' => $requestId,
                 'exception' => $e::class,
                 'message' => $e->getMessage(),
             ]);
+            // 500, not 503: a programming error is not an outage, and a 503
+            // invites clients and monitors to retry what cannot succeed.
             return $this->json([
                 'available' => false,
                 'error' => [
@@ -168,7 +190,7 @@ class SearchController extends AbstractActionController
                     'message' => 'The request could not be completed.',
                     'request_id' => $requestId,
                 ],
-            ], 503, $requestId, 'no-store');
+            ], 500, $requestId, 'no-store');
         }
     }
 
@@ -209,14 +231,15 @@ class SearchController extends AbstractActionController
         return $decoded;
     }
 
-    private function requireRateLimit(string $scope, int $limit): void
+    private function requireRateLimit(string $scope, int $weight = 1): void
     {
         $server = $this->getRequest()->getServer();
-        $identity = is_object($server) && method_exists($server, 'get')
-            ? (string) $server->get('REMOTE_ADDR', 'unknown')
-            : 'unknown';
-        if (!$this->rateLimiter->allow($scope, $identity, $limit)) {
-            throw new RequestValidationException('rate_limited', 'Too many requests. Please try again shortly.', 429);
+        $remote = is_object($server) && method_exists($server, 'get') ? (string) $server->get('REMOTE_ADDR', '') : '';
+        $forwarded = is_object($server) && method_exists($server, 'get') ? (string) $server->get('HTTP_X_FORWARDED_FOR', '') : '';
+        $limit = (int) ($this->limits[$scope] ?? self::DEFAULT_LIMITS[$scope] ?? 60);
+        $wait = $this->rateLimiter->hit($scope, $this->rateLimiter->identity($remote, $forwarded), $limit, $weight);
+        if ($wait > 0) {
+            throw new RequestValidationException('rate_limited', 'Too many requests. Please try again shortly.', 429, $wait);
         }
     }
 
@@ -226,7 +249,17 @@ class SearchController extends AbstractActionController
         int $status,
         string $requestId,
         string $cacheControl,
+        ?int $retryAfter = null,
     ): Response {
+        // Substitute rather than fail on an invalid byte sequence: an encode
+        // failure used to produce an empty 200 body.
+        $body = json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        if ($body === false) {
+            $status = 500;
+            $body = (string) json_encode(['available' => false, 'error' => [
+                'code' => 'internal_error', 'message' => 'The response could not be encoded.', 'request_id' => $requestId,
+            ]]);
+        }
         /** @var Response $response */
         $response = $this->getResponse();
         $response->setStatusCode($status);
@@ -234,7 +267,10 @@ class SearchController extends AbstractActionController
         $response->getHeaders()->addHeaderLine('Cache-Control', $cacheControl);
         $response->getHeaders()->addHeaderLine('X-Request-ID', $requestId);
         $response->getHeaders()->addHeaderLine('X-Content-Type-Options', 'nosniff');
-        $response->setContent((string) json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+        if ($retryAfter !== null && $retryAfter > 0) {
+            $response->getHeaders()->addHeaderLine('Retry-After', (string) $retryAfter);
+        }
+        $response->setContent($body);
         return $response;
     }
 }

@@ -31,7 +31,15 @@ final class TypesenseClientProviderFactory implements FactoryInterface
         $protocol = self::resolve($settings, 'dre_search_typesense_protocol', 'TYPESENSE_PROTOCOL', (string) ($defaults['protocol'] ?? 'http'));
         $apiKey = self::resolve($settings, 'dre_search_typesense_api_key', 'TYPESENSE_API_KEY', '');
 
-        return new TypesenseClientProvider($host, $port, $protocol, $apiKey);
+        return new TypesenseClientProvider(
+            $host,
+            $port,
+            $protocol,
+            $apiKey,
+            (float) ($defaults['search_timeout'] ?? 5.0),
+            (float) ($defaults['index_timeout'] ?? 60.0),
+            (float) ($defaults['connect_timeout'] ?? 2.0),
+        );
     }
 
     /** Non-empty setting wins, then a non-empty env var, then the default. */

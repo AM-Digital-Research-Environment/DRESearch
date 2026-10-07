@@ -277,6 +277,11 @@ return [
             'host'     => 'typesense',
             'port'     => 8108,
             'protocol' => 'http',
+            // Seconds. Public searches hold a PHP worker while a visitor waits,
+            // so they give up sooner than background imports of full texts.
+            'connect_timeout' => 2.0,
+            'search_timeout'  => 5.0,
+            'index_timeout'   => 60.0,
         ],
         'operations' => [
             // The live generation and one rollback target are always kept.
@@ -292,6 +297,20 @@ return [
             // live generation is refused (0 disables); the maintenance page
             // can override it for an intended drop.
             'min_retained_ratio' => 0.5,
+        ],
+        // Requests per minute per client for each public endpoint group. Set
+        // trusted_proxies (IPs or CIDRs of your reverse proxies) when PHP sees
+        // the proxy as REMOTE_ADDR — otherwise every visitor shares one bucket.
+        // The AMIRA stack's nginx already restores the client address.
+        'rate_limits' => [
+            'trusted_proxies' => [],
+            'search' => 120,
+            'facet' => 120,
+            'export' => 10,
+            'suggest' => 120,
+            'federated' => 60,
+            'union' => 60,
+            'map' => 30,
         ],
         'federated' => [
             // Keep authority-only term corpora on their dedicated tabs so a

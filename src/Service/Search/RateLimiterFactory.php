@@ -12,6 +12,10 @@ final class RateLimiterFactory implements FactoryInterface
 {
     public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null): RateLimiter
     {
-        return new RateLimiter($container->get('Omeka\Connection'));
+        $proxies = $container->get('Config')['dre_search']['rate_limits']['trusted_proxies'] ?? [];
+        return new RateLimiter(
+            $container->get('Omeka\Connection'),
+            array_values(array_map('strval', is_array($proxies) ? $proxies : [])),
+        );
     }
 }

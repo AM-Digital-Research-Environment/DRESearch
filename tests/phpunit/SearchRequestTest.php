@@ -60,4 +60,31 @@ final class SearchRequestTest extends TestCase
         $this->expectException(RequestValidationException::class);
         SearchRequest::union(['page' => 251]);
     }
+
+    /** @return iterable<string,array{string}> */
+    public static function reinterpretedValues(): iterable
+    {
+        yield 'prefix wildcard' => ['Hist*'];
+        yield 'escaped closing backtick' => ['Book\\'];
+        yield 'phrase quotes' => ['"Oral history"'];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('reinterpretedValues')]
+    public function testFilterValuesTypesenseWouldReinterpretAreRefused(string $value): void
+    {
+        $this->expectException(RequestValidationException::class);
+        SearchRequest::fromArray(['filters' => ['type_s' => [$value]]], $this->profile());
+    }
+
+    public function testQuotesInsideAValueAreStillLiteral(): void
+    {
+        $req = SearchRequest::fromArray(['filters' => ['type_s' => ['The "Big" Book']]], $this->profile())->toArray();
+        self::assertSame(['The "Big" Book'], $req['filters']['type_s']);
+    }
+
+    public function testInvalidUtf8IsRejected(): void
+    {
+        $this->expectException(RequestValidationException::class);
+        SearchRequest::fromArray(['q' => "\xff\xfe"], $this->profile());
+    }
 }

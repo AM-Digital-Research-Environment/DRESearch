@@ -33,7 +33,7 @@ class SyncStopwords extends AbstractJob
 
         /** @var TypesenseClientProvider $provider */
         $provider = $services->get(TypesenseClientProvider::class);
-        $client = $provider->getClient();
+        $client = $provider->getIndexClient();
         if ($client === null) {
             $logger->warn('DRESearch: Typesense is not configured — stopwords sync skipped. Set the connection under Modules → DRE Search.');
             return;

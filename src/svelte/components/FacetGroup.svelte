@@ -109,7 +109,9 @@
                   onToggle(field, c.value, (e.currentTarget as HTMLInputElement).checked)}
               />
               <span class="dre-facet__value" title={c.value}>{c.value}</span>
-              <span class="dre-facet__count">{formatNumber(c.count)}</span>
+              {#if c.count !== null}
+                <span class="dre-facet__count">{formatNumber(c.count)}</span>
+              {/if}
             </label>
           </li>
         {/each}

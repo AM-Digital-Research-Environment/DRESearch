@@ -32,7 +32,7 @@ final class ReindexOrchestrator
     /** @param Closure():bool $cancel @return array<string,mixed> */
     public function runOne(string $profileName, string $jobId, Closure $cancel, bool $allowShrink = false): array
     {
-        $client = $this->provider->getClient();
+        $client = $this->provider->getIndexClient();
         if ($client === null) {
             $this->logger->warn('DRESearch: Typesense is not configured — reindex skipped.');
             return ['skipped' => true];
@@ -51,7 +51,7 @@ final class ReindexOrchestrator
     /** @param Closure():bool $cancel @return array<string,mixed> */
     public function runAll(string $jobId, Closure $cancel, bool $allowShrink = false): array
     {
-        $client = $this->provider->getClient();
+        $client = $this->provider->getIndexClient();
         if ($client === null) {
             $this->logger->warn('DRESearch: Typesense is not configured — reindex skipped.');
             return ['skipped' => true];

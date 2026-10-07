@@ -171,6 +171,9 @@ final class SearchRequest
         if (!is_string($value)) {
             throw new RequestValidationException('invalid_' . $field, sprintf('Parameter "%s" must be a string.', $field));
         }
+        if (!mb_check_encoding($value, 'UTF-8')) {
+            throw new RequestValidationException('invalid_' . $field, sprintf('Parameter "%s" is not valid UTF-8.', $field));
+        }
         $value = trim((string) $value);
         if (mb_strlen($value) > $max) {
             throw new RequestValidationException('invalid_' . $field, sprintf('Parameter "%s" is too long.', $field));
@@ -219,6 +222,16 @@ final class SearchRequest
             $normalized = [];
             foreach ($values as $value) {
                 $text = self::boundedString($value, 'filter_value', self::MAX_VALUE_LENGTH);
+                // Inside a backtick-quoted filter list Typesense still reads a
+                // trailing "*" as a prefix wildcard, a "…"-wrapped value as a
+                // phrase, and a trailing "\" as escaping the closing backtick.
+                // No facet value needs them; refuse rather than reinterpret.
+                if (
+                    str_ends_with($text, '*') || str_ends_with($text, '\\')
+                    || (strlen($text) > 1 && str_starts_with($text, '"') && str_ends_with($text, '"'))
+                ) {
+                    throw new RequestValidationException('invalid_filter_values', 'A filter value cannot be matched literally.');
+                }
                 if ($text !== '' && !in_array($text, $normalized, true)) {
                     $normalized[] = $text;
                 }

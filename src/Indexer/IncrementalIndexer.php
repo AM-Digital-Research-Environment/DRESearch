@@ -231,7 +231,7 @@ final class IncrementalIndexer
     public function drain(?Closure $cancel = null, ?Closure $beat = null): array
     {
         $pass = ['skipped' => [], 'failures' => [], 'rejected' => []];
-        $client = $this->provider->getClient();
+        $client = $this->provider->getIndexClient();
         if ($client === null) {
             return $pass;
         }

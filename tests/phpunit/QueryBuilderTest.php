@@ -96,7 +96,7 @@ final class QueryBuilderTest extends TestCase
         self::assertStringContainsString('language_ss:=[`French`]', $params['filter_by']);
         // Facet payload only.
         self::assertSame('records_current', $params['collection']);
-        self::assertSame(1, $params['per_page']);
+        self::assertSame(0, $params['per_page']);
         self::assertSame('id', $params['include_fields']);
         self::assertArrayNotHasKey('highlight_full_fields', $params);
     }

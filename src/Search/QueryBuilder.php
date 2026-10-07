@@ -93,6 +93,9 @@ final class QueryBuilder
      */
     public const MAX_CANDIDATES = 512;
 
+    /** Server-side time budget for one search, in milliseconds. */
+    public const SEARCH_CUTOFF_MS = 2000;
+
     /**
      * @param string|null $serverFilter saved block scope (validated by {@see FilterExpression})
      * @param list<int> $excludeIds documents with queued, not-yet-applied changes
@@ -125,6 +128,10 @@ final class QueryBuilder
             // Every derived query (counts, export, map, union, facet recounts)
             // builds on these params, so they all inherit the same recall.
             'max_candidates' => self::MAX_CANDIDATES,
+            // A pathological query (hundreds of tokens, typo and drop-token
+            // passes) returns its best partial answer instead of holding a
+            // PHP worker for the full transport timeout.
+            'search_cutoff_ms' => self::SEARCH_CUTOFF_MS,
         ];
         // Facets are optional — a corpus may have none (e.g. genres, languages),
         // in which case we omit facet_by entirely rather than send an empty one.
@@ -247,9 +254,9 @@ final class QueryBuilder
     {
         $params = $this->search($req);
         $params['collection'] = $this->profile->collection();
-        // per_page 1 (not 0) is accepted by every Typesense build; `found` is the
-        // total regardless, and include_fields:id avoids shipping document bodies.
-        $params['per_page'] = 1;
+        // `found` is the total regardless of per_page; Typesense 30 accepts 0,
+        // so no document is ranked or shipped just to read a count.
+        $params['per_page'] = 0;
         $params['include_fields'] = 'id';
         // Keep matching semantics identical while dropping presentation work.
         unset(
@@ -406,10 +413,9 @@ final class QueryBuilder
         $params['facet_by'] = $field;
         $params['max_facet_values'] = 100;
         $params['page'] = 1;
-        $params['per_page'] = 1;
+        $params['per_page'] = 0;
         $params['include_fields'] = 'id';
-        // include_fields already bounds the payload, and no hit is rendered from
-        // this pass — highlighting it would just cost time.
+        // No hit is rendered from this pass — highlighting would just cost time.
         unset(
             $params['exclude_fields'],
             $params['highlight_full_fields'],
