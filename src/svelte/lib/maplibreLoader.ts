@@ -4,12 +4,12 @@
  *
  * WHY THE ORDER MATTERS. This is a University of Bayreuth (EU) deployment whose
  * theme self-hosts its fonts specifically to avoid third-party requests, and
- * whose sibling module (DRE-Visualizations) already vendors MapLibre 6.1.0
- * same-origin and documents that as a virtue. Fetching a second copy from
- * jsDelivr — plus Carto basemap tiles — put two more third-party origins on the
- * page and shipped a duplicate renderer whenever both modules rendered
- * together. The vendored copy is the same version; there was never a reason to
- * fetch it twice.
+ * whose sibling module (DRE-Visualizations) vendors MapLibre same-origin and
+ * documents that as a virtue. Fetching a second copy from jsDelivr — plus Carto
+ * basemap tiles — put two more third-party origins on the page and shipped a
+ * duplicate renderer whenever both modules rendered together. Keep VERSION in
+ * step with the copy DRE-Visualizations vendors; there is no reason to fetch it
+ * twice.
  *
  * DRE-Visualizations publishes its vendored URLs on `window.RV_LIBS` and its
  * basemap configuration on `window.RV_MAP_CONFIG` (both emitted by its
@@ -17,32 +17,31 @@
  * every step degrades, and the CDN remains the floor for a host that has
  * neither module's assets.
  *
- * MapLibre 6 ships ES modules only — an entry, a chunk it shares with its
- * worker, and the worker — and no browser global, so every copy is loaded with
- * import() and published as `window.maplibregl`, the shape DRE-Visualizations
- * reads too. (The CDN floor used to request `dist/maplibre-gl.js`, the 5.x UMD
- * file, which 6.x no longer has: it was a 404.)
+ * MapLibre 6 ships ES modules only — an entry and a worker — and no browser
+ * global, so every copy is loaded with import() and published as
+ * `window.maplibregl`, the shape DRE-Visualizations reads too. (The CDN floor
+ * used to request `dist/maplibre-gl.js`, the 5.x UMD file, which 6.x no longer
+ * has: it was a 404.)
  */
-const VERSION = '6.1.0';
+const VERSION = '6.13.0';
 const CDN = `https://cdn.jsdelivr.net/npm/maplibre-gl@${VERSION}/dist/`;
 
 /**
  * Subresource Integrity for the pinned CDN files: sha384 of jsDelivr's copies
- * of maplibre-gl@6.1.0 (whose sha256 matched jsDelivr's published hashes).
+ * of maplibre-gl@6.13.0 (whose sha256 matched jsDelivr's published hashes).
  * Changing VERSION means recomputing every one, e.g.
  *   curl -s <CDN>maplibre-gl.mjs | openssl dgst -sha384 -binary | openssl base64 -A
+ * and checking the build layout still holds (see loadFromCdn).
  */
 export const CDN_INTEGRITY = {
-  'maplibre-gl.mjs': 'sha384-B+i5EH9X6DFG74Gd1GkROEzOm3aLc7V8zms51GRKlG8Ps7pLTH7atCPGvDmAYntA',
-  'maplibre-gl-shared.mjs':
-    'sha384-zNrUlI/+Cwz2Cn8Fa8SU+hIYgaJqGBpcHcdhn/iOeDoHfh1RxBrXrGeJM34+GEHO',
+  'maplibre-gl.mjs': 'sha384-tG0qQdL7veKvVoyu6PbnmddDls/OVkTjaK9oVY5eq9afBA6zYptFui69Dx57duAh',
   'maplibre-gl-worker.mjs':
-    'sha384-hg+edc019GbBgondUUO+KJzV7jAJOs9nKW8wn0Vwvjr2jTY4edLXIG2dmbn5d7qv',
-  'maplibre-gl.css': 'sha384-Gy41S0IRKagep76pE/h7l/Ptg2JLgQzXwshjlqZOghGGDeDKuJyxmCndqvWZ/vLm',
+    'sha384-vHxGRAh5VPNspVXjsLuI5wxrF/Jbzfyct4wTbGl6bu89rV2rGJm3cOzMTWIfHK0y',
+  'maplibre-gl.css': 'sha384-yFNc3bs28S14jOJo1ZO9SnLiAmtyY2a3H9be8GkLMpDGlO5r1zZNP8fYu+fOCE/w',
 } as const;
 
-/** How the entry and the worker import the shared chunk. */
-const SHARED_SPECIFIER = '"./maplibre-gl-shared.mjs"';
+/** A static import of a relative path, which a module loaded from a blob: URL cannot resolve. */
+const RELATIVE_IMPORT = /(?:\bfrom|\bimport)\s*["']\.{1,2}\//;
 
 /** Carto styles — the fallback when no self-hosted basemap is configured. */
 export const LIGHT_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
@@ -154,31 +153,28 @@ function moduleUrl(code: string): string {
 /**
  * 3. The CDN floor, with every file checked against CDN_INTEGRITY.
  *
- * A dynamic import() cannot carry an integrity hash, and neither can the
- * imports inside the modules it loads. So the three modules are fetched with
- * `integrity` instead, and linked to each other through blob: URLs — the entry
- * and the worker import the verified shared chunk — before anything is
- * imported. The worker URL is handed over explicitly, as for the vendored copy.
+ * A dynamic import() cannot carry an integrity hash. So the entry and the
+ * worker are fetched with `integrity` instead, and only the verified text runs,
+ * from blob: URLs. In 6.13 both are self-contained (6.1 split out a shared
+ * chunk). A build that splits them again would import a relative path that a
+ * blob: module cannot resolve, so it is refused up front instead of failing
+ * inside MapLibre. The worker URL is handed over explicitly, as for the
+ * vendored copy.
  */
 async function loadFromCdn(): Promise<MapLibreGlobal> {
   addStylesheet(CDN + 'maplibre-gl.css', CDN_INTEGRITY['maplibre-gl.css']);
-  const [entry, shared, worker] = await Promise.all([
+  const [entry, worker] = await Promise.all([
     fetchVerified('maplibre-gl.mjs'),
-    fetchVerified('maplibre-gl-shared.mjs'),
     fetchVerified('maplibre-gl-worker.mjs'),
   ]);
-  const sharedUrl = JSON.stringify(moduleUrl(shared));
-  const link = (code: string): string => {
-    if (!code.includes(SHARED_SPECIFIER)) {
-      throw new Error('MapLibre: unexpected build layout.');
-    }
-    return moduleUrl(code.replaceAll(SHARED_SPECIFIER, sharedUrl));
-  };
-  const lib: unknown = await import(/* @vite-ignore */ link(entry));
+  if (RELATIVE_IMPORT.test(entry) || RELATIVE_IMPORT.test(worker)) {
+    throw new Error('MapLibre: unexpected build layout.');
+  }
+  const lib: unknown = await import(/* @vite-ignore */ moduleUrl(entry));
   if (!isMapLibre(lib) || typeof lib.setWorkerUrl !== 'function') {
     throw new Error('MapLibre loaded without exposing its browser API.');
   }
-  lib.setWorkerUrl(link(worker));
+  lib.setWorkerUrl(moduleUrl(worker));
   return lib;
 }
 

@@ -29,7 +29,6 @@ describe('MapLibre loader', () => {
   it('pins every CDN file to a sha384 hash', async () => {
     const { CDN_INTEGRITY } = await freshLoader();
     expect(Object.keys(CDN_INTEGRITY).sort()).toEqual([
-      'maplibre-gl-shared.mjs',
       'maplibre-gl-worker.mjs',
       'maplibre-gl.css',
       'maplibre-gl.mjs',
@@ -51,13 +50,14 @@ describe('MapLibre loader', () => {
       (init as RequestInit).integrity,
     ]);
     expect(requested.sort()).toEqual(
-      (['maplibre-gl-shared.mjs', 'maplibre-gl-worker.mjs', 'maplibre-gl.mjs'] as const).map(
-        (file) => [file, CDN_INTEGRITY[file]],
-      ),
+      (['maplibre-gl-worker.mjs', 'maplibre-gl.mjs'] as const).map((file) => [
+        file,
+        CDN_INTEGRITY[file],
+      ]),
     );
     for (const [url] of fetchMock.mock.calls) {
       expect(String(url)).toMatch(
-        /^https:\/\/cdn\.jsdelivr\.net\/npm\/maplibre-gl@6\.1\.0\/dist\//,
+        /^https:\/\/cdn\.jsdelivr\.net\/npm\/maplibre-gl@6\.13\.0\/dist\//,
       );
     }
 
@@ -67,6 +67,24 @@ describe('MapLibre loader', () => {
 
     // The failure is not cached: a later call tries again.
     await expect(loadMapLibre()).rejects.toThrow();
-    expect(fetchMock).toHaveBeenCalledTimes(6);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it('refuses a CDN build whose modules import each other by relative path', async () => {
+    // A blob: module cannot resolve "./chunk.mjs"; fail with a clear reason instead.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(new Response('import{a}from"./maplibre-gl-shared.mjs";'))),
+    );
+    const createObjectURL = vi.fn(() => 'blob:never');
+    const original = URL.createObjectURL;
+    URL.createObjectURL = createObjectURL;
+    try {
+      const { loadMapLibre } = await freshLoader();
+      await expect(loadMapLibre()).rejects.toThrow('unexpected build layout');
+      expect(createObjectURL).not.toHaveBeenCalled();
+    } finally {
+      URL.createObjectURL = original;
+    }
   });
 });

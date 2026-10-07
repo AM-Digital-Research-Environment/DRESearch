@@ -3,7 +3,7 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.24.0] - 2026-10-07
 
 ### Changed
 
@@ -14,7 +14,7 @@ All notable changes to DRE Search are documented here. The project follows
 
 ### Fixed
 
-- **The map loads without DRE-Visualizations again.** MapLibre 6 ships only ES modules, so the jsDelivr fallback's `dist/maplibre-gl.js` was a 404, and a vendored 6.x copy published through `RV_LIBS` was loaded as a classic script and failed. Every copy is now imported as a module. The CDN copy is pinned with Subresource Integrity: the stylesheet carries `integrity`, and the three modules are fetched with their sha384 hashes and linked through `blob:` URLs before anything runs, because an `import()` cannot carry a hash. A host whose Content Security Policy forbids `blob:` scripts should serve the vendored copy.
+- **The map loads without DRE-Visualizations again.** MapLibre 6 ships only ES modules, so the jsDelivr fallback's `dist/maplibre-gl.js` was a 404, and a vendored 6.x copy published through `RV_LIBS` was loaded as a classic script and failed. Every copy is now imported as a module. The CDN copy moves to **MapLibre 6.13.0** (from 6.1.0, matching DRE-Visualizations) and is pinned with Subresource Integrity: the stylesheet carries `integrity`, and the entry and worker modules are fetched with their sha384 hashes and run from `blob:` URLs, because an `import()` cannot carry a hash. A build that splits its modules again is refused with a clear error. A host whose Content Security Policy forbids `blob:` scripts should serve the vendored copy.
 
 ## [1.23.0] - 2026-10-07
 
