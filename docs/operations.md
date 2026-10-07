@@ -37,6 +37,29 @@ guarantees it (a no-op when nothing is queued):
 * * * * * www-data php /var/www/html/modules/DRESearch/bin/dre-search drain --quiet
 ```
 
+## Synonyms and popular searches
+
+`data/synonyms.json` holds a Typesense synonym set (`dre_synonyms`) of place
+names spelled differently across languages and periods. Every search refers to
+it by name, so an edit takes effect once the set is uploaded — **Sync stopwords
+and synonyms** on the maintenance page, `bin/dre-search sync-stopwords`, or any
+full reindex — without a rebuild. Until it is uploaded, searches run without it.
+
+Popular searches in the empty search box are off by default. To offer them, set
+in `config/local.config.php`:
+
+```php
+'dre_search' => ['popular_searches' => ['enabled' => true, 'min_count' => 5, 'limit' => 5]],
+```
+
+They come from the popular-query analytics, which need Typesense started with
+`--enable-search-analytics=true` and a persistent `--analytics-dir`, then
+**Provision analytics** on the maintenance page. Only queries run at least
+`min_count` times that found something are shown, and nothing shaped like
+personal data (an e-mail address, a URL, five or more consecutive digits).
+Raise `min_count` on a quiet site, where a handful of visitors' queries would
+otherwise be on display.
+
 ## Failure triage
 
 - `batch_import_failed`: inspect the bounded failed IDs/error summary, correct

@@ -75,6 +75,32 @@
     emit();
   }
 
+  /**
+   * Typed years commit on change (Enter or leaving the field): dragging a
+   * 1500–2026 slider one year at a time is no way to reach an exact year.
+   * Clamped to the bounds and kept in order; an empty or invalid entry
+   * restores the current value.
+   */
+  function onTyped(which: 'lo' | 'hi', e: Event): void {
+    const input = e.currentTarget as HTMLInputElement;
+    const v = Math.round(Number(input.value));
+    if (input.value.trim() === '' || !Number.isFinite(v)) {
+      input.value = String(which === 'lo' ? lo : hi);
+      return;
+    }
+    const clamped = Math.min(max, Math.max(min, v));
+    if (which === 'lo') {
+      lo = Math.min(clamped, hi);
+      input.value = String(lo);
+    } else {
+      hi = Math.max(clamped, lo);
+      input.value = String(hi);
+    }
+    if (timer !== null) clearTimeout(timer);
+    timer = null;
+    onChange(lo, hi);
+  }
+
   function onHi(e: Event): void {
     const input = e.currentTarget as HTMLInputElement;
     const v = Number(input.value);
@@ -98,9 +124,34 @@
 
   {#if open}
     <div class="dre-yr__body">
-      <div class="dre-yr__values" aria-hidden="true">
-        <span>{lo}</span>
-        <span>{hi}</span>
+      <div class="dre-yr__values">
+        <label>
+          <span class="dre-yr__sr">{t('year_from')}</span>
+          <input
+            class="dre-yr__number"
+            type="number"
+            inputmode="numeric"
+            {min}
+            {max}
+            step="1"
+            value={lo}
+            onchange={(e) => onTyped('lo', e)}
+          />
+        </label>
+        <span aria-hidden="true">–</span>
+        <label>
+          <span class="dre-yr__sr">{t('year_to')}</span>
+          <input
+            class="dre-yr__number"
+            type="number"
+            inputmode="numeric"
+            {min}
+            {max}
+            step="1"
+            value={hi}
+            onchange={(e) => onTyped('hi', e)}
+          />
+        </label>
       </div>
       <div class="dre-yr__slider">
         <div class="dre-yr__track"></div>
@@ -133,6 +184,32 @@
 </section>
 
 <style>
+  .dre-yr__number {
+    width: 5.5rem;
+    min-height: var(--size-control-lg, 2.75rem);
+    padding-inline: var(--space-sm, 0.5rem);
+    border: 1px solid var(--border, #dbd7d1);
+    border-radius: var(--radius-md, 0.5rem);
+    background: var(--surface, #fdfcf9);
+    color: var(--ink, #3c342d);
+    font: inherit;
+    /* At least 16px, or iOS Safari zooms the page when the field takes focus. */
+    font-size: var(--text-base, 1.0625rem);
+    font-variant-numeric: tabular-nums;
+  }
+  .dre-yr__number:focus {
+    outline: 2px solid var(--primary, #007a50);
+    outline-offset: 1px;
+    border-color: var(--primary, #007a50);
+  }
+  .dre-yr__sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
   .dre-yr {
     padding-block: var(--space-md, 1rem);
     border-bottom: 1px solid var(--border-light, #eae8e3);
@@ -184,11 +261,12 @@
   }
   .dre-yr__values {
     display: flex;
+    align-items: center;
     justify-content: space-between;
     color: var(--muted, #716a66);
     font-size: var(--text-xs, 0.8125rem);
     font-variant-numeric: tabular-nums;
-    margin-bottom: 0.25rem;
+    margin-bottom: var(--space-xs, 0.25rem);
   }
 
   .dre-yr__slider {

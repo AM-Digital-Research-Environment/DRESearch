@@ -35,6 +35,12 @@ const ENGLISH_STRINGS: Record<string, string> = {
 
   searching: 'Searching…',
   search_results: 'Search results',
+  open_record: 'Open {name}',
+  cite: 'Cite',
+  copy_bibtex: 'Copy BibTeX',
+  copy_ris: 'Copy RIS',
+  download_ris: 'Download .ris',
+  citation_copied: 'Citation copied',
   loading_results: 'Loading results',
   result_one: 'result',
   result_other: 'results',
@@ -49,6 +55,7 @@ const ENGLISH_STRINGS: Record<string, string> = {
   copy_link: 'Copy link',
   copied_link: 'Link copied',
   recent_searches: 'Recent searches',
+  popular_searches: 'Popular searches',
 
   // Result export menu.
   export: 'Export',

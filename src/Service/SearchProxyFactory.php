@@ -35,6 +35,7 @@ final class SearchProxyFactory implements FactoryInterface
             array_values(array_map('strval', (array) ($config['federated']['union_profiles'] ?? []))),
             $connection,
             $gate,
+            (array) ($config['popular_searches'] ?? []),
         );
     }
 }

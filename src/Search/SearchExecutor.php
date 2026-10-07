@@ -6,7 +6,8 @@ namespace DRESearch\Search;
 
 /**
  * Every Typesense search the proxy runs goes through here, so they all share
- * one transport (POST /multi_search) and one missing-stopword fallback.
+ * one transport (POST /multi_search) and one fallback for a missing stopword
+ * or synonym set (a fresh Typesense volume before the first reindex).
  *
  * Single searches are sent as a one-entry multi_search on purpose: the
  * collection search endpoint is a GET, and Typesense rejects query strings over
@@ -76,18 +77,20 @@ final class SearchExecutor
             // @phpstan-ignore property.notFound (a Typesense\Client, duck-typed so tests can fake it)
             $response = $client->multiSearch->perform($body, $params);
         } catch (\Throwable $error) {
-            if (!self::missingStopwords($error->getMessage())) {
+            if (self::missingSet($error->getMessage()) === []) {
                 throw $error;
             }
             $response = ['error' => $error->getMessage()];
         }
-        $retry = self::missingStopwords((string) ($response['error'] ?? ''));
+        $drop = self::missingSet((string) ($response['error'] ?? ''));
         foreach ($response['results'] ?? [] as $result) {
-            $retry = $retry || self::missingStopwords((string) ($result['error'] ?? ''));
+            $drop = array_merge($drop, self::missingSet((string) ($result['error'] ?? '')));
         }
-        if ($retry) {
+        if ($drop !== []) {
             foreach ($body['searches'] as &$search) {
-                unset($search['stopwords']);
+                foreach (array_unique($drop) as $key) {
+                    unset($search[$key]);
+                }
             }
             unset($search);
             // @phpstan-ignore property.notFound (see above)
@@ -109,19 +112,38 @@ final class SearchExecutor
             // @phpstan-ignore property.notFound (a Typesense\Collection, duck-typed for tests)
             return $collection->documents->search($params);
         } catch (\Throwable $error) {
-            if (!isset($params['stopwords']) || !self::missingStopwords($error->getMessage())) {
+            $drop = array_intersect(self::missingSet($error->getMessage()), array_keys($params));
+            if ($drop === []) {
                 throw $error;
             }
-            unset($params['stopwords']);
+            foreach ($drop as $key) {
+                unset($params[$key]);
+            }
             // @phpstan-ignore property.notFound (see above)
             return $collection->documents->search($params);
         }
     }
 
-    private static function missingStopwords(string $message): bool
+    /**
+     * The optional query parameters a Typesense error says are missing, e.g.
+     * ["stopwords"] for "Could not find the stopword set" or ["synonym_sets"]
+     * for "Synonym index not found". Empty for any other error.
+     *
+     * @return list<string>
+     */
+    private static function missingSet(string $message): array
     {
         $message = strtolower($message);
-        return str_contains($message, 'stopword')
-            && (str_contains($message, 'not found') || str_contains($message, 'could not find'));
+        if (!str_contains($message, 'not found') && !str_contains($message, 'could not find')) {
+            return [];
+        }
+        $keys = [];
+        if (str_contains($message, 'stopword')) {
+            $keys[] = 'stopwords';
+        }
+        if (str_contains($message, 'synonym')) {
+            $keys[] = 'synonym_sets';
+        }
+        return $keys;
     }
 }

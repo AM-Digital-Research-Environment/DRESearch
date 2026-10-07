@@ -1,0 +1,30 @@
+{
+  "_comment": "Typesense 30 synonym set 'dre_synonyms', uploaded by Indexer\\SynonymsSync on every reindex and by the Maintenance 'Sync stopwords and synonyms' action; every non-browse search references it. Keep it to true equivalents a researcher would expect to match each other — names of the same place or language in the languages the archive is catalogued in. Typesense already folds case and diacritics, so 'Cote d'Ivoire' needs no entry of its own. Historical names (Dahomey, Upper Volta, Zaire, Tanganyika) are deliberately absent: they denote a period, and a search for them should find what was catalogued under them.",
+  "items": [
+    { "id": "cote-divoire", "synonyms": ["Côte d'Ivoire", "Ivory Coast", "Elfenbeinküste"] },
+    {
+      "id": "drc",
+      "synonyms": [
+        "Democratic Republic of the Congo",
+        "DR Congo",
+        "DRC",
+        "Congo-Kinshasa",
+        "République démocratique du Congo",
+        "RDC"
+      ]
+    },
+    {
+      "id": "republic-of-the-congo",
+      "synonyms": ["Republic of the Congo", "Congo-Brazzaville", "République du Congo"]
+    },
+    { "id": "eswatini", "synonyms": ["Eswatini", "Swaziland"] },
+    { "id": "cabo-verde", "synonyms": ["Cabo Verde", "Cape Verde", "Kap Verde"] },
+    { "id": "south-africa", "synonyms": ["South Africa", "Südafrika", "Afrique du Sud"] },
+    { "id": "swahili", "synonyms": ["Swahili", "Kiswahili"] },
+    { "id": "zulu", "synonyms": ["Zulu", "isiZulu"] },
+    { "id": "xhosa", "synonyms": ["Xhosa", "isiXhosa"] },
+    { "id": "sesotho", "synonyms": ["Sesotho", "Southern Sotho"] },
+    { "id": "setswana", "synonyms": ["Setswana", "Tswana"] },
+    { "id": "bayreuth-university", "synonyms": ["University of Bayreuth", "Universität Bayreuth"] }
+  ]
+}

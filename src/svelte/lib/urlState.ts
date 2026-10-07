@@ -304,6 +304,31 @@ export function syncFederatedShell(
   }
 }
 
+/**
+ * The merged "All results" tab's page, in the bare `page` key. Only an embedded
+ * corpus App writes that key otherwise, and none is mounted while the All tab
+ * shows, so the two never contend; {@link syncFederatedShell} clears it on a
+ * tab switch or a new query.
+ */
+export function readUnionPage(href: string = window.location.href): number {
+  return clampInt(new URL(href).searchParams.get('page'), 1, MAX_PAGE, 1);
+}
+
+/** Record the All tab's page. Replaces, like any page change: paging is not a history step. */
+export function syncUnionPage(page: number, pathname: string = window.location.pathname): void {
+  const params = new URLSearchParams(window.location.search);
+  if (page > 1) {
+    params.set('page', String(page));
+  } else {
+    params.delete('page');
+  }
+  const qs = params.toString();
+  const newUrl = `${pathname}${qs ? `?${qs}` : ''}`;
+  if (newUrl !== window.location.pathname + window.location.search) {
+    window.history.replaceState(window.history.state, '', newUrl);
+  }
+}
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function sameFilters(a: ActiveFilters, b: ActiveFilters): boolean {

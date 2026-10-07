@@ -190,6 +190,16 @@ return [
 
             // Monitoring probe (no secrets): Typesense reachability, corpus
             // states, queue age and worker liveness.
+            'dre-search-api-popular' => [
+                'type'    => \Laminas\Router\Http\Literal::class,
+                'options' => [
+                    'route'    => '/dre-search/api/popular',
+                    'defaults' => [
+                        'controller' => Controller\SearchController::class,
+                        'action'     => 'apiPopular',
+                    ],
+                ],
+            ],
             'dre-search-api-health' => [
                 'type'    => \Laminas\Router\Http\Literal::class,
                 'options' => [
@@ -347,6 +357,17 @@ return [
             'union' => 60,
             'map' => 30,
             'health' => 30,
+        ],
+        // "Popular searches" in the empty search box, from Typesense's
+        // popular-query analytics (Maintenance → Provision analytics). Off by
+        // default: it shows visitors what other visitors typed. Only queries
+        // typed at least min_count times that found something are shown, and
+        // anything shaped like personal data (an address, a URL, a long digit
+        // run) never is.
+        'popular_searches' => [
+            'enabled' => false,
+            'min_count' => 5,
+            'limit' => 5,
         ],
         'federated' => [
             // Keep authority-only term corpora on their dedicated tabs so a

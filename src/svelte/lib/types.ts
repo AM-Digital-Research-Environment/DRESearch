@@ -62,7 +62,15 @@ export interface Bootstrap {
   per_page: number;
   /** Result links are built as `${item_url_base}/${doc.id}`. */
   item_url_base: string;
-  endpoints: { facet?: string; search: string; export: string; suggest: string; map: string };
+  endpoints: {
+    facet?: string;
+    search: string;
+    export: string;
+    suggest: string;
+    map: string;
+    /** Present only when the instance opted in to popular searches. */
+    popular?: string;
+  };
   /** Server-rendered first page, so the block paints without a round-trip. */
   initial_response?: SearchResponse;
   /** Seed query (federated results page reuses App per corpus with a shared query). */

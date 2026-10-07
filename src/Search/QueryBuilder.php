@@ -65,6 +65,14 @@ final class QueryBuilder
     public const STOPWORDS_SET = \DRESearch\Indexer\StopwordsSync::SET_NAME;
 
     /**
+     * Typesense 30 synonym set (data/synonyms.json, {@see \DRESearch\Indexer\SynonymsSync}):
+     * the same place or language named in the archive's catalogue languages
+     * ("Ivory Coast" finds "Côte d'Ivoire"). Referenced per query, so editing
+     * it never needs a rebuild; SearchExecutor drops it if it is missing.
+     */
+    public const SYNONYM_SET = \DRESearch\Indexer\SynonymsSync::SET_NAME;
+
+    /**
      * How many prefix/typo variations Typesense may expand per query token.
      *
      * Typesense defaults to 4, which a short query blows straight past: because
@@ -156,6 +164,7 @@ final class QueryBuilder
             // (q=*) ignores it, and SearchExecutor drops it and retries if the
             // set isn't on the server yet.
             $params['stopwords'] = self::STOPWORDS_SET;
+            $params['synonym_sets'] = self::SYNONYM_SET;
             // Mark matched terms so each card can show *where* a result matched.
             // Short fields (title, linked-value facets, names) are highlighted in
             // full — so a card can highlight a whole chip/byline value — while the

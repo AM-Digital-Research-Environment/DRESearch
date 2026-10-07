@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DRESearch\Search;
 
+use DRESearch\Indexer\AnalyticsSync;
 use DRESearch\Settings\ProfileRegistry;
 use DRESearch\Settings\SearchProfile;
 use DRESearch\Search\Exception\RequestValidationException;
@@ -25,6 +26,8 @@ final class SearchProxy
     private readonly ReadinessGate $gate;
     /** Connection failure seen in this request (the APCu-less breaker). */
     private bool $backendDown = false;
+    /** @var array{enabled:bool,min_count:int,limit:int} */
+    private readonly array $popular;
 
     public function __construct(
         private readonly TypesenseClientProvider $provider,
@@ -35,9 +38,22 @@ final class SearchProxy
         private readonly array $unionProfiles = [],
         private readonly ?\Doctrine\DBAL\Connection $connection = null,
         ?ReadinessGate $gate = null,
+        /** @var array{enabled?:bool,min_count?:int,limit?:int} the `popular_searches` config */
+        array $popularSearches = [],
     ) {
         $this->cache = $connection !== null ? new SearchCache($connection) : null;
         $this->gate = $gate ?? new ReadinessGate($connection);
+        $this->popular = [
+            'enabled' => (bool) ($popularSearches['enabled'] ?? false),
+            'min_count' => max(1, (int) ($popularSearches['min_count'] ?? 5)),
+            'limit' => max(1, min(10, (int) ($popularSearches['limit'] ?? 5))),
+        ];
+    }
+
+    /** Whether blocks offer visitors the popular-searches list (opt-in). */
+    public function popularEnabled(): bool
+    {
+        return $this->popular['enabled'];
     }
 
     public function isAvailable(): bool
@@ -404,6 +420,69 @@ final class SearchProxy
             ];
         }
         return ['available' => true, 'groups' => $groups];
+    }
+
+    /**
+     * The searches visitors run most on one corpus, offered in the empty search
+     * box. Read from the popular-query analytics ({@see AnalyticsSync}); off
+     * unless `popular_searches.enabled`, because it shows visitors what other
+     * visitors typed, and {@see PopularSearches} gates every entry. Cached ten
+     * minutes: the list changes slowly and the analytics flush is periodic.
+     *
+     * @return array{available:bool, queries:list<string>}
+     */
+    public function popular(string $profileName, ?string $requestId = null): array
+    {
+        $profile = $this->registry->get($profileName);
+        if ($profile === null) {
+            throw new RequestValidationException('unknown_profile', 'Unknown search profile.');
+        }
+        if (!$this->popular['enabled']) {
+            return ['available' => true, 'queries' => []];
+        }
+        $cacheKey = $this->cacheKey('popular:' . $profile->name());
+        $cached = $this->cacheGet($cacheKey);
+        if ($cached !== null) {
+            return ['available' => true, 'queries' => array_values(array_map('strval', $cached))];
+        }
+        $client = $this->client();
+        if ($client === null) {
+            return ['available' => false, 'queries' => []];
+        }
+        $limit = $this->popular['limit'];
+        $minCount = $this->popular['min_count'];
+        $search = static fn(string $suffix, int $perPage, array $extra = []): array => [
+            'collection' => AnalyticsSync::collectionName($profile->name(), $suffix),
+            'q' => '*',
+            'query_by' => 'q',
+            'sort_by' => 'count:desc',
+            'per_page' => $perPage,
+            'highlight_fields' => 'none',
+            'enable_analytics' => false,
+        ] + $extra;
+        try {
+            $response = SearchExecutor::multi($client, ['searches' => [
+                // Over-fetch: the privacy gate drops some.
+                $search('popular', min(250, $limit * 5), ['filter_by' => 'count:>=' . $minCount]),
+                $search('nohits', 250),
+            ]]);
+        } catch (\Throwable $e) {
+            $this->logBackendFailure('popular', $e, $profile, $requestId);
+            return ['available' => false, 'queries' => []];
+        }
+        $rows = [];
+        foreach ($response['results'][0]['hits'] ?? [] as $hit) {
+            $rows[] = ['q' => (string) ($hit['document']['q'] ?? ''), 'count' => (int) ($hit['document']['count'] ?? 0)];
+        }
+        $noHits = [];
+        foreach ($response['results'][1]['hits'] ?? [] as $hit) {
+            $noHits[] = (string) ($hit['document']['q'] ?? '');
+        }
+        // Missing analytics collections (never provisioned) answer per search
+        // with an error and no hits: an empty list, cached like any other.
+        $queries = PopularSearches::select($rows, $noHits, $minCount, $limit);
+        $this->cachePut($cacheKey, $queries, 600);
+        return ['available' => true, 'queries' => $queries];
     }
 
     /**

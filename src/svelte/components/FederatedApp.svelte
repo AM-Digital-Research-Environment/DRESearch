@@ -3,9 +3,12 @@
   import { untrack } from 'svelte';
   import { searchAll, searchUnion } from '../lib/api';
   import {
+    MAX_PAGE,
     readFederatedShell,
+    readUnionPage,
     readUrlState,
     syncFederatedShell,
+    syncUnionPage,
     writeUrlState,
   } from '../lib/urlState';
   import { formatNumber, t } from '../lib/i18n';
@@ -24,6 +27,7 @@
   // svelte-ignore state_referenced_locally
   const profiles = bootstrap.profiles;
   const ALL = 'all';
+  const UNION_PER_PAGE = 20;
   const metaFor = (name: string): ProfileMeta | undefined =>
     profiles.find((profile) => profile.name === name);
   const shell = readFederatedShell();
@@ -41,7 +45,9 @@
   let countsQuery = $state<string | null>(null);
   let activeResponse = $state<SearchResponse | null>(null);
   let unionResponse = $state<SearchResponse | null>(null);
-  let unionPage = $state(1);
+  // A shared link to page 3 of "All results" opens on page 3.
+  // svelte-ignore state_referenced_locally
+  let unionPage = $state(activeProfile === ALL ? readUnionPage() : 1);
   let isLoading = $state(false);
   let error = $state<string | null>(null);
   let inputTimer: number | null = null;
@@ -107,7 +113,7 @@
         unionResponse = null;
         const unionPromise = searchUnion(
           bootstrap.endpoints.union,
-          { q, page, per_page: 20 },
+          { q, page, per_page: UNION_PER_PAGE },
           controller.signal,
         );
         const countsPromise =
@@ -126,6 +132,14 @@
               );
         const [merged, countResult] = await Promise.all([unionPromise, countsPromise]);
         if (id !== requestId) return;
+        // A stale link past the last page lands on the last one instead of an
+        // empty list under a non-zero count.
+        const lastPage = Math.min(MAX_PAGE, Math.max(1, Math.ceil(merged.found / UNION_PER_PAGE)));
+        if (page > lastPage) {
+          syncUnionPage(lastPage);
+          unionPage = lastPage;
+          return;
+        }
         unionResponse = merged;
         cache[cacheKey] = merged;
         if (q.trim() && merged.found > 0) rememberSearch(q);
@@ -204,6 +218,7 @@
         value.profile && (value.profile === ALL || profiles.some((p) => p.name === value.profile))
           ? value.profile
           : bootstrap.default_profile || profiles[0]?.name || ALL;
+      unionPage = activeProfile === ALL ? readUnionPage() : 1;
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
@@ -373,8 +388,9 @@
           <Pagination
             found={unionResponse.found}
             page={unionResponse.page}
-            perPage={20}
+            perPage={UNION_PER_PAGE}
             onPageChange={(next) => {
+              syncUnionPage(next);
               unionPage = next;
               document.getElementById('dre-fed-panel')?.scrollIntoView({ block: 'start' });
             }}

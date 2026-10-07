@@ -10,7 +10,7 @@ declare(strict_types=1);
  *   php modules/DRESearch/bin/dre-search status
  *   php modules/DRESearch/bin/dre-search drain                  apply queued changes now
  *   php modules/DRESearch/bin/dre-search reindex <profile>|--all [--allow-shrink]
- *   php modules/DRESearch/bin/dre-search sync-stopwords
+ *   php modules/DRESearch/bin/dre-search sync-stopwords          stopword + synonym sets
  *
  * A cron line that guarantees queued changes are applied even when the job
  * runner is broken (the drain is a no-op when the queue is empty):
@@ -111,7 +111,8 @@ try {
         case 'sync-stopwords':
             $client = $provider->getIndexClient();
             $stats = DRESearch\Indexer\StopwordsSync::create($client)->sync();
-            $out('Stopwords synced: ' . json_encode($stats));
+            $synonyms = DRESearch\Indexer\SynonymsSync::create($client)->sync();
+            $out('Stopwords synced: ' . json_encode($stats) . '; synonyms: ' . json_encode($synonyms));
             exit(0);
 
         default:

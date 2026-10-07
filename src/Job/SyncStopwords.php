@@ -11,7 +11,8 @@ use Omeka\Job\AbstractJob;
 /**
  * Background job: sync the `dre_default` stopword set to Typesense.
  *
- * PUTs data/stopwords.json as the English stopword set. Typically <1s and
+ * PUTs data/stopwords.json as the English stopword set and data/synonyms.json
+ * as the synonym set. Typically <1s and
  * idempotent — runs as a job (visible in Admin → Jobs) so the admin UI doesn't
  * block on the Typesense round-trip and for consistency with the reindex jobs.
  *
@@ -41,11 +42,12 @@ class SyncStopwords extends AbstractJob
 
         try {
             $stats = StopwordsSync::create($client)->sync();
+            $synonyms = \DRESearch\Indexer\SynonymsSync::create($client)->sync();
         } catch (\Throwable $e) {
-            $logger->err('DRESearch: stopwords sync failed — ' . $e->getMessage());
+            $logger->err('DRESearch: stopwords/synonyms sync failed — ' . $e->getMessage());
             throw $e; // mark the job ERROR in the admin Jobs list
         }
 
-        $logger->info('DRESearch: stopwords synced', $stats);
+        $logger->info('DRESearch: stopwords and synonyms synced', $stats + ['synonym_groups' => $synonyms['groups']]);
     }
 }

@@ -31,6 +31,9 @@ vi.mock('../../src/svelte/lib/api', () => ({
     suggest() {
       return Promise.resolve([]);
     }
+    popular() {
+      return Promise.resolve([]);
+    }
     map() {
       return Promise.resolve({ available: true, found: 0, mapped: 0, capped: false, docs: [] });
     }

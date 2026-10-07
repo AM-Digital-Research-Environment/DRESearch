@@ -39,6 +39,7 @@
   let controller: AbortController | null = null;
   let inputEl = $state<HTMLInputElement>();
   let recent = $state<string[]>([]);
+  let popular = $state<string[]>([]);
   // Last query we handed to the parent. The parent echoes it back through
   // `value`, and that echo must not be mistaken for an outside change — see the
   // sync effect at the bottom of this script.
@@ -106,18 +107,35 @@
     inputEl?.focus();
   }
 
-  // One option list for the arrow keys: recent searches while the field is
-  // empty, title suggestions once there is text. Recent searches used to be
-  // plain buttons outside the listbox's keyboard model (mouse-only).
-  const showingRecent = $derived(
-    suggestions.length === 0 && local.trim() === '' && recent.length > 0,
+  // One option list for the arrow keys: search starters (this visitor's recent
+  // searches, then the corpus's popular ones) while the field is empty, title
+  // suggestions once there is text. Recent searches used to be plain buttons
+  // outside the listbox's keyboard model (mouse-only).
+  const popularOnly = $derived(
+    popular.filter((q) => !recent.some((r) => r.toLowerCase() === q.toLowerCase())),
   );
-  const optionCount = $derived(showingRecent ? recent.length : suggestions.length);
+  const starters = $derived([...recent, ...popularOnly]);
+  const starterGroups = $derived(
+    [
+      { kind: 'recent', label: t('recent_searches'), items: recent, offset: 0 },
+      { kind: 'popular', label: t('popular_searches'), items: popularOnly, offset: recent.length },
+    ].filter((group) => group.items.length > 0),
+  );
+  const showingStarters = $derived(
+    suggestions.length === 0 && local.trim() === '' && starters.length > 0,
+  );
+  const optionCount = $derived(showingStarters ? starters.length : suggestions.length);
 
   function handleFocus(): void {
     focused = true;
     recent = recentSearches();
-    open = suggestions.length > 0 || (local.trim() === '' && recent.length > 0);
+    open = suggestions.length > 0 || (local.trim() === '' && starters.length > 0);
+    const firstLoad = popular.length === 0;
+    void api.popular().then((queries) => {
+      popular = queries;
+      // The first fetch resolves after focus: show the list it just filled.
+      if (firstLoad && focused && local.trim() === '' && starters.length > 0) open = true;
+    });
   }
 
   function handleBlur(): void {
@@ -170,11 +188,11 @@
       case 'Enter':
         e.preventDefault();
         if (hasOptions && activeIndex >= 0 && activeIndex < optionCount) {
-          const recentQuery = recent[activeIndex];
+          const starter = starters[activeIndex];
           const suggestion = suggestions[activeIndex];
-          if (showingRecent && recentQuery !== undefined) {
-            reuseRecent(recentQuery);
-          } else if (!showingRecent && suggestion) {
+          if (showingStarters && starter !== undefined) {
+            reuseRecent(starter);
+          } else if (!showingStarters && suggestion) {
             go(suggestion); // jump to the highlighted item's page
           }
         } else {
@@ -258,29 +276,45 @@
     {/if}
   </div>
 
-  {#if open && (suggestions.length > 0 || recent.length > 0)}
+  {#if open && (suggestions.length > 0 || showingStarters)}
     <ul
       class="dre-search-box__suggest"
       id={listboxId}
       role="listbox"
-      aria-label={showingRecent ? t('recent_searches') : t('suggestions')}
+      aria-label={showingStarters && starterGroups.length === 1
+        ? starterGroups[0]?.label
+        : t('suggestions')}
     >
-      {#if showingRecent}
-        <li class="dre-search-box__recent-label" role="presentation" aria-hidden="true">
-          {t('recent_searches')}
-        </li>
-        {#each recent as query, i (query)}
-          <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <li
-            id="{listboxId}-option-{i}"
-            class="dre-search-box__recent"
-            class:dre-search-box__suggestion--active={i === activeIndex}
-            role="option"
-            aria-selected={i === activeIndex}
-            onmousedown={(e) => e.preventDefault()}
-            onclick={() => reuseRecent(query)}
-          >
-            {query}
+      {#if showingStarters}
+        {#each starterGroups as group (group.kind)}
+          <li role="presentation">
+            <ul
+              class="dre-search-box__group"
+              role="group"
+              aria-labelledby="{listboxId}-{group.kind}"
+            >
+              <li
+                id="{listboxId}-{group.kind}"
+                class="dre-search-box__recent-label"
+                role="presentation"
+              >
+                {group.label}
+              </li>
+              {#each group.items as query, j (query)}
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <li
+                  id="{listboxId}-option-{group.offset + j}"
+                  class="dre-search-box__recent"
+                  class:dre-search-box__suggestion--active={group.offset + j === activeIndex}
+                  role="option"
+                  aria-selected={group.offset + j === activeIndex}
+                  onmousedown={(e) => e.preventDefault()}
+                  onclick={() => reuseRecent(query)}
+                >
+                  {query}
+                </li>
+              {/each}
+            </ul>
           </li>
         {/each}
       {/if}
@@ -424,6 +458,11 @@
   .dre-search-box__suggestion-meta {
     font-size: var(--text-xs, 0.8125rem);
     color: var(--muted, #716a66);
+  }
+  .dre-search-box__group {
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
   .dre-search-box__recent-label {
     padding: 0.4rem 0.5rem 0.2rem;

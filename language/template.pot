@@ -79,6 +79,14 @@ msgstr ""
 msgid "Changes are waiting for a worker. One starts with the next edit or search; use \"Retry pending changes\" to start it now."
 msgstr ""
 
+#: src/svelte/lib/i18n.ts (citation_copied)
+msgid "Citation copied"
+msgstr ""
+
+#: src/svelte/lib/i18n.ts (cite)
+msgid "Cite"
+msgstr ""
+
 #: src/svelte/lib/i18n.ts (clear_all)
 msgid "Clear all"
 msgstr ""
@@ -109,6 +117,14 @@ msgstr ""
 
 #: Module.php:323
 msgid "Connection values in effect:"
+msgstr ""
+
+#: src/svelte/lib/i18n.ts (copy_bibtex)
+msgid "Copy BibTeX"
+msgstr ""
+
+#: src/svelte/lib/i18n.ts (copy_ris)
+msgid "Copy RIS"
 msgstr ""
 
 #: src/svelte/lib/i18n.ts (copy_link)
@@ -169,6 +185,10 @@ msgstr ""
 
 #: view/dre-search/admin/maintenance/index.phtml:33
 msgid "Documents indexed"
+msgstr ""
+
+#: src/svelte/lib/i18n.ts (download_ris)
+msgid "Download .ris"
 msgstr ""
 
 #: src/svelte/lib/i18n.ts (field_editor)
@@ -448,6 +468,10 @@ msgstr ""
 msgid "Open a corpus tab to filter these merged results."
 msgstr ""
 
+#: src/svelte/lib/i18n.ts (open_record)
+msgid "Open {name}"
+msgstr ""
+
 #: view/dre-search/admin/maintenance/index.phtml:170
 msgid "Or reindex a single corpus"
 msgstr ""
@@ -516,6 +540,10 @@ msgstr ""
 msgid "Popular and zero-result queries reveal missing terminology and cataloguing gaps. Analytics is optional and requires Typesense search analytics with persistent storage."
 msgstr ""
 
+#: src/svelte/lib/i18n.ts (popular_searches)
+msgid "Popular searches"
+msgstr ""
+
 #: src/svelte/lib/i18n.ts (previous_page)
 msgid "Previous page"
 msgstr ""
@@ -561,7 +589,7 @@ msgid "RIS — Zotero, EndNote (.ris)"
 msgstr ""
 
 #: view/dre-search/admin/maintenance/index.phtml:185
-msgid "Re-uploads the English stopword set to Typesense (no reindex needed). A full reindex does this too."
+msgid "Re-uploads the English stopword set and the synonym set (data/stopwords.json, data/synonyms.json) to Typesense — no reindex needed. A full reindex does this too."
 msgstr ""
 
 #: view/dre-search/admin/maintenance/index.phtml:145
@@ -811,11 +839,11 @@ msgstr ""
 
 #: src/Controller/Admin/MaintenanceController.php:84
 #, php-format
-msgid "Stopword sync queued. Track progress in %1$sjob #%2$s%3$s."
+msgid "Stopword and synonym sync queued. Track progress in %1$sjob #%2$s%3$s."
 msgstr ""
 
 #: view/dre-search/admin/maintenance/index.phtml:179
-msgid "Stopwords"
+msgid "Stopwords and synonyms"
 msgstr ""
 
 #: config/module.config.php (research_items) src/svelte/lib/i18n.ts (field_subject)
@@ -835,7 +863,7 @@ msgid "Suggestions"
 msgstr ""
 
 #: view/dre-search/admin/maintenance/index.phtml:182
-msgid "Sync stopwords"
+msgid "Sync stopwords and synonyms"
 msgstr ""
 
 #: config/module.config.php (research_items) src/svelte/lib/i18n.ts (field_tag)

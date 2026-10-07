@@ -85,6 +85,17 @@ class SearchController extends AbstractActionController
         }, 'no-store');
     }
 
+    /** The corpus's popular searches (empty unless popular_searches.enabled). */
+    public function apiPopularAction(): Response
+    {
+        return $this->respond(function (string $requestId): array {
+            $this->requireMethod(['GET']);
+            $this->requireRateLimit('suggest');
+            $profile = SearchRequest::profile($this->params()->fromQuery('profile') ?? '');
+            return $this->proxy->popular($profile, $requestId);
+        }, 'public, max-age=300');
+    }
+
     public function apiSuggestAllAction(): Response
     {
         return $this->respond(function (string $requestId): array {
@@ -186,7 +197,8 @@ class SearchController extends AbstractActionController
                     'request_id' => $requestId,
                 ];
             }
-            return $this->json($data, $status, $requestId, $cacheControl);
+            // Only a success may be cached: a cached 503 outlives the outage.
+            return $this->json($data, $status, $requestId, $status === 200 ? $cacheControl : 'no-store');
         } catch (RequestValidationException $e) {
             return $this->json([
                 'available' => false,

@@ -6,6 +6,7 @@
   import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
   import MatchedIn from './MatchedIn.svelte';
+  import RecordLink from './RecordLink.svelte';
 
   /**
    * One YouTube-video card:
@@ -91,6 +92,7 @@
           >
             {playlist}
           </button>
+          <RecordLink {itemUrlBase} id={doc.playlist_id} name={playlist} />
         </li>
       </ul>
     {/if}

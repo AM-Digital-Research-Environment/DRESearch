@@ -81,7 +81,7 @@ class MaintenanceController extends AbstractActionController
         } elseif ($this->params()->fromPost('sync_stopwords')) {
             // Refresh the English stopword set without rebuilding any collection
             // (e.g. after editing data/stopwords.json).
-            $this->dispatchJob(SyncStopwords::class, [], 'Stopword sync queued. Track progress in %1$sjob #%2$s%3$s.'); // @translate
+            $this->dispatchJob(SyncStopwords::class, [], 'Stopword and synonym sync queued. Track progress in %1$sjob #%2$s%3$s.'); // @translate
         } elseif ($this->params()->fromPost('provision_analytics')) {
             $this->dispatchJob(ProvisionAnalytics::class, [], 'Search analytics provisioning queued. Track progress in %1$sjob #%2$s%3$s.'); // @translate
         } elseif ($this->params()->fromPost('reindex_all')) {

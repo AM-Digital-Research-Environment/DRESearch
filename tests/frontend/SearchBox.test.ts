@@ -5,7 +5,10 @@ import { describe, expect, it, vi } from 'vitest';
 import SearchBox from '../../src/svelte/components/SearchBox.svelte';
 import type { SearchApi } from '../../src/svelte/lib/api';
 
-const api = { suggest: vi.fn().mockResolvedValue([]) } as unknown as SearchApi;
+const api = {
+  suggest: vi.fn().mockResolvedValue([]),
+  popular: vi.fn().mockResolvedValue([]),
+} as unknown as SearchApi;
 
 describe('SearchBox', () => {
   it('uses instance-scoped combobox/listbox ids and has no detectable axe violations', async () => {

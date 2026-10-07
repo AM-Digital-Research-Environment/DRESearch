@@ -3,7 +3,16 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.23.0] - 2026-10-07
+
+### Added
+
+- **Place-name synonyms.** "Ivory Coast" finds "Côte d'Ivoire", "Swaziland" finds "Eswatini", and so on for twelve countries named differently in English, French, German and older usage (`data/synonyms.json`, a Typesense 30 synonym set). Searches reference the set per query, so editing it needs no rebuild; a Typesense without the set answers as before. "Sync stopwords and synonyms" on the maintenance page, `bin/dre-search sync-stopwords` and every full reindex upload it.
+- **Cite a single publication.** Publication cards have a "Cite" disclosure: copy BibTeX, copy RIS or download a `.ris` file for that record, using the export serializers.
+- **Open the linked record from a filter value.** A principal investigator on a project card, a podcast's series and a video's playlist filter the results when clicked; a small arrow beside them now opens that person's, series' or playlist's own page.
+- **Typed years.** The year facet has two number fields beside the slider: an exact year no longer means dragging across five centuries one step at a time. Entries are clamped to the corpus's range and kept in order.
+- **Shareable "All results" pages.** The federated page's merged tab keeps its page number in the address bar (`?page=3`), so a shared or reloaded link opens the same page; a link past the last page lands on the last one.
+- **Popular searches (opt-in).** With `popular_searches.enabled`, the empty search box lists the corpus's most-run searches below the visitor's recent ones, read from the popular-query analytics (Maintenance → Provision analytics). Off by default, because it shows visitors what others typed: a query must have been run at least `min_count` times (5) and have found something, and anything shaped like personal data — an e-mail address, a URL, a run of five or more digits, control characters — is never shown. Cached ten minutes; `GET /dre-search/api/popular?profile=…`.
 
 ### Changed
 
@@ -68,7 +77,7 @@ All notable changes to DRE Search are documented here. The project follows
 - CI cancels superseded PR runs, caches Composer, verifies the Omeka download's checksum, waits for Typesense to be healthy, fails if any test is skipped, and runs `npm audit`; CodeQL scans the TypeScript and the workflows.
 - PHPStan runs at level 8 (from 5) and TypeScript checks indexed access; the findings were fixed, among them possible null dereferences in the block renderer and the readiness gate.
 
-**Upgrade:** run Omeka's module upgrade. No reindex is needed.
+**Upgrade:** run Omeka's module upgrade. No reindex is needed; press "Sync stopwords and synonyms" once (or run `bin/dre-search sync-stopwords`) to load the synonym set.
 
 ## [1.22.1] - 2026-10-07
 

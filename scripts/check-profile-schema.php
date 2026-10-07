@@ -13,6 +13,8 @@ foreach (['DateDefinition', 'FieldDefinition', 'SortDefinition', 'SourceScope'] 
 require_once $root . '/src/Settings/SearchProfile.php';
 require_once $root . '/src/Indexer/SchemaProvider.php';
 require_once $root . '/src/Indexer/StopwordsSync.php';
+require_once $root . '/src/Indexer/SynonymsSync.php';
+require_once $root . '/src/Search/FilterExpression.php';
 require_once $root . '/src/Search/QueryBuilder.php';
 
 $config = require $root . '/config/module.config.php';

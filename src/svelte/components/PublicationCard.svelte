@@ -6,6 +6,7 @@
   import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
   import MatchedIn from './MatchedIn.svelte';
+  import CiteMenu from './CiteMenu.svelte';
 
   /**
    * One publication card — a bibliographic reference:
@@ -204,6 +205,7 @@
         'keyword_ss',
       ]}
     />
+    <CiteMenu {doc} kind="publication" {itemUrlBase} />
   </div>
 </article>
 

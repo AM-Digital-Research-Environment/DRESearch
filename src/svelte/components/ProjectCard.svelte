@@ -5,6 +5,7 @@
   import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
   import MatchedIn from './MatchedIn.svelte';
+  import RecordLink from './RecordLink.svelte';
 
   /**
    * One research-project card:
@@ -17,8 +18,9 @@
    *   │ [Arts & Aesthetics] [University of Bayreuth]      │  ← click to filter
    *   └────────────────────────────────────────────────┘
    *
-   * PI names link to the person's Omeka page; the section / institution chips
-   * are buttons that add that value as a facet filter (onAddFilter).
+   * A PI name filters by that person; the arrow beside it (when the PI is a
+   * linked person, `pi_ids`) opens their Omeka page. Section / institution
+   * chips add that value as a facet filter (onAddFilter).
    */
 
   interface Props {
@@ -76,7 +78,7 @@
         {#each pis as pi, i (pi + '|' + i)}{i > 0 ? ', ' : ''}<FilterLink
             onclick={() => onAddFilter('people_ss', pi)}
             ><Highlight value={piHl.get(pi) ?? pi} /></FilterLink
-          >{/each}
+          ><RecordLink {itemUrlBase} id={doc.pi_ids?.[i]} name={pi} />{/each}
       </p>
     {/if}
 

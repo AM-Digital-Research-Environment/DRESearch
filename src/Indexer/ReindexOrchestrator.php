@@ -169,5 +169,11 @@ final class ReindexOrchestrator
         } catch (\Throwable $e) {
             $this->logger->warn('DRESearch: stopwords sync failed; search will retry without them — ' . $e->getMessage());
         }
+        try {
+            $stats = SynonymsSync::create($client)->sync();
+            $this->logger->info('DRESearch: synonyms synced', $stats);
+        } catch (\Throwable $e) {
+            $this->logger->warn('DRESearch: synonyms sync failed; search will retry without them — ' . $e->getMessage());
+        }
     }
 }

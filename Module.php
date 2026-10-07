@@ -67,7 +67,7 @@ class Module extends AbstractModule
      * runs (a test asserts the list matches the controller).
      */
     public const PUBLIC_ACTIONS = [
-        'apiSearch', 'apiFacet', 'apiExport', 'apiSuggest', 'apiSuggestAll',
+        'apiSearch', 'apiFacet', 'apiExport', 'apiSuggest', 'apiSuggestAll', 'apiPopular',
         'apiSearchAll', 'apiUnion', 'apiMap', 'apiHealth', 'results',
     ];
 

@@ -292,6 +292,9 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout implements Templa
                 'map'     => $view->basePath('/dre-search/api/map'),
             ],
         ];
+        if ($this->proxy->popularEnabled()) {
+            $bootstrap['endpoints']['popular'] = $view->basePath('/dre-search/api/popular');
+        }
 
         // Server-render the first (browse) page so the block paints immediately.
         // A block whose saved scope is invalid (e.g. a locked filter set through

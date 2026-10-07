@@ -6,6 +6,7 @@
   import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
   import MatchedIn from './MatchedIn.svelte';
+  import RecordLink from './RecordLink.svelte';
 
   /**
    * One podcast-episode card:
@@ -98,6 +99,7 @@
           >
             {series}
           </button>
+          <RecordLink {itemUrlBase} id={doc.series_id} name={series} />
         </li>
       </ul>
     {/if}

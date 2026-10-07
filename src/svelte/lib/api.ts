@@ -39,11 +39,31 @@ function analytics(q: string, scope: string): { record_query: boolean; analytics
 }
 
 export class SearchApi {
+  private popularRequest: Promise<string[]> | null = null;
+
   constructor(
     private readonly endpoints: Bootstrap['endpoints'],
     private readonly profile: string,
     private readonly blockId: number | null = null,
   ) {}
+
+  /**
+   * The corpus's popular searches, fetched once per page view (the server
+   * caches the list for minutes). Empty when the instance has not opted in,
+   * and on any failure: the list is a convenience.
+   */
+  popular(): Promise<string[]> {
+    const endpoint = this.endpoints.popular;
+    if (!endpoint) return Promise.resolve([]);
+    this.popularRequest ??= fetch(`${endpoint}?profile=${encodeURIComponent(this.profile)}`, {
+      headers: { Accept: 'application/json' },
+    })
+      .then(async (res) =>
+        res.ok ? (((await res.json()) as { queries?: string[] }).queries ?? []) : [],
+      )
+      .catch(() => []);
+    return this.popularRequest;
+  }
 
   async search(req: SearchRequest, signal?: AbortSignal): Promise<SearchResponse> {
     const res = await fetch(this.endpoints.search, {

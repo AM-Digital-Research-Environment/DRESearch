@@ -30,7 +30,7 @@ for (const component of ['box', 'bar']) {
         render(SearchBox, {
           value: '',
           placeholder: 'Search',
-          api: { suggest } as unknown as SearchApi,
+          api: { suggest, popular: async () => [] } as unknown as SearchApi,
           itemUrlBase: '/s/site/item',
           instanceId: 'races',
           onQueryChange: vi.fn(),

@@ -11,6 +11,9 @@ GET or POST parameters.
 - `POST /dre-search/api/map`: up to 1,000 geocoded hits of a location profile.
 - `GET|POST /dre-search/api/suggest`: one profile's title suggestions.
 - `GET|POST /dre-search/api/suggest-all`: grouped suggestions across profiles.
+- `GET /dre-search/api/popular?profile=…`: up to `popular_searches.limit`
+  popular queries for one profile (`{"queries": [...]}`); always empty unless
+  `popular_searches.enabled`. Cacheable for five minutes.
 - `POST /dre-search/api/search-all`: active results and optionally cached
   per-corpus counts.
 - `POST /dre-search/api/union`: one merged result stream across the configured
