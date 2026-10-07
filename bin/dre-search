@@ -1,0 +1,124 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * DRE Search command line: operate the index without the admin UI or the
+ * Omeka job runner (cron, deployment hooks, recovery).
+ *
+ *   php modules/DRESearch/bin/dre-search status
+ *   php modules/DRESearch/bin/dre-search drain                  apply queued changes now
+ *   php modules/DRESearch/bin/dre-search reindex <profile>|--all [--allow-shrink]
+ *   php modules/DRESearch/bin/dre-search sync-stopwords
+ *
+ * A cron line that guarantees queued changes are applied even when the job
+ * runner is broken (the drain is a no-op when the queue is empty):
+ *
+ *   * * * * * www-data php /var/www/html/modules/DRESearch/bin/dre-search drain --quiet
+ *
+ * Exit codes: 0 success, 1 failure, 2 usage error.
+ */
+
+// Resolve every module path before Omeka's bootstrap chdir()s to its root.
+$moduleRoot = dirname(__DIR__);
+$omekaRoot = getenv('OMEKA_PATH') ?: dirname($moduleRoot, 2);
+$bootstrap = $omekaRoot . '/bootstrap.php';
+if (!is_readable($bootstrap)) {
+    fwrite(STDERR, "Cannot find Omeka's bootstrap.php under {$omekaRoot}. Set OMEKA_PATH.\n");
+    exit(2);
+}
+
+$args = array_slice($argv, 1);
+$quiet = in_array('--quiet', $args, true);
+$args = array_values(array_filter($args, static fn(string $a): bool => $a !== '--quiet'));
+$command = $args[0] ?? 'help';
+$out = static function (string $line) use ($quiet): void {
+    if (!$quiet) {
+        fwrite(STDOUT, $line . "\n");
+    }
+};
+
+if (in_array($command, ['help', '--help', '-h'], true)) {
+    fwrite(STDOUT, "Usage: dre-search status | drain | reindex <profile>|--all [--allow-shrink] | sync-stopwords [--quiet]\n");
+    exit(0);
+}
+
+// Omeka 4.2.1+: bootstrap.php (not vendor/autoload.php) loads the PHP 8.5
+// patched Laminas/Doctrine classes production runs.
+require $bootstrap;
+$application = Omeka\Mvc\Application::init(require OMEKA_PATH . '/application/config/application.config.php');
+$services = $application->getServiceManager();
+
+if (!$services->has(DRESearch\Indexer\IncrementalIndexer::class)) {
+    fwrite(STDERR, "DRE Search is not active in this Omeka installation.\n");
+    exit(1);
+}
+$provider = $services->get(DRESearch\Search\TypesenseClientProvider::class);
+if (!$provider->isConfigured()) {
+    fwrite(STDERR, "Typesense is not configured (Modules → DRE Search → Configure).\n");
+    exit(1);
+}
+$never = static fn(): bool => false;
+
+try {
+    switch ($command) {
+        case 'status':
+            $health = $services->get(DRESearch\Search\SearchProxy::class)->health();
+            $out(sprintf('Typesense: %s', $health['reachable'] ? 'reachable' : 'UNREACHABLE'));
+            $out(sprintf(
+                'Worker: %s; oldest pending change: %s',
+                $health['worker'] === null ? 'unknown' : ($health['worker']['alive'] ? 'running' : 'idle'),
+                $health['oldest_pending_seconds'] === null ? 'none' : $health['oldest_pending_seconds'] . ' s',
+            ));
+            foreach ($health['profiles'] as $name => $state) {
+                $out(sprintf('  %-26s %-7s %d pending', $name, $state['public'], $state['pending']));
+            }
+            exit($health['ok'] ? 0 : 1);
+
+        case 'drain':
+            $indexer = $services->get(DRESearch\Indexer\IncrementalIndexer::class);
+            $pass = $indexer->drain($never);
+            foreach ($pass['rejected'] as $profile => $ids) {
+                $out(sprintf('%s: %d rejected document(s) removed: %s', $profile, count($ids), implode(', ', $ids)));
+            }
+            foreach ($pass['skipped'] as $profile) {
+                $out($profile . ': skipped (a rebuild holds it and drains it on promotion)');
+            }
+            if ($pass['failures'] !== []) {
+                fwrite(STDERR, implode("\n", $pass['failures']) . "\n");
+                exit(1);
+            }
+            $out('Queued changes applied.');
+            exit(0);
+
+        case 'reindex':
+            $target = $args[1] ?? '';
+            $allowShrink = in_array('--allow-shrink', $args, true);
+            $orchestrator = $services->get(DRESearch\Indexer\ReindexOrchestrator::class);
+            if ($target === '--all') {
+                $result = $orchestrator->runAll('cli', $never, $allowShrink);
+                $out(sprintf('Reindexed %d corpora.', (int) ($result['completed'] ?? 0)));
+            } elseif ($target !== '' && !str_starts_with($target, '--')) {
+                $result = $orchestrator->runOne($target, 'cli', $never, $allowShrink);
+                $out(sprintf('%s: %d documents live (%s).', $target, (int) ($result['documents'] ?? 0), (string) ($result['collection'] ?? '')));
+            } else {
+                fwrite(STDERR, "Usage: dre-search reindex <profile>|--all [--allow-shrink]\n");
+                exit(2);
+            }
+            exit(0);
+
+        case 'sync-stopwords':
+            $client = $provider->getIndexClient();
+            $stats = DRESearch\Indexer\StopwordsSync::create($client)->sync();
+            $out('Stopwords synced: ' . json_encode($stats));
+            exit(0);
+
+        default:
+            fwrite(STDERR, "Unknown command \"{$command}\". Run: dre-search help\n");
+            exit(2);
+    }
+} catch (Throwable $error) {
+    fwrite(STDERR, 'DRE Search: ' . $error->getMessage() . "\n");
+    exit(1);
+}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DRESearch\Site\BlockLayout;
 
+use DRESearch\Search\FilterExpression;
 use DRESearch\Search\SearchProxy;
 use DRESearch\Search\QueryBuilder;
 use DRESearch\Security\HtmlSanitizer;
@@ -14,7 +15,10 @@ use Laminas\View\Renderer\PhpRenderer;
 use Omeka\Api\Representation\SitePageBlockRepresentation;
 use Omeka\Api\Representation\SitePageRepresentation;
 use Omeka\Api\Representation\SiteRepresentation;
+use Omeka\Entity\SitePageBlock;
 use Omeka\Site\BlockLayout\AbstractBlockLayout;
+use Omeka\Site\BlockLayout\TemplateableBlockLayoutInterface;
+use Omeka\Stdlib\ErrorStore;
 
 /**
  * Shared page block for a faceted search over one {@see SearchProfile}. A thin
@@ -34,11 +38,14 @@ use Omeka\Site\BlockLayout\AbstractBlockLayout;
  *     "locked_filter":    "section_ss:=`Mobilities`"         // optional, raw filter_by
  *   }
  *
- * render() injects the Svelte bundle, builds a bootstrap blob (including the
- * profile name + card kind so the client renders the right card), and server-side
- * renders the first page so the block paints immediately.
+ * prepareRender() injects the Svelte bundle once per page; render() builds a
+ * bootstrap blob (including the profile name + card kind so the client renders
+ * the right card) and server-side renders the first page so the block paints
+ * immediately. Themes may supply their own markup through Omeka's block
+ * templates (`common/block-template/<name>`, declared under `block_templates`
+ * in the theme config); the bootstrap and mount contract stay the same.
  */
-abstract class AbstractSearchBlock extends AbstractBlockLayout
+abstract class AbstractSearchBlock extends AbstractBlockLayout implements TemplateableBlockLayoutInterface
 {
     public function __construct(
         private readonly SearchProxy $proxy,
@@ -175,6 +182,56 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
         return (string) ob_get_clean();
     }
 
+    /** Inject the bundle once per page that uses this layout. */
+    public function prepareRender(PhpRenderer $view)
+    {
+        $view->headLink()->appendStylesheet($view->assetUrl('css/dre-search.css', 'DRESearch'));
+        $view->headLink()->appendStylesheet($view->assetUrl('dist/dre-search.css', 'DRESearch'));
+        $view->headScript()->appendFile(
+            $view->assetUrl('dist/dre-search.js', 'DRESearch'),
+            'module',
+            ['defer' => true]
+        );
+        \DRESearch\View\ClientStrings::inject($view);
+    }
+
+    /**
+     * Validate and normalise block data when a page is saved — through the
+     * page editor AND the REST API, which used to store anything. A locked
+     * filter that could escape its group (Typesense && and || share one
+     * precedence level) is refused here rather than at search time.
+     */
+    public function onHydrate(SitePageBlock $block, ErrorStore $errorStore)
+    {
+        $data = $block->getData();
+        if (!is_array($data)) {
+            $data = [];
+        }
+        $filter = trim((string) ($data['locked_filter'] ?? ''));
+        if ($filter !== '') {
+            $problem = FilterExpression::problem($filter);
+            if ($problem !== null) {
+                $errorStore->addError('o:block[o:data][locked_filter]', $problem);
+            }
+        }
+        $settings = new SearchBlockSettings($data, $this->profile());
+        $data['locked_filter'] = $filter;
+        $data['results_per_page'] = $settings->perPage();
+        $data['default_sort'] = $settings->defaultSort();
+        if (array_key_exists('facets', $data)) {
+            $data['facets'] = $settings->facets();
+        }
+        $data['title'] = trim((string) ($data['title'] ?? ''));
+        $block->setData($data);
+    }
+
+    /** The block's title and intro feed Omeka's own site-page search. */
+    public function getFulltextText(PhpRenderer $view, SitePageBlockRepresentation $block)
+    {
+        $data = $block->data();
+        return trim((string) ($data['title'] ?? '') . ' ' . strip_tags((string) ($data['intro_html'] ?? '')));
+    }
+
     public function render(
         PhpRenderer $view,
         SitePageBlockRepresentation $block,
@@ -183,15 +240,6 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout
         $data = $block->data();
         $profile = $this->profile();
         $settings = new SearchBlockSettings($data, $profile);
-
-        // Inject the bundle once per page (headLink/headScript dedupe by URL).
-        $view->headLink()->appendStylesheet($view->assetUrl('css/dre-search.css', 'DRESearch'));
-        $view->headLink()->appendStylesheet($view->assetUrl('dist/dre-search.css', 'DRESearch'));
-        $view->headScript()->appendFile(
-            $view->assetUrl('dist/dre-search.js', 'DRESearch'),
-            'module',
-            ['defer' => true]
-        );
 
         $facets = $settings->facets();
         $showYear = $settings->showYear();

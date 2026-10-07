@@ -395,6 +395,23 @@ final class OmekaIntegrationTest extends TestCase
         self::assertSame(1, $this->client->collections[$this->profile->collection()]->retrieve()['num_documents']);
     }
 
+    public function testHealthReportsCorpusStatesWithoutRecordIds(): void
+    {
+        $this->resource(8, 'Second publication');
+        $this->db->insert('item_item_set', ['item_id' => 8, 'item_set_id' => 29918]);
+        $this->build()->run();
+        $health = $this->proxy()->health();
+        self::assertTrue($health['ok']);
+        self::assertSame(['public' => 'live', 'pending' => 0], $health['profiles'][$this->profile->name()]);
+        $this->queue->enqueue($this->registry->names(), [1]);
+        $health = $this->proxy()->health();
+        self::assertSame('hiding', $health['profiles'][$this->profile->name()]['public']);
+        self::assertSame(1, $health['profiles'][$this->profile->name()]['pending']);
+        self::assertIsInt($health['oldest_pending_seconds']);
+        self::assertStringNotContainsString('"1"', json_encode($health['profiles']));
+        self::assertSame('paused', $this->proxy(0)->health()['profiles'][$this->profile->name()]['public']);
+    }
+
     public function testStrandedQueueWakesOneWorkerThroughTheLease(): void
     {
         $woken = 0;

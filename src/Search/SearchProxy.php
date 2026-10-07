@@ -674,6 +674,70 @@ final class SearchProxy
         )];
     }
 
+    /**
+     * Operational status for monitoring: is Typesense configured and
+     * reachable, which corpora are live, hiding pending records or paused, and
+     * is the incremental worker keeping up. No secrets, no record ids.
+     *
+     * @return array<string,mixed>
+     */
+    public function health(): array
+    {
+        $this->gate->reset();
+        $configured = $this->provider->isConfigured();
+        $reachable = false;
+        $client = $this->provider->getClient();
+        if ($client !== null) {
+            try {
+                $reachable = !empty($client->health->retrieve()['ok']);
+            } catch (\Throwable $error) {
+                $this->noteFailure($error);
+            }
+        }
+        $profiles = [];
+        $pending = [];
+        $oldest = null;
+        try {
+            if ($this->connection !== null) {
+                foreach (
+                    $this->connection->executeQuery(
+                        'SELECT profile, COUNT(*) AS n, MIN(queued_at) AS oldest FROM dre_search_change GROUP BY profile',
+                    )->fetchAllAssociative() as $row
+                ) {
+                    $pending[(string) $row['profile']] = (int) $row['n'];
+                    $oldest = $oldest === null ? (string) $row['oldest'] : min($oldest, (string) $row['oldest']);
+                }
+            }
+        } catch (\Throwable) {
+            $pending = [];
+        }
+        $states = $this->gate->check($this->registry->names());
+        foreach ($this->registry->names() as $name) {
+            $count = $pending[$name] ?? 0;
+            $profiles[$name] = [
+                'public' => !($states[$name]['ready'] ?? false) ? 'paused' : ($count > 0 ? 'hiding' : 'live'),
+                'pending' => $count,
+            ];
+        }
+        $worker = null;
+        try {
+            if ($this->connection !== null) {
+                $status = (new \DRESearch\Indexer\WorkerLease($this->connection))->status();
+                $worker = ['alive' => $status['alive'], 'requested' => $status['requested']];
+            }
+        } catch (\Throwable) {
+            $worker = null;
+        }
+        return [
+            'ok' => $configured && $reachable,
+            'configured' => $configured,
+            'reachable' => $reachable,
+            'oldest_pending_seconds' => $oldest !== null ? max(0, time() - (int) strtotime($oldest . ' UTC')) : null,
+            'worker' => $worker,
+            'profiles' => $profiles,
+        ];
+    }
+
     /** @return array{ready:bool,exclude:list<int>} */
     private function state(SearchProfile $profile): array
     {

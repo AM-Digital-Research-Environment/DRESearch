@@ -188,6 +188,19 @@ return [
                 ],
             ],
 
+            // Monitoring probe (no secrets): Typesense reachability, corpus
+            // states, queue age and worker liveness.
+            'dre-search-api-health' => [
+                'type'    => \Laminas\Router\Http\Literal::class,
+                'options' => [
+                    'route'    => '/dre-search/api/health',
+                    'defaults' => [
+                        'controller' => Controller\SearchController::class,
+                        'action'     => 'apiHealth',
+                    ],
+                ],
+            ],
+
             // Federated results page, site-scoped so Omeka wraps it in the active
             // theme layout and currentSite() resolves. Child of the core `site`
             // route → /s/{site-slug}/dre-search. Mirrors the admin child route
@@ -241,6 +254,28 @@ return [
     'view_manager' => [
         'template_path_stack' => [
             __DIR__ . '/../view',
+        ],
+    ],
+
+    // Gettext catalogues: language/<locale>.mo, built from language/template.pot
+    // (scripts/build-translations.php). They also translate the client's UI
+    // strings, which View\ClientStrings hands to the Svelte bundle.
+    'translator' => [
+        'translation_file_patterns' => [
+            [
+                'type'        => 'gettext',
+                'base_dir'    => dirname(__DIR__) . '/language',
+                'pattern'     => '%s.mo',
+                'text_domain' => null,
+            ],
+        ],
+    ],
+
+    // A site-navigation link to the federated results page, so editors can put
+    // "Search everything" in a site menu without a hand-typed URL.
+    'navigation_links' => [
+        'invokables' => [
+            'dreSearchResults' => Site\Navigation\Link\FederatedSearch::class,
         ],
     ],
 
@@ -311,6 +346,7 @@ return [
             'federated' => 60,
             'union' => 60,
             'map' => 30,
+            'health' => 30,
         ],
         'federated' => [
             // Keep authority-only term corpora on their dedicated tabs so a

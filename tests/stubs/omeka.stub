@@ -73,3 +73,19 @@ class Url {}
 namespace Laminas\View\Helper;
 class HeadLink {}
 class HeadScript {}
+
+namespace Omeka\Site\Navigation\Link;
+
+/**
+ * Omeka 4.2.1 documents getLabel() as returning array, but every core link
+ * (Browse, Page, Url) returns the label string or null; keep PHPStan on the
+ * behaviour, not the docblock typo. Only the corrected member is declared.
+ */
+interface LinkInterface
+{
+    /**
+     * @param array<string,mixed> $data
+     * @return string|null
+     */
+    public function getLabel(array $data, \Omeka\Api\Representation\SiteRepresentation $site);
+}

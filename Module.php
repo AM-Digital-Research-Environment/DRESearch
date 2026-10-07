@@ -61,6 +61,16 @@ class Module extends AbstractModule
         'dre_search_typesense_api_key',
     ];
 
+    /**
+     * Every public SearchController action. A new action MUST be listed here:
+     * otherwise anonymous requests fail with PermissionDenied before the action
+     * runs (a test asserts the list matches the controller).
+     */
+    public const PUBLIC_ACTIONS = [
+        'apiSearch', 'apiFacet', 'apiExport', 'apiSuggest', 'apiSuggestAll',
+        'apiSearchAll', 'apiUnion', 'apiMap', 'apiHealth', 'results',
+    ];
+
     /** Built on the first observed write, then reused for the request. */
     private ?Indexer\ItemEventListener $itemEventListener = null;
     private bool $itemEventListenerResolved = false;
@@ -161,7 +171,7 @@ class Module extends AbstractModule
         $acl->allow(
             null,
             [Controller\SearchController::class],
-            ['apiSearch', 'apiFacet', 'apiExport', 'apiSuggest', 'apiSuggestAll', 'apiSearchAll', 'apiUnion', 'apiMap', 'results']
+            self::PUBLIC_ACTIONS
         );
 
         $acl->allow(
@@ -275,7 +285,43 @@ class Module extends AbstractModule
         }
         $form->setData($data);
 
-        return $renderer->formCollection($form, false);
+        return $renderer->formCollection($form, false) . $this->connectionSources($renderer, $settings);
+    }
+
+    /**
+     * Where each connection value in effect comes from. A saved setting wins
+     * over the environment, so a key saved once silently shadowed a rotated
+     * TYPESENSE_API_KEY; saying so here makes that visible.
+     */
+    private function connectionSources(PhpRenderer $renderer, $settings): string
+    {
+        $defaults = $this->getConfig()['dre_search']['typesense'] ?? [];
+        $rows = [];
+        foreach (
+            [
+                'Host' => ['dre_search_typesense_host', 'TYPESENSE_HOST', $defaults['host'] ?? ''],
+                'Port' => ['dre_search_typesense_port', 'TYPESENSE_PORT', $defaults['port'] ?? ''],
+                'Protocol' => ['dre_search_typesense_protocol', 'TYPESENSE_PROTOCOL', $defaults['protocol'] ?? ''],
+                'API key' => ['dre_search_typesense_api_key', 'TYPESENSE_API_KEY', ''],
+            ] as $label => [$setting, $env, $default]
+        ) {
+            if ((string) $settings->get($setting, '') !== '') {
+                $source = $renderer->translate('saved in these settings');
+            } elseif (($value = getenv($env)) !== false && $value !== '') {
+                $source = sprintf($renderer->translate('environment variable %s'), $env);
+            } elseif ((string) $default !== '') {
+                $source = $renderer->translate('module default');
+            } else {
+                $source = $renderer->translate('not set');
+            }
+            $rows[] = sprintf(
+                '<li><strong>%s</strong>: %s</li>',
+                $renderer->escapeHtml($renderer->translate($label)),
+                $renderer->escapeHtml($source),
+            );
+        }
+        return '<div class="field"><p>' . $renderer->escapeHtml($renderer->translate('Connection values in effect:')) . '</p><ul>'
+            . implode('', $rows) . '</ul></div>';
     }
 
     public function handleConfigForm(AbstractController $controller)
@@ -312,6 +358,20 @@ class Module extends AbstractModule
             $settings->delete($key);
         }
         $connection = $services->get('Omeka\Connection');
+        // The generation table is the only record of which Typesense
+        // collections this module created. Typesense data is deliberately left
+        // in place (it may be shared); record the names so they can be removed
+        // from the Typesense side without guessing by prefix.
+        try {
+            $owned = $connection->executeQuery('SELECT collection_name FROM dre_search_generation')->fetchFirstColumn();
+            if ($owned !== [] && $services->has('Omeka\Logger')) {
+                $services->get('Omeka\Logger')->notice(
+                    'DRESearch uninstalled. Typesense collections it created were left in place: ' . implode(', ', $owned)
+                );
+            }
+        } catch (\Throwable) {
+            // Table already gone: nothing to report.
+        }
         $connection->executeStatement('DROP TABLE IF EXISTS dre_search_change');
         $connection->executeStatement('DROP TABLE IF EXISTS dre_search_worker');
         $connection->executeStatement('DROP TABLE IF EXISTS dre_search_cache');

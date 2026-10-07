@@ -10,6 +10,9 @@
  * mount node + sibling state script that src/svelte/main.ts hydrates into a
  * FederatedApp (a type-tab per corpus, reusing the per-corpus search UI).
  */
+// A results page for whatever was typed: keep it out of search-engine indexes
+// (infinitely many URLs, thin content) while letting crawlers follow its links.
+$this->headMeta()->appendName('robots', 'noindex,follow');
 $query = isset($query) ? (string) $query : '';
 $this->headTitle($this->translate('Search'));
 ?>

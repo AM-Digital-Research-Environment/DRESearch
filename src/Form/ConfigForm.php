@@ -48,7 +48,7 @@ class ConfigForm extends Form
             'type'    => Element\Password::class,
             'options' => [
                 'label' => 'Typesense API key', // @translate
-                'info'  => 'Used server-side only. Leave blank to keep the saved secret; environment variables are preferred.', // @translate
+                'info'  => 'Used server-side only. Leave blank to keep the saved secret. A saved key takes precedence over the TYPESENSE_API_KEY environment variable; clear it to use the environment.', // @translate
             ],
             'attributes' => ['autocomplete' => 'new-password', 'placeholder' => '••••••••••••'],
         ]);

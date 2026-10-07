@@ -11,6 +11,32 @@ job identifier. Cancelling a job stops work at the next checkpoint and removes
 its unpublished staging collection only after verifying that no alias points to it.
 If alias verification is unavailable, cleanup preserves the collection for a later recovery run.
 
+## Monitoring and the command line
+
+`GET /dre-search/api/health` reports, without secrets or record ids, whether
+Typesense is configured and reachable, each corpus' public state (`live`,
+`hiding` pending records, or `paused`), the age of the oldest queued change and
+whether the incremental worker is alive. It answers `200` while Typesense is
+reachable and `503` otherwise, so an uptime monitor can poll it.
+
+`bin/dre-search` operates the index from a shell, through Omeka's own bootstrap:
+
+```sh
+php modules/DRESearch/bin/dre-search status
+php modules/DRESearch/bin/dre-search drain
+php modules/DRESearch/bin/dre-search reindex research_items
+php modules/DRESearch/bin/dre-search reindex --all [--allow-shrink]
+php modules/DRESearch/bin/dre-search sync-stopwords
+```
+
+The web job runner normally applies queued changes within seconds, and search
+traffic restarts a stranded worker. Where that runner is unreliable, a cron line
+guarantees it (a no-op when nothing is queued):
+
+```cron
+* * * * * www-data php /var/www/html/modules/DRESearch/bin/dre-search drain --quiet
+```
+
 ## Failure triage
 
 - `batch_import_failed`: inspect the bounded failed IDs/error summary, correct
@@ -41,9 +67,20 @@ point the alias at `previous_collection`. Never delete collections by prefix.
 
 ## Secrets
 
-Prefer environment variables in production. A blank admin API-key field leaves
-the stored value unchanged; the clear checkbox removes it. Rotate the Typesense
-key at the server and module together.
+A key saved in **Modules → DRE Search → Configure** takes precedence over the
+`TYPESENSE_API_KEY` environment variable; the form lists where each connection
+value in effect comes from. Prefer environment variables in production and keep
+the saved field empty. A blank admin API-key field leaves the stored value
+unchanged; the clear checkbox removes it. Rotate the Typesense key at the server
+and module together.
+
+## Translations
+
+`language/template.pot` holds every interface string, the server's and the
+search client's. Copy it to `language/<locale>.po`, translate, and compile it to
+`language/<locale>.mo` (msgfmt or Poedit); Omeka then serves both the PHP
+strings and, through `window.dreSearchTranslations`, the client's. After
+changing strings, run `npm run i18n` (lint fails while the template is stale).
 
 ## Upgrading to 1.22.x
 

@@ -25,6 +25,7 @@ class SearchController extends AbstractActionController
         'federated' => 60,
         'union' => 60,
         'map' => 30,
+        'health' => 30,
     ];
 
     /** @param array<string,int> $limits */
@@ -133,6 +134,26 @@ class SearchController extends AbstractActionController
             $body = $this->readJsonBody();
             return $this->proxy->map(SearchRequest::profile($body['profile'] ?? ''), $body, $requestId);
         });
+    }
+
+    /**
+     * Monitoring probe: 200 while Typesense is configured and reachable, 503
+     * otherwise. Paused corpora are reported, not treated as an outage.
+     */
+    public function apiHealthAction(): Response
+    {
+        $requestId = bin2hex(random_bytes(12));
+        try {
+            $this->requireMethod(['GET']);
+            $this->requireRateLimit('health');
+            $data = $this->proxy->health();
+            return $this->json($data, $data['ok'] ? 200 : 503, $requestId, 'no-store');
+        } catch (RequestValidationException $e) {
+            return $this->json(['ok' => false, 'error' => ['code' => $e->publicCode(), 'message' => $e->getMessage(), 'request_id' => $requestId]], $e->status(), $requestId, 'no-store', $e->retryAfter());
+        } catch (\Throwable $e) {
+            $this->logger->err('DRESearch health probe failed', ['request_id' => $requestId, 'message' => $e->getMessage()]);
+            return $this->json(['ok' => false, 'error' => ['code' => 'internal_error', 'message' => 'The request could not be completed.', 'request_id' => $requestId]], 500, $requestId, 'no-store');
+        }
     }
 
     public function resultsAction(): ViewModel

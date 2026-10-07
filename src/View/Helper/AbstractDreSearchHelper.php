@@ -39,6 +39,7 @@ abstract class AbstractDreSearchHelper extends AbstractHelper
             'module',
             ['defer' => true]
         );
+        \DRESearch\View\ClientStrings::inject($view);
     }
 
     /**

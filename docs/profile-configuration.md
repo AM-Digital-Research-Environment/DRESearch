@@ -20,5 +20,38 @@ computes the value. `index: false` is for payload-only fields and cannot be
 faceted, sorted, or search-only. `search_only: true` indexes large text such as a
 transcript but excludes it from returned documents.
 
-Adding a new mapper kind requires a mapper and result card. Adding a corpus of
-an existing kind is configuration plus a thin block-layout binding.
+## Overriding from local.config.php
+
+Omeka merges `local.config.php` over module config with
+`Laminas\Stdlib\ArrayUtils::merge`: string keys are merged key by key, but
+**lists are appended**. To narrow or reorder a list — `federated.union_profiles`,
+a profile's `read_properties` or `extra_sources` — replace it explicitly:
+
+```php
+use Laminas\Stdlib\ArrayUtils\MergeReplaceKey;
+
+return [
+    'dre_search' => [
+        'federated' => [
+            'union_profiles' => new MergeReplaceKey(['research_items', 'research_publications']),
+        ],
+    ],
+];
+```
+
+## Adding a corpus
+
+Adding a corpus of an existing kind takes:
+
+1. a profile under `dre_search.profiles` (collection alias, source scope, fields);
+2. a block layout: a thin `AbstractSearchBlock` subclass returning the profile
+   name, registered under `block_layouts` in `config/module.config.php` and in
+   `Settings\BlockProfiles::CLASSES`/`PROFILES` (the scope resolver checks that
+   a block's layout matches the profile it searches);
+3. optionally an entry in `federated.union_profiles`;
+4. `npm run i18n` to add its labels to `language/template.pot`;
+5. raising the profile count asserted in `tests/phpunit/SearchProfileTest.php`;
+6. **Reindex** of the new corpus.
+
+A new mapper kind additionally needs a mapper (`Indexer\MapperFactory`) and a
+result card (`src/svelte/components`).

@@ -1,0 +1,12 @@
+<?php
+/**
+ * @var \Laminas\View\Renderer\PhpRenderer $this
+ * @var array $data
+ * @var \Omeka\Site\Navigation\Link\LinkInterface $link
+ */
+$translate = $this->plugin('translate');
+$escape = $this->plugin('escapeHtml');
+$label = isset($data['label']) && trim((string) $data['label']) !== '' ? $data['label'] : null;
+?>
+<label><?= $translate('Type') ?> <input type="text" value="<?= $escape($translate($link->getName())) ?>" disabled></label>
+<label><?= $translate('Label') ?> <input type="text" data-name="label" value="<?= $escape((string) $label) ?>" placeholder="<?= $escape($translate('Search')) ?>"></label>
