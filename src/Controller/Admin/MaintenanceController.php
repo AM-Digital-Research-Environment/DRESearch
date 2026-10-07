@@ -14,6 +14,9 @@ use DRESearch\Job\IndexAllSearchProfiles;
 use DRESearch\Job\IndexSearchProfile;
 use DRESearch\Job\ProvisionAnalytics;
 use DRESearch\Job\SyncStopwords;
+use DRESearch\Search\PopularAnalytics;
+use DRESearch\Search\PopularModeration;
+use DRESearch\Search\PopularSearches;
 use DRESearch\Search\TypesenseClientProvider;
 use DRESearch\Settings\ProfileRegistry;
 use Laminas\Mvc\Controller\AbstractActionController;
@@ -23,10 +26,14 @@ use Omeka\Stdlib\Message;
 /**
  * Admin → DRE Search. Shows the Typesense connection, each corpus' index and
  * public-search state (live, hiding pending records, or paused), the
- * incremental worker, and dispatches the rebuild/maintenance jobs.
+ * incremental worker, and dispatches the rebuild/maintenance jobs. Editors
+ * also moderate the popular searches here: none is shown until approved.
  */
 class MaintenanceController extends AbstractActionController
 {
+    /** Queries awaiting review listed per corpus; hiding some brings up the next. */
+    private const REVIEW_ROWS = 20;
+
     private ?bool $healthy = null;
     private ?string $healthError = null;
 
@@ -37,6 +44,9 @@ class MaintenanceController extends AbstractActionController
         private readonly ChangeQueue $queue,
         private readonly ?WorkerLease $lease = null,
         private readonly int $exclusionLimit = 250,
+        private readonly ?PopularModeration $moderation = null,
+        /** @var array{enabled?:bool,min_count?:int,limit?:int} the `popular_searches` config */
+        private readonly array $popularSearches = [],
     ) {
     }
 
@@ -56,10 +66,74 @@ class MaintenanceController extends AbstractActionController
             'profiles'   => $this->collectStatuses(),
             'worker'     => $this->workerStatus(),
             'analytics'  => $this->collectAnalytics(),
+            'popular'    => $this->collectPopular(),
             'form'       => $this->getForm(MaintenanceForm::class),
         ]);
         $view->setTemplate('dre-search/admin/maintenance/index');
         return $view;
+    }
+
+    /**
+     * Approve, hide or revoke one popular-search candidate. The pressed button
+     * names the decision and carries the query; the form carries the corpus.
+     */
+    public function moderateAction(): \Laminas\Http\Response
+    {
+        $back = fn(): \Laminas\Http\Response => $this->redirect()->toRoute('admin/dre-search', [], ['fragment' => 'dre-search-popular']);
+        if (!$this->getRequest()->isPost()) {
+            return $back();
+        }
+        $form = $this->getForm(MaintenanceForm::class);
+        $form->setData($this->params()->fromPost());
+        if (!$form->isValid()) {
+            $this->messenger()->addError('Invalid form submission. Please try again.'); // @translate
+            return $back();
+        }
+        $profile = $this->registry->get((string) $this->params()->fromPost('profile', ''));
+        if ($profile === null) {
+            $this->messenger()->addError('Unknown search profile.'); // @translate
+            return $back();
+        }
+        $decision = null;
+        $query = '';
+        foreach (['approve', 'hide', 'revoke'] as $candidate) {
+            $value = $this->params()->fromPost($candidate);
+            if (is_string($value) && $value !== '') {
+                [$decision, $query] = [$candidate, $value];
+                break;
+            }
+        }
+        if ($decision === null || $this->moderation === null) {
+            $this->messenger()->addError('No moderation decision was submitted.'); // @translate
+            return $back();
+        }
+
+        $identity = $this->identity();
+        $userId = $identity instanceof \Omeka\Entity\User ? $identity->getId() : null;
+        $args = [PopularSearches::clean($query), $this->translate($profile->label())];
+        try {
+            if ($decision === 'approve') {
+                $this->moderation->approve($profile->name(), $query, $userId);
+                $template = 'Approved “%1$s”: it can now appear among the popular searches of %2$s.'; // @translate
+            } elseif ($decision === 'hide') {
+                $this->moderation->hide($profile->name(), $query, $userId);
+                $template = 'Hid “%1$s” from the popular searches of %2$s.'; // @translate
+            } elseif ($this->moderation->revoke($profile->name(), $query)) {
+                $template = 'Withdrew the decision on “%1$s” for %2$s: it is back in review and not shown.'; // @translate
+            } else {
+                $template = 'There was no decision on “%1$s” for %2$s to withdraw.'; // @translate
+            }
+        } catch (\InvalidArgumentException) {
+            $this->messenger()->addError('This query can never be shown to visitors (too short or long, or shaped like personal data).'); // @translate
+            return $back();
+        } catch (\Throwable $error) {
+            $this->logger()->err('DRESearch: could not save a popular-search decision: ' . $error->getMessage());
+            $this->messenger()->addError('The decision could not be saved. If the module was just updated, run its upgrade under Modules.'); // @translate
+            return $back();
+        }
+        // Message escapes its arguments: the query is visitor-typed text.
+        $this->messenger()->addSuccess(new Message($template, ...$args));
+        return $back();
     }
 
     public function reindexAction(): \Laminas\Http\Response
@@ -244,6 +318,105 @@ class MaintenanceController extends AbstractActionController
             }
         }
         return ['enabled' => $enabled, 'rows' => $rows];
+    }
+
+    /**
+     * The popular-search moderation queue: per corpus, the candidates
+     * {@see PopularSearches} lets through (most-typed first, at most
+     * REVIEW_ROWS awaiting review) with their decision, then decisions on
+     * queries that are not candidates now. `shown` marks what visitors see.
+     *
+     * @return array{enabled:bool, store:bool, analytics:bool, min_count:int, limit:int,
+     *     profiles:list<array{name:string, label:string, more:int,
+     *         rows:list<array{q:string, count:?int, status:string, shown:bool, decided_at:?string}>,
+     *         hidden:list<array{q:string, count:?int, status:string, shown:bool, decided_at:?string}>}>}
+     */
+    private function collectPopular(): array
+    {
+        $minCount = max(1, (int) ($this->popularSearches['min_count'] ?? 5));
+        $limit = max(1, min(10, (int) ($this->popularSearches['limit'] ?? 5)));
+        $client = $this->probeHealth() ? $this->provider->getClient() : null;
+        $store = $this->moderation !== null;
+        $analytics = false;
+        $profiles = [];
+        foreach ($this->registry->all() as $profile) {
+            try {
+                $decisions = $this->moderation?->decisions($profile->name()) ?? [];
+            } catch (\Throwable) {
+                $decisions = [];
+                $store = false;
+            }
+            $candidates = [];
+            if ($client !== null) {
+                try {
+                    $fetched = PopularAnalytics::fetch($client, $profile->name(), $minCount);
+                    $analytics = $analytics || $fetched['available'];
+                    $candidates = PopularSearches::candidates($fetched['popular'], $fetched['nohits'], $minCount);
+                } catch (\Throwable) {
+                    // Unreachable analytics: list the decisions alone.
+                }
+            }
+            $approved = array_map(
+                static fn(array $d): string => $d['query'],
+                array_filter($decisions, static fn(array $d): bool => $d['status'] === PopularModeration::APPROVED),
+            );
+            $shown = array_flip(array_map(
+                [PopularSearches::class, 'key'],
+                PopularSearches::approved($candidates, $approved, $limit),
+            ));
+
+            $rows = [];
+            $hidden = [];
+            $awaiting = 0;
+            $more = 0;
+            $row = static fn(string $q, ?int $count, ?array $decision, bool $isShown): array => [
+                'q' => $decision['query'] ?? $q,
+                'count' => $count,
+                'status' => $decision['status'] ?? 'pending',
+                'shown' => $isShown,
+                'decided_at' => $decision['decided_at'] ?? null,
+            ];
+            foreach ($candidates as $candidate) {
+                $key = PopularSearches::key($candidate['q']);
+                $decision = $decisions[$key] ?? null;
+                unset($decisions[$key]);
+                if ($decision === null && $awaiting++ >= self::REVIEW_ROWS) {
+                    $more++;
+                    continue;
+                }
+                $entry = $row($candidate['q'], $candidate['count'], $decision, isset($shown[$key]));
+                if ($entry['status'] === PopularModeration::HIDDEN) {
+                    $hidden[] = $entry;
+                } else {
+                    $rows[] = $entry;
+                }
+            }
+            foreach ($decisions as $decision) {
+                $entry = $row($decision['query'], null, $decision, false);
+                if ($entry['status'] === PopularModeration::HIDDEN) {
+                    $hidden[] = $entry;
+                } else {
+                    $rows[] = $entry;
+                }
+            }
+            if ($rows !== [] || $hidden !== [] || $more > 0) {
+                $profiles[] = [
+                    'name' => $profile->name(),
+                    'label' => $profile->label(),
+                    'rows' => $rows,
+                    'hidden' => $hidden,
+                    'more' => $more,
+                ];
+            }
+        }
+        return [
+            'enabled' => (bool) ($this->popularSearches['enabled'] ?? false),
+            'store' => $store,
+            'analytics' => $analytics,
+            'min_count' => $minCount,
+            'limit' => $limit,
+            'profiles' => $profiles,
+        ];
     }
 
     private function probeHealth(): bool

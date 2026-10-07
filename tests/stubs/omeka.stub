@@ -11,6 +11,8 @@ namespace Laminas\Mvc\Controller;
  * @method \Laminas\Mvc\Controller\Plugin\Params params()
  * @method \Laminas\Mvc\Controller\Plugin\Redirect redirect()
  * @method \Laminas\Mvc\Controller\Plugin\Url url()
+ * @method mixed identity() the signed-in \Omeka\Entity\User, or null
+ * @method \Laminas\Log\LoggerInterface logger()
  */
 abstract class AbstractController
 {
@@ -73,6 +75,8 @@ class Url {}
 namespace Laminas\View\Helper;
 class HeadLink {}
 class HeadScript {}
+namespace Laminas\Log;
+interface LoggerInterface {}
 
 namespace Omeka\Site\Navigation\Link;
 

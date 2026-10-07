@@ -6,6 +6,7 @@
  * @var \DRESearch\Form\MaintenanceForm $form
  * @var array{enabled:bool,rows:list<array{profile:string,kind:string,q:string,count:int}>} $analytics
  * @var array{requested:bool,heartbeat:?string,alive:bool}|null $worker
+ * @var array{enabled:bool, store:bool, analytics:bool, min_count:int, limit:int, profiles:list<array{name:string, label:string, more:int, rows:list<array{q:string, count:?int, status:string, shown:bool, decided_at:?string}>, hidden:list<array{q:string, count:?int, status:string, shown:bool, decided_at:?string}>}>} $popular
  */
 $this->headTitle($this->translate('DRE Search'));
 $form->setAttribute('action', $this->url('admin/dre-search/reindex'));
@@ -138,6 +139,120 @@ $form->prepare();
     </table>
 <?php else: ?>
     <p><?= $this->translate('No analytics data is available yet.') ?></p>
+<?php endif; ?>
+
+<h2 id="dre-search-popular"><?= $this->translate('Popular searches') ?></h2>
+<p>
+    <?= $this->escapeHtml(sprintf(
+        $this->translate('Visitors see a query in the empty search box only once an editor approves it here. A candidate was run at least %1$d times and found something, but anyone can repeat a search until it counts: read each one before approving it. Up to %2$d approved queries are shown per corpus, most-run first.'),
+        $popular['min_count'],
+        $popular['limit'],
+    )) ?>
+</p>
+<?php if (!$popular['enabled']): ?>
+    <p class="warning"><?= $this->translate('Popular searches are turned off (popular_searches.enabled in config/local.config.php). Decisions made now apply once they are turned on.') ?></p>
+<?php endif; ?>
+<?php if (!$popular['store']): ?>
+    <p class="error"><?= $this->translate('Popular-search decisions cannot be read: run the DRE Search upgrade under Modules. Until then no popular search is shown.') ?></p>
+<?php elseif ($popular['profiles'] === []): ?>
+    <p>
+        <?= $popular['analytics']
+            ? $this->translate('No query has become a candidate yet.')
+            : $this->translate('No popular-query analytics are available. Provision analytics below; candidates appear here as visitors search.') ?>
+    </p>
+<?php else: ?>
+    <?php
+    $statusLabel = function (array $row) use ($popular): string {
+        if ($row['status'] === 'pending') {
+            return $this->translate('Awaiting review');
+        }
+        if ($row['status'] === 'hidden') {
+            return $this->translate('Hidden');
+        }
+        if ($row['shown']) {
+            return $popular['enabled']
+                ? $this->translate('Approved: shown to visitors')
+                : $this->translate('Approved: shown once popular searches are turned on');
+        }
+        return $row['count'] === null
+            ? sprintf($this->translate('Approved, not shown: no longer run %d times, or it now finds nothing'), $popular['min_count'])
+            : sprintf($this->translate('Approved, not shown: outside the top %d'), $popular['limit']);
+    };
+    $button = function (string $decision, string $label, string $query): string {
+        return sprintf(
+            '<button type="submit" class="button" name="%s" value="%s" aria-label="%s">%s</button>',
+            $this->escapeHtmlAttr($decision),
+            $this->escapeHtmlAttr($query),
+            $this->escapeHtmlAttr(sprintf('%s: %s', $label, $query)),
+            $this->escapeHtml($label),
+        );
+    };
+    ?>
+    <?php foreach ($popular['profiles'] as $corpus): ?>
+        <h3><?= $this->escapeHtml($this->translate($corpus['label'])) ?></h3>
+        <form method="post" action="<?= $this->escapeHtmlAttr($this->url('admin/dre-search/moderate')) ?>">
+            <?= $this->formHidden($form->get('csrf')) ?>
+            <input type="hidden" name="profile" value="<?= $this->escapeHtmlAttr($corpus['name']) ?>">
+            <?php if ($corpus['rows'] !== []): ?>
+                <table class="tablesaw" data-tablesaw-mode="stack">
+                    <thead><tr>
+                        <th><?= $this->translate('Query') ?></th>
+                        <th><?= $this->translate('Times run') ?></th>
+                        <th><?= $this->translate('Status') ?></th>
+                        <th><?= $this->translate('Decision') ?></th>
+                    </tr></thead>
+                    <tbody>
+                    <?php foreach ($corpus['rows'] as $row): ?>
+                        <tr>
+                            <td><?= $this->escapeHtml($row['q']) ?></td>
+                            <td><?= $row['count'] === null ? '—' : $this->escapeHtml((string) $row['count']) ?></td>
+                            <td>
+                                <?= $this->escapeHtml($statusLabel($row)) ?>
+                                <?php if ($row['decided_at'] !== null): ?>
+                                    <div><small><?= $this->escapeHtml($row['decided_at']) ?> UTC</small></div>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if ($row['status'] === 'pending'): ?>
+                                    <?= $button('approve', $this->translate('Approve'), $row['q']) ?>
+                                <?php else: ?>
+                                    <?= $button('revoke', $this->translate('Revoke'), $row['q']) ?>
+                                <?php endif; ?>
+                                <?= $button('hide', $this->translate('Hide'), $row['q']) ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+            <?php if ($corpus['more'] > 0): ?>
+                <p><?= $this->escapeHtml(sprintf($this->translate('%d more candidates await review; they are listed here as you decide on these.'), $corpus['more'])) ?></p>
+            <?php endif; ?>
+            <?php if ($corpus['hidden'] !== []): ?>
+                <details>
+                    <summary><?= $this->escapeHtml(sprintf($this->translate('Hidden queries (%d)'), count($corpus['hidden']))) ?></summary>
+                    <table class="tablesaw" data-tablesaw-mode="stack">
+                        <thead><tr>
+                            <th><?= $this->translate('Query') ?></th>
+                            <th><?= $this->translate('Times run') ?></th>
+                            <th><?= $this->translate('Hidden on') ?></th>
+                            <th><?= $this->translate('Decision') ?></th>
+                        </tr></thead>
+                        <tbody>
+                        <?php foreach ($corpus['hidden'] as $row): ?>
+                            <tr>
+                                <td><?= $this->escapeHtml($row['q']) ?></td>
+                                <td><?= $row['count'] === null ? '—' : $this->escapeHtml((string) $row['count']) ?></td>
+                                <td><?= $this->escapeHtml((string) $row['decided_at']) ?> UTC</td>
+                                <td><?= $button('revoke', $this->translate('Revoke'), $row['q']) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </details>
+            <?php endif; ?>
+        </form>
+    <?php endforeach; ?>
 <?php endif; ?>
 
 <h2><?= $this->translate('Reindex') ?></h2>

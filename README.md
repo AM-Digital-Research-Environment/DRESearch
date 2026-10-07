@@ -249,7 +249,9 @@ To collect popular and zero-result queries, start Typesense with
 `--enable-search-analytics=true` and a persistent `--analytics-dir`. Then choose
 **Admin → DRE Search → Provision analytics**. The maintenance page shows the top
 signals per corpus. Provisioning is deliberately non-fatal: reindex and public
-search continue when analytics is disabled.
+search continue when analytics is disabled. The opt-in popular searches in the
+empty search box list only queries an editor approved on that page; see
+[docs/operations.md](docs/operations.md#synonyms-and-popular-searches).
 
 ## The page blocks
 

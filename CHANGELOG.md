@@ -5,9 +5,16 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+### Security
+
+- **Popular searches are moderated.** Anyone could put any text in the public "Popular searches" list. A `search` request with `record_query: true` and a fresh `analytics_id` counts once, so a query sent `min_count` times within the rate limit was enough. A query that matches one of its words still finds something, so it passed the no-hit check too. The automatic checks now only pick candidates: a query is shown to visitors once an editor approves it. The new **Popular searches** section of the maintenance page lists each corpus's candidates with how often they ran, and offers **Approve**, **Hide** and **Revoke** (a CSRF-protected POST, open to editors and above). Case and spacing variants share one decision. Every decision clears the server's ten-minute cache of the list. Without the moderation table nothing is shown. The list now reads every recorded query (up to 1,000 per corpus), not just the top few, so repeated spam cannot push an approved query out of reach.
+- `SECURITY.md` and `docs/public-api.md` now say that the analytics counts can be inflated by anyone, and that `is_public:=true` is defense in depth: search keeps private data out by indexing only public records and hiding records with pending changes.
+
 ### Changed
 
 - **PHP 8.3 is the minimum** (was 8.2, whose security support ends on 2026-12-31). Dependencies are resolved for PHP 8.3 (`config.platform`) and CI tests 8.3–8.5. On an older PHP the module no longer loads its `vendor/` autoloader, whose Composer platform check would otherwise fail every request on the site: a fresh install is refused with a message naming the required version, an existing install reports search unavailable (the maintenance page says why), and `bin/dre-search` exits with an error. The code still parses on PHP 8.2 so that this degrade works; syntax newer than 8.2 waits for the next raise.
+
+**Upgrade:** run Omeka's module upgrade. It creates the empty `dre_search_popular_moderation` table, so popular searches stay empty until an editor approves some. No reindex is needed.
 
 ## [1.24.0] - 2026-10-07
 

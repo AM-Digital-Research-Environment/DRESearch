@@ -19,7 +19,8 @@ use Typesense\Client;
  */
 final class AnalyticsSync
 {
-    private const LIMIT = 1000;
+    /** Queries each analytics collection keeps ({@see \DRESearch\Search\PopularAnalytics} reads them all). */
+    public const LIMIT = 1000;
 
     public function __construct(
         private readonly Client $client,

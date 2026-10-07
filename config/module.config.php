@@ -254,6 +254,14 @@ return [
                                     'defaults' => ['action' => 'reindex'],
                                 ],
                             ],
+                            // Approve / hide / revoke a popular-search candidate.
+                            'moderate' => [
+                                'type'    => \Laminas\Router\Http\Literal::class,
+                                'options' => [
+                                    'route'    => '/moderate',
+                                    'defaults' => ['action' => 'moderate'],
+                                ],
+                            ],
                         ],
                     ],
                 ],
@@ -303,6 +311,7 @@ return [
                 'class'    => 'o-icon-search',
                 'pages'    => [
                     ['route' => 'admin/dre-search/reindex', 'visible' => false],
+                    ['route' => 'admin/dre-search/moderate', 'visible' => false],
                 ],
             ],
         ],
@@ -360,10 +369,11 @@ return [
         ],
         // "Popular searches" in the empty search box, from Typesense's
         // popular-query analytics (Maintenance → Provision analytics). Off by
-        // default: it shows visitors what other visitors typed. Only queries
-        // typed at least min_count times that found something are shown, and
-        // anything shaped like personal data (an address, a URL, a long digit
-        // run) never is.
+        // default: it shows visitors what other visitors typed. Queries typed
+        // at least min_count times that found something, and not shaped like
+        // personal data (an address, a URL, a long digit run), become
+        // candidates; only those an editor approves on the maintenance page
+        // are shown, because anyone can repeat a query until it counts.
         'popular_searches' => [
             'enabled' => false,
             'min_count' => 5,

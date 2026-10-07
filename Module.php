@@ -161,6 +161,11 @@ class Module extends AbstractModule
                 $connection->executeStatement('ALTER TABLE dre_search_profile_state ADD rejected_ids TEXT NULL');
             }
         }
+        if (version_compare((string) $oldVersion, '1.24.0', '<')) {
+            // Editors' popular-search decisions. It starts empty, so nothing
+            // reaches visitors until an editor approves it.
+            $this->installOperationalTables($services);
+        }
     }
 
     /**
@@ -185,8 +190,8 @@ class Module extends AbstractModule
 
     /**
      * ACL: open the public search proxy to anonymous visitors (the page block's
-     * search + autocomplete calls), and the admin maintenance/reindex actions
-     * to editors and above. The /admin parent route already enforces auth, so
+     * search + autocomplete calls), and the admin maintenance, reindex and
+     * popular-search moderation actions to editors and above. The /admin parent route already enforces auth, so
      * the second grant only narrows which admin roles pass.
      */
     public function onBootstrap(MvcEvent $event): void
@@ -205,7 +210,7 @@ class Module extends AbstractModule
         $acl->allow(
             [Acl::ROLE_EDITOR, Acl::ROLE_SITE_ADMIN, Acl::ROLE_GLOBAL_ADMIN],
             [Controller\Admin\MaintenanceController::class],
-            ['index', 'reindex']
+            ['index', 'reindex', 'moderate']
         );
     }
 
@@ -406,6 +411,7 @@ class Module extends AbstractModule
         $connection->executeStatement('DROP TABLE IF EXISTS dre_search_rate_limit');
         $connection->executeStatement('DROP TABLE IF EXISTS dre_search_generation');
         $connection->executeStatement('DROP TABLE IF EXISTS dre_search_profile_state');
+        $connection->executeStatement('DROP TABLE IF EXISTS dre_search_popular_moderation');
         // Typesense collections are intentionally left untouched — they may be
         // shared with a parallel install, and dropping data on uninstall is
         // surprising. Clean them up from the Typesense side if needed.
@@ -486,6 +492,20 @@ CREATE TABLE IF NOT EXISTS dre_search_cache (
     payload MEDIUMTEXT NOT NULL,
     expires_at DATETIME NOT NULL,
     INDEX idx_dre_cache_expiry (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL);
+        // query_hash is the SHA-256 of the case- and whitespace-folded query
+        // (Search\PopularModeration): variants share one decision without
+        // relying on the collation, which would also fold accents together.
+        $connection->executeStatement(<<<'SQL'
+CREATE TABLE IF NOT EXISTS dre_search_popular_moderation (
+    profile VARCHAR(100) NOT NULL,
+    query_hash CHAR(64) NOT NULL,
+    query VARCHAR(255) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    decided_by INT NULL,
+    decided_at DATETIME NOT NULL,
+    PRIMARY KEY (profile, query_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL);
     }

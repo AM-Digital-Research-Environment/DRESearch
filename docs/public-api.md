@@ -12,8 +12,10 @@ GET or POST parameters.
 - `GET|POST /dre-search/api/suggest`: one profile's title suggestions.
 - `GET|POST /dre-search/api/suggest-all`: grouped suggestions across profiles.
 - `GET /dre-search/api/popular?profile=…`: up to `popular_searches.limit`
-  popular queries for one profile (`{"queries": [...]}`); always empty unless
-  `popular_searches.enabled`. Cacheable for five minutes.
+  popular queries for one profile (`{"queries": [...]}`). It lists only
+  queries an editor has approved (see [Search analytics](#search-analytics)),
+  and is always empty unless `popular_searches.enabled`. Cacheable for five
+  minutes.
 - `POST /dre-search/api/search-all`: active results and optionally cached
   per-corpus counts.
 - `POST /dre-search/api/union`: one merged result stream across the configured
@@ -36,6 +38,23 @@ the background worker applies them. A corpus with more queued changes than
 
 A facet value may carry `"count": null`: it is selected, but lies outside the
 top values the server recounted, so its number is unknown (never zero).
+
+## Search analytics
+
+A `search` request with `"record_query": true` and a 32-hex `analytics_id` is
+counted in the corpus's popular-query and no-hit analytics. The search client
+sets it once per new query, with one random id per page load. Neither field is
+authenticated. Any client can set the flag on every request, with a fresh
+`analytics_id` each time, so anyone can inflate the counts within the rate
+limit. A query that matches only one of its words still finds something, so it
+is not kept out as a no-hit query either. The counts are hints, not
+measurements.
+
+That is why `popular` is moderated. The automatic checks (run at least
+`min_count` times, found something, nothing shaped like personal data) only
+make a query a candidate. It reaches visitors once an editor approves it on the
+maintenance page. Revoking or hiding it takes effect on the server's next
+request, though browsers and proxies may keep a copy for up to five minutes.
 
 ## Errors
 

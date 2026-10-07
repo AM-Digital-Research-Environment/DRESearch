@@ -54,11 +54,32 @@ in `config/local.config.php`:
 
 They come from the popular-query analytics, which need Typesense started with
 `--enable-search-analytics=true` and a persistent `--analytics-dir`, then
-**Provision analytics** on the maintenance page. Only queries run at least
-`min_count` times that found something are shown, and nothing shaped like
-personal data (an e-mail address, a URL, five or more consecutive digits).
-Raise `min_count` on a quiet site, where a handful of visitors' queries would
-otherwise be on display.
+**Provision analytics** on the maintenance page. A query becomes a candidate
+when it has been run at least `min_count` times, found something, and is not
+shaped like personal data (an e-mail address, a URL, five or more consecutive
+digits). Raise `min_count` on a quiet site, where a handful of visitors'
+queries would otherwise become candidates.
+
+**Nothing is shown until an editor approves it.** Anyone can repeat a search
+until it counts, and a query that matches one of its words still finds
+something, so offensive text could pass the automatic checks. Under **Popular
+searches** on the maintenance page, editors and administrators see each
+corpus's candidates, most-run first, with how often each was run:
+
+- **Approve** shows the query to visitors, in the spelling approved, for as
+  long as it stays a candidate. Up to `limit` approved queries are shown,
+  most-run first.
+- **Hide** keeps the query off the list and out of the review queue. Hidden
+  queries are listed under "Hidden queries".
+- **Revoke** withdraws a decision; the query is back in review and not shown.
+
+Case and spacing variants share one decision. A decision takes effect on the
+next request: it clears the server's ten-minute cache of the list, though
+browsers may keep their copy for up to five minutes. Decisions are stored per
+corpus in the `dre_search_popular_moderation` table, which the 1.24.0 upgrade
+creates empty. After upgrading, the list stays empty until an editor approves
+queries. Twenty candidates awaiting review are listed per corpus at a time; as
+you decide on them, the next ones appear.
 
 ## Failure triage
 

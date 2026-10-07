@@ -4,21 +4,26 @@ msgid ""
 msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 
-#: view/dre-search/admin/maintenance/index.phtml:61
+#: view/dre-search/admin/maintenance/index.phtml:229
+#, php-format
+msgid "%d more candidates await review; they are listed here as you decide on these."
+msgstr ""
+
+#: view/dre-search/admin/maintenance/index.phtml:62
 #, php-format
 msgid "%d pending changes — more than can be hidden individually. Search resumes once the worker applies them."
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:64
+#: view/dre-search/admin/maintenance/index.phtml:65
 #, php-format
 msgid "%d records hidden from public search until their changes are applied"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:56
+#: view/dre-search/admin/maintenance/index.phtml:57
 msgid "A full rebuild is required before this corpus answers again."
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:166
+#: view/dre-search/admin/maintenance/index.phtml:281
 msgid "A rebuild that would leave less than half of the live documents is refused, in case a scope setting is wrong. Tick this when the drop is intended."
 msgstr ""
 
@@ -38,13 +43,40 @@ msgstr ""
 msgid "All"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:163
+#: view/dre-search/admin/maintenance/index.phtml:278
 msgid "Allow a smaller corpus"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:108
+#: view/dre-search/admin/maintenance/index.phtml:109
 #, php-format
 msgid "Applying changes — last heartbeat %s UTC."
+msgstr ""
+
+#: view/dre-search/admin/maintenance/index.phtml:217
+msgid "Approve"
+msgstr ""
+
+#: src/Controller/Admin/MaintenanceController.php:117
+#, php-format
+msgid "Approved “%1$s”: it can now appear among the popular searches of %2$s."
+msgstr ""
+
+#: view/dre-search/admin/maintenance/index.phtml:178
+#, php-format
+msgid "Approved, not shown: no longer run %d times, or it now finds nothing"
+msgstr ""
+
+#: view/dre-search/admin/maintenance/index.phtml:179
+#, php-format
+msgid "Approved, not shown: outside the top %d"
+msgstr ""
+
+#: view/dre-search/admin/maintenance/index.phtml:175
+msgid "Approved: shown once popular searches are turned on"
+msgstr ""
+
+#: view/dre-search/admin/maintenance/index.phtml:174
+msgid "Approved: shown to visitors"
 msgstr ""
 
 #: config/module.config.php (research_projects) src/svelte/lib/i18n.ts (field_people)
@@ -67,6 +99,10 @@ msgstr ""
 msgid "Author / Editor"
 msgstr ""
 
+#: view/dre-search/admin/maintenance/index.phtml:167
+msgid "Awaiting review"
+msgstr ""
+
 #: src/svelte/lib/i18n.ts (export_bibtex)
 msgid "BibTeX (.bib)"
 msgstr ""
@@ -75,7 +111,7 @@ msgstr ""
 msgid "Browse (no query)"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:110
+#: view/dre-search/admin/maintenance/index.phtml:111
 msgid "Changes are waiting for a worker. One starts with the next edit or search; use \"Retry pending changes\" to start it now."
 msgstr ""
 
@@ -103,19 +139,19 @@ msgstr ""
 msgid "Clear the saved API key"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:31
+#: view/dre-search/admin/maintenance/index.phtml:32
 msgid "Collection alias"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:200
+#: view/dre-search/admin/maintenance/index.phtml:315
 msgid "Configure the Typesense connection before reindexing."
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:19
+#: view/dre-search/admin/maintenance/index.phtml:20
 msgid "Configured"
 msgstr ""
 
-#: Module.php:351
+#: Module.php:356
 msgid "Connection values in effect:"
 msgstr ""
 
@@ -135,7 +171,7 @@ msgstr ""
 msgid "Could not load facet values. Edit your search to retry."
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:126
+#: view/dre-search/admin/maintenance/index.phtml:127
 msgid "Count"
 msgstr ""
 
@@ -143,7 +179,7 @@ msgstr ""
 msgid "Country"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:195
+#: view/dre-search/admin/maintenance/index.phtml:310
 msgid "Creates or refreshes per-corpus popular and zero-result query rules. Analytics must be enabled on the Typesense server."
 msgstr ""
 
@@ -155,21 +191,25 @@ msgstr ""
 msgid "DOI"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:10 view/dre-search/admin/maintenance/index.phtml:14
+#: view/dre-search/admin/maintenance/index.phtml:11 view/dre-search/admin/maintenance/index.phtml:15
 msgid "DRE Search"
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:52
+#: src/Controller/Admin/MaintenanceController.php:62
 msgid "DRE Search is missing its vendor/ directory, so search is unavailable. Install the DRESearch.zip release asset or run \"composer install --no-dev\" in the module directory."
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:47
+#: src/Controller/Admin/MaintenanceController.php:57
 #, php-format
 msgid "DRE Search requires PHP %1$s or newer and this server runs PHP %2$s, so search is unavailable."
 msgstr ""
 
 #: src/Site/Navigation/Link/FederatedSearch.php:16
 msgid "DRE Search: all results"
+msgstr ""
+
+#: view/dre-search/admin/maintenance/index.phtml:202 view/dre-search/admin/maintenance/index.phtml:239
+msgid "Decision"
 msgstr ""
 
 #: src/Site/BlockLayout/AbstractSearchBlock.php:146
@@ -188,7 +228,7 @@ msgstr ""
 msgid "Digitisation method"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:33
+#: view/dre-search/admin/maintenance/index.phtml:34
 msgid "Documents indexed"
 msgstr ""
 
@@ -272,6 +312,28 @@ msgstr ""
 msgid "Has research items"
 msgstr ""
 
+#: src/Controller/Admin/MaintenanceController.php:120
+#, php-format
+msgid "Hid “%1$s” from the popular searches of %2$s."
+msgstr ""
+
+#: view/dre-search/admin/maintenance/index.phtml:170
+msgid "Hidden"
+msgstr ""
+
+#: view/dre-search/admin/maintenance/index.phtml:238
+msgid "Hidden on"
+msgstr ""
+
+#: view/dre-search/admin/maintenance/index.phtml:233
+#, php-format
+msgid "Hidden queries (%d)"
+msgstr ""
+
+#: view/dre-search/admin/maintenance/index.phtml:221
+msgid "Hide"
+msgstr ""
+
 #: src/svelte/lib/i18n.ts (hide_filters)
 msgid "Hide filters"
 msgstr ""
@@ -284,7 +346,7 @@ msgstr ""
 msgid "Hostname reachable from PHP (e.g. \"typesense\" inside Docker). Leave blank to disable search."
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:112
+#: view/dre-search/admin/maintenance/index.phtml:113
 msgid "Idle — no changes waiting."
 msgstr ""
 
@@ -296,11 +358,11 @@ msgstr ""
 msgid "In:"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:103
+#: view/dre-search/admin/maintenance/index.phtml:104
 msgid "Incremental worker"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:34
+#: view/dre-search/admin/maintenance/index.phtml:35
 msgid "Index state"
 msgstr ""
 
@@ -312,7 +374,7 @@ msgstr ""
 msgid "Intro HTML (optional)"
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:74
+#: src/Controller/Admin/MaintenanceController.php:89 src/Controller/Admin/MaintenanceController.php:148
 msgid "Invalid form submission. Please try again."
 msgstr ""
 
@@ -344,7 +406,7 @@ msgstr ""
 msgid "Languages search"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:35
+#: view/dre-search/admin/maintenance/index.phtml:36
 msgid "Last run"
 msgstr ""
 
@@ -384,7 +446,7 @@ msgstr ""
 msgid "Locked filter (optional)"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:14
+#: view/dre-search/admin/maintenance/index.phtml:15
 msgid "Maintenance"
 msgstr ""
 
@@ -416,11 +478,11 @@ msgstr ""
 msgid "Next page"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:43
+#: view/dre-search/admin/maintenance/index.phtml:44
 msgid "No"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:140
+#: view/dre-search/admin/maintenance/index.phtml:141
 msgid "No analytics data is available yet."
 msgstr ""
 
@@ -440,6 +502,18 @@ msgstr ""
 msgid "No matching locations have coordinates."
 msgstr ""
 
+#: src/Controller/Admin/MaintenanceController.php:107
+msgid "No moderation decision was submitted."
+msgstr ""
+
+#: view/dre-search/admin/maintenance/index.phtml:161
+msgid "No popular-query analytics are available. Provision analytics below; candidates appear here as visitors search."
+msgstr ""
+
+#: view/dre-search/admin/maintenance/index.phtml:160
+msgid "No query has become a candidate yet."
+msgstr ""
+
 #: src/svelte/lib/i18n.ts (no_results_title)
 msgid "No results found"
 msgstr ""
@@ -452,7 +526,7 @@ msgstr ""
 msgid "No results were found for “{q}”."
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:23
+#: view/dre-search/admin/maintenance/index.phtml:24
 msgid "No — set the connection under Modules → DRE Search → Configure."
 msgstr ""
 
@@ -464,7 +538,7 @@ msgstr ""
 msgid "Oldest first"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:67
+#: view/dre-search/admin/maintenance/index.phtml:68
 #, php-format
 msgid "Oldest pending change: %s UTC"
 msgstr ""
@@ -477,7 +551,7 @@ msgstr ""
 msgid "Open {name}"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:170
+#: view/dre-search/admin/maintenance/index.phtml:285
 msgid "Or reindex a single corpus"
 msgstr ""
 
@@ -541,12 +615,20 @@ msgstr ""
 msgid "Podcasts search"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:118
+#: view/dre-search/admin/maintenance/index.phtml:119
 msgid "Popular and zero-result queries reveal missing terminology and cataloguing gaps. Analytics is optional and requires Typesense search analytics with persistent storage."
 msgstr ""
 
-#: src/svelte/lib/i18n.ts (popular_searches)
+#: view/dre-search/admin/maintenance/index.phtml:144 src/svelte/lib/i18n.ts (popular_searches)
 msgid "Popular searches"
+msgstr ""
+
+#: view/dre-search/admin/maintenance/index.phtml:153
+msgid "Popular searches are turned off (popular_searches.enabled in config/local.config.php). Decisions made now apply once they are turned on."
+msgstr ""
+
+#: view/dre-search/admin/maintenance/index.phtml:156
+msgid "Popular-search decisions cannot be read: run the DRE Search upgrade under Modules. Until then no popular search is shown."
 msgstr ""
 
 #: src/svelte/lib/i18n.ts (previous_page)
@@ -565,11 +647,11 @@ msgstr ""
 msgid "Protocol"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:192
+#: view/dre-search/admin/maintenance/index.phtml:307
 msgid "Provision analytics"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:54
+#: view/dre-search/admin/maintenance/index.phtml:55
 msgid "Public search paused"
 msgstr ""
 
@@ -585,7 +667,7 @@ msgstr ""
 msgid "Publisher"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:125
+#: view/dre-search/admin/maintenance/index.phtml:126 view/dre-search/admin/maintenance/index.phtml:199 view/dre-search/admin/maintenance/index.phtml:236
 msgid "Query"
 msgstr ""
 
@@ -593,15 +675,15 @@ msgstr ""
 msgid "RIS — Zotero, EndNote (.ris)"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:185
+#: view/dre-search/admin/maintenance/index.phtml:300
 msgid "Re-uploads the English stopword set and the synonym set (data/stopwords.json, data/synonyms.json) to Typesense — no reindex needed. A full reindex does this too."
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:145
+#: view/dre-search/admin/maintenance/index.phtml:260
 msgid "Rebuild a search index from the current Omeka content. Each runs as a background job — you can keep working while it completes."
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:157
+#: view/dre-search/admin/maintenance/index.phtml:272
 msgid "Rebuilds every index in one background job, one corpus at a time."
 msgstr ""
 
@@ -609,20 +691,20 @@ msgstr ""
 msgid "Recent searches"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:143 view/dre-search/admin/maintenance/index.phtml:174
+#: view/dre-search/admin/maintenance/index.phtml:258 view/dre-search/admin/maintenance/index.phtml:289
 msgid "Reindex"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:154
+#: view/dre-search/admin/maintenance/index.phtml:269
 msgid "Reindex all corpora"
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:96
+#: src/Controller/Admin/MaintenanceController.php:170
 #, php-format
 msgid "Reindex of all corpora queued. Track progress in %1$sjob #%2$s%3$s."
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:106
+#: src/Controller/Admin/MaintenanceController.php:180
 #, php-format
 msgid "Reindex of “%4$s” queued. Track progress in %1$sjob #%2$s%3$s."
 msgstr ""
@@ -687,20 +769,24 @@ msgstr ""
 msgid "Results per page"
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:86
+#: src/Controller/Admin/MaintenanceController.php:160
 #, php-format
 msgid "Retry of pending changes queued. Track progress in %1$sjob #%2$s%3$s."
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:152
+#: view/dre-search/admin/maintenance/index.phtml:267
 msgid "Retry pending changes"
+msgstr ""
+
+#: view/dre-search/admin/maintenance/index.phtml:219 view/dre-search/admin/maintenance/index.phtml:247
+msgid "Revoke"
 msgstr ""
 
 #: config/module.config.php (research_people) config/module.config.php (research_organisations) src/svelte/lib/i18n.ts (field_role)
 msgid "Role"
 msgstr ""
 
-#: src/View/Helper/SearchBar.php:64 view/common/navigation-link-form/dre-search-results.phtml:12 view/dre-search/admin/maintenance/index.phtml:30 view/dre-search/admin/maintenance/index.phtml:123
+#: src/View/Helper/SearchBar.php:64 view/common/navigation-link-form/dre-search-results.phtml:12 view/dre-search/admin/maintenance/index.phtml:31 view/dre-search/admin/maintenance/index.phtml:124
 msgid "Search"
 msgstr ""
 
@@ -713,11 +799,11 @@ msgstr ""
 msgid "Search YouTube videos…"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:116 view/dre-search/admin/maintenance/index.phtml:189
+#: view/dre-search/admin/maintenance/index.phtml:117 view/dre-search/admin/maintenance/index.phtml:304
 msgid "Search analytics"
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:92
+#: src/Controller/Admin/MaintenanceController.php:166
 #, php-format
 msgid "Search analytics provisioning queued. Track progress in %1$sjob #%2$s%3$s."
 msgstr ""
@@ -806,7 +892,7 @@ msgstr ""
 msgid "Series"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:32
+#: view/dre-search/admin/maintenance/index.phtml:33
 msgid "Server reachable"
 msgstr ""
 
@@ -822,7 +908,7 @@ msgstr ""
 msgid "Show {n} more"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:124
+#: view/dre-search/admin/maintenance/index.phtml:125
 msgid "Signal"
 msgstr ""
 
@@ -842,12 +928,16 @@ msgstr ""
 msgid "Spokesperson"
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:90
+#: view/dre-search/admin/maintenance/index.phtml:201
+msgid "Status"
+msgstr ""
+
+#: src/Controller/Admin/MaintenanceController.php:164
 #, php-format
 msgid "Stopword and synonym sync queued. Track progress in %1$sjob #%2$s%3$s."
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:179
+#: view/dre-search/admin/maintenance/index.phtml:294
 msgid "Stopwords and synonyms"
 msgstr ""
 
@@ -867,7 +957,7 @@ msgstr ""
 msgid "Suggestions"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:182
+#: view/dre-search/admin/maintenance/index.phtml:297
 msgid "Sync stopwords and synonyms"
 msgstr ""
 
@@ -879,8 +969,12 @@ msgstr ""
 msgid "Target audience"
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:126
+#: src/Controller/Admin/MaintenanceController.php:200
 msgid "The background job could not be queued. Check the Omeka job runner (PHP CLI path) under Settings."
+msgstr ""
+
+#: src/Controller/Admin/MaintenanceController.php:131
+msgid "The decision could not be saved. If the module was just updated, run its upgrade under Modules."
 msgstr ""
 
 #: src/svelte/lib/i18n.ts (map_error)
@@ -893,6 +987,19 @@ msgstr ""
 
 #: src/svelte/lib/i18n.ts (search_unavailable_hint)
 msgid "The search service is not reachable right now."
+msgstr ""
+
+#: src/Controller/Admin/MaintenanceController.php:124
+#, php-format
+msgid "There was no decision on “%1$s” for %2$s to withdraw."
+msgstr ""
+
+#: src/Controller/Admin/MaintenanceController.php:127
+msgid "This query can never be shown to visitors (too short or long, or shaped like personal data)."
+msgstr ""
+
+#: view/dre-search/admin/maintenance/index.phtml:200 view/dre-search/admin/maintenance/index.phtml:237
+msgid "Times run"
 msgstr ""
 
 #: src/svelte/lib/i18n.ts (field_title)
@@ -935,20 +1042,20 @@ msgstr ""
 msgid "Typesense host"
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:79
+#: src/Controller/Admin/MaintenanceController.php:153
 msgid "Typesense is not configured. Set the connection under Modules → DRE Search → Configure."
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:71
+#: view/dre-search/admin/maintenance/index.phtml:72
 #, php-format
 msgid "Typesense rejected %d record(s); they are out of search until fixed and saved again:"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:16
+#: view/dre-search/admin/maintenance/index.phtml:17
 msgid "Typesense status"
 msgstr ""
 
-#: src/Controller/Admin/MaintenanceController.php:100
+#: src/Controller/Admin/MaintenanceController.php:94 src/Controller/Admin/MaintenanceController.php:174
 msgid "Unknown search profile."
 msgstr ""
 
@@ -960,6 +1067,11 @@ msgstr ""
 msgid "Used server-side only. Leave blank to keep the saved secret. A saved key takes precedence over the TYPESENSE_API_KEY environment variable; clear it to use the environment."
 msgstr ""
 
+#: view/dre-search/admin/maintenance/index.phtml:147
+#, php-format
+msgid "Visitors see a query in the empty search box only once an editor approves it here. A candidate was run at least %1$d times and found something, but anyone can repeat a search until it counts: read each one before approving it. Up to %2$d approved queries are shown per corpus, most-run first."
+msgstr ""
+
 #: src/svelte/lib/i18n.ts (watch_label)
 msgid "Watch"
 msgstr ""
@@ -968,7 +1080,12 @@ msgstr ""
 msgid "Which facets appear in the sidebar."
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:106
+#: src/Controller/Admin/MaintenanceController.php:122
+#, php-format
+msgid "Withdrew the decision on “%1$s” for %2$s: it is back in review and not shown."
+msgstr ""
+
+#: view/dre-search/admin/maintenance/index.phtml:107
 msgid "Worker state is unavailable."
 msgstr ""
 
@@ -976,7 +1093,7 @@ msgstr ""
 msgid "Year"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:21 view/dre-search/admin/maintenance/index.phtml:43
+#: view/dre-search/admin/maintenance/index.phtml:22 view/dre-search/admin/maintenance/index.phtml:44
 msgid "Yes"
 msgstr ""
 
@@ -988,20 +1105,20 @@ msgstr ""
 msgid "YouTube videos search"
 msgstr ""
 
-#: view/dre-search/admin/maintenance/index.phtml:91
+#: view/dre-search/admin/maintenance/index.phtml:92
 msgid "documents imported"
 msgstr ""
 
-#: Module.php:339
+#: Module.php:344
 #, php-format
 msgid "environment variable %s"
 msgstr ""
 
-#: Module.php:341
+#: Module.php:346
 msgid "module default"
 msgstr ""
 
-#: Module.php:343
+#: Module.php:348
 msgid "not set"
 msgstr ""
 
@@ -1009,7 +1126,7 @@ msgstr ""
 msgid "range slider"
 msgstr ""
 
-#: Module.php:337
+#: Module.php:342
 msgid "saved in these settings"
 msgstr ""
 

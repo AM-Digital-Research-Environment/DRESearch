@@ -6,6 +6,7 @@ namespace DRESearch\Test;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
+use DRESearch\Indexer\AnalyticsSync;
 use DRESearch\Indexer\ChangeQueue;
 use DRESearch\Indexer\GenerationPublisher;
 use DRESearch\Indexer\IncrementalIndexer;
@@ -16,6 +17,7 @@ use DRESearch\Indexer\RebuildStateStore;
 use DRESearch\Indexer\Reindexer;
 use DRESearch\Indexer\WorkerLease;
 use DRESearch\Search\BlockScopeResolver;
+use DRESearch\Search\PopularModeration;
 use DRESearch\Search\SearchCache;
 use DRESearch\Search\SearchProxy;
 use DRESearch\Search\TypesenseClientProvider;
@@ -551,6 +553,7 @@ final class OmekaIntegrationTest extends TestCase
         $this->db->executeStatement('DROP TABLE dre_search_cache');
         $this->db->executeStatement('DROP TABLE dre_search_worker');
         $this->db->executeStatement('ALTER TABLE dre_search_profile_state DROP COLUMN rejected_ids');
+        $this->db->executeStatement('DROP TABLE dre_search_popular_moderation');
         // Omeka runs upgrade() while the module is inactive, so the service
         // manager holds ONLY core services — never this module's factories.
         // A local.config.php profile override must still be marked dirty.
@@ -569,11 +572,131 @@ final class OmekaIntegrationTest extends TestCase
         self::assertSame(32, strlen($state['dirty_revision']));
         self::assertArrayHasKey('rejected_ids', $state);
         self::assertTrue((new WorkerLease($this->db))->claim(), 'The 1.23 migration creates the worker lease table.');
+        self::assertSame([], (new PopularModeration($this->db))->decisions('research_items'), 'The 1.24 migration creates the moderation table.');
         self::assertSame([], $this->queue->counts());
         $proxy = new SearchProxy($this->provider, $this->registry, new BlockScopeResolver($this->db), $this->logger, [], $this->db);
         self::assertFalse($proxy->search($this->profile->name(), [])['available']);
         $this->build()->run();
         self::assertTrue($proxy->search($this->profile->name(), [])['available']);
+    }
+
+    public function testUpgradeTo124CreatesTheModerationTableWithoutARebuild(): void
+    {
+        $old = $this->build()->run()['collection'];
+        $this->db->executeStatement('DROP TABLE dre_search_popular_moderation');
+        $services = new ServiceManager();
+        $services->setService('Omeka\\Connection', $this->db);
+        (new \DRESearch\Module())->upgrade('1.23.0', '1.24.0', $services);
+        $state = $this->state->all()[$this->profile->name()];
+        self::assertSame(0, (int) $state['dirty'], 'Moderation needs no rebuild.');
+        self::assertSame($old, $state['live_collection']);
+        $moderation = new PopularModeration($this->db);
+        self::assertSame([], $moderation->decisions($this->profile->name()), 'Nothing starts approved.');
+        $moderation->approve($this->profile->name(), 'kenya');
+        (new \DRESearch\Module())->upgrade('1.23.0', '1.24.0', $services);
+        self::assertSame(['kenya' => 'kenya'], $moderation->approved($this->profile->name()), 'Running the migration again keeps decisions.');
+    }
+
+    public function testOnlyApprovedPopularSearchesAreServedAndDecisionsInvalidateTheCache(): void
+    {
+        // A profile of its own, so no parallel run shares its analytics collections.
+        $config = require dirname(__DIR__, 2) . '/config/module.config.php';
+        $definition = $config['dre_search']['profiles']['research_publications'];
+        $definition['collection'] = $this->prefix . '_popular_current';
+        $name = $this->prefix;
+        $registry = new ProfileRegistry([$name => SearchProfile::fromArray($name, $definition)]);
+        $collections = [];
+        foreach (
+            [
+                'popular' => [
+                    ['id' => 'a', 'q' => 'kenya', 'count' => 30],
+                    ['id' => 'b', 'q' => 'offensive text', 'count' => 25],
+                    ['id' => 'c', 'q' => 'nothing here', 'count' => 20],
+                    ['id' => 'd', 'q' => 'bayreuth', 'count' => 12],
+                    ['id' => 'e', 'q' => 'koforidua', 'count' => 6],
+                    ['id' => 'f', 'q' => 'zanzibar', 'count' => 3],
+                ],
+                'nohits' => [['id' => 'a', 'q' => 'nothing here', 'count' => 20]],
+            ] as $suffix => $documents
+        ) {
+            $collections[] = $collection = AnalyticsSync::collectionName($name, $suffix);
+            $this->client->collections->create(['name' => $collection, 'fields' => [
+                ['name' => 'q', 'type' => 'string'],
+                ['name' => 'count', 'type' => 'int32'],
+            ]]);
+            $this->client->collections[$collection]->documents->import($documents);
+        }
+        try {
+            $popular = ['enabled' => true, 'min_count' => 5, 'limit' => 2];
+            $proxy = new SearchProxy($this->provider, $registry, new BlockScopeResolver($this->db), $this->logger, [], $this->db, null, $popular);
+            $moderation = new PopularModeration($this->db);
+            self::assertSame(['available' => true, 'queries' => []], $proxy->popular($name), 'Nothing is served before an editor approves it.');
+
+            $moderation->approve($name, ' Kenya ');
+            $moderation->approve($name, 'zanzibar');
+            self::assertSame(
+                ['Kenya'],
+                $proxy->popular($name)['queries'],
+                'The approval replaced the cached empty list; the approved spelling is shown; a query run three times is no candidate.',
+            );
+            $moderation->hide($name, 'offensive text');
+            $moderation->approve($name, 'bayreuth');
+            $moderation->approve($name, 'koforidua');
+            self::assertSame(['Kenya', 'bayreuth'], $proxy->popular($name)['queries'], 'Most-run approved queries first, up to the limit.');
+            self::assertTrue($moderation->revoke($name, 'KENYA'));
+            self::assertFalse($moderation->revoke($name, 'never decided'));
+            self::assertSame(['bayreuth', 'koforidua'], $proxy->popular($name)['queries'], 'A revoked query is withdrawn at once.');
+
+            try {
+                $moderation->approve($name, 'jane.doe@example.org');
+                self::fail('A query shaped like personal data cannot be approved.');
+            } catch (\InvalidArgumentException) {
+            }
+
+            $controller = new \DRESearch\Controller\Admin\MaintenanceController(
+                $this->provider,
+                $registry,
+                $this->state,
+                $this->queue,
+                null,
+                250,
+                $moderation,
+                $popular,
+            );
+            $page = (new \ReflectionMethod($controller, 'collectPopular'))->invoke($controller);
+            self::assertTrue($page['store']);
+            self::assertTrue($page['analytics']);
+            $corpus = $page['profiles'][0];
+            $summary = static fn(array $rows): array => array_map(
+                static fn(array $row): array => [$row['q'], $row['count'], $row['status'], $row['shown']],
+                $rows,
+            );
+            self::assertSame(
+                [
+                    ['kenya', 30, 'pending', false],
+                    ['bayreuth', 12, 'approved', true],
+                    ['koforidua', 6, 'approved', true],
+                    ['zanzibar', null, 'approved', false],
+                ],
+                $summary($corpus['rows']),
+                'Candidates most-run first with their decision, then decisions on queries that are no candidates; no-hit queries are left out.',
+            );
+            self::assertSame([['offensive text', 25, 'hidden', false]], $summary($corpus['hidden']));
+
+            $cache = new SearchCache($this->db);
+            $before = $cache->key('popular');
+            $moderation->hide($name, 'bayreuth');
+            self::assertNotSame($before, $cache->key('popular'), 'A decision moves the cache epoch, so an earlier fill is never read.');
+            self::assertSame(['koforidua'], $proxy->popular($name)['queries']);
+
+            $this->db->executeStatement('DROP TABLE dre_search_popular_moderation');
+            $cache->invalidate();
+            self::assertSame(['available' => true, 'queries' => []], $proxy->popular($name), 'Without the moderation table nothing is served.');
+        } finally {
+            foreach ($collections as $collection) {
+                $this->client->collections[$collection]->delete();
+            }
+        }
     }
 
     public function testPrivacyEditDuringScanIsReplayedBeforePublishing(): void
