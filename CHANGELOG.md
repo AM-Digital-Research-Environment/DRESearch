@@ -14,7 +14,11 @@ All notable changes to DRE Search are documented here. The project follows
 
 - **PHP 8.3 is the minimum** (was 8.2, whose security support ends on 2026-12-31). Dependencies are resolved for PHP 8.3 (`config.platform`) and CI tests 8.3–8.5. On an older PHP the module no longer loads its `vendor/` autoloader, whose Composer platform check would otherwise fail every request on the site: a fresh install is refused with a message naming the required version, an existing install reports search unavailable (the maintenance page says why), and `bin/dre-search` exits with an error. The code still parses on PHP 8.2 so that this degrade works; syntax newer than 8.2 waits for the next raise.
 
-**Upgrade:** run Omeka's module upgrade. It creates the empty `dre_search_popular_moderation` table, so popular searches stay empty until an editor approves some. No reindex is needed.
+### Fixed
+
+- A research item dated with a bare year ("1950") or a decade ("1890s") was indexed with today's date and time in its `date` field, because PHP's `strtotime()` reads a four-digit number as a clock time. Only a complete, valid date is now parsed as such; a year, decade, range or approximate date counts as 1 January of its first year. The `year` facet and sorting were not affected. Rebuild the research items corpus to correct existing documents.
+
+**Upgrade:** run Omeka's module upgrade. It creates the empty `dre_search_popular_moderation` table, so popular searches stay empty until an editor approves some. Then rebuild the research items corpus once, to correct the stored dates of items dated with a bare year or a decade (see Fixed).
 
 ## [1.24.0] - 2026-10-07
 

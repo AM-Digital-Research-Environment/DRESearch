@@ -246,7 +246,14 @@ final class ResearchItemMapper implements MapperInterface, PreparesBatch
                     continue;
                 }
                 $year = (int) $m[1];
-                $ts = strtotime($raw);
+                // strtotime() reads a bare "1950" as 19:50 today and fills a
+                // missing month or day from today's date. Trust it only for a
+                // complete, valid date in the year the value names; anything
+                // else (a year, a decade, a range, "ca. …") is 1 January.
+                $parts = date_parse($raw);
+                $complete = $parts['error_count'] === 0 && $parts['warning_count'] === 0
+                    && $parts['year'] === $year && $parts['month'] !== false && $parts['day'] !== false;
+                $ts = $complete ? strtotime($raw) : false;
                 $epoch = $ts !== false ? $ts : gmmktime(0, 0, 0, 1, 1, $year);
                 return [$year, $epoch !== false ? $epoch : null];
             }

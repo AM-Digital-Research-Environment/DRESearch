@@ -92,6 +92,8 @@ jobs:
           echo "cc27d1c7aca0209523d19aa285f4a08e29e34950dcc446951a7c1311de348e82  /tmp/omeka-s.zip" | sha256sum -c -
           unzip -q /tmp/omeka-s.zip -d /tmp
           test -f "$OMEKA_VENDOR"
+          # The integration tests build their database from core's own schema.
+          test -f /tmp/omeka-s/application/data/install/schema.sql
       - run: composer validate --strict
       - uses: actions/cache@v6
         with:
@@ -101,6 +103,10 @@ jobs:
       # i.e. exactly what the release archive ships — on every PHP version.
       - run: composer install --no-interaction --prefer-dist
       - run: composer audit --locked
+      # Core ships psr/log 1.1.4, the module's vendor/ a newer copy (Monolog 2
+      # accepts 1-3): loaded the way production loads them, core's must win.
+      - name: PSR Log resolves from Omeka core
+        run: php scripts/check-psr-log-origin.php
       - name: PHP syntax
         run: find Module.php bin config src scripts tests/phpunit -name '*.php' -print0 | xargs -0 -n1 php -l && php -l bin/dre-search
       - run: composer lint

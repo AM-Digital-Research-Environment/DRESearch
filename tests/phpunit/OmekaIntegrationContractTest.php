@@ -108,7 +108,9 @@ final class OmekaIntegrationContractTest extends TestCase
         self::assertTrue($errors->hasErrors(), 'An escaping locked filter is refused at save time.');
         $data = $block->getData();
         self::assertSame(50, $data['results_per_page']);
-        self::assertContains($data['default_sort'], $registry->get('research_items')->sortOptionValues());
+        $items = $registry->get('research_items');
+        self::assertNotNull($items);
+        self::assertContains($data['default_sort'], $items->sortOptionValues());
         self::assertSame(['type_s'], $data['facets']);
 
         $ok = new \Omeka\Entity\SitePageBlock();

@@ -12,6 +12,7 @@ parameters:
     paths:
         - src
         - Module.php
+        - tests
     bootstrapFiles:
         - tests/bootstrap.php
     tmpDir: .phpstan-cache

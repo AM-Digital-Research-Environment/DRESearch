@@ -41,4 +41,19 @@ final class ValueBagTest extends TestCase
         self::assertSame(12.345, $bag->firstFloat('geo:lat'));
         self::assertNull($bag->firstFloat('bad'));
     }
+
+    public function testIntegersOutsideInt32AreAbsentNotClamped(): void
+    {
+        $int = static fn(string ...$raw): ?int => (new ValueBag(['n' => array_values(array_map(
+            static fn(string $value): array => ['vrid' => null, 'value' => $value, 'uri' => null, 'title' => null],
+            $raw,
+        ))]))->firstInt('n');
+        self::assertSame(2147483647, $int('2147483647'));
+        self::assertNull($int('2147483648'));
+        self::assertSame(42, $int('00000000000000000042'), 'Leading zeros do not count towards the limit.');
+        self::assertNull($int('99999999999999999999'), 'Never converted through a float.');
+        self::assertSame(0, $int('0'));
+        self::assertSame(3, $int('n/a', '3'));
+        self::assertNull($int());
+    }
 }

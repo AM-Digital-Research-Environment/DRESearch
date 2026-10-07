@@ -38,10 +38,8 @@ use Typesense\Client;
 #[Group('omeka')]
 final class OmekaIntegrationTest extends TestCase
 {
-    private Connection $db;
-    private Connection $admin;
-    private string $database;
-    private array $dbParams;
+    use OmekaSchema;
+
     private Client $client;
     private TypesenseClientProvider $provider;
     private SearchProfile $profile;
@@ -53,33 +51,10 @@ final class OmekaIntegrationTest extends TestCase
 
     protected function setUp(): void
     {
-        if (!getenv('DRE_TEST_MYSQL_HOST') || !getenv('TYPESENSE_HOST') || !class_exists(Item::class)) {
+        if (!self::omekaAvailable() || !getenv('TYPESENSE_HOST')) {
             self::markTestSkipped('Requires Omeka core, disposable MySQL and Typesense; see CONTRIBUTING.md.');
         }
-        $this->dbParams = [
-            'driver' => 'pdo_mysql', 'host' => getenv('DRE_TEST_MYSQL_HOST'),
-            'port' => (int) (getenv('DRE_TEST_MYSQL_PORT') ?: 3306),
-            'user' => getenv('DRE_TEST_MYSQL_USER') ?: 'root',
-            'password' => getenv('DRE_TEST_MYSQL_PASSWORD') ?: '', 'charset' => 'utf8mb4',
-        ];
-        $this->admin = DriverManager::getConnection($this->dbParams);
-        $this->database = 'dre_test_' . bin2hex(random_bytes(6));
-        $this->admin->executeStatement('CREATE DATABASE ' . $this->database);
-        $this->db = DriverManager::getConnection($this->dbParams + ['dbname' => $this->database]);
-        foreach (
-            [
-            'CREATE TABLE resource (id INT PRIMARY KEY, title TEXT, is_public INT, resource_type VARCHAR(255), resource_template_id INT)',
-            'CREATE TABLE resource_template (id INT PRIMARY KEY, title_property_id INT)',
-            'CREATE TABLE vocabulary (id INT PRIMARY KEY, prefix VARCHAR(100))',
-            'CREATE TABLE property (id INT PRIMARY KEY, vocabulary_id INT, local_name VARCHAR(100), label VARCHAR(100))',
-            'CREATE TABLE value (id INT PRIMARY KEY, resource_id INT, property_id INT, value_resource_id INT, value TEXT, uri TEXT, is_public INT)',
-            'CREATE TABLE item_item_set (item_id INT, item_set_id INT)',
-            'CREATE TABLE media (id INT PRIMARY KEY, item_id INT, storage_id VARCHAR(100), has_thumbnails INT, position INT)',
-            'CREATE TABLE site_page_block (id INT PRIMARY KEY, layout VARCHAR(100), data TEXT)',
-            ] as $sql
-        ) {
-            $this->db->executeStatement($sql);
-        }
+        $this->createOmekaDatabase();
         require_once dirname(__DIR__, 2) . '/Module.php';
         $services = new ServiceManager();
         $services->setService('Omeka\Connection', $this->db);
@@ -96,18 +71,19 @@ final class OmekaIntegrationTest extends TestCase
             'http',
             (string) getenv('TYPESENSE_API_KEY'),
         );
-        $this->client = $this->provider->getClient();
+        $client = $this->provider->getClient();
+        self::assertNotNull($client);
+        $this->client = $client;
         $this->state = new RebuildStateStore($this->db);
         $this->queue = new ChangeQueue($this->db);
         $this->logger = new Logger();
         $this->logger->addWriter(new \Laminas\Log\Writer\Noop());
-        $this->resource(1, 'Public title');
-        $this->resource(2, 'Private author', false);
-        $this->resource(3, 'Public author');
-        $this->db->insert('item_item_set', ['item_id' => 1, 'item_set_id' => 29918]);
-        $this->db->insert('vocabulary', ['id' => 1, 'prefix' => 'bibo']);
-        $this->db->insert('property', ['id' => 1, 'vocabulary_id' => 1, 'local_name' => 'abstract']);
-        $this->db->insert('property', ['id' => 2, 'vocabulary_id' => 1, 'local_name' => 'authorList']);
+        $this->item(1, 'Public title');
+        $this->item(2, 'Private author', false);
+        $this->item(3, 'Public author');
+        $this->member(1, 29918);
+        $this->property(1, 'bibo:abstract');
+        $this->property(2, 'bibo:authorList');
     }
 
     protected function tearDown(): void
@@ -123,13 +99,7 @@ final class OmekaIntegrationTest extends TestCase
                 }
             }
         }
-        if (isset($this->db)) {
-            $this->db->close();
-        }
-        if (isset($this->admin, $this->database) && preg_match('/^dre_test_[a-f0-9]{12}$/D', $this->database)) {
-            $this->admin->executeStatement('DROP DATABASE ' . $this->database);
-            $this->admin->close();
-        }
+        $this->dropOmekaDatabase();
     }
 
     public function testPublicDocumentExcludesPrivateValuesTargetsAndMedia(): void
@@ -137,14 +107,11 @@ final class OmekaIntegrationTest extends TestCase
         $this->value(1, 1, 1, null, 'Secret abstract', false);
         $this->value(2, 1, 2, 2);
         $this->value(3, 1, 2, 3);
-        $this->resource(4, 'Private media', false);
-        $this->resource(5, 'Public media');
-        foreach ([4 => 'secret', 5 => 'public'] as $id => $storage) {
-            $this->db->insert('media', ['id' => $id, 'item_id' => 1, 'storage_id' => $storage, 'has_thumbnails' => 1, 'position' => $id]);
-        }
+        $this->media(4, 1, 'secret', false);
+        $this->media(5, 1, 'public');
         $this->build()->run();
         $doc = $this->client->collections[$this->profile->collection()]->documents['1']->retrieve();
-        self::assertStringNotContainsString('Secret', json_encode($doc));
+        self::assertStringNotContainsString('Secret', json_encode($doc, JSON_THROW_ON_ERROR));
         self::assertSame(['Public author'], $doc['author_ss']);
         self::assertSame('/files/medium/public.jpg', $doc['thumbnail_url']);
         $this->db->executeStatement('UPDATE resource SET is_public = 0 WHERE id = 1');
@@ -155,8 +122,7 @@ final class OmekaIntegrationTest extends TestCase
 
     public function testPrivateCachedTitlesAreRedactedOnItemsAndLinkedResources(): void
     {
-        $this->db->insert('vocabulary', ['id' => 2, 'prefix' => 'dcterms']);
-        $this->db->insert('property', ['id' => 3, 'vocabulary_id' => 2, 'local_name' => 'title']);
+        $this->property(3, 'dcterms:title');
         $this->value(1, 1, 3, null, 'Secret cached title', false);
         $this->value(2, 3, 3, null, 'Secret author title', false);
         $this->value(3, 1, 2, 3);
@@ -196,10 +162,10 @@ final class OmekaIntegrationTest extends TestCase
     public function testEventsQueueOnlyProfilesWhoseScopeHoldsTheItemOrItsDependants(): void
     {
         $listener = new ItemEventListener($this->incremental(), $this->db);
-        $this->resource(5, 'Volume A');
-        $this->resource(6, 'Volume B');
-        $this->db->insert('item_item_set', ['item_id' => 5, 'item_set_id' => 29918]);
-        $this->db->insert('item_item_set', ['item_id' => 6, 'item_set_id' => 29918]);
+        $this->item(5, 'Volume A');
+        $this->item(6, 'Volume B');
+        $this->member(5, 29918);
+        $this->member(6, 29918);
         // Publication 1 moves its isPartOf-style link from publication 5 to 6:
         // itself plus the former AND the current target are refreshed.
         $this->value(1, 1, 2, 5);
@@ -221,8 +187,8 @@ final class OmekaIntegrationTest extends TestCase
         self::assertSame([1], $this->queued());
         $this->db->executeStatement('DELETE FROM dre_search_change');
 
-        $this->resource(7, 'New publication');
-        $this->db->insert('item_item_set', ['item_id' => 7, 'item_set_id' => 29918]);
+        $this->item(7, 'New publication');
+        $this->member(7, 29918);
         $listener->onItemCreate(new Event('api.create.post', null, ['response' => new Response($this->entity(7))]));
         self::assertSame([7], $this->queued());
         $this->db->executeStatement('DELETE FROM dre_search_change');
@@ -235,8 +201,8 @@ final class OmekaIntegrationTest extends TestCase
 
     public function testDeletedOrDescopedItemsAreRemovedFromTheCorpusThatIndexedThem(): void
     {
-        $this->resource(8, 'Second publication');
-        $this->db->insert('item_item_set', ['item_id' => 8, 'item_set_id' => 29918]);
+        $this->item(8, 'Second publication');
+        $this->member(8, 29918);
         $this->build()->run();
         $listener = new ItemEventListener($this->incremental(), $this->db);
 
@@ -263,18 +229,59 @@ final class OmekaIntegrationTest extends TestCase
         self::assertSame([], $this->queued());
     }
 
-    public function testItemSetDeletionAndTemplateChangesQueueTheirItems(): void
+    public function testMediaDeletionQueuesItsParentAndDropsItsThumbnail(): void
     {
+        $this->media(4, 1, 'scan');
+        $this->build()->run();
+        $documents = $this->client->collections[$this->profile->collection()]->documents;
+        self::assertSame('/files/medium/scan.jpg', $documents['1']->retrieve()['thumbnail_url']);
         $listener = new ItemEventListener($this->incremental(), $this->db);
+
+        // The media row, and with it the parent's id, is gone after the write:
+        // only the pre event can name the item to refresh.
+        $request = new Request('delete', 'media');
+        $request->setId(4);
+        $listener->onMediaDeletePre(new Event('api.delete.pre', null, ['request' => $request]));
+        $this->db->executeStatement('DELETE FROM resource WHERE id = 4');
+        self::assertSame([], $this->queued(), 'Nothing is queued before the write.');
+        $listener->onMediaDelete(new Event('api.delete.post', null, ['request' => $request]));
+        self::assertSame([1], $this->queued());
+
+        $this->incremental()->drain();
+        self::assertArrayNotHasKey('thumbnail_url', $documents['1']->retrieve());
+        self::assertSame([], $this->queued());
+    }
+
+    public function testItemSetDeletionQueuesItsMembersAndRemovesThemFromTheCorpus(): void
+    {
+        $this->item(8, 'Second publication');
+        $this->member(8, 29918);
+        $this->item(9, 'Elsewhere');
+        $this->member(9, 30000);
+        $this->build()->run();
+        self::assertSame(2, $this->client->collections[$this->profile->collection()]->retrieve()['num_documents']);
+        $listener = new ItemEventListener($this->incremental(), $this->db);
+
+        // Deleting the set cascades its membership rows away: the members must
+        // be captured before the write, and the corpus scoped to the set must
+        // drop their documents.
         $set = new Request('delete', 'item_sets');
         $set->setId(29918);
         $listener->onItemSetDeletePre(new Event('api.delete.pre', null, ['request' => $set]));
-        $this->db->executeStatement('DELETE FROM item_item_set WHERE item_set_id = 29918');
+        $this->db->executeStatement('DELETE FROM resource WHERE id = 29918');
+        self::assertSame(0, (int) $this->db->fetchOne('SELECT COUNT(*) FROM item_item_set WHERE item_set_id = 29918'));
         $listener->onItemSetDelete(new Event('api.delete.post', null, ['request' => $set]));
-        self::assertSame([1], $this->queued());
-        $this->db->executeStatement('DELETE FROM dre_search_change');
+        self::assertSame([1, 8], $this->queued(), 'Its members only, not item 9 of another set.');
 
-        $this->db->insert('item_item_set', ['item_id' => 1, 'item_set_id' => 29918]);
+        $this->incremental()->drain();
+        self::assertSame(0, $this->client->collections[$this->profile->collection()]->retrieve()['num_documents']);
+        self::assertSame([], $this->queued());
+    }
+
+    public function testTemplateChangesQueueTheirItems(): void
+    {
+        $listener = new ItemEventListener($this->incremental(), $this->db);
+        $this->template(11);
         $this->db->executeStatement('UPDATE resource SET resource_template_id = 11 WHERE id = 1');
         $template = new Request('update', 'resource_templates');
         $template->setId(11);
@@ -351,7 +358,7 @@ final class OmekaIntegrationTest extends TestCase
                 (new RebuildLock($other, $this->profile->name(), $this->profile->collection()))->acquire();
                 self::fail('Concurrent profile worker acquired the lock.');
             } catch (\DRESearch\Indexer\Exception\RebuildLockedException) {
-                self::assertTrue(true);
+                $this->addToAssertionCount(1);
             }
         } finally {
             $lock->release();
@@ -366,8 +373,8 @@ final class OmekaIntegrationTest extends TestCase
 
     public function testPendingChangesHideTheirDocumentsInsteadOfPausingTheCorpus(): void
     {
-        $this->resource(8, 'Public second title');
-        $this->db->insert('item_item_set', ['item_id' => 8, 'item_set_id' => 29918]);
+        $this->item(8, 'Public second title');
+        $this->member(8, 29918);
         $this->build()->run();
         $proxy = $this->proxy();
         self::assertSame(2, $proxy->search($this->profile->name(), [])['found']);
@@ -399,8 +406,8 @@ final class OmekaIntegrationTest extends TestCase
 
     public function testHealthReportsCorpusStatesWithoutRecordIds(): void
     {
-        $this->resource(8, 'Second publication');
-        $this->db->insert('item_item_set', ['item_id' => 8, 'item_set_id' => 29918]);
+        $this->item(8, 'Second publication');
+        $this->member(8, 29918);
         $this->build()->run();
         $health = $this->proxy()->health();
         self::assertTrue($health['ok']);
@@ -410,7 +417,7 @@ final class OmekaIntegrationTest extends TestCase
         self::assertSame('hiding', $health['profiles'][$this->profile->name()]['public']);
         self::assertSame(1, $health['profiles'][$this->profile->name()]['pending']);
         self::assertIsInt($health['oldest_pending_seconds']);
-        self::assertStringNotContainsString('"1"', json_encode($health['profiles']));
+        self::assertStringNotContainsString('"1"', json_encode($health['profiles'], JSON_THROW_ON_ERROR));
         self::assertSame('paused', $this->proxy(0)->health()['profiles'][$this->profile->name()]['public']);
     }
 
@@ -455,8 +462,8 @@ final class OmekaIntegrationTest extends TestCase
 
     public function testRejectedDocumentIsRemovedAndCannotBlockTheQueue(): void
     {
-        $this->resource(8, 'Second publication');
-        $this->db->insert('item_item_set', ['item_id' => 8, 'item_set_id' => 29918]);
+        $this->item(8, 'Second publication');
+        $this->member(8, 29918);
         $live = $this->build()->run()['collection'];
         $this->queue->enqueue($this->registry->names(), [1, 8]);
         $transport = new class implements \Psr\Http\Client\ClientInterface {
@@ -491,8 +498,8 @@ final class OmekaIntegrationTest extends TestCase
     public function testShrinkGuardRefusesToPromoteAnAlmostEmptyCorpus(): void
     {
         foreach ([8, 9] as $id) {
-            $this->resource($id, 'Publication ' . $id);
-            $this->db->insert('item_item_set', ['item_id' => $id, 'item_set_id' => 29918]);
+            $this->item($id, 'Publication ' . $id);
+            $this->member($id, 29918);
         }
         $live = $this->build()->run()['collection'];
         $this->db->executeStatement('DELETE FROM item_item_set WHERE item_id IN (8, 9)');
@@ -519,30 +526,30 @@ final class OmekaIntegrationTest extends TestCase
     {
         $config = require dirname(__DIR__, 2) . '/config/module.config.php';
         $items = SearchProfile::fromArray('research_items', $config['dre_search']['profiles']['research_items']);
-        $this->db->insert('vocabulary', ['id' => 2, 'prefix' => 'dcterms']);
-        $this->db->insert('property', ['id' => 3, 'vocabulary_id' => 2, 'local_name' => 'title']);
-        $this->db->insert('property', ['id' => 4, 'vocabulary_id' => 2, 'local_name' => 'type']);
-        $this->db->insert('property', ['id' => 5, 'vocabulary_id' => 2, 'local_name' => 'isPartOf']);
-        // A city (set 1) that is part of a country (set 1), and a project (set 20).
-        foreach ([[20, 'Nairobi', 1], [21, 'Kenya', 1], [22, 'A project', 20]] as [$id, $title, $setId]) {
-            $this->resource($id, $title);
-            $this->db->insert('item_item_set', ['item_id' => $id, 'item_set_id' => $setId]);
+        $this->property(3, 'dcterms:title');
+        $this->property(4, 'dcterms:type');
+        $this->property(5, 'dcterms:isPartOf');
+        // A city that is part of a country (location set 1851), and a project
+        // (set 20). Items and item sets share Omeka's resource ids.
+        foreach ([[40, 'Nairobi', 1851], [41, 'Kenya', 1851], [42, 'A project', 20]] as [$id, $title, $setId]) {
+            $this->item($id, $title);
+            $this->member($id, $setId);
             $this->value(100 + $id, $id, 3, null, $title);
         }
-        $this->value(130, 20, 5, 21);
-        $this->value(131, 21, 4, 3168);
-        $this->resource(3168, 'Country');
+        $this->item(3168, 'Country');
+        $this->value(150, 40, 5, 41);
+        $this->value(151, 41, 4, 3168);
         $full = new \DRESearch\Indexer\AuthorityResolver($this->db, $items);
         $full->load();
         $targeted = new \DRESearch\Indexer\AuthorityResolver($this->db, $items);
-        $targeted->prime([20, 22]);
-        foreach ([20, 21, 22] as $id) {
+        $targeted->prime([40, 42]);
+        foreach ([40, 41, 42] as $id) {
             self::assertSame($full->title($id), $targeted->title($id), "title of $id");
             self::assertSame($full->partOfId($id), $targeted->partOfId($id), "partOf of $id");
             self::assertSame($full->typeItemId($id), $targeted->typeItemId($id), "type of $id");
         }
-        self::assertTrue($targeted->inSet(22, 20));
-        self::assertSame('Kenya', $targeted->title((int) $targeted->partOfId(20)), 'Parents are primed for the country roll-up.');
+        self::assertTrue($targeted->inSet(42, 20));
+        self::assertSame('Kenya', $targeted->title((int) $targeted->partOfId(40)), 'Parents are primed for the country roll-up.');
     }
 
     public function testUpgradeAddsQueueAndRevisionWithoutLosingExistingGeneration(): void
@@ -740,7 +747,7 @@ final class OmekaIntegrationTest extends TestCase
                 if (str_ends_with($request->getUri()->getPath(), '/documents/import')) {
                     return new \GuzzleHttp\Psr7\Response(200, [], json_encode([
                         'success' => false, 'code' => 400, 'error' => 'Injected document validation failure',
-                    ]));
+                    ], JSON_THROW_ON_ERROR));
                 }
                 return (new \GuzzleHttp\Client(['timeout' => 3]))->sendRequest($request);
             }
@@ -786,7 +793,10 @@ final class OmekaIntegrationTest extends TestCase
         );
     }
 
-    /** @return list<int> ids queued for the test profile */
+    /**
+     * @return list<int> ids queued for the test profile
+     * @phpstan-impure reads the live queue table
+     */
     private function queued(): array
     {
         return array_map('intval', array_column($this->queue->page($this->profile->name()), 'item_id'));
@@ -797,18 +807,5 @@ final class OmekaIntegrationTest extends TestCase
         $item = new Item();
         (new \ReflectionProperty(\Omeka\Entity\Resource::class, 'id'))->setValue($item, $id);
         return $item;
-    }
-
-    private function resource(int $id, string $title, bool $public = true): void
-    {
-        $this->db->insert('resource', ['id' => $id, 'title' => $title, 'is_public' => (int) $public, 'resource_type' => Item::class]);
-    }
-
-    private function value(int $id, int $source, int $property, ?int $target, ?string $literal = null, bool $public = true): void
-    {
-        $this->db->insert('value', [
-            'id' => $id, 'resource_id' => $source, 'property_id' => $property,
-            'value_resource_id' => $target, 'value' => $literal, 'is_public' => (int) $public,
-        ]);
     }
 }

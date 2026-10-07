@@ -29,7 +29,7 @@ final class SearchExecutorTest extends TestCase
         $client = $this->client(['results' => [['found' => 0]]]);
         SearchExecutor::single($client, 'c', ['q' => 'river', 'enable_analytics' => true, 'x-typesense-user-id' => 'u']);
         self::assertCount(1, $client->collections->calls);
-        self::assertSame([], $client->multiSearch->calls);
+        self::assertCount(0, $client->multiSearch->calls);
 
         SearchExecutor::single($client, 'c', ['q' => str_repeat('ሀ', 450), 'enable_analytics' => true, 'x-typesense-user-id' => 'u']);
         $sent = $client->multiSearch->calls[0];
@@ -37,7 +37,16 @@ final class SearchExecutorTest extends TestCase
         self::assertArrayNotHasKey('x-typesense-user-id', $sent['body']['searches'][0]);
     }
 
-    /** @param array<string,mixed> $multiResponse */
+    /**
+     * A duck-typed Typesense\Client: the two entry points SearchExecutor uses,
+     * each recording what it was sent.
+     *
+     * @param array<string,mixed> $multiResponse
+     * @return object{
+     *     collections: object{calls: list<mixed>},
+     *     multiSearch: object{calls: list<array{body: array<string,mixed>, params: array<string,mixed>}>}
+     * }
+     */
     private function client(array $multiResponse): object
     {
         $documents = new class {

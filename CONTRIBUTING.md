@@ -36,7 +36,9 @@ module autoloader. Set `OMEKA_VENDOR` to the released Omeka S 4.2.1
 `vendor/autoload.php`; the default is `/var/www/html/vendor/autoload.php`.
 Do not add Laminas or PSR packages to this module to make standalone tools work.
 Monolog stays on its supported 2.x line because core can already have PSR Log 1
-loaded; the module autoloader appends to core's loader.
+loaded; the module autoloader appends to core's loader. CI runs
+`php scripts/check-psr-log-origin.php`, which loads Omeka and the module the way
+production does and fails unless `Psr\Log\LoggerInterface` comes from core.
 
 Use isolated services, never a production database or search cluster:
 
@@ -53,8 +55,10 @@ composer analyse
 ```
 
 The MySQL user needs permission to create and drop disposable databases named
-`dre_test_<random>`. Tests create a fresh schema per case and clean it up with
-its own random Typesense collections. CI runs this against MySQL 8.4, Typesense
+`dre_test_<random>`. Each case builds its database from Omeka's own install
+schema (`application/data/install/schema.sql` in the tree `OMEKA_VENDOR` points
+into), foreign keys and cascades included, and cleans up its own random
+Typesense collections. CI runs this against MySQL 8.4, Typesense
 30.2 and the released Omeka runtime on PHP 8.3–8.5. Missing service environment
 variables skip the integration cases; they must be present for a release check.
 
@@ -62,8 +66,10 @@ Coverage includes real entity event payloads, old/new dependencies, public value
 linked-resource/media/title visibility, revision-safe queue acknowledgements,
 rebuild cutover races, cancellation, advisory locks, ambiguous alias writes,
 cache invalidation, long-tail facets and excluded-field highlights. Frontend tests
-exercise out-of-order tab and facet responses. PHPStan covers all module classes;
-small stubs describe framework plugins and correct inaccurate upstream PHPDoc.
+exercise out-of-order tab and facet responses. PHPStan (level 8) covers all
+module classes and the tests; small stubs describe framework plugins and correct
+inaccurate upstream PHPDoc. ESLint type-checks the client for floating and
+misused promises: mark a deliberate fire-and-forget call with `void`.
 
 On PHP 8.5, Omeka 4.2.1's bundled `Laminas\Stdlib\SplPriorityQueue` emits two
 serialization return-type deprecations. These originate in core's vendor tree;

@@ -90,7 +90,7 @@ final class SearchRegressionTest extends TestCase
                     'type_s' => sprintf('Topic %03d', $i), 'fulltext' => 'Only zygomorphic matches here'];
             }
             $import = \DRESearch\Indexer\ImportResult::fromResponse($client->collections[$collection]->documents->import($docs), $docs);
-            self::assertTrue($import->isComplete(), json_encode($import->errors()));
+            self::assertTrue($import->isComplete(), json_encode($import->errors(), JSON_THROW_ON_ERROR));
             $builder = new QueryBuilder($profile);
             $result = SearchExecutor::single($client, $collection, $builder->search(['q' => 'zygomorphic']));
             self::assertSame(101, $result['found']);
@@ -168,6 +168,7 @@ final class SearchRegressionTest extends TestCase
         $profile = $this->profile(['collection' => $collection]);
         $provider = $this->provider();
         $client = $provider->getClient();
+        self::assertNotNull($client);
         $client->collections->create((new SchemaProvider())->collection($collection, $profile));
         try {
             $docs = [];

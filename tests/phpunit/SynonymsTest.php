@@ -95,31 +95,26 @@ final class SynonymsTest extends TestCase
         self::assertSame(3, $result['found']);
         self::assertCount(3, $multi->calls);
 
-        $collection = new class {
-            public object $documents;
-            public function __construct()
+        $documents = new class {
+            public int $calls = 0;
+            public function search(array $params): array
             {
-                $this->documents = new class {
-                    public int $calls = 0;
-                    public function search(array $params): array
-                    {
-                        $this->calls++;
-                        if (isset($params['stopwords'])) {
-                            throw new \RuntimeException('Could not find the stopword set named `dre_default`.');
-                        }
-                        if (isset($params['synonym_sets'])) {
-                            throw new \RuntimeException('Synonym index not found');
-                        }
-                        return ['found' => 4, 'hits' => []];
-                    }
-                };
+                $this->calls++;
+                if (isset($params['stopwords'])) {
+                    throw new \RuntimeException('Could not find the stopword set named `dre_default`.');
+                }
+                if (isset($params['synonym_sets'])) {
+                    throw new \RuntimeException('Synonym index not found');
+                }
+                return ['found' => 4, 'hits' => []];
             }
         };
+        $collection = (object) ['documents' => $documents];
         $result = SearchExecutor::single((object) ['collections' => ['c' => $collection], 'multiSearch' => $multi], 'c', [
             'q' => 'ivory coast', 'synonym_sets' => 'dre_synonyms', 'stopwords' => 'dre_default', 'enable_analytics' => true,
         ]);
         self::assertSame(4, $result['found'], 'The analytics GET path drops each missing set too.');
-        self::assertSame(3, $collection->documents->calls);
+        self::assertSame(3, $documents->calls);
     }
 
     public function testIvoryCoastFindsCoteDivoireOnTypesense(): void
