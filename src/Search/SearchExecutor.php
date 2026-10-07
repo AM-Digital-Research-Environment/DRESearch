@@ -73,6 +73,7 @@ final class SearchExecutor
     public static function multi(object $client, array $body, array $params = []): array
     {
         try {
+            // @phpstan-ignore property.notFound (a Typesense\Client, duck-typed so tests can fake it)
             $response = $client->multiSearch->perform($body, $params);
         } catch (\Throwable $error) {
             if (!self::missingStopwords($error->getMessage())) {
@@ -89,6 +90,7 @@ final class SearchExecutor
                 unset($search['stopwords']);
             }
             unset($search);
+            // @phpstan-ignore property.notFound (see above)
             $response = $client->multiSearch->perform($body, $params);
         }
         if (isset($response['error'])) {
@@ -104,12 +106,14 @@ final class SearchExecutor
     private static function get(object $collection, array $params): array
     {
         try {
+            // @phpstan-ignore property.notFound (a Typesense\Collection, duck-typed for tests)
             return $collection->documents->search($params);
         } catch (\Throwable $error) {
             if (!isset($params['stopwords']) || !self::missingStopwords($error->getMessage())) {
                 throw $error;
             }
             unset($params['stopwords']);
+            // @phpstan-ignore property.notFound (see above)
             return $collection->documents->search($params);
         }
     }

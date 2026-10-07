@@ -228,8 +228,7 @@ class SearchController extends AbstractActionController
     private function readJsonBody(): array
     {
         $request = $this->getRequest();
-        $lengthHeader = $request->getHeaders()->get('Content-Length');
-        $length = $lengthHeader ? (int) $lengthHeader->getFieldValue() : 0;
+        $length = (int) $this->header('Content-Length');
         if ($length > SearchRequest::MAX_BODY_BYTES) {
             throw new RequestValidationException('body_too_large', 'The request body is too large.', 413);
         }
@@ -237,8 +236,7 @@ class SearchController extends AbstractActionController
         if (strlen($content) > SearchRequest::MAX_BODY_BYTES) {
             throw new RequestValidationException('body_too_large', 'The request body is too large.', 413);
         }
-        $contentType = $request->getHeaders()->get('Content-Type');
-        $type = $contentType ? strtolower((string) $contentType->getFieldValue()) : '';
+        $type = strtolower($this->header('Content-Type'));
         if ($content !== '' && !str_starts_with($type, 'application/json')) {
             throw new RequestValidationException('invalid_content_type', 'Use application/json for request bodies.');
         }
@@ -250,6 +248,17 @@ class SearchController extends AbstractActionController
             throw new RequestValidationException('invalid_json', 'The request body is not valid JSON.');
         }
         return $decoded;
+    }
+
+    /** One request header's value, or '' (Laminas returns false/iterators for absent/multi). */
+    private function header(string $name): string
+    {
+        $headers = $this->getRequest()->getHeaders();
+        if (!$headers instanceof \Laminas\Http\Headers) {
+            return '';
+        }
+        $header = $headers->get($name);
+        return $header instanceof \Laminas\Http\Header\HeaderInterface ? (string) $header->getFieldValue() : '';
     }
 
     private function requireRateLimit(string $scope, int $weight = 1): void

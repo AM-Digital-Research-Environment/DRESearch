@@ -4,11 +4,35 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    # asset/dist is a build product, so a bundler or Svelte bump no longer needs
+    # a hand-rebuilt bundle committed with it; group the routine ones.
+    groups:
+      frontend-toolchain:
+        update-types: [minor, patch]
+
   - package-ecosystem: composer
     directory: /
     schedule:
       interval: monthly
+    groups:
+      php-runtime:
+        update-types: [minor, patch]
+    ignore:
+      # Omeka 4.2 core ships psr/log 1.1.4 and wins the autoload race (the
+      # module's autoloader is appended after core's). Monolog 3 types
+      # Logger::log() for psr/log 3 and would fatal against core's interface
+      # on the first Typesense client construction; Monolog 2 accepts both.
+      - dependency-name: monolog/monolog
+        update-types: [version-update:semver-major]
+      # PSR interfaces arrive transitively and core provides several of them;
+      # never let an update pull a different major alongside core's copy.
+      - dependency-name: psr/*
+        update-types: [version-update:semver-major]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    groups:
+      actions:
+        patterns: ['*']

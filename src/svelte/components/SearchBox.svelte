@@ -170,10 +170,12 @@
       case 'Enter':
         e.preventDefault();
         if (hasOptions && activeIndex >= 0 && activeIndex < optionCount) {
-          if (showingRecent) {
-            reuseRecent(recent[activeIndex]);
-          } else {
-            go(suggestions[activeIndex]); // jump to the highlighted item's page
+          const recentQuery = recent[activeIndex];
+          const suggestion = suggestions[activeIndex];
+          if (showingRecent && recentQuery !== undefined) {
+            reuseRecent(recentQuery);
+          } else if (!showingRecent && suggestion) {
+            go(suggestion); // jump to the highlighted item's page
           }
         } else {
           submitQuery(); // search the typed text

@@ -67,9 +67,9 @@ export function firstMarked(doc: Doc, fields: string[]): string | null {
     return null;
   }
   for (const f of fields) {
-    const arr = hl[f];
-    if (arr && arr.length > 0) {
-      return arr[0];
+    const first = hl[f]?.[0];
+    if (first !== undefined) {
+      return first;
     }
   }
   return null;

@@ -56,7 +56,7 @@ class MaintenanceController extends AbstractActionController
         return $view;
     }
 
-    public function reindexAction()
+    public function reindexAction(): \Laminas\Http\Response
     {
         if (!$this->getRequest()->isPost()) {
             return $this->redirect()->toRoute('admin/dre-search');

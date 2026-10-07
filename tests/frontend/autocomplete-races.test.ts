@@ -69,8 +69,8 @@ for (const component of ['box', 'bar']) {
         'button[aria-label="Clear search"]',
       ) as HTMLButtonElement;
       await fireEvent.click(clear);
-      expect(pending[0].signal.aborted).toBe(true);
-      pending[0].resolve([{ id: '1', title: 'Obsolete result' }]);
+      expect(pending[0]!.signal.aborted).toBe(true);
+      pending[0]!.resolve([{ id: '1', title: 'Obsolete result' }]);
       await vi.advanceTimersByTimeAsync(0);
       await tick();
       expect(input.value).toBe('');
@@ -82,8 +82,8 @@ for (const component of ['box', 'bar']) {
       const { input, pending } = setup();
       await type(input, 'old query');
       await fireEvent.input(input, { target: { value: 'x' } });
-      expect(pending[0].signal.aborted).toBe(true);
-      pending[0].resolve([{ id: '1', title: 'Obsolete result' }]);
+      expect(pending[0]!.signal.aborted).toBe(true);
+      pending[0]!.resolve([{ id: '1', title: 'Obsolete result' }]);
       await vi.advanceTimersByTimeAsync(250);
       await tick();
       expect(input).toHaveAttribute('aria-expanded', 'false');
@@ -94,9 +94,9 @@ for (const component of ['box', 'bar']) {
       const { input, pending } = setup();
       await type(input, 'old query');
       await type(input, 'new query');
-      pending[1].resolve([{ id: '2', title: 'Current result' }]);
+      pending[1]!.resolve([{ id: '2', title: 'Current result' }]);
       await vi.advanceTimersByTimeAsync(0);
-      pending[0].resolve([{ id: '1', title: 'Obsolete result' }]);
+      pending[0]!.resolve([{ id: '1', title: 'Obsolete result' }]);
       await vi.advanceTimersByTimeAsync(0);
       await tick();
       expect(document.body.textContent).toContain('Current result');

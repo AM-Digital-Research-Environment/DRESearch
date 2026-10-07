@@ -32,7 +32,7 @@ final class SearchProxyFactory implements FactoryInterface
             $container->get(ProfileRegistry::class),
             $container->get(BlockScopeResolver::class),
             $container->get('Omeka\Logger'),
-            (array) ($config['federated']['union_profiles'] ?? []),
+            array_values(array_map('strval', (array) ($config['federated']['union_profiles'] ?? []))),
             $connection,
             $gate,
         );

@@ -584,7 +584,7 @@ final class SearchProfile
      */
     public function extraSources(): array
     {
-        return $this->extraSources;
+        return array_values($this->extraSources);
     }
 
     /**

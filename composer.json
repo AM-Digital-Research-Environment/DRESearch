@@ -6,11 +6,9 @@
   "require": {
     "php": ">=8.2",
     "ext-json": "*",
-    "typesense/typesense-php": "^6.0",
-    "guzzlehttp/guzzle": "^7.10",
-    "php-http/guzzle7-adapter": "^1.1",
-    "http-interop/http-factory-guzzle": "^1.2",
-    "monolog/monolog": "^2.11.1"
+    "guzzlehttp/guzzle": "^8.2",
+    "monolog/monolog": "^2.11.1",
+    "typesense/typesense-php": "^6.0"
   },
   "require-dev": {
     "phpunit/phpunit": "^11.5.56",
@@ -33,6 +31,13 @@
     "analyse": "phpstan analyse --no-progress"
   },
   "config": {
-    "prepend-autoloader": false
+    "prepend-autoloader": false,
+    "platform": {
+      "php": "8.2.0"
+    },
+    "allow-plugins": {
+      "php-http/discovery": false
+    },
+    "sort-packages": true
   }
 }

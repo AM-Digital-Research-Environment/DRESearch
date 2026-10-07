@@ -114,7 +114,12 @@ final class AuthorityResolver
 
         // 2. Public title values (the cached Omeka title may originate from a private value).
         foreach ((new OmekaSourceRepository($this->connection, $this->profile))->publicTitles($loadedIds) as $id => $title) {
-            $this->byId[$id]['title'] = $title;
+            $id = (int) $id;
+            if (isset($this->byId[$id])) {
+                $entry = $this->byId[$id];
+                $entry['title'] = (string) $title;
+                $this->byId[$id] = $entry;
+            }
         }
 
         // 3. dcterms:type and dcterms:isPartOf targets (the discriminators).
@@ -131,11 +136,13 @@ final class AuthorityResolver
             if (!isset($this->byId[$rid])) {
                 continue;
             }
+            $entry = $this->byId[$rid];
             if ($term === 'dcterms:type') {
-                $this->byId[$rid]['typeItemId'] = (int) $vrid;
+                $entry['typeItemId'] = (int) $vrid;
             } elseif ($term === 'dcterms:isPartOf') {
-                $this->byId[$rid]['partOfId'] = (int) $vrid;
+                $entry['partOfId'] = (int) $vrid;
             }
+            $this->byId[$rid] = $entry;
         }
         return $loadedIds;
     }

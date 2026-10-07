@@ -233,7 +233,7 @@ export function formatDate(raw: string | undefined): string {
     }).format(date);
   }
   const year = /^(\d{4})/.exec(raw);
-  return year ? year[1] : raw;
+  return year?.[1] ?? raw;
 }
 
 /**

@@ -177,7 +177,8 @@
       case 'Enter':
         e.preventDefault();
         if (has && activeIndex >= seeAll && activeIndex < optionCount) {
-          goItem(flat[activeIndex - seeAll].id);
+          const hit = flat[activeIndex - seeAll];
+          if (hit) goItem(hit.id);
         } else {
           submit(); // nothing highlighted, or "See all results"
         }
@@ -356,7 +357,7 @@
           <div class="dre-search-bar__group" role="group" aria-label={g.label}>
             <div class="dre-search-bar__group-label" aria-hidden="true">{g.label}</div>
             {#each g.suggestions as s, si (s.id)}
-              {@const idx = offsets[gi] + si}
+              {@const idx = (offsets[gi] ?? 0) + si}
               <a
                 class="dre-search-bar__option"
                 class:dre-search-bar__option--active={idx === activeIndex}

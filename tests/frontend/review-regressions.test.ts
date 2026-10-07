@@ -94,7 +94,7 @@ describe('facet value search', () => {
     const view = render(FacetGroup, props);
     await fireEvent.input(screen.getByRole('searchbox'), { target: { value: 'rare' } });
     await waitFor(() => expect(resolvers).toHaveLength(1));
-    resolvers[0]([{ value: 'Rare topic', count: 1 }]);
+    resolvers[0]!([{ value: 'Rare topic', count: 1 }]);
     await screen.findByRole('checkbox', { name: /Rare topic/ });
 
     // The parent re-renders with the value selected and a new scope.

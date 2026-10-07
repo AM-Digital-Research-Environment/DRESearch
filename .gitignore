@@ -1,6 +1,5 @@
 # PHP
 vendor/
-composer.lock
 
 # Tool caches (phpstan.neon.dist / phpunit.xml.dist write these locally)
 .phpstan-cache/
@@ -22,8 +21,9 @@ Thumbs.db
 *.log
 .claude/
 
-# Notes:
-# - asset/dist/ IS tracked. The compiled Svelte bundle ships in the repo so
-#   production deployments don't need a Node toolchain — composer install +
-#   module activation is enough. Rebuild it with `npm run build` after editing
-#   anything under src/svelte/.
+# Compiled Svelte bundle. It is a build product: the release workflow builds it
+# into DRESearch.zip (with vendor/), which is what sites install. Run
+# `npm run build` for a local checkout or before copying the module into a dev
+# container. Not tracked, so dependency updates no longer need a hand-rebuilt
+# bundle committed alongside them.
+asset/dist/

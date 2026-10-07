@@ -2,34 +2,44 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+  # The release workflow runs this whole suite before it packages anything.
+  workflow_call:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
+      # lint:schema and lint:i18n are PHP scripts.
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
           coverage: none
       - run: npm ci
+      - run: npm audit --audit-level=high
       - run: npm run lint
       - run: npm run check
-      - run: npm test
+      # asset/dist is a build product, not tracked; build it like the release.
       - run: npm run build
-      - name: Verify committed production bundle
-        run: git diff --exit-code -- asset/dist
+      - run: npm test
 
   php:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -55,7 +65,7 @@ jobs:
           - 8108:8108
         # The Typesense image does not create the data dir itself; without a
         # mounted volume the server exits at boot ("Data directory /data does
-        # not exist") and the integration test's health gate times out.
+        # not exist").
         volumes:
           - typesense-data:/data
         env:
@@ -76,52 +86,47 @@ jobs:
           extensions: dom, json, mbstring, pdo_sqlite, pdo_mysql
           coverage: none
           tools: composer:v2
-      - name: Load released Omeka runtime (framework dependencies belong to core)
+      - name: Load the released Omeka runtime (framework dependencies belong to core)
         run: |
           curl --fail --location --retry 3 https://github.com/omeka/omeka-s/releases/download/v4.2.1/omeka-s-4.2.1.zip -o /tmp/omeka-s.zip
+          echo "cc27d1c7aca0209523d19aa285f4a08e29e34950dcc446951a7c1311de348e82  /tmp/omeka-s.zip" | sha256sum -c -
           unzip -q /tmp/omeka-s.zip -d /tmp
           test -f "$OMEKA_VENDOR"
       - run: composer validate --strict
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/composer
+          key: composer-${{ hashFiles('composer.lock') }}
+      # Installs the committed lock — resolved for PHP 8.2 (config.platform),
+      # i.e. exactly what the release archive ships — on every PHP version.
       - run: composer install --no-interaction --prefer-dist
+      - run: composer audit --locked
       - name: PHP syntax
-        run: find Module.php config src scripts tests/phpunit -name '*.php' -print0 | xargs -0 -n1 php -l
+        run: find Module.php bin config src scripts tests/phpunit -name '*.php' -print0 | xargs -0 -n1 php -l && php -l bin/dre-search
       - run: composer lint
-      - run: composer test
+      - name: Wait for Typesense
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8108/health && exit 0
+            sleep 2
+          done
+          echo "::error::Typesense did not become healthy"; exit 1
+      # Every test must run here: a skip would mean the Omeka or service
+      # integration silently stopped being exercised.
+      - run: composer test -- --fail-on-skipped
       - run: composer analyse
 
   release-shape:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
-      - run: test -f LICENSE && test -f SECURITY.md && test -f CHANGELOG.md && test -f CONTRIBUTING.md && test -f CITATION.cff
-      # Pin nothing: assert the four places a release number lives agree with
-      # each other, so a bump never has to be mirrored into this workflow.
-      - name: Version consistency (module.ini / package.json / CHANGELOG / CITATION)
-        run: |
-          module_version=$(sed -n 's/^version[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' config/module.ini | head -1)
-          package_version=$(sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' package.json | head -1)
-          citation_version=$(sed -n 's/^version:[[:space:]]*"\{0,1\}\([^"]*\)"\{0,1\}[[:space:]]*$/\1/p' CITATION.cff | head -1)
-          if [ -z "$module_version" ]; then
-            echo "::error file=config/module.ini::no version key found"
-            exit 1
-          fi
-          if [ "$module_version" != "$package_version" ]; then
-            echo "::error::version mismatch: config/module.ini=$module_version, package.json=$package_version"
-            exit 1
-          fi
-          if [ "$module_version" != "$citation_version" ]; then
-            echo "::error file=CITATION.cff::version mismatch: CITATION.cff=$citation_version, config/module.ini=$module_version"
-            exit 1
-          fi
-          if ! grep -q "^## \[$module_version\]" CHANGELOG.md; then
-            echo "::error file=CHANGELOG.md::no '## [$module_version]' entry for the current version"
-            exit 1
-          fi
-          echo "Version $module_version is consistent across module.ini, package.json, CHANGELOG.md and CITATION.cff."
-
+      - run: test -f LICENSE && test -f SECURITY.md && test -f CHANGELOG.md && test -f CONTRIBUTING.md && test -f CITATION.cff && test -f composer.lock
+      # One implementation of the module.ini / package.json / CITATION.cff /
+      # CHANGELOG agreement check, shared with `npm run lint`.
+      - run: node scripts/check-version-consistency.mjs
       # GitHub renders "Cite this repository" from CITATION.cff and silently
-      # drops the button when the file does not parse. Catch that here rather
-      # than noticing it missing from the repo page months later.
+      # drops the button when the file does not parse.
       - name: CITATION.cff parses and carries the required keys
         run: |
           python3 - <<'PY'

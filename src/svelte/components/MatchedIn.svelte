@@ -23,10 +23,11 @@
     const skip = new Set(exclude);
     const out: { field: string; label: string; snippet: string }[] = [];
     for (const [field, snippets] of Object.entries(hl)) {
-      if (skip.has(field) || !snippets || snippets.length === 0) {
+      const snippet = snippets?.[0];
+      if (skip.has(field) || snippet === undefined) {
         continue;
       }
-      out.push({ field, label: matchFieldLabel(field), snippet: snippets[0] });
+      out.push({ field, label: matchFieldLabel(field), snippet });
     }
     return out;
   });

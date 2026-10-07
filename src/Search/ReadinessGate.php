@@ -94,8 +94,12 @@ final class ReadinessGate
      */
     private function load(array $profiles): array
     {
+        $connection = $this->connection;
+        if ($connection === null) {
+            return array_fill_keys($profiles, ['ready' => true, 'exclude' => []]);
+        }
         $in = implode(',', array_fill(0, count($profiles), '?'));
-        $rows = $this->connection->executeQuery(
+        $rows = $connection->executeQuery(
             "SELECT profile, 'dirty' AS kind, 1 AS n, NULL AS oldest FROM dre_search_profile_state"
             . " WHERE dirty = 1 AND profile IN ($in)"
             . " UNION ALL SELECT profile, 'pending' AS kind, COUNT(*) AS n, MIN(queued_at) AS oldest FROM dre_search_change"
@@ -103,19 +107,23 @@ final class ReadinessGate
             array_merge($profiles, $profiles),
         )->fetchAllAssociative();
 
+        /** @var array<string,array{ready:bool,exclude:list<int>}> $state */
         $state = array_fill_keys($profiles, ['ready' => true, 'exclude' => []]);
         $pending = [];
         $stranded = false;
         $healBefore = gmdate('Y-m-d H:i:s', time() - $this->healAfterSeconds);
         foreach ($rows as $row) {
             $profile = (string) $row['profile'];
+            if (!isset($state[$profile])) {
+                continue;
+            }
             if ($row['kind'] === 'dirty') {
-                $state[$profile]['ready'] = false;
+                $state[$profile] = ['ready' => false, 'exclude' => []];
                 continue;
             }
             $count = (int) $row['n'];
             if ($count > $this->exclusionLimit) {
-                $state[$profile]['ready'] = false;
+                $state[$profile] = ['ready' => false, 'exclude' => []];
             } elseif ($count > 0) {
                 $pending[] = $profile;
             }
@@ -127,12 +135,15 @@ final class ReadinessGate
         if ($pending !== []) {
             $in = implode(',', array_fill(0, count($pending), '?'));
             foreach (
-                $this->connection->executeQuery(
+                $connection->executeQuery(
                     "SELECT profile, item_id FROM dre_search_change WHERE profile IN ($in) ORDER BY item_id",
                     $pending,
                 )->fetchAllNumeric() as [$profile, $id]
             ) {
-                $state[(string) $profile]['exclude'][] = (int) $id;
+                $profile = (string) $profile;
+                if (isset($state[$profile])) {
+                    $state[$profile] = ['ready' => $state[$profile]['ready'], 'exclude' => [...$state[$profile]['exclude'], (int) $id]];
+                }
             }
         }
         if ($stranded && $this->wake !== null) {

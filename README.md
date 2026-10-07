@@ -180,22 +180,24 @@ header calls; `headScript`/`headLink` dedupe by URL.)
 
 ## Requirements
 
-- Omeka S `^4.2`
-- A Typesense server (optional)
-- Node 20+ — only to rebuild the Svelte bundle during development (the compiled
-  bundle ships in `asset/dist/`, so production needs no Node toolchain).
+- Omeka S `^4.2` on PHP 8.2+ (production AMIRA runs PHP 8.5)
+- A Typesense 30 server (optional)
+- For development only: Node `^20.19`, `^22.13` or `>=24`, and Composer. Sites
+  install the release archive, which carries the compiled bundle and `vendor/`.
 
 ## Install
 
-1. Put the module at `modules/DRESearch`. With the AM `omeka-s-docker` stack it
-   is already referenced in `_docker/default-modules.txt`
-   (`gh:AM-Digital-Research-Environment/DRESearch`); otherwise use
-   `bash scripts/install-module.sh` or copy it in manually.
-2. Install PHP dependencies (the Typesense client):
-   ```bash
-   composer install --no-dev
-   ```
-3. Activate **DRE Search** in Admin → Modules.
+1. Download `DRESearch.zip` from the
+   [latest release](https://github.com/AM-Digital-Research-Environment/DRESearch/releases/latest)
+   and unzip it into Omeka's `modules/` directory (it unpacks to
+   `modules/DRESearch`). With the AM `omeka-s-docker` stack the release URL is
+   pinned in `deploy/amira/modules.txt`. GitHub's "Source code" archives lack
+   `vendor/` and the compiled bundle: the module then refuses to install and
+   explains why.
+2. Activate **DRE Search** in Admin → Modules (or run **Upgrade** when replacing
+   an older version), then **Reindex all corpora** if the release notes ask for it.
+
+From a git checkout instead: `composer install --no-dev && npm ci && npm run build`.
 
 ## Enabling Typesense
 
@@ -527,19 +529,23 @@ Notes:
 ## Development
 
 ```bash
-npm install
-npm run build      # compile src/svelte → asset/dist (commit the result)
+npm ci
+npm run build      # compile src/svelte → asset/dist (a build product, not tracked)
 npm run check      # svelte-check (types)
-npm run lint       # eslint + prettier
-npm run lint:fix   # auto-fix
+npm run lint       # tokens, versions, profile schema, translations, eslint, prettier
+npm test           # Vitest
+npm run i18n       # regenerate language/template.pot after changing strings
+
+composer install
+composer lint      # PHP_CodeSniffer (PSR-12)
+composer test      # PHPUnit (set OMEKA_VENDOR; MySQL/Typesense for integration)
+composer analyse   # PHPStan level 8
 ```
 
 `npm run lint` also runs `scripts/check-profile-schema.php`, which fails CI when
 profile query/facet/search-only fields drift from the generated Typesense schema
-or client card/i18n contracts. Run `check` + `lint` + `build` before committing
-anything under `src/svelte/`.
-Lint the PHP in your runtime image (`php -l`) since this repo ships no PHP
-toolchain.
+or client card/i18n contracts. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
+integration-test services and the dev-container workflow.
 
 ## Architecture
 
@@ -547,7 +553,8 @@ toolchain.
   `dre_search.profiles`) holds one `SearchProfile` per corpus. The schema
   builder, paged reindexer, query builder, search proxy, and page blocks are all
   parameterised by a profile; a profile's `kind` (`item` | `project` |
-  `publication` | `podcast` | `person` | `section` | `organisation` | `term`)
+  `publication` | `podcast` | `video` | `person` | `section` | `organisation` |
+  `term`)
   selects its indexer mapper and its result card.
 - **Search is server-side.** The browser calls the module's own JSON endpoints
   (`/dre-search/api/search`, `/dre-search/api/suggest` per corpus;
@@ -564,8 +571,8 @@ toolchain.
   `src/Controller` (public proxy + federated results page + admin maintenance),
   `src/View/Helper` (the `dreSearchBar` / `dreFederatedSearch` / `dreSearchAssets`
   surfaces), `src/Settings` (`SearchProfile`, `ProfileRegistry`, `SortOptions`).
-- **JS**: `src/svelte` — Svelte 5, one IIFE bundle that auto-mounts three
-  surfaces (per-corpus `App`, header `SearchBar`, `FederatedApp`); the federated
+- **JS**: `src/svelte` — Svelte 5, an ESM entry (header bar) that loads the
+  per-corpus `App` and `FederatedApp` as page chunks on demand; the federated
   page reuses `App` per type-tab. Styled with DRE-theme design tokens (so it
   inherits the theme's light/dark palette automatically).
 - **Keyword search only** (no embedding model) to keep Typesense lean on a

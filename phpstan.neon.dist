@@ -1,5 +1,11 @@
 parameters:
-    level: 5
+    # Level 8 (null safety, strict shapes). Two identifiers stay ignored: the
+    # array value types and framework generics they ask for are annotation
+    # work, not bug findings; tighten them file by file.
+    level: 8
+    ignoreErrors:
+        - identifier: missingType.iterableValue
+        - identifier: missingType.generics
     treatPhpDocTypesAsCertain: false
     stubFiles:
         - tests/stubs/omeka.stub

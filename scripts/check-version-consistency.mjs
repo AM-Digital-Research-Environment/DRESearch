@@ -11,9 +11,8 @@
  *
  *   node scripts/check-version-consistency.mjs   (also: npm run lint:version)
  *
- * This mirrors the `release-shape` job in .github/workflows/ci.yml, which stays
- * the enforcing copy — this one only moves the failure from a CI round-trip to
- * the local lint. Keep the two in step. It exists because v1.19.2 shipped with
+ * The single implementation: `npm run lint` and the `release-shape` CI job both
+ * run it. It exists because v1.19.2 shipped with
  * CITATION.cff still on 1.19.1: the release workflow only compares the tag with
  * module.ini, so the mismatch got past it and reached a published archive.
  *

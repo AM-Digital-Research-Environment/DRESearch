@@ -150,7 +150,7 @@ final class SearchProxy
             /** @var list<string> $selected */
             $selected = array_map('strval', $filters[$field] ?? []);
             $main['facet_counts'] = $this->withFacetCounts(
-                is_array($main['facet_counts'] ?? null) ? $main['facet_counts'] : [],
+                is_array($main['facet_counts'] ?? null) ? array_values($main['facet_counts']) : [],
                 $field,
                 $this->keepSelectedListed($counts, $selected),
             );
@@ -611,8 +611,8 @@ final class SearchProxy
         }
         $cacheKey = $this->cacheKey('years:' . serialize($profile));
         $cached = $this->cacheGet($cacheKey);
-        if ($cached !== null) {
-            return $cached;
+        if ($cached !== null && is_int($cached['min'] ?? null) && is_int($cached['max'] ?? null)) {
+            return ['min' => $cached['min'], 'max' => $cached['max']];
         }
         try {
             $result = SearchExecutor::single($client, $profile->collection(), (new QueryBuilder($profile))->yearStats());

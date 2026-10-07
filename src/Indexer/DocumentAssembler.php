@@ -18,7 +18,7 @@ final class DocumentAssembler
 
     public function documents(array $rows): array
     {
-        $ids = array_map(static fn(array $row): int => (int) $row['id'], $rows);
+        $ids = array_values(array_map(static fn(array $row): int => (int) $row['id'], $rows));
         if ($ids === []) {
             return [];
         }

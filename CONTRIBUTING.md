@@ -18,8 +18,11 @@ composer test
 composer analyse
 ```
 
-The compiled `asset/dist/` bundle ships with the module; commit it when frontend
-source changes. PHP 8.2 is the minimum. Omeka supplies Laminas and PSR interfaces
+`asset/dist/` is a build product and is not tracked: the release workflow builds
+it into DRESearch.zip together with `vendor/` (from the committed `composer.lock`,
+resolved for PHP 8.2 by `config.platform`). Run `npm run build` before copying the
+module into a dev container. PHP 8.2 is the minimum; CI runs 8.2–8.5 and
+production runs 8.5. After changing user-visible strings run `npm run i18n`. Omeka supplies Laminas and PSR interfaces
 at runtime, so the module must never bundle them in Composer.
 
 For profile changes, ensure every `query_by` field is indexed, every custom sort

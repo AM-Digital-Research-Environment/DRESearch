@@ -28,9 +28,9 @@ it('finds a remote value outside the downloaded counts and cancels obsolete requ
   await waitFor(() => expect(pending).toHaveLength(1));
   await fireEvent.input(input, { target: { value: 'rare' } });
   await waitFor(() => expect(pending).toHaveLength(2));
-  expect(pending[0].signal.aborted).toBe(true);
-  pending[1].resolve([{ value: 'Rare archival topic', count: 1 }]);
-  pending[0].resolve([{ value: 'Old result', count: 5 }]);
+  expect(pending[0]!.signal.aborted).toBe(true);
+  pending[1]!.resolve([{ value: 'Rare archival topic', count: 1 }]);
+  pending[0]!.resolve([{ value: 'Old result', count: 5 }]);
   const checkbox = await screen.findByRole('checkbox', { name: /Rare archival topic/ });
   expect(screen.queryByText('Old result')).toBeNull();
   await fireEvent.click(checkbox);

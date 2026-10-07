@@ -183,7 +183,7 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout implements Templa
     }
 
     /** Inject the bundle once per page that uses this layout. */
-    public function prepareRender(PhpRenderer $view)
+    public function prepareRender(PhpRenderer $view): void
     {
         $view->headLink()->appendStylesheet($view->assetUrl('css/dre-search.css', 'DRESearch'));
         $view->headLink()->appendStylesheet($view->assetUrl('dist/dre-search.css', 'DRESearch'));
@@ -201,7 +201,7 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout implements Templa
      * filter that could escape its group (Typesense && and || share one
      * precedence level) is refused here rather than at search time.
      */
-    public function onHydrate(SitePageBlock $block, ErrorStore $errorStore)
+    public function onHydrate(SitePageBlock $block, ErrorStore $errorStore): void
     {
         $data = $block->getData();
         if (!is_array($data)) {
@@ -232,11 +232,13 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout implements Templa
         return trim((string) ($data['title'] ?? '') . ' ' . strip_tags((string) ($data['intro_html'] ?? '')));
     }
 
+    /** @param string|null $templateViewScript a theme's block template, or the module's */
     public function render(
         PhpRenderer $view,
         SitePageBlockRepresentation $block,
         $templateViewScript = 'common/block-layout/dre-search-block'
     ) {
+        $templateViewScript = (string) ($templateViewScript ?? 'common/block-layout/dre-search-block');
         $data = $block->data();
         $profile = $this->profile();
         $settings = new SearchBlockSettings($data, $profile);
@@ -254,7 +256,7 @@ abstract class AbstractSearchBlock extends AbstractBlockLayout implements Templa
 
         $facetLabels = [];
         foreach ($facets as $field) {
-            $facetLabels[$field] = (string) $view->translate($profile->facetLabel($field));
+            $facetLabels[$field] = (string) $view->translate($profile?->facetLabel($field) ?? $field);
         }
 
         $profileName = $profile ? $profile->name() : '';

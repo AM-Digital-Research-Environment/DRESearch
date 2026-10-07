@@ -59,6 +59,15 @@ All notable changes to DRE Search are documented here. The project follows
 - **A dead Typesense costs one timeout, not one per block.** After a connection failure the proxy stops calling Typesense for the rest of the request, and for 30 seconds across requests when APCu is available.
 - Count-only and facet-recount queries ask for zero hits.
 
+### Packaging and tooling
+
+- **Guzzle 8.** The Typesense transport is a plain PSR-18 Guzzle 8 client; `php-http/guzzle7-adapter`, `http-interop/http-factory-guzzle` and `ralouphie/getallheaders` — leftovers that held Guzzle at 7 — are gone. No other module in the AMIRA deployment bundles Guzzle.
+- **Reproducible releases.** `composer.lock` is committed and resolved for PHP 8.2 (`config.platform`), so CI tests on PHP 8.2–8.5 exactly the dependency set the archive ships; `composer audit` runs in CI and before packaging.
+- **Releases wait for CI.** A tag runs the full suite before `DRESearch.zip` is built, the archive must contain its page chunks, translations and CLI, and it carries a build-provenance attestation.
+- **`asset/dist/` is no longer tracked.** It is built by CI and by the release workflow, so Svelte, Vite and other frontend dependency updates no longer fail CI for want of a hand-rebuilt bundle. Dependabot groups routine updates and never proposes Monolog 3 or a new `psr/*` major, which would collide with Omeka core's PSR Log 1.
+- CI cancels superseded PR runs, caches Composer, verifies the Omeka download's checksum, waits for Typesense to be healthy, fails if any test is skipped, and runs `npm audit`; CodeQL scans the TypeScript and the workflows.
+- PHPStan runs at level 8 (from 5) and TypeScript checks indexed access; the findings were fixed, among them possible null dereferences in the block renderer and the readiness gate.
+
 **Upgrade:** run Omeka's module upgrade. No reindex is needed.
 
 ## [1.22.1] - 2026-10-07

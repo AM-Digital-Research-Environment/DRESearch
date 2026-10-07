@@ -344,7 +344,7 @@ final class Reindexer
             $docs = $assembler->documents($rows);
             if ($docs !== []) {
                 try {
-                    $this->flush($collection, $docs);
+                    $this->flush($collection, array_values($docs));
                 } catch (BatchImportException $e) {
                     if (!$tolerateRejected) {
                         throw $e;

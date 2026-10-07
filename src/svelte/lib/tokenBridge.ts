@@ -61,10 +61,10 @@ export function toRGB(color: string): string {
   ctx.fillStyle = '#000';
   ctx.fillStyle = color;
   ctx.fillRect(0, 0, 1, 1);
-  const d = ctx.getImageData(0, 0, 1, 1).data;
-  if (d[3] === 0) return 'rgba(0,0,0,0)';
-  if (d[3] === 255) return `rgb(${d[0]},${d[1]},${d[2]})`;
-  return `rgba(${d[0]},${d[1]},${d[2]},${(d[3] / 255).toFixed(3)})`;
+  const [r = 0, g = 0, b = 0, a = 0] = ctx.getImageData(0, 0, 1, 1).data;
+  if (a === 0) return 'rgba(0,0,0,0)';
+  if (a === 255) return `rgb(${r},${g},${b})`;
+  return `rgba(${r},${g},${b},${(a / 255).toFixed(3)})`;
 }
 
 /**

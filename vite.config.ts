@@ -2,7 +2,10 @@ import { defineConfig } from 'vitest/config';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve } from 'node:path';
 
-/** ESM entry with page-specific chunks; commit the complete asset/dist tree. */
+/**
+ * ESM entry with page-specific chunks. asset/dist is not tracked: the release
+ * archive carries the complete tree (entry + every hashed chunk).
+ */
 export default defineConfig({
   base: './',
   plugins: [svelte()],

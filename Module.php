@@ -293,7 +293,7 @@ class Module extends AbstractModule
      * over the environment, so a key saved once silently shadowed a rotated
      * TYPESENSE_API_KEY; saying so here makes that visible.
      */
-    private function connectionSources(PhpRenderer $renderer, $settings): string
+    private function connectionSources(PhpRenderer $renderer, \Omeka\Settings\Settings $settings): string
     {
         $defaults = $this->getConfig()['dre_search']['typesense'] ?? [];
         $rows = [];
