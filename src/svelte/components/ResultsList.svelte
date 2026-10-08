@@ -96,7 +96,7 @@
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
     gap: var(--space-md, 1rem);
   }
-  @media (min-width: 64rem) {
+  @media (min-width: 1024px) {
     .dre-results--two-col {
       grid-template-columns: 1fr 1fr;
     }
@@ -113,7 +113,7 @@
     column-count: 1;
     column-gap: var(--space-md, 1rem);
   }
-  @media (min-width: 64rem) {
+  @media (min-width: 1024px) {
     .dre-results--masonry {
       column-count: 2;
     }

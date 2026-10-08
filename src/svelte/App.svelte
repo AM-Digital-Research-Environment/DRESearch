@@ -966,7 +966,7 @@
     }
   }
 
-  @media (max-width: 48rem) {
+  @media (max-width: 767px) {
     .dre-search__layout {
       /* minmax(0, …) again here — the single mobile column must be allowed to
          shrink below content width, or the facet panel overflows the screen. */

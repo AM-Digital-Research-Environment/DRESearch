@@ -76,7 +76,7 @@
     height: 1rem;
     fill: currentColor;
   }
-  @media (max-width: 37.5rem) {
+  @media (max-width: 599px) {
     button span {
       position: absolute;
       width: 1px;

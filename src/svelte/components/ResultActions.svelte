@@ -51,12 +51,12 @@
     outline: 2px solid var(--focus-color, #007a50);
     outline-offset: 2px;
   }
-  @media (min-width: 48rem) {
+  @media (min-width: 768px) {
     summary {
       display: none;
     }
   }
-  @media (max-width: 48rem) {
+  @media (max-width: 767px) {
     .dre-actions[open] > div {
       padding-block-start: var(--space-2, 0.5rem);
     }

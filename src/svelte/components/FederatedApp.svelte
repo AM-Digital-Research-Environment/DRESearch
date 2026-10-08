@@ -510,7 +510,7 @@
   .dre-fed__chooser {
     display: none;
   }
-  @media (max-width: 48rem) {
+  @media (max-width: 767px) {
     .dre-fed__chooser {
       display: grid;
       gap: var(--space-1, 0.25rem);
@@ -681,7 +681,7 @@
       font-weight: 600;
     }
   }
-  @media (max-width: 37.5rem) {
+  @media (max-width: 599px) {
     .dre-fed__all-summary {
       align-items: flex-start;
       flex-direction: column;

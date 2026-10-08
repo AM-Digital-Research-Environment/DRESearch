@@ -74,7 +74,7 @@
       display: none;
     }
   }
-  @media (max-width: 48rem) {
+  @media (max-width: 767px) {
     .dre-summary {
       align-items: stretch;
       flex-direction: column;

@@ -360,7 +360,7 @@
       display: none;
     }
   }
-  @media (max-width: 37.5rem) {
+  @media (max-width: 599px) {
     .dre-map {
       min-height: 24rem;
     }
