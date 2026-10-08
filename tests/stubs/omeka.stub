@@ -76,6 +76,7 @@ class Url {}
 namespace Laminas\View\Helper;
 class HeadLink {}
 class HeadScript {}
+class InlineScript extends HeadScript {}
 namespace Laminas\Log;
 interface LoggerInterface {}
 

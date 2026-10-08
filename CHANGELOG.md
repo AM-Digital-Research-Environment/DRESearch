@@ -3,6 +3,12 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.26.3] - 2026-10-08
+
+### Fixed
+
+- Ships the 1.26.1 Mirador fix. Neither 1.26.1 nor 1.26.2 was packaged: PHPStan rejected first the undeclared `inlineScript()` helper, then the `InlineScript` class its declaration names. The Omeka stub now declares both, `InlineScript` as the `HeadScript` subclass it is in laminas-view. There is no runtime change from 1.26.1.
+
 ## [1.26.2] - 2026-10-08
 
 ### Fixed
