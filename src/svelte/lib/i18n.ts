@@ -91,6 +91,17 @@ const ENGLISH_STRINGS: Record<string, string> = {
   map_capped: 'The map shows the first 1,000 matching locations.',
   map_coverage: '{mapped} of {found} matching locations have coordinates.',
   map_list: 'List the {n} mapped places',
+  // MapLibre's own control labels and gesture hints (see mapLocale()).
+  map_zoom_in: 'Zoom in',
+  map_zoom_out: 'Zoom out',
+  map_reset_bearing: 'Reset bearing to north',
+  map_fullscreen: 'Fullscreen',
+  map_fullscreen_exit: 'Exit fullscreen',
+  map_toggle_attribution: 'Toggle attribution',
+  map_close_popup: 'Close popup',
+  map_gesture_windows: 'Use Ctrl + scroll to zoom the map',
+  map_gesture_mac: 'Use ⌘ + scroll to zoom the map',
+  map_gesture_mobile: 'Use two fingers to move the map',
 
   // Federated header bar + results page.
   search_all_placeholder: 'Search everything…',

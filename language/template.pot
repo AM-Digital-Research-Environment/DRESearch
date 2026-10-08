@@ -139,6 +139,10 @@ msgstr ""
 msgid "Clear the saved API key"
 msgstr ""
 
+#: src/svelte/lib/i18n.ts (map_close_popup)
+msgid "Close popup"
+msgstr ""
+
 #: view/dre-search/admin/maintenance/index.phtml:32
 msgid "Collection alias"
 msgstr ""
@@ -248,6 +252,10 @@ msgstr ""
 msgid "Episode {n}"
 msgstr ""
 
+#: src/svelte/lib/i18n.ts (map_fullscreen_exit)
+msgid "Exit fullscreen"
+msgstr ""
+
 #: src/svelte/lib/i18n.ts (export)
 msgid "Export"
 msgstr ""
@@ -290,6 +298,10 @@ msgstr ""
 
 #: config/module.config.php (research_publications)
 msgid "Full text available"
+msgstr ""
+
+#: src/svelte/lib/i18n.ts (map_fullscreen)
+msgid "Fullscreen"
 msgstr ""
 
 #: src/svelte/lib/i18n.ts (view_gallery)
@@ -753,6 +765,10 @@ msgstr ""
 msgid "Research sections search"
 msgstr ""
 
+#: src/svelte/lib/i18n.ts (map_reset_bearing)
+msgid "Reset bearing to north"
+msgstr ""
+
 #: src/svelte/lib/i18n.ts (result_types)
 msgid "Result types"
 msgstr ""
@@ -1018,6 +1034,10 @@ msgstr ""
 msgid "To"
 msgstr ""
 
+#: src/svelte/lib/i18n.ts (map_toggle_attribution)
+msgid "Toggle attribution"
+msgstr ""
+
 #: src/svelte/lib/i18n.ts (field_transcript) src/svelte/lib/i18n.ts (transcript_label)
 msgid "Transcript"
 msgstr ""
@@ -1063,6 +1083,18 @@ msgstr ""
 msgid "Untitled"
 msgstr ""
 
+#: src/svelte/lib/i18n.ts (map_gesture_windows)
+msgid "Use Ctrl + scroll to zoom the map"
+msgstr ""
+
+#: src/svelte/lib/i18n.ts (map_gesture_mobile)
+msgid "Use two fingers to move the map"
+msgstr ""
+
+#: src/svelte/lib/i18n.ts (map_gesture_mac)
+msgid "Use ⌘ + scroll to zoom the map"
+msgstr ""
+
 #: src/Form/ConfigForm.php:51
 msgid "Used server-side only. Leave blank to keep the saved secret. A saved key takes precedence over the TYPESENSE_API_KEY environment variable; clear it to use the environment."
 msgstr ""
@@ -1103,6 +1135,14 @@ msgstr ""
 
 #: src/Site/BlockLayout/ResearchVideosSearchBlock.php:18
 msgid "YouTube videos search"
+msgstr ""
+
+#: src/svelte/lib/i18n.ts (map_zoom_in)
+msgid "Zoom in"
+msgstr ""
+
+#: src/svelte/lib/i18n.ts (map_zoom_out)
+msgid "Zoom out"
 msgstr ""
 
 #: view/dre-search/admin/maintenance/index.phtml:92

@@ -4,6 +4,8 @@
   import {
     basemapStyle,
     loadMapLibre,
+    mapLocale,
+    NAVIGATION_CONTROL_OPTIONS,
     type MapLibreGlobal,
     type MapLike,
   } from '../lib/maplibreLoader';
@@ -79,8 +81,9 @@
           zoom: 3.2,
           cooperativeGestures: true,
           attributionControl: { compact: true },
+          locale: mapLocale(t),
         });
-        map.addControl(new loaded.NavigationControl({ visualizePitch: false }), 'top-right');
+        map.addControl(new loaded.NavigationControl(NAVIGATION_CONTROL_OPTIONS), 'top-right');
         // The clustered source and its three layers, with colour resolved from
         // the tokens at call time. Factored out because setStyle() discards
         // everything the outgoing style owned — custom layers included — so a

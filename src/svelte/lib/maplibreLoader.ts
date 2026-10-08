@@ -80,6 +80,32 @@ export function basemapStyle(dark: boolean): string {
   return configured || (dark ? DARK_STYLE : LIGHT_STYLE);
 }
 
+/**
+ * MapLibre's `locale` option, from this module's translated strings.
+ *
+ * Without it every map control spoke English on a French or German page —
+ * zoom buttons, the attribution toggle and the cooperative-gesture overlay
+ * ("Use Ctrl + scroll…") included. The shared contract (DRE-theme
+ * docs/DESIGN-INTEGRATION.md, "Maps") asks every MapLibre map for one.
+ */
+export function mapLocale(translate: (key: string) => string): Record<string, string> {
+  return {
+    'NavigationControl.ZoomIn': translate('map_zoom_in'),
+    'NavigationControl.ZoomOut': translate('map_zoom_out'),
+    'NavigationControl.ResetBearing': translate('map_reset_bearing'),
+    'FullscreenControl.Enter': translate('map_fullscreen'),
+    'FullscreenControl.Exit': translate('map_fullscreen_exit'),
+    'AttributionControl.ToggleAttribution': translate('map_toggle_attribution'),
+    'Popup.Close': translate('map_close_popup'),
+    'CooperativeGesturesHandler.WindowsHelpText': translate('map_gesture_windows'),
+    'CooperativeGesturesHandler.MacHelpText': translate('map_gesture_mac'),
+    'CooperativeGesturesHandler.MobileHelpText': translate('map_gesture_mobile'),
+  };
+}
+
+/** The one navigation-control preset every DRE map uses (zoom only, no compass). */
+export const NAVIGATION_CONTROL_OPTIONS = { showCompass: false } as const;
+
 export interface MapLike {
   on(event: string, layerOrHandler: unknown, handler?: unknown): void;
   once(event: string, layerOrHandler: unknown, handler?: unknown): void;

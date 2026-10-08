@@ -145,3 +145,34 @@ describe('basemapStyle', () => {
     expect(basemapStyle(true)).toBe('/dark.json');
   });
 });
+
+describe('mapLocale', () => {
+  it('routes every MapLibre control label through the translator', async () => {
+    const { mapLocale } = await freshLoader();
+    const locale = mapLocale((key) => `T:${key}`);
+    expect(Object.keys(locale).sort()).toEqual([
+      'AttributionControl.ToggleAttribution',
+      'CooperativeGesturesHandler.MacHelpText',
+      'CooperativeGesturesHandler.MobileHelpText',
+      'CooperativeGesturesHandler.WindowsHelpText',
+      'FullscreenControl.Enter',
+      'FullscreenControl.Exit',
+      'NavigationControl.ResetBearing',
+      'NavigationControl.ZoomIn',
+      'NavigationControl.ZoomOut',
+      'Popup.Close',
+    ]);
+    for (const value of Object.values(locale)) expect(value).toMatch(/^T:map_/);
+  });
+
+  it('has an English string for every key it asks for', async () => {
+    const { mapLocale } = await freshLoader();
+    const { t } = await import('../../src/svelte/lib/i18n');
+    for (const value of Object.values(mapLocale(t))) expect(value).not.toMatch(/^map_/);
+  });
+
+  it('uses the shared navigation-control preset', async () => {
+    const { NAVIGATION_CONTROL_OPTIONS } = await freshLoader();
+    expect(NAVIGATION_CONTROL_OPTIONS).toEqual({ showCompass: false });
+  });
+});
