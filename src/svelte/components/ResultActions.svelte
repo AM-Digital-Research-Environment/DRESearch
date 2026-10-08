@@ -38,6 +38,7 @@
     min-height: var(--size-control-lg, 2.75rem);
     padding: 0 var(--space-3, 0.75rem);
     color: var(--primary-text, #006440);
+    font-size: var(--text-sm, 0.9375rem);
     font-weight: 600;
     border: 1px solid var(--border-strong, #bfbab3);
     border-radius: var(--radius-md, 0.5rem);

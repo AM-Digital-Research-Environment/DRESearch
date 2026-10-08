@@ -38,6 +38,22 @@ jobs:
       - run: npm run build
       - run: npm test
 
+  # The built bundle in a real browser (Chromium): mount, autocomplete, facets,
+  # corpus tabs, empty and error states, dark mode, axe and a 320px viewport.
+  # Every request is stubbed (tests/browser/fixture.ts), so no services.
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+
   php:
     runs-on: ubuntu-latest
     timeout-minutes: 25

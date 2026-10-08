@@ -27,3 +27,7 @@ Thumbs.db
 # container. Not tracked, so dependency updates no longer need a hand-rebuilt
 # bundle committed alongside them.
 asset/dist/
+
+# Playwright output (npm run test:browser)
+test-results/
+playwright-report/

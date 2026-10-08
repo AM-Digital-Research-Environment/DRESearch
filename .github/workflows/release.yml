@@ -62,7 +62,7 @@ jobs:
             --exclude='/.phpunit.cache' --exclude='/.phpstan-cache' \
             --exclude='/.prettierignore' --exclude='/.prettierrc.json' \
             --exclude='/eslint.config.js' --exclude='/svelte.config.js' \
-            --exclude='/vite.config.ts' --exclude='/tsconfig.json' \
+            --exclude='/vite.config.ts' --exclude='/tsconfig.json' --exclude='/playwright.config.ts' \
             --exclude='/phpstan.neon.dist' --exclude='/phpunit.xml.dist' --exclude='/phpcs.xml.dist' \
             --exclude='/package.json' --exclude='/package-lock.json' \
             --exclude='/.editorconfig' --exclude='/.nvmrc' \
@@ -77,7 +77,7 @@ jobs:
           # legitimately ship their own tests/ and package.json inside vendor/,
           # and failing the release over those would be noise.
           leaked=$(grep -v '^DRESearch/vendor/' entries.txt | grep -E \
-            '^DRESearch/(tests|scripts|node_modules|\.github|\.agents)/|^DRESearch/(package(-lock)?\.json|tsconfig\.json|vite\.config\.ts|eslint\.config\.js|svelte\.config\.js|phpcs\.xml\.dist|phpunit\.xml\.dist|phpstan\.neon\.dist|\.prettierrc\.json|\.prettierignore|\.gitattributes|\.gitignore|\.editorconfig|\.nvmrc)$' || true)
+            '^DRESearch/(tests|scripts|node_modules|\.github|\.agents)/|^DRESearch/(package(-lock)?\.json|tsconfig\.json|vite\.config\.ts|playwright\.config\.ts|eslint\.config\.js|svelte\.config\.js|phpcs\.xml\.dist|phpunit\.xml\.dist|phpstan\.neon\.dist|\.prettierrc\.json|\.prettierignore|\.gitattributes|\.gitignore|\.editorconfig|\.nvmrc)$' || true)
           if [ -n "$leaked" ]; then
             echo "::error::development files present in DRESearch.zip:"; echo "$leaked"; exit 1
           fi

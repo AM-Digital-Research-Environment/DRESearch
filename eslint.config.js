@@ -42,7 +42,8 @@ export default [
     },
   },
   {
-    // Node tooling: the lint and release scripts, and the Playwright config.
+    // Node tooling: the lint scripts and the Playwright config and tests
+    // (page.evaluate callbacks keep the browser globals from above).
     files: ['scripts/**/*.mjs', 'playwright.config.ts', 'tests/browser/**/*.ts'],
     languageOptions: {
       globals: { ...globals.node },

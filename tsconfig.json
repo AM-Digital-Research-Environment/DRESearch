@@ -20,6 +20,8 @@
     "src/svelte/**/*.ts",
     "src/svelte/**/*.svelte",
     "tests/frontend/**/*.ts",
+    "tests/browser/**/*.ts",
+    "playwright.config.ts",
     "vite.config.ts"
   ]
 }

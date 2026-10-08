@@ -122,24 +122,28 @@
     {/if}
 
     {#if visible.length > 0}
-      <ul class="dre-facet__list" role="group" aria-labelledby={headingId}>
-        {#each visible as c (c.value)}
-          <li>
-            <label class="dre-facet__option">
-              <input
-                type="checkbox"
-                checked={selected.includes(c.value)}
-                onchange={(e) =>
-                  onToggle(field, c.value, (e.currentTarget as HTMLInputElement).checked)}
-              />
-              <span class="dre-facet__value" title={c.value}>{c.value}</span>
-              {#if c.count !== null}
-                <span class="dre-facet__count">{formatNumber(c.count)}</span>
-              {/if}
-            </label>
-          </li>
-        {/each}
-      </ul>
+      <!-- The group wraps the list: role="group" on the <ul> itself stripped its
+           list semantics and orphaned the <li>s (axe "listitem"). -->
+      <div role="group" aria-labelledby={headingId}>
+        <ul class="dre-facet__list">
+          {#each visible as c (c.value)}
+            <li>
+              <label class="dre-facet__option">
+                <input
+                  type="checkbox"
+                  checked={selected.includes(c.value)}
+                  onchange={(e) =>
+                    onToggle(field, c.value, (e.currentTarget as HTMLInputElement).checked)}
+                />
+                <span class="dre-facet__value" title={c.value}>{c.value}</span>
+                {#if c.count !== null}
+                  <span class="dre-facet__count">{formatNumber(c.count)}</span>
+                {/if}
+              </label>
+            </li>
+          {/each}
+        </ul>
+      </div>
     {:else if searching && !loading && !failed}
       <p class="dre-facet__nomatch">{t('facet_no_matches')}</p>
     {/if}
