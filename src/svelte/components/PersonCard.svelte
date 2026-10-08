@@ -80,6 +80,7 @@
           <li>
             <button
               type="button"
+              data-print
               class="dre-shell__chip dre-shell__chip--role"
               onclick={() => onAddFilter('roles_ss', role)}
             >

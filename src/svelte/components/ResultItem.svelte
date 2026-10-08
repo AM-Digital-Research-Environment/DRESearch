@@ -106,6 +106,7 @@
         <li>
           <button
             type="button"
+            data-print
             class="dre-shell__chip dre-shell__chip--accent"
             onclick={() => onAddFilter('project_s', project)}
           >

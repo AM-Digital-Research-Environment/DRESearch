@@ -179,6 +179,7 @@
               <li>
                 <button
                   type="button"
+                  data-print
                   class="dre-shell__chip"
                   onclick={() => onAddFilter('keyword_ss', kw)}
                 >

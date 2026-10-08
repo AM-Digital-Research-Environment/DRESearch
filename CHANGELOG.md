@@ -24,7 +24,7 @@ This release brings the client onto DRE-theme's shared interaction contract (`do
 - **Menus close like menus.** Escape closes the Cite menu, the Export menu and the mobile "Share and export" panel and returns focus to the button that opened it; a click elsewhere closes them.
 - **Copy feedback.** "Copy link" and the Cite buttons read "Copied" for two seconds and announce it through the theme's shared status region, or the results' own status node without the theme.
 - **Headings nest under a block title.** A Search block with a title (an `h2`) renders "Search results" and "Filters" as `h3` and its card titles as `h4`. Untitled blocks and the federated page keep `h2` and `h3`.
-- **Printing.** A printed search keeps its results and drops the facets, sort, view, share, export, paging and map controls; the federated page prints which corpus the results come from.
+- **Printing.** A printed search keeps its results and drops the facets, sort, view, share, export, paging and map controls; the federated page prints which corpus the results come from. Project, role, keyword and series chips are `<button>`s, so they carry `data-print` to stay visible under the theme's print sheet, which hides every other button. A search block now prints under these rules instead of being dropped by the theme.
 - The federated tab panel is named by its tab, the skeleton shimmer follows the theme's surface colour and timing, and the export menu uses the theme's shadow. Spacing, radii, letter-spacing and breakpoints are taken from the theme's scales.
 
 ### Packaging and tooling
