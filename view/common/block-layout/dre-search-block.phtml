@@ -10,6 +10,9 @@
  *
  * Mount contract (kept in sync with src/svelte/main.ts):
  *   1. <div data-dre-search-root data-dre-block-id="..."> mount target + skeleton.
+ *      data-dre-heading-level is 3 under the block's own <h2> title, else 2:
+ *      the client's "Search results" / "Filters" headings, and the card titles
+ *      one level below them, nest under the title instead of beside it.
  *   2. sibling <script type="application/json" id="dre-search-state-..."> bootstrap.
  */
 $id = (string) (int) $block->id();
@@ -33,6 +36,7 @@ $id = (string) (int) $block->id();
     <div
         data-dre-search-root
         data-dre-block-id="<?= $this->escapeHtmlAttr($id) ?>"
+        data-dre-heading-level="<?= $title !== '' ? '3' : '2' ?>"
         class="dre-search-block__root"
         id="dre-search-root-<?= $this->escapeHtmlAttr($id) ?>"
     >

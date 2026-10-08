@@ -20,6 +20,8 @@
   import { formatNumber, t } from './lib/i18n';
   import { buildFilterChips, type FilterChipModel as ChipModel } from './lib/filterChips';
   import { rememberSearch } from './lib/searchHistory';
+  import { provideHeadingLevel, type HeadingLevel } from './lib/headings';
+  import { COPY_FEEDBACK_MS, provideAnnouncer } from './lib/announce';
   import SearchBox from './components/SearchBox.svelte';
   import SortSelect from './components/SortSelect.svelte';
   import ExportMenu from './components/ExportMenu.svelte';
@@ -58,6 +60,12 @@
     urlPrefix?: string;
     /** Whether this App owns the `q` key (false on the federated page — the shell does). */
     includeQuery?: boolean;
+    /**
+     * Level of this surface's headings: 3 under a titled block's <h2>, else 2
+     * (an untitled block, the federated page under its <h1>). Card titles sit
+     * one level below. See lib/headings.ts.
+     */
+    headingLevel?: HeadingLevel;
   }
 
   const {
@@ -66,7 +74,21 @@
     syncUrl: syncUrlProp,
     urlPrefix: urlPrefixProp,
     includeQuery: includeQueryProp,
+    headingLevel = 2,
   }: Props = $props();
+  // svelte-ignore state_referenced_locally
+  provideHeadingLevel(headingLevel);
+
+  // A widget's brief message ("Copied") when the theme's shared status region
+  // is absent: spoken by this surface's one status node, then cleared.
+  let notice = $state('');
+  let noticeTimer: number | undefined;
+  provideAnnouncer((message) => {
+    notice = message;
+    window.clearTimeout(noticeTimer);
+    noticeTimer = window.setTimeout(() => (notice = ''), COPY_FEEDBACK_MS);
+  });
+  $effect(() => () => window.clearTimeout(noticeTimer));
 
   const api = $derived.by(
     () => new SearchApi(bootstrap.endpoints, bootstrap.profile, bootstrap.block_id),
@@ -468,15 +490,17 @@
   // contents of an open menu. The skeleton and the visible empty/error boxes
   // are not live regions of their own.
   const announcement = $derived(
-    isLoading
-      ? t('loading')
-      : failed
-        ? t('search_unavailable')
-        : response && response.available
-          ? response.found === 0
-            ? emptyTitle
-            : `${formatNumber(response.found)} ${response.found === 1 ? t('result_one') : t('result_other')}`
-          : '',
+    notice
+      ? notice
+      : isLoading
+        ? t('loading')
+        : failed
+          ? t('search_unavailable')
+          : response && response.available
+            ? response.found === 0
+              ? emptyTitle
+              : `${formatNumber(response.found)} ${response.found === 1 ? t('result_one') : t('result_other')}`
+            : '',
   );
 
   function retry(): void {
@@ -653,6 +677,7 @@
             labels={bootstrap.facet_labels}
             selected={filters}
             {activeCount}
+            {headingLevel}
             onToggle={handleFacetToggle}
             onClearAll={handleClearAll}
             prepend={showYear ? yearSlider : undefined}
@@ -661,9 +686,14 @@
       {/if}
 
       <div class="dre-search__results" aria-busy={isLoading}>
-        <h2 class="dre-search__sr-only" tabindex="-1" bind:this={resultsHeading}>
+        <svelte:element
+          this={`h${headingLevel}`}
+          class="dre-search__sr-only"
+          tabindex="-1"
+          bind:this={resultsHeading}
+        >
           {t('search_results')}
-        </h2>
+        </svelte:element>
         <p class="dre-search__sr-only" role="status" aria-live="polite" aria-atomic="true">
           {announcement}
         </p>
@@ -916,6 +946,24 @@
   }
   .dre-search__clear-link {
     margin-top: var(--space-xs, 0.25rem);
+  }
+
+  /* Print: the results print, their controls do not — without leaning on the
+     theme's global print rule that hides every button (DRE-theme integration
+     contract, "Print"). */
+  @media print {
+    .dre-search__facets,
+    .dre-search__facets-toggle,
+    .dre-search__error,
+    .dre-search__clear-link {
+      display: none;
+    }
+    .dre-search__layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .dre-search__stale--loading {
+      opacity: 1;
+    }
   }
 
   @media (max-width: 48rem) {

@@ -22,6 +22,8 @@
     onClearAll: () => void;
     /** Optional extra control rendered above the facet groups (e.g. a year slider). */
     prepend?: Snippet;
+    /** 3 under a titled block's <h2>, else 2 (see lib/headings.ts). */
+    headingLevel?: 2 | 3;
   }
 
   const {
@@ -35,6 +37,7 @@
     prepend,
     searchValues,
     scopeKey = '',
+    headingLevel = 2,
   }: Props = $props();
 
   function labelFor(field: string): string {
@@ -59,7 +62,9 @@
 
 <div class="dre-facets">
   <header class="dre-facets__header">
-    <h2 class="dre-facets__heading">{t('filters')}</h2>
+    <svelte:element this={`h${headingLevel}`} class="dre-facets__heading"
+      >{t('filters')}</svelte:element
+    >
     {#if activeCount > 0}
       <button type="button" class="dre-facets__clear-all" onclick={onClearAll}>
         {t('clear_all_filters')}
@@ -126,7 +131,7 @@
   }
   .dre-facets__heading {
     margin: 0;
-    /* It's an <h2>, so the host theme would render it in the display serif;
+    /* It's a heading, so the host theme would render it in the display serif;
        force the body face so it reads as a UI eyebrow, like the facet-group
        labels below it (Spectral caps at 13px look out of place here). */
     font-family: var(

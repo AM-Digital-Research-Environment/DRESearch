@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
+  import { cardTitleTag } from '../lib/headings';
   import { t } from '../lib/i18n';
   import { firstMarked, markedLookup } from '../lib/highlight';
   import { safeExternalUrl } from '../lib/text';
@@ -37,6 +38,7 @@
   }
 
   const { doc, itemUrlBase, onAddFilter }: Props = $props();
+  const titleTag = cardTitleTag();
 
   const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
   const title = $derived(doc.title || t('untitled'));
@@ -116,9 +118,9 @@
       {/if}
     </header>
 
-    <h3 class="dre-shell__title">
+    <svelte:element this={titleTag} class="dre-shell__title">
       <a href={url}><Highlight value={titleHl ?? title} /></a>
-    </h3>
+    </svelte:element>
 
     {#if authors.length > 0}
       <p class="dre-shell__line dre-bcard__authors">

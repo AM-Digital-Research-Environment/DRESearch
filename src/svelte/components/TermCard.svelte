@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
+  import { cardTitleTag } from '../lib/headings';
   import { t, researchItemsLabel, publicationsLabel } from '../lib/i18n';
   import Highlight from './Highlight.svelte';
   import Sparkline from './Sparkline.svelte';
@@ -31,6 +32,7 @@
   }
 
   const { doc, itemUrlBase, onAddFilter, profile }: Props = $props();
+  const titleTag = cardTitleTag();
 
   const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
   const name = $derived(doc.title || t('untitled'));
@@ -54,9 +56,9 @@
 
 <article class="dre-shell dre-term">
   <div class="dre-term__head">
-    <h3 class="dre-shell__title dre-term__name">
+    <svelte:element this={titleTag} class="dre-shell__title dre-term__name">
       <a href={url}><Highlight value={nameHl ?? name} /></a>
-    </h3>
+    </svelte:element>
     {#if type}
       <button
         type="button"

@@ -353,6 +353,13 @@
   .dre-map__places li span {
     color: var(--muted, #716a66);
   }
+  /* A WebGL canvas does not print; the list of places is the printable map. */
+  @media print {
+    .dre-map,
+    .dre-map__coverage {
+      display: none;
+    }
+  }
   @media (max-width: 37.5rem) {
     .dre-map {
       min-height: 24rem;

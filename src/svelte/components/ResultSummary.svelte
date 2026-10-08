@@ -68,6 +68,12 @@
     flex-wrap: wrap;
     gap: 0.5rem;
   }
+  /* Print the count and the active filters, not sort / view / share / export. */
+  @media print {
+    .dre-summary__tools {
+      display: none;
+    }
+  }
   @media (max-width: 48rem) {
     .dre-summary {
       align-items: stretch;

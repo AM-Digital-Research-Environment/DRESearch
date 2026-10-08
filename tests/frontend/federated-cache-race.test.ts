@@ -75,7 +75,7 @@ it('ignores a pending response after returning to a cached tab', async () => {
   await fireEvent.change(chooser, { target: { value: 'first' } });
   resolveSecond({ available: true, counts: {}, active: response('Second corpus document') });
   await waitFor(() => expect(screen.getByText('First corpus document')).toBeTruthy());
-  expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-label', 'first');
+  expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-labelledby', 'dre-fed-tab-first');
   expect(screen.queryByText('Second corpus document')).toBeNull();
   expect(document.querySelector('.dre-skeletons')).toBeNull();
   expect(screen.queryByText('Loading…')).toBeNull();

@@ -1,11 +1,16 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { t } from '../lib/i18n';
+  import { detailsPopover } from '../lib/popover';
   const { children }: { children: Snippet } = $props();
   let open = $state(false);
+  // Wide screens pin the actions open with the summary hidden; only the
+  // narrow disclosure closes on Escape or a press outside.
+  let wide = $state(false);
   $effect(() => {
     const media = window.matchMedia('(min-width: 48rem)');
     const update = () => {
+      wide = media.matches;
       open = media.matches;
     };
     update();
@@ -14,7 +19,7 @@
   });
 </script>
 
-<details class="dre-actions" bind:open>
+<details class="dre-actions" bind:open use:detailsPopover={{ enabled: !wide }}>
   <summary>{t('result_actions')}</summary>
   <div>{@render children()}</div>
 </details>

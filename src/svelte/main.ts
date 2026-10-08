@@ -12,6 +12,7 @@
 import { mount } from 'svelte';
 import SearchBar from './components/SearchBar.svelte';
 import type { Bootstrap, FederatedBootstrap, SearchBarBootstrap } from './lib/types';
+import { parseHeadingLevel } from './lib/headings';
 
 /**
  * Walk every not-yet-mounted root matching `selector`, read its sibling state
@@ -76,7 +77,13 @@ function mountAll(): void {
     async (root, bootstrap) => {
       const { default: App } = await import('./App.svelte');
       root.innerHTML = '';
-      mount(App, { target: root, props: { bootstrap: bootstrap as Bootstrap } });
+      mount(App, {
+        target: root,
+        props: {
+          bootstrap: bootstrap as Bootstrap,
+          headingLevel: parseHeadingLevel(root.dataset.dreHeadingLevel),
+        },
+      });
     },
   );
   mountRoots(

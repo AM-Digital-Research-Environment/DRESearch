@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
+  import { cardTitleTag } from '../lib/headings';
   import { t, researchItemsLabel, publicationsLabel } from '../lib/i18n';
   import { markedLookup } from '../lib/highlight';
   import Highlight from './Highlight.svelte';
@@ -30,6 +31,7 @@
   }
 
   const { doc, itemUrlBase, onAddFilter }: Props = $props();
+  const titleTag = cardTitleTag();
 
   const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
   const name = $derived(doc.title || t('untitled'));
@@ -59,9 +61,9 @@
   <CardThumb href={url} url={doc.thumbnail_url} shape="avatar" />
 
   <div class="dre-shell__body">
-    <h3 class="dre-shell__title">
+    <svelte:element this={titleTag} class="dre-shell__title">
       <a href={url}><Highlight value={nameHl ?? name} /></a>
-    </h3>
+    </svelte:element>
 
     {#if affiliations.length > 0}
       <p class="dre-shell__line">

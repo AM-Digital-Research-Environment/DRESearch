@@ -729,7 +729,7 @@ msgstr ""
 msgid "Research projects search"
 msgstr ""
 
-#: view/common/block-layout/dre-search-block.phtml:17
+#: view/common/block-layout/dre-search-block.phtml:20
 msgid "Research search"
 msgstr ""
 
@@ -782,7 +782,7 @@ msgstr ""
 msgid "Search"
 msgstr ""
 
-#: view/common/block-layout/dre-search-block.phtml:22
+#: view/common/block-layout/dre-search-block.phtml:25
 #, php-format
 msgid "Search %s"
 msgstr ""
@@ -836,7 +836,7 @@ msgstr ""
 msgid "Search publications…"
 msgstr ""
 
-#: view/common/block-layout/dre-search-block.phtml:30 view/dre-search/federated.phtml:23
+#: view/common/block-layout/dre-search-block.phtml:33 view/dre-search/federated.phtml:23
 msgid "Search requires JavaScript to be enabled."
 msgstr ""
 

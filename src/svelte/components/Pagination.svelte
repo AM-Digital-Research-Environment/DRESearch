@@ -115,6 +115,11 @@
     border-color: var(--primary, #007a50);
     color: var(--primary-contrast, #fcfcf9);
   }
+  @media print {
+    .dre-pager {
+      display: none;
+    }
+  }
   .dre-pager__gap {
     color: var(--muted, #716a66);
     padding-inline: 0.25rem;

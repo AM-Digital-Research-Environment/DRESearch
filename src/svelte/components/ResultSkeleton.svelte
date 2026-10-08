@@ -81,6 +81,11 @@
     aspect-ratio: 4/3;
     width: 100%;
   }
+  @media print {
+    .dre-skeletons {
+      display: none;
+    }
+  }
   @keyframes dre-shimmer {
     to {
       background-position: -200% 0;

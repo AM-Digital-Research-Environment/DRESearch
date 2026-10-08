@@ -348,6 +348,11 @@
   .dre-search-box {
     position: relative;
   }
+  @media print {
+    .dre-search-box {
+      display: none;
+    }
+  }
   .dre-search-box__input-wrap {
     position: relative;
     display: flex;

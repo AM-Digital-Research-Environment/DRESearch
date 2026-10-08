@@ -68,7 +68,10 @@ describe('federated corpus chooser', () => {
         expect.any(AbortSignal),
       ),
     );
-    expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-label', 'locations');
+    expect(screen.getByRole('tabpanel')).toHaveAttribute(
+      'aria-labelledby',
+      'dre-fed-tab-locations',
+    );
     expect(window.location.search).toContain('profile=locations');
   });
 });

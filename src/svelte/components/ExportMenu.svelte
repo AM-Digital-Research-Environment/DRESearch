@@ -18,6 +18,7 @@
     type ExportMeta,
   } from '../lib/export';
   import { formatNumber, t } from '../lib/i18n';
+  import { dismissOnEscapeOrOutside } from '../lib/popover';
   import '../styles/buttons.css';
 
   /**
@@ -73,25 +74,14 @@
     requestAnimationFrame(() => trigger?.focus());
   }
 
-  // Close when focus/clicks land outside the component.
+  // Escape closes and refocuses the trigger; a press outside just closes —
+  // the shared popover behaviour (lib/popover.ts), as Cite and Share do.
   $effect(() => {
-    if (!open) return;
-    const onPointerDown = (e: PointerEvent): void => {
-      if (root && !root.contains(e.target as Node)) {
-        open = false;
-      }
-    };
-    const onKeydown = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
-        close();
-      }
-    };
-    window.addEventListener('pointerdown', onPointerDown);
-    window.addEventListener('keydown', onKeydown);
-    return () => {
-      window.removeEventListener('pointerdown', onPointerDown);
-      window.removeEventListener('keydown', onKeydown);
-    };
+    if (!open || !root) return;
+    return dismissOnEscapeOrOutside(root, (returnFocus) => {
+      if (returnFocus) close();
+      else open = false;
+    });
   });
 
   async function run(format: ExportFormat): Promise<void> {

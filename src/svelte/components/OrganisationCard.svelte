@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
+  import { cardTitleTag } from '../lib/headings';
   import { t, researchItemsLabel, projectsLabel, peopleLabel } from '../lib/i18n';
   import Highlight from './Highlight.svelte';
   import CardThumb from './CardThumb.svelte';
@@ -25,6 +26,7 @@
   }
 
   const { doc, itemUrlBase, onAddFilter }: Props = $props();
+  const titleTag = cardTitleTag();
 
   const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
   const name = $derived(doc.title || t('untitled'));
@@ -54,9 +56,9 @@
 
   <div class="dre-shell__body">
     <div class="dre-org__head">
-      <h3 class="dre-shell__title dre-org__name">
+      <svelte:element this={titleTag} class="dre-shell__title dre-org__name">
         <a href={url}><Highlight value={nameHl ?? name} /></a>
-      </h3>
+      </svelte:element>
       {#if type}
         <button
           type="button"

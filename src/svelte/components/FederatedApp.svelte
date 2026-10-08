@@ -20,6 +20,7 @@
   import ResultSkeleton from './ResultSkeleton.svelte';
   import CopyLinkButton from './CopyLinkButton.svelte';
   import '../styles/buttons.css';
+  import { COPY_FEEDBACK_MS, provideAnnouncer } from '../lib/announce';
 
   interface Props {
     bootstrap: FederatedBootstrap;
@@ -59,6 +60,15 @@
   let cache: Record<string, SearchResponse> = {};
   let cacheQuery: string | null = null;
   let requestId = 0;
+  // A widget's brief message ("Copied") without the theme: spoken by this
+  // surface's status node. An embedded corpus App provides its own.
+  let notice = $state('');
+  let noticeTimer: number | undefined;
+  provideAnnouncer((message) => {
+    notice = message;
+    window.clearTimeout(noticeTimer);
+    noticeTimer = window.setTimeout(() => (notice = ''), COPY_FEEDBACK_MS);
+  });
   const tabs = $derived([
     { name: ALL, label: t('all_results') },
     ...profiles.map((p) => ({ name: p.name, label: p.label })),
@@ -211,6 +221,7 @@
       remove();
       controller?.abort();
       if (inputTimer !== null) clearTimeout(inputTimer);
+      window.clearTimeout(noticeTimer);
     };
   });
   $effect(() => {
@@ -235,7 +246,9 @@
     unionPage = 1;
   }
   /**
-   * Manual activation (WAI-ARIA tabs): arrow keys move focus between the
+   * MANUAL ACTIVATION (WAI-ARIA tabs), as the shared contract asks of tabs
+   * whose switch costs a network request (DRE-theme docs/DESIGN-INTEGRATION.md,
+   * "Shared widgets"): arrow keys, Home and End move focus between the
    * thirteen tabs, Enter or Space selects. Selecting on every arrow press
    * pushed a history entry and fired a federated search per key.
    */
@@ -310,17 +323,19 @@
   // the panel (loading, the merged list, a failure). Once a corpus's App is
   // mounted, that App's own status node takes over and this one falls silent.
   const announcement = $derived(
-    isLoading
-      ? t('loading')
-      : failed
-        ? t('search_unavailable')
-        : activeProfile === ALL && unionResponse
-          ? unionResponse.found === 0
-            ? query
-              ? t('no_results_title')
-              : t('corpus_empty')
-            : `${formatNumber(unionResponse.found)} ${unionResponse.found === 1 ? t('result_one') : t('result_other')}`
-          : '',
+    notice
+      ? notice
+      : isLoading
+        ? t('loading')
+        : failed
+          ? t('search_unavailable')
+          : activeProfile === ALL && unionResponse
+            ? unionResponse.found === 0
+              ? query
+                ? t('no_results_title')
+                : t('corpus_empty')
+              : `${formatNumber(unionResponse.found)} ${unionResponse.found === 1 ? t('result_one') : t('result_other')}`
+            : '',
   );
   const count = (name: string): string =>
     countsQuery === null ? '' : formatNumber(counts[name] ?? 0);
@@ -365,6 +380,11 @@
         {/each}
       </select>
     </label>
+    <!-- Print only: the theme's print sheet hides every <button>, which would
+         drop the one label that says which corpus these results come from. -->
+    <p class="dre-fed__print-label">
+      {t('result_types')}: {tabs.find((tab) => tab.name === activeProfile)?.label}
+    </p>
     <div class="dre-fed__tabs" role="tablist" aria-label={t('result_types')}>
       {#each tabs as tab (tab.name)}<button
           type="button"
@@ -386,7 +406,7 @@
       class="dre-fed__panel"
       id="dre-fed-panel"
       role="tabpanel"
-      aria-label={tabs.find((tab) => tab.name === activeProfile)?.label}
+      aria-labelledby="dre-fed-tab-{activeProfile}"
       aria-busy={isLoading}
       tabindex="0"
     >
@@ -641,6 +661,25 @@
     clip: rect(0 0 0 0);
     white-space: nowrap;
     border: 0;
+  }
+  .dre-fed__print-label {
+    display: none;
+  }
+  /* Print: the results and the corpus they come from, not the search field,
+     the chooser, the tab strip or the paging (DRE-theme integration contract,
+     "Print"). */
+  @media print {
+    .dre-fed__search,
+    .dre-fed__chooser,
+    .dre-fed__tabs,
+    .dre-fed__error {
+      display: none;
+    }
+    .dre-fed__print-label {
+      display: block;
+      margin: 0;
+      font-weight: 600;
+    }
   }
   @media (max-width: 37.5rem) {
     .dre-fed__all-summary {

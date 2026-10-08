@@ -3,6 +3,8 @@
   import { t } from '../lib/i18n';
   import '../styles/buttons.css';
   import { download, serialize, type ExportFormat, type ExportMeta } from '../lib/export';
+  import { announce, COPY_FEEDBACK_MS, surfaceAnnouncer } from '../lib/announce';
+  import { detailsPopover } from '../lib/popover';
 
   /**
    * "Cite" for one record: the export serializers applied to a single
@@ -17,7 +19,14 @@
 
   const { doc, kind, itemUrlBase }: Props = $props();
 
+  // The copied button reads "Copied" for two seconds and the theme's shared
+  // status region (else the results' status node) says so; `status` is the
+  // last resort, for a menu rendered outside any search surface.
+  const surface = surfaceAnnouncer();
+  let copiedFormat = $state<ExportFormat | null>(null);
   let status = $state('');
+  let timer: number | undefined;
+  $effect(() => () => window.clearTimeout(timer));
 
   const meta: ExportMeta = {
     query: '',
@@ -45,8 +54,13 @@
       document.execCommand('copy');
       area.remove();
     }
-    status = t('copied');
-    window.setTimeout(() => (status = ''), 1800);
+    copiedFormat = format;
+    if (!announce(t('copied'), surface)) status = t('copied');
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => {
+      copiedFormat = null;
+      status = '';
+    }, COPY_FEEDBACK_MS);
   }
 
   function save(): void {
@@ -58,18 +72,18 @@
   }
 </script>
 
-<details class="dre-cite">
+<details class="dre-cite" use:detailsPopover>
   <summary>{t('cite')}</summary>
   <div class="dre-cite__actions" role="group" aria-label={t('cite')}>
     <button type="button" class="dre-button-secondary" onclick={() => copy('bibtex')}
-      >{t('copy_bibtex')}</button
+      >{copiedFormat === 'bibtex' ? t('copied') : t('copy_bibtex')}</button
     >
     <button type="button" class="dre-button-secondary" onclick={() => copy('ris')}
-      >{t('copy_ris')}</button
+      >{copiedFormat === 'ris' ? t('copied') : t('copy_ris')}</button
     >
     <button type="button" class="dre-button-secondary" onclick={save}>{t('download_ris')}</button>
   </div>
-  <p class="dre-cite__status" role="status" aria-live="polite">{status}</p>
+  {#if !surface}<p class="dre-cite__status" role="status">{status}</p>{/if}
 </details>
 
 <style>
@@ -99,9 +113,14 @@
     padding-inline: var(--space-sm, 0.5rem);
     font-size: var(--text-xs, 0.8125rem);
   }
+  /* Spoken only: the button label already shows "Copied". */
   .dre-cite__status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
     margin: 0;
-    min-height: 1em;
-    color: var(--muted, #716a66);
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 </style>
