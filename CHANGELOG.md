@@ -3,6 +3,39 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.26.0] - 2026-10-08
+
+### Fixed
+
+- **The map always has a basemap.** The shared `window.RV_MAP_CONFIG` was read with `??`, so the empty `lightStyle` / `darkStyle` that DRE-Visualizations used to emit became the style URL and the map drew points on a blank canvas. Every step now uses `||` and falls back to the next style.
+- **The facet value list is a list again.** It carried `role="group"` on the `<ul>` itself, which stripped the list semantics from its items (axe "listitem"); the group now wraps the list.
+
+### Changed
+
+This release brings the client onto DRE-theme's shared interaction contract (`docs/DESIGN-INTEGRATION.md`), so search behaves like the theme and DRE Visualizations rather than beside them.
+
+- **Errors can be retried, and stay readable.** A failed search, federated search or map request shows a translated message and a **Try again** button that reruns it. The HTTP status, request id and raw server message, which used to be printed on the page, now go to the browser console.
+- **One status node per surface.** The results, the federated panel and the map each keep exactly one persistent `role="status"` node, which announces "Loading…", the result count, the empty message or the failure. The skeleton is `aria-hidden`, and `aria-busy` is set on the results only while they load.
+- **Shared wording.** "Loading…", "Try again", "Copied", "Clear all filters", "No records match that search.", "Search is temporarily unavailable.", "The map could not be loaded.", and "View as" for the layout switch, whose gallery option is now called **Grid** (`?view=gallery` links still work).
+- **Translated map controls.** The map's zoom buttons, attribution toggle and "Use Ctrl + scroll to zoom" hints follow the site's language. The navigation control drops the compass, matching DRE Visualizations.
+- **Focus that survives high-contrast mode.** Text fields no longer combine their focus ring with `outline: none`, which left no focus indicator at all under Windows High Contrast. The sort chevron and the transcript badge stay visible there too, and the focusable federated tab panel now shows focus.
+- **Controls drawn like the theme's.** Fields and selects use the theme's field border. The pager, Export, Copy link, Cite, the mobile Filters toggle and the empty-state actions are the theme's secondary button. Chips are fully rounded, and an organisation's or term's type tag takes the colour of its entity type (location, subject, genre, language, organisation), as in the charts and maps.
+- **Cards fit their column, not the screen.** A thumbnail sits beside the text only while the card itself is at least 28rem wide, so cards in a narrow column on a wide screen stack instead of squeezing their titles. People and organisations keep their small portrait beside the name.
+- **Menus close like menus.** Escape closes the Cite menu, the Export menu and the mobile "Share and export" panel and returns focus to the button that opened it; a click elsewhere closes them.
+- **Copy feedback.** "Copy link" and the Cite buttons read "Copied" for two seconds and announce it through the theme's shared status region, or the results' own status node without the theme.
+- **Headings nest under a block title.** A Search block with a title (an `h2`) renders "Search results" and "Filters" as `h3` and its card titles as `h4`. Untitled blocks and the federated page keep `h2` and `h3`.
+- **Printing.** A printed search keeps its results and drops the facets, sort, view, share, export, paging and map controls; the federated page prints which corpus the results come from.
+- The federated tab panel is named by its tab, the skeleton shimmer follows the theme's surface colour and timing, and the export menu uses the theme's shadow. Spacing, radii, letter-spacing and breakpoints are taken from the theme's scales.
+
+### Packaging and tooling
+
+- **Real-browser tests.** `npm run test:browser` drives the built bundle in Chromium with Playwright and axe: mounting, autocomplete, facets, corpus tabs, the empty and error states, heading levels, dark mode, no serious or critical axe violations, and no horizontal scroll at 320px. CI runs it in a new `browser` job.
+- GitHub Actions are pinned to commit SHAs; Dependabot runs weekly with a five-day cooldown, like the theme's; `ci.yml` can be started by hand.
+- The version check also reads `package-lock.json`. ESLint also lints `scripts/` and declares `svelte-eslint-parser` directly; jsdom moves to 30 and ESLint to 10.12. `.nvmrc` and `engines.node` pin Node 24, and an `.editorconfig` follows the theme's.
+- `module.ini` declares `php_version_constraint = ">=8.3"` and requires Omeka S `^4.2.1`.
+
+**Upgrade:** requires Omeka S 4.2.1 or newer. No reindex is needed.
+
 ## [1.25.0] - 2026-10-07
 
 ### Security
