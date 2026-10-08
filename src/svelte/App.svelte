@@ -859,6 +859,7 @@
     max-height: calc(100vh - var(--space-xl, 2rem));
     overflow-y: auto;
     scrollbar-width: thin;
+    scrollbar-color: var(--border-strong, #bfbab3) transparent;
     /* A left gutter so the rail's controls aren't glued to the page edge; it
        lands the headings on the search box's text edge (both = --space-md). */
     padding-inline: var(--space-md, 1rem);

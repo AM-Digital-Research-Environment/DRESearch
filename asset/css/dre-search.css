@@ -11,6 +11,20 @@
     margin-block: var(--space-lg, 1.5rem);
 }
 
+/*
+ * The theme gives PROSE lists a rhythm: `ul { margin-bottom: 1.5rem }` and
+ * `ul li { margin-bottom: 0.5rem }` (DRE-theme _lists.scss, specificity 0,0,2).
+ * Every list inside a Search surface is an interface list (filter chips, facet
+ * values, results, card chips), spaced by its own flex gap, so that rhythm
+ * only pushed items off their row: the active-filter chips sat 4px above the
+ * result count beside them, and result cards were 24px apart instead of 16px.
+ * Reset at (0,1,1); a component's own list rule, which loads later from
+ * dist/dre-search.css at equal or higher specificity, still wins.
+ */
+:is([data-dre-search-root], [data-dre-search-bar], [data-dre-federated-root]) :is(ul, ol, li) {
+    margin-block: 0;
+}
+
 .dre-search-block__title {
     font-family: var(--font-display, "Spectral", Georgia, "Times New Roman", serif);
     font-size: var(--text-2xl, 1.875rem);

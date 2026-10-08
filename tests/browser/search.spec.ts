@@ -16,6 +16,11 @@ async function setTheme(page: Page, mode: 'light' | 'dark'): Promise<void> {
     document.documentElement.dataset.theme = value;
     document.body.dataset.theme = value;
   }, mode);
+  // Buttons ease their colours over 200ms; an axe scan inside that window
+  // measures a half-switched contrast pair and fails one run in four.
+  await page.waitForFunction(() =>
+    document.getAnimations().every((animation) => animation.playState !== 'running'),
+  );
 }
 
 test.describe('search block', () => {

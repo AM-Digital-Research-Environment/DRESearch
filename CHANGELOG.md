@@ -3,6 +3,14 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.26.4] - 2026-10-08
+
+### Fixed
+
+- **The result toolbar lines up.** The active-filter chips sat 4px above the result count, the Sort label and the controls beside them. The theme's prose list rhythm (`ul li { margin-bottom: 0.5rem }`) reached every list inside Search: filter chips, facet values, results and card chips. Search's shell stylesheet now resets list margins inside its own surfaces, where every list already spaces itself with a flex gap. As a result, result cards are 16px apart, as designed, instead of 24px.
+- **Facet counts are no longer cut off by the scrollbar.** Overlay scrollbars (Firefox on Windows 11, macOS) take no layout space, so the scrollbar of a long facet list drew over the right-aligned counts ("229" read "22"). The list now keeps an end padding and a stable scrollbar gutter, and both scrolling areas use the theme's thin, `--border-strong` scrollbar.
+- The dark-mode browser test waits for the buttons' 200ms colour transition before its axe scan. It used to fail about one run in four.
+
 ## [1.26.3] - 2026-10-08
 
 ### Fixed

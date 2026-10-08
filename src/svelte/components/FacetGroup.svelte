@@ -247,14 +247,20 @@
   .dre-facet__list {
     list-style: none;
     margin: var(--space-sm, 0.5rem) 0 0;
-    padding: 0;
+    /* The end padding keeps the right-aligned counts clear of the scrollbar.
+       An overlay scrollbar (Firefox and macOS by default) takes no layout
+       space and drew over them, clipping "229" to "22"; scrollbar-gutter
+       reserves the space of a classic one. */
+    padding: 0 var(--space-3, 0.75rem) 0 0;
     display: flex;
     flex-direction: column;
     gap: var(--space-1, 0.25rem);
     /* Keep a long (searched) list from dominating the sidebar; scroll within. */
     max-height: 22rem;
     overflow-y: auto;
+    scrollbar-gutter: stable;
     scrollbar-width: thin;
+    scrollbar-color: var(--border-strong, #bfbab3) transparent;
   }
   .dre-facet__option {
     display: flex;
