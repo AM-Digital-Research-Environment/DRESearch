@@ -353,6 +353,14 @@
   .dre-map__places li span {
     color: var(--muted, #716a66);
   }
+  /* MapLibre rings a focused control with a box-shadow, which forced-colours
+     mode drops. An inset outline (the control group clips overflow) keeps it
+     visible there — the same rule as DRE Visualizations' maps. */
+  .dre-map :global(.maplibregl-ctrl button:focus-visible),
+  .dre-map :global(.maplibregl-ctrl summary:focus-visible) {
+    outline: 2px solid var(--focus-color, #007a50);
+    outline-offset: -2px;
+  }
   /* A WebGL canvas does not print; the list of places is the printable map. */
   @media print {
     .dre-map,

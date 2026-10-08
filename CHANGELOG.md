@@ -9,6 +9,7 @@ All notable changes to DRE Search are documented here. The project follows
 
 - **The map always has a basemap.** The shared `window.RV_MAP_CONFIG` was read with `??`, so the empty `lightStyle` / `darkStyle` that DRE-Visualizations used to emit became the style URL and the map drew points on a blank canvas. Every step now uses `||` and falls back to the next style.
 - **The facet value list is a list again.** It carried `role="group"` on the `<ul>` itself, which stripped the list semantics from its items (axe "listitem"); the group now wraps the list.
+- **Map controls keep their focus ring in forced-colours mode.** MapLibre draws it as a box-shadow, which Windows High Contrast drops; the controls now take an inset outline, as DRE Visualizations' maps do.
 
 ### Changed
 
