@@ -1,0 +1,32 @@
+; Africa Multiple — DRE Search
+; Copied from DRE-theme's .editorconfig so the three repositories share one
+; baseline (UTF-8, LF, final newline, no trailing whitespace, spaces). The
+; indent sizes follow this repository's formatters: PHP, the view scripts and
+; asset/css use four spaces; the Svelte client, its tests and the JSON/YAML
+; files use two, as .prettierrc.json does.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{ts,svelte,js,mjs,cjs,json}]
+indent_size = 2
+
+[src/svelte/**.css]
+indent_size = 2
+
+[*.{yml,yaml,cff}]
+indent_size = 2
+
+[*.md]
+; Markdown uses trailing double-space for hard line breaks.
+trim_trailing_whitespace = false
+
+[*.ini]
+indent_style = space
+indent_size = 4

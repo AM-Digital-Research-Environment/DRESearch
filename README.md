@@ -180,7 +180,7 @@ header calls; `headScript`/`headLink` dedupe by URL.)
 
 ## Requirements
 
-- Omeka S `^4.2` on PHP 8.3+ (production AMIRA runs PHP 8.5). Below 8.3 the
+- Omeka S `^4.2.1` on PHP 8.3+ (production AMIRA runs PHP 8.5). Below 8.3 the
   module does not install, and an existing install reports search unavailable
   instead of failing the site.
 - A Typesense 30 server (optional)

@@ -6,6 +6,7 @@ on:
   pull_request:
   # The release workflow runs this whole suite before it packages anything.
   workflow_call:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,13 +20,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
       # lint:schema and lint:i18n are PHP scripts.
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@7d671baa106836ddfdf0815d09c44943ba13c737 # 2.40.0
         with:
           php-version: '8.4'
           coverage: none
@@ -79,8 +80,8 @@ jobs:
       TYPESENSE_PORT: 8108
       TYPESENSE_API_KEY: dre-search-ci-key
     steps:
-      - uses: actions/checkout@v7
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: shivammathur/setup-php@7d671baa106836ddfdf0815d09c44943ba13c737 # 2.40.0
         with:
           php-version: ${{ matrix.php }}
           extensions: dom, json, mbstring, pdo_sqlite, pdo_mysql
@@ -95,7 +96,7 @@ jobs:
           # The integration tests build their database from core's own schema.
           test -f /tmp/omeka-s/application/data/install/schema.sql
       - run: composer validate --strict
-      - uses: actions/cache@v6
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/composer
           key: composer-${{ hashFiles('composer.lock') }}
@@ -126,7 +127,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: test -f LICENSE && test -f SECURITY.md && test -f CHANGELOG.md && test -f CONTRIBUTING.md && test -f CITATION.cff && test -f composer.lock
       # One implementation of the module.ini / package.json / CITATION.cff /
       # CHANGELOG agreement check, shared with `npm run lint`.

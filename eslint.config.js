@@ -1,5 +1,6 @@
 // Flat config (ESLint 9+/10).
-// Lints the Svelte client only; PHP is linted separately (php -l / phpcs).
+// Lints the Svelte client, its tests and the Node tooling in scripts/; PHP is
+// linted separately (php -l / phpcs).
 
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
@@ -9,7 +10,16 @@ import globals from 'globals';
 
 export default [
   {
-    ignores: ['asset/dist/**', 'node_modules/**', 'vendor/**'],
+    // scripts/lib is vendored verbatim from DRE-theme (checked against
+    // VENDORED.sha256) and linted there; a fix here would break the hash.
+    ignores: [
+      'asset/dist/**',
+      'node_modules/**',
+      'vendor/**',
+      'scripts/lib/**',
+      'test-results/**',
+      'playwright-report/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -29,6 +39,17 @@ export default [
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
       'no-console': ['warn', { allow: ['warn', 'error'] }],
+    },
+  },
+  {
+    // Node tooling: the lint and release scripts, and the Playwright config.
+    files: ['scripts/**/*.mjs', 'playwright.config.ts', 'tests/browser/**/*.ts'],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+    rules: {
+      // Command-line scripts report on stdout by design.
+      'no-console': 'off',
     },
   },
   {
