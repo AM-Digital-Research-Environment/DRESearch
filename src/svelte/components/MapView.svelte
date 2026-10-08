@@ -10,6 +10,7 @@
     type MapLike,
   } from '../lib/maplibreLoader';
   import { cssColor, isDark, onThemeChange } from '../lib/tokenBridge';
+  import '../styles/buttons.css';
 
   /**
    * The map's palette, resolved from the theme's tokens at paint time.
@@ -47,7 +48,9 @@
   let map: MapLike | null = null;
   let lib: MapLibreGlobal | null = null;
   let ready = $state(false);
-  let error = $state('');
+  let failed = $state(false);
+  // Bumped by "Try again": the loader effect reads it, so it runs again.
+  let attempt = $state(0);
   let unsubscribeTheme: (() => void) | null = null;
   const source = 'dre-locations';
   const geojson = $derived({
@@ -65,8 +68,10 @@
   });
   $effect(() => {
     const el = container;
+    void attempt;
     if (!el) return;
     let cancelled = false;
+    failed = false;
     loadMapLibre()
       .then((loaded) => {
         if (cancelled) return;
@@ -197,8 +202,10 @@
           target.setStyle(basemapStyle(dark));
         });
       })
-      .catch((reason: Error) => {
-        if (!cancelled) error = reason.message;
+      .catch((reason: unknown) => {
+        if (cancelled) return;
+        console.error('[dre-search] the map could not be loaded', reason);
+        failed = true;
       });
     return () => {
       cancelled = true;
@@ -228,14 +235,27 @@
   });
 </script>
 
-<section class="dre-map" aria-label={t('map_label')}>
+<section class="dre-map" aria-label={t('map_label')} aria-busy={!failed && (loading || !ready)}>
   <div class="dre-map__canvas" bind:this={container}></div>
-  {#if error}<p class="dre-map__status" role="alert">
-      {t('map_error')}
-      {error}
-    </p>{:else if loading || !ready}<p class="dre-map__status">
-      {t('map_loading')}
-    </p>{:else if geojson.features.length === 0}<p class="dre-map__status">
+  <!-- The map's one persistent status node (DRE-theme integration contract,
+       "Asynchronous states"); the visible overlays below repeat it. -->
+  <p class="dre-map__sr-only" role="status" aria-live="polite" aria-atomic="true">
+    {failed
+      ? t('map_error')
+      : loading || !ready
+        ? t('loading')
+        : geojson.features.length === 0
+          ? t('map_empty')
+          : ''}
+  </p>
+  {#if failed}<div class="dre-map__status dre-map__status--error">
+      <span>{t('map_error')}</span>
+      <button type="button" class="dre-button-secondary" onclick={() => attempt++}
+        >{t('try_again')}</button
+      >
+    </div>{:else if loading || !ready}<p class="dre-map__status" aria-hidden="true">
+      {t('loading')}
+    </p>{:else if geojson.features.length === 0}<p class="dre-map__status" aria-hidden="true">
       {t('map_empty')}
     </p>{:else if capped}<p class="dre-map__note">{t('map_capped')}</p>{/if}
 </section>
@@ -294,6 +314,24 @@
   }
   .dre-map__note {
     font-size: var(--text-xs, 0.8125rem);
+  }
+  .dre-map__status--error {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2, 0.5rem);
+  }
+  .dre-map__sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
   }
   .dre-map__coverage {
     margin: 0;

@@ -101,7 +101,7 @@
     try {
       const res = await fetchDocs();
       if (!res.available || !res.complete || res.exported !== res.docs.length) {
-        throw new Error(res.error?.message || t('search_unavailable'));
+        throw new Error(res.error?.message || 'Export response incomplete');
       }
       if (res.docs.length === 0) {
         error = t('export_empty');
@@ -123,7 +123,10 @@
       );
       close();
     } catch (e) {
-      error = t('export_failed', { message: e instanceof Error ? e.message : String(e) });
+      // The reason is for the console; the visitor gets the translated message
+      // and can pick a format again.
+      console.error('[dre-search] export failed', e);
+      error = t('export_failed');
     } finally {
       busy = false;
     }

@@ -145,6 +145,13 @@ export class SearchApi {
   }
 }
 
+/**
+ * Throw on a failed response. The HTTP status, the request id and the server's
+ * message are for whoever debugs it, so they go to the console; the thrown
+ * error carries only `fallback`, and the surfaces show their own translated
+ * message with a Try again button instead (DRE-theme integration contract,
+ * "Asynchronous states"). They used to print all three to the visitor.
+ */
 async function requireOk(res: Response, fallback: string): Promise<void> {
   if (res.ok) return;
   type ErrorBody = { error?: { message?: string; request_id?: string } };
@@ -152,11 +159,14 @@ async function requireOk(res: Response, fallback: string): Promise<void> {
   try {
     body = (await res.json()) as ErrorBody;
   } catch {
-    // Non-JSON intermediary response: fall back to the stable HTTP message.
+    // Non-JSON intermediary response: the status alone has to do.
   }
-  const message = body?.error?.message?.trim() || `${fallback} (HTTP ${res.status})`;
-  const requestId = body?.error?.request_id || res.headers.get('X-Request-ID');
-  throw new Error(requestId ? `${message} [${requestId}]` : message);
+  console.error(`[dre-search] ${fallback}`, {
+    status: res.status,
+    requestId: body?.error?.request_id || res.headers.get('X-Request-ID') || undefined,
+    message: body?.error?.message?.trim() || undefined,
+  });
+  throw new Error(fallback);
 }
 
 /**

@@ -19,7 +19,7 @@
 </script>
 
 <button type="button" class="dre-button-secondary" onclick={copy}
-  >{copied ? t('copied_link') : t('copy_link')}</button
+  >{copied ? t('copied') : t('copy_link')}</button
 >
 
 <style>

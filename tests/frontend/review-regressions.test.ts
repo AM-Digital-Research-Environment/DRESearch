@@ -103,7 +103,7 @@ describe('facet value search', () => {
     // The parent re-renders with the value selected and a new scope.
     await view.rerender({ ...props, selected: ['Rare topic'], scopeKey: 'b' });
     expect(screen.getByRole('checkbox', { name: /Rare topic/ })).toBeTruthy();
-    expect(screen.queryByText('Loading results')).toBeNull();
+    expect(screen.queryByText('Loading…')).toBeNull();
     await waitFor(() => expect(resolvers).toHaveLength(2), { timeout: 2000 });
   });
 
@@ -159,10 +159,7 @@ describe('search block history', () => {
     window.history.pushState({}, '', '/page?b7.view=gallery');
     window.dispatchEvent(new PopStateEvent('popstate'));
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: /Gallery/ })).toHaveAttribute(
-        'aria-pressed',
-        'true',
-      ),
+      expect(screen.getByRole('button', { name: /Grid/ })).toHaveAttribute('aria-pressed', 'true'),
     );
     window.history.pushState({}, '', '/page');
     window.dispatchEvent(new PopStateEvent('popstate'));
@@ -180,6 +177,55 @@ describe('search block history', () => {
     for (const call of searchSpy.mock.calls) {
       expect((call[0] as { sort: string }).sort).not.toBe('bogus');
     }
+  });
+});
+
+describe('asynchronous states', () => {
+  beforeEach(() => {
+    window.history.replaceState({}, '', '/page?b7.sort=title');
+    searchSpy.mockReset();
+  });
+
+  it('shows a translated failure with Try again, and keeps the detail in the console', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    searchSpy.mockRejectedValueOnce(new Error('Search failed (HTTP 502) [req-123]'));
+    searchSpy.mockResolvedValue(response());
+    render(App, { bootstrap: { ...bootstrap(), initial_response: undefined } });
+
+    const retry = await screen.findByRole('button', { name: 'Try again' });
+    expect(
+      screen.getByText('Search is temporarily unavailable.', { selector: 'strong' }),
+    ).toBeTruthy();
+    expect(document.body.textContent).not.toContain('HTTP 502');
+    expect(document.body.textContent).not.toContain('req-123');
+    expect(consoleError).toHaveBeenCalled();
+
+    await fireEvent.click(retry);
+    await screen.findByText('Item 1');
+    expect(searchSpy).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    consoleError.mockRestore();
+  });
+
+  it('keeps one persistent status node and an aria-hidden skeleton', async () => {
+    let resolve: (value: SearchResponse) => void = () => undefined;
+    searchSpy.mockReturnValue(new Promise<SearchResponse>((r) => (resolve = r)));
+    const { container } = render(App, {
+      bootstrap: { ...bootstrap(), initial_response: undefined },
+    });
+    await waitFor(() => expect(container.querySelector('.dre-skeletons')).toBeTruthy());
+    expect(container.querySelector('.dre-skeletons')).toHaveAttribute('aria-hidden', 'true');
+    expect(container.querySelectorAll('[role="status"]')).toHaveLength(1);
+    expect(screen.getByRole('status').textContent?.trim()).toBe('Loading…');
+    expect(container.querySelector('.dre-search__results')).toHaveAttribute('aria-busy', 'true');
+
+    // An empty corpus with no query or filter: nothing was searched for.
+    resolve(response(0));
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent?.trim()).toBe('Nothing to show yet.'),
+    );
+    expect(container.querySelectorAll('[role="status"]')).toHaveLength(1);
+    expect(container.querySelector('.dre-search__results')).toHaveAttribute('aria-busy', 'false');
   });
 });
 

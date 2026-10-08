@@ -77,6 +77,7 @@ it('ignores a pending response after returning to a cached tab', async () => {
   await waitFor(() => expect(screen.getByText('First corpus document')).toBeTruthy());
   expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-label', 'first');
   expect(screen.queryByText('Second corpus document')).toBeNull();
-  expect(screen.queryByRole('status', { name: 'Loading results' })).toBeNull();
+  expect(document.querySelector('.dre-skeletons')).toBeNull();
+  expect(screen.queryByText('Loading…')).toBeNull();
   vi.unstubAllGlobals();
 });

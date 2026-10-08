@@ -19,6 +19,7 @@
   import Pagination from './Pagination.svelte';
   import ResultSkeleton from './ResultSkeleton.svelte';
   import CopyLinkButton from './CopyLinkButton.svelte';
+  import '../styles/buttons.css';
 
   interface Props {
     bootstrap: FederatedBootstrap;
@@ -49,7 +50,9 @@
   // svelte-ignore state_referenced_locally
   let unionPage = $state(activeProfile === ALL ? readUnionPage() : 1);
   let isLoading = $state(false);
-  let error = $state<string | null>(null);
+  // A failed request shows a translated message and "Try again"; the detail
+  // is logged (api.ts), never shown.
+  let failed = $state(false);
   let inputTimer: number | null = null;
   let controller: AbortController | null = null;
   let inputEl = $state<HTMLInputElement>();
@@ -98,7 +101,7 @@
     const id = ++requestId;
     controller?.abort();
     isLoading = false;
-    error = null;
+    failed = false;
     const cacheKey = `${profile}:${page}`;
     if (cache[cacheKey]) {
       if (profile === ALL) unionResponse = cache[cacheKey];
@@ -107,7 +110,6 @@
     }
     controller = new AbortController();
     isLoading = true;
-    error = null;
     try {
       if (profile === ALL) {
         unionResponse = null;
@@ -185,8 +187,10 @@
         }
       }
     } catch (reason) {
-      if (id === requestId && (reason as Error).name !== 'AbortError')
-        error = (reason as Error).message;
+      if (id === requestId && (reason as Error).name !== 'AbortError') {
+        console.error('[dre-search] federated search failed', reason);
+        failed = true;
+      }
     } finally {
       if (id === requestId) isLoading = false;
     }
@@ -299,6 +303,25 @@
     };
   }
   const activeMeta = $derived(metaFor(activeProfile));
+  function retry(): void {
+    void load(activeProfile, query, activeProfile === ALL ? unionPage : 1);
+  }
+  // This surface's one persistent status node: it speaks while the shell owns
+  // the panel (loading, the merged list, a failure). Once a corpus's App is
+  // mounted, that App's own status node takes over and this one falls silent.
+  const announcement = $derived(
+    isLoading
+      ? t('loading')
+      : failed
+        ? t('search_unavailable')
+        : activeProfile === ALL && unionResponse
+          ? unionResponse.found === 0
+            ? query
+              ? t('no_results_title')
+              : t('corpus_empty')
+            : `${formatNumber(unionResponse.found)} ${unionResponse.found === 1 ? t('result_one') : t('result_other')}`
+          : '',
+  );
   const count = (name: string): string =>
     countsQuery === null ? '' : formatNumber(counts[name] ?? 0);
 </script>
@@ -364,10 +387,17 @@
       id="dre-fed-panel"
       role="tabpanel"
       aria-label={tabs.find((tab) => tab.name === activeProfile)?.label}
+      aria-busy={isLoading}
       tabindex="0"
     >
-      {#if error}<div class="dre-fed__error" role="alert">
-          <strong>{t('search_unavailable')}</strong><span>{error}</span>
+      <p class="dre-fed__sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </p>
+      {#if failed}<div class="dre-fed__error">
+          <strong>{t('search_unavailable')}</strong>
+          <button type="button" class="dre-button-secondary" onclick={retry}
+            >{t('try_again')}</button
+          >
         </div>
       {:else if isLoading}<ResultSkeleton count={activeProfile === ALL ? 8 : 6} />
       {:else if activeProfile === ALL && unionResponse}
@@ -378,7 +408,7 @@
           ><span>{t('all_no_facets')}</span><CopyLinkButton />
         </header>
         {#if unionResponse.found === 0}<div class="dre-fed__empty">
-            {query ? t('no_results_for_query', { q: query }) : t('corpus_empty')}
+            {query ? t('no_results_title') : t('corpus_empty')}
           </div>
         {:else}<ol class="dre-fed__mixed">
             {#each unionResponse.hits as doc (`${doc._profile}:${doc.id}`)}<li>
@@ -592,9 +622,25 @@
     background: var(--surface, #fdfcf9);
   }
   .dre-fed__error {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2, 0.5rem);
     /* --error, not --danger: the theme has never defined --danger, so this was
        permanently on its fallback and painted the same cold red in both modes. */
     border-color: var(--error, #cc272e);
+  }
+  .dre-fed__sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
   }
   @media (max-width: 37.5rem) {
     .dre-fed__all-summary {

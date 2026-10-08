@@ -62,7 +62,7 @@
     <h2 class="dre-facets__heading">{t('filters')}</h2>
     {#if activeCount > 0}
       <button type="button" class="dre-facets__clear-all" onclick={onClearAll}>
-        {t('clear_all')}
+        {t('clear_all_filters')}
       </button>
     {/if}
   </header>

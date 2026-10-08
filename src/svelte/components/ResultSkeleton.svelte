@@ -1,6 +1,5 @@
 <script lang="ts">
   import type { ViewMode } from '../lib/types';
-  import { t } from '../lib/i18n';
   interface Props {
     view?: ViewMode;
     count?: number;
@@ -8,12 +7,9 @@
   const { view = 'list', count = 6 }: Props = $props();
 </script>
 
-<div
-  class="dre-skeletons"
-  class:dre-skeletons--gallery={view === 'gallery'}
-  role="status"
-  aria-label={t('loading_results')}
->
+<!-- Decorative: the surface's one persistent status node announces "Loading…".
+     A second status here made screen readers hear the load twice. -->
+<div class="dre-skeletons" class:dre-skeletons--gallery={view === 'gallery'} aria-hidden="true">
   {#each Array(count) as _, i (i)}
     <div class="dre-skeleton">
       <span class="dre-skeleton__image"></span><span class="dre-skeleton__body"

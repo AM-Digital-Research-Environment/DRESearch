@@ -45,7 +45,7 @@
       document.execCommand('copy');
       area.remove();
     }
-    status = t('citation_copied');
+    status = t('copied');
     window.setTimeout(() => (status = ''), 1800);
   }
 

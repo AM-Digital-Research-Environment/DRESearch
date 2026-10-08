@@ -113,10 +113,12 @@
       </div>
     {/if}
 
-    {#if loading}
-      <p role="status">{t('loading_results')}</p>
-    {:else if failed}
-      <p role="status">{t('facet_search_failed')}</p>
+    {#if searchable}
+      <!-- Persistent while the value search exists: a live region inserted
+           together with its text is often not announced. -->
+      <p class="dre-facet__status" role="status">
+        {loading ? t('loading') : failed ? t('facet_search_failed') : ''}
+      </p>
     {/if}
 
     {#if visible.length > 0}
@@ -227,6 +229,15 @@
     outline: 2px solid transparent;
     border-color: var(--primary, #007a50);
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
+  }
+
+  .dre-facet__status:empty {
+    display: none;
+  }
+  .dre-facet__status {
+    margin: var(--space-sm, 0.5rem) 0 0;
+    color: var(--muted, #716a66);
+    font-size: var(--text-sm, 0.9375rem);
   }
 
   .dre-facet__list {

@@ -137,7 +137,7 @@ describe('record links and citations', () => {
       itemUrlBase: 'https://example.org/s/amira/item',
     });
     await fireEvent.click(screen.getByRole('button', { name: 'Copy BibTeX' }));
-    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Citation copied'));
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Copied'));
     const bibtex = writeText.mock.calls[0]?.[0] as string;
     expect(bibtex).toMatch(/^@\w+\{/);
     expect(bibtex).toContain('Swahili poetry');

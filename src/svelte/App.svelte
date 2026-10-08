@@ -17,7 +17,7 @@
     type UrlSearchState,
     type UrlSyncOptions,
   } from './lib/urlState';
-  import { t } from './lib/i18n';
+  import { formatNumber, t } from './lib/i18n';
   import { buildFilterChips, type FilterChipModel as ChipModel } from './lib/filterChips';
   import { rememberSearch } from './lib/searchHistory';
   import SearchBox from './components/SearchBox.svelte';
@@ -180,10 +180,15 @@
 
   let response = $state<SearchResponse | null>(initialResponse);
   let isLoading = $state(false);
-  let error = $state<string | null>(null);
+  // Failed requests: the visitor sees a translated message and "Try again",
+  // which bumps the matching attempt counter so its effect runs once more.
+  // The technical detail is logged by api.ts, never shown.
+  let failed = $state(false);
+  let attempt = $state(0);
   let mapResponse = $state<MapResponse | null>(null);
   let mapLoading = $state(false);
-  let mapError = $state<string | null>(null);
+  let mapFailed = $state(false);
+  let mapAttempt = $state(0);
   let correction = $state<string | null>(null);
   // Visually hidden heading the results region is announced by; focus lands
   // here after paging or removing filters, so it never falls back to <body>.
@@ -302,6 +307,7 @@
     const yf = yearFrom;
     const yt = yearTo;
     const hitsWanted = listHits;
+    void attempt;
 
     if (skipNextFetch) {
       skipNextFetch = false;
@@ -318,7 +324,7 @@
     const myId = ++reqId;
     const controller = new AbortController();
     isLoading = true;
-    error = null;
+    failed = false;
 
     api
       .search(
@@ -378,7 +384,7 @@
         }
         if (e.name === 'AbortError') return;
         console.error('[dre-search] search failed', e);
-        error = e.message;
+        failed = true;
         response = null;
       })
       .finally(() => {
@@ -394,13 +400,14 @@
     if (view !== 'map') {
       mapResponse = null;
       mapLoading = false;
-      mapError = null;
+      mapFailed = false;
       return;
     }
     const scope = { q: query, sort, filters, year_from: yearFrom, year_to: yearTo };
+    void mapAttempt;
     const controller = new AbortController();
     mapLoading = true;
-    mapError = null;
+    mapFailed = false;
     // Debounced like typing: the map endpoint pulls up to 1,000 documents.
     const timer = window.setTimeout(() => {
       api
@@ -410,7 +417,9 @@
           mapResponse = result;
         })
         .catch((reason: Error) => {
-          if (reason.name !== 'AbortError') mapError = reason.message;
+          if (reason.name === 'AbortError') return;
+          console.error('[dre-search] map request failed', reason);
+          mapFailed = true;
         })
         .finally(() => {
           if (!controller.signal.aborted) mapLoading = false;
@@ -421,17 +430,6 @@
       controller.abort();
     };
   });
-
-  // Polite, atomic announcement of the result count (or loading) — one per
-  // surface, so screen readers hear "45 results", not a stray number or the
-  // contents of an open menu.
-  const announcement = $derived(
-    isLoading
-      ? t('searching')
-      : response && response.available
-        ? `${response.found} ${response.found === 1 ? t('result_one') : t('result_other')}`
-        : '',
-  );
 
   /** Move focus to the results heading without jumping the page. */
   function focusResults(): void {
@@ -458,6 +456,34 @@
   const scopeChips = $derived(
     buildFilterChips(filters, bootstrap.facet_labels, yearFrom, yearTo, query),
   );
+
+  // A search or a filter that matches nothing, as against a corpus that is
+  // simply empty.
+  const emptyTitle = $derived(
+    query.trim() !== '' || activeCount > 0 ? t('no_results_title') : t('corpus_empty'),
+  );
+  // The one persistent, polite, atomic status node of this surface (DRE-theme
+  // integration contract, "Asynchronous states"): "Loading…", the result
+  // count, the empty message or the failure — never a stray number or the
+  // contents of an open menu. The skeleton and the visible empty/error boxes
+  // are not live regions of their own.
+  const announcement = $derived(
+    isLoading
+      ? t('loading')
+      : failed
+        ? t('search_unavailable')
+        : response && response.available
+          ? response.found === 0
+            ? emptyTitle
+            : `${formatNumber(response.found)} ${response.found === 1 ? t('result_one') : t('result_other')}`
+          : '',
+  );
+
+  function retry(): void {
+    attempt++;
+    // The button that was focused is about to be replaced by the results.
+    focusResults();
+  }
 
   function handleQueryChange(next: string): void {
     query = next;
@@ -578,13 +604,6 @@
     />
   {/if}
 
-  {#if error}
-    <div class="dre-search__error" role="alert">
-      <strong>{t('search_unavailable')}</strong>
-      <span>{error}</span>
-    </div>
-  {/if}
-
   {#if response && !response.available}
     <div class="dre-search__notice" role="status">
       <strong>{t('search_unavailable')}</strong>
@@ -645,7 +664,17 @@
         <h2 class="dre-search__sr-only" tabindex="-1" bind:this={resultsHeading}>
           {t('search_results')}
         </h2>
-        <p class="dre-search__sr-only" role="status" aria-atomic="true">{announcement}</p>
+        <p class="dre-search__sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {announcement}
+        </p>
+        {#if failed}
+          <div class="dre-search__error">
+            <strong>{t('search_unavailable')}</strong>
+            <button type="button" class="dre-button-secondary" onclick={retry}
+              >{t('try_again')}</button
+            >
+          </div>
+        {/if}
         {#if response}
           {#snippet summaryTools()}
             <SortSelect value={sort} options={sortOptions} onChange={handleSortChange} />
@@ -682,8 +711,8 @@
         {#if isLoading && !response}
           <ResultSkeleton {view} count={view === 'gallery' ? 8 : 6} />
         {:else if response && response.found === 0 && !isLoading}
-          <div class="dre-search__empty" role="status">
-            <strong>{t('no_results_title')}</strong>
+          <div class="dre-search__empty">
+            <strong>{emptyTitle}</strong>
             {#if activeCount > 0}
               <p>{t('try_removing_filter')}</p>
               <button
@@ -694,7 +723,6 @@
                 {t('clear_all_filters')}
               </button>
             {:else if query.trim() !== ''}
-              <p>{t('no_results_for_query', { q: query })}</p>
               {#if correction}
                 <button
                   type="button"
@@ -704,15 +732,15 @@
                   {t('did_you_mean', { q: correction })}
                 </button>
               {:else}<p>{t('try_broader_query')}</p>{/if}
-            {:else}
-              <p>{t('corpus_empty')}</p>
             {/if}
           </div>
         {:else if response && view === 'map'}
-          {#if mapError}
-            <div class="dre-search__error" role="alert">
-              <strong>{t('search_unavailable')}</strong>
-              <span>{mapError}</span>
+          {#if mapFailed}
+            <div class="dre-search__error">
+              <strong>{t('map_error')}</strong>
+              <button type="button" class="dre-button-secondary" onclick={() => mapAttempt++}
+                >{t('try_again')}</button
+              >
             </div>
           {/if}
           <MapView
@@ -844,6 +872,13 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-xs, 0.25rem);
+  }
+  .dre-search__error {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm, 0.5rem);
   }
   .dre-search__error {
     background: color-mix(in srgb, var(--error, #cc272e) 12%, var(--surface, #fdfcf9));

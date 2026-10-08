@@ -115,16 +115,8 @@ msgstr ""
 msgid "Changes are waiting for a worker. One starts with the next edit or search; use \"Retry pending changes\" to start it now."
 msgstr ""
 
-#: src/svelte/lib/i18n.ts (citation_copied)
-msgid "Citation copied"
-msgstr ""
-
 #: src/svelte/lib/i18n.ts (cite)
 msgid "Cite"
-msgstr ""
-
-#: src/svelte/lib/i18n.ts (clear_all)
-msgid "Clear all"
 msgstr ""
 
 #: src/svelte/lib/i18n.ts (clear_all_filters)
@@ -157,6 +149,10 @@ msgstr ""
 
 #: Module.php:357
 msgid "Connection values in effect:"
+msgstr ""
+
+#: src/svelte/lib/i18n.ts (copied)
+msgid "Copied"
 msgstr ""
 
 #: src/svelte/lib/i18n.ts (copy_bibtex)
@@ -260,10 +256,6 @@ msgstr ""
 msgid "Export"
 msgstr ""
 
-#: src/svelte/lib/i18n.ts (export_failed)
-msgid "Export failed: {message}"
-msgstr ""
-
 #: src/svelte/lib/i18n.ts (export_results)
 msgid "Export results"
 msgstr ""
@@ -304,16 +296,16 @@ msgstr ""
 msgid "Fullscreen"
 msgstr ""
 
-#: src/svelte/lib/i18n.ts (view_gallery)
-msgid "Gallery"
-msgstr ""
-
 #: config/module.config.php (research_genres)
 msgid "Genres"
 msgstr ""
 
 #: src/Site/BlockLayout/ResearchGenresSearchBlock.php:16
 msgid "Genres search"
+msgstr ""
+
+#: src/svelte/lib/i18n.ts (view_gallery)
+msgid "Grid"
 msgstr ""
 
 #: src/svelte/lib/i18n.ts (field_guest) src/svelte/lib/i18n.ts (guest_label)
@@ -422,10 +414,6 @@ msgstr ""
 msgid "Last run"
 msgstr ""
 
-#: src/svelte/lib/i18n.ts (copied_link)
-msgid "Link copied"
-msgstr ""
-
 #: src/svelte/lib/i18n.ts (view_list)
 msgid "List"
 msgstr ""
@@ -438,12 +426,8 @@ msgstr ""
 msgid "Listen"
 msgstr ""
 
-#: src/svelte/lib/i18n.ts (map_loading)
-msgid "Loading map…"
-msgstr ""
-
-#: src/svelte/lib/i18n.ts (loading_results)
-msgid "Loading results"
+#: src/svelte/lib/i18n.ts (loading)
+msgid "Loading…"
 msgstr ""
 
 #: config/module.config.php (research_locations)
@@ -527,15 +511,11 @@ msgid "No query has become a candidate yet."
 msgstr ""
 
 #: src/svelte/lib/i18n.ts (no_results_title)
-msgid "No results found"
+msgid "No records match that search."
 msgstr ""
 
 #: src/svelte/lib/i18n.ts (export_empty)
 msgid "No results to export."
-msgstr ""
-
-#: src/svelte/lib/i18n.ts (no_results_for_query)
-msgid "No results were found for “{q}”."
 msgstr ""
 
 #: view/dre-search/admin/maintenance/index.phtml:24
@@ -773,10 +753,6 @@ msgstr ""
 msgid "Result types"
 msgstr ""
 
-#: src/svelte/lib/i18n.ts (view_label)
-msgid "Result view"
-msgstr ""
-
 #: src/svelte/lib/i18n.ts (search_results_for)
 msgid "Results for “{q}”"
 msgstr ""
@@ -833,7 +809,7 @@ msgid "Search genres…"
 msgstr ""
 
 #: src/svelte/lib/i18n.ts (search_unavailable)
-msgid "Search is unavailable"
+msgid "Search is temporarily unavailable."
 msgstr ""
 
 #: config/module.config.php (research_languages)
@@ -890,10 +866,6 @@ msgstr ""
 
 #: src/svelte/lib/i18n.ts (facet_search_placeholder)
 msgid "Search {label}…"
-msgstr ""
-
-#: src/svelte/lib/i18n.ts (searching)
-msgid "Searching…"
 msgstr ""
 
 #: src/View/Helper/SearchBar.php:53
@@ -993,8 +965,12 @@ msgstr ""
 msgid "The decision could not be saved. If the module was just updated, run its upgrade under Modules."
 msgstr ""
 
+#: src/svelte/lib/i18n.ts (export_failed)
+msgid "The export could not be completed."
+msgstr ""
+
 #: src/svelte/lib/i18n.ts (map_error)
-msgid "The map is unavailable."
+msgid "The map could not be loaded."
 msgstr ""
 
 #: src/svelte/lib/i18n.ts (map_capped)
@@ -1044,6 +1020,10 @@ msgstr ""
 
 #: src/svelte/lib/i18n.ts (try_broader_query)
 msgid "Try a different or broader search term."
+msgstr ""
+
+#: src/svelte/lib/i18n.ts (try_again)
+msgid "Try again"
 msgstr ""
 
 #: src/svelte/lib/i18n.ts (try_removing_filter)
@@ -1097,6 +1077,10 @@ msgstr ""
 
 #: src/Form/ConfigForm.php:51
 msgid "Used server-side only. Leave blank to keep the saved secret. A saved key takes precedence over the TYPESENSE_API_KEY environment variable; clear it to use the environment."
+msgstr ""
+
+#: src/svelte/lib/i18n.ts (view_label)
+msgid "View as"
 msgstr ""
 
 #: view/dre-search/admin/maintenance/index.phtml:147
