@@ -66,13 +66,18 @@ function rvLibs(): RvLibs {
  *
  * Prefers whatever the deployment configured (DRE-Visualizations' own
  * self-hosted style, when that module is installed) over Carto's CDN.
+ *
+ * Every step uses `||`, never `??`: DRE-Visualizations used to emit an unset
+ * style as `""`, and `??` let that empty string through as the style URL — a
+ * map with no basemap at all. The shared contract (DRE-theme
+ * docs/DESIGN-INTEGRATION.md, "Maps") requires `||` for exactly this reason.
  */
 export function basemapStyle(dark: boolean): string {
-  const config = (window as unknown as { RV_MAP_CONFIG?: RvMapConfig }).RV_MAP_CONFIG ?? {};
+  const config = (window as unknown as { RV_MAP_CONFIG?: RvMapConfig }).RV_MAP_CONFIG || {};
   const configured = dark
-    ? (config.darkStyle ?? config.lightStyle)
-    : (config.lightStyle ?? config.darkStyle);
-  return configured ?? (dark ? DARK_STYLE : LIGHT_STYLE);
+    ? config.darkStyle || config.lightStyle
+    : config.lightStyle || config.darkStyle;
+  return configured || (dark ? DARK_STYLE : LIGHT_STYLE);
 }
 
 export interface MapLike {

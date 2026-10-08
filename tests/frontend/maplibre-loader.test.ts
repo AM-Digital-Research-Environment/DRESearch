@@ -88,3 +88,60 @@ describe('MapLibre loader', () => {
     }
   });
 });
+
+describe('basemapStyle', () => {
+  type MapConfigWindow = { RV_MAP_CONFIG?: { lightStyle?: string; darkStyle?: string } };
+  const setConfig = (config?: { lightStyle?: string; darkStyle?: string }) => {
+    if (config === undefined) delete (window as unknown as MapConfigWindow).RV_MAP_CONFIG;
+    else (window as unknown as MapConfigWindow).RV_MAP_CONFIG = config;
+  };
+  afterEach(() => setConfig(undefined));
+
+  it('falls back to Carto when no configuration is published', async () => {
+    setConfig(undefined);
+    const { basemapStyle, LIGHT_STYLE, DARK_STYLE } = await freshLoader();
+    expect(basemapStyle(false)).toBe(LIGHT_STYLE);
+    expect(basemapStyle(true)).toBe(DARK_STYLE);
+  });
+
+  it('falls back to Carto when both keys are missing', async () => {
+    setConfig({});
+    const { basemapStyle, LIGHT_STYLE, DARK_STYLE } = await freshLoader();
+    expect(basemapStyle(false)).toBe(LIGHT_STYLE);
+    expect(basemapStyle(true)).toBe(DARK_STYLE);
+  });
+
+  it('never returns an empty-string style as the URL', async () => {
+    // DRE-Visualizations used to emit unset styles as "" — with `??` that
+    // became the style URL and the map rendered without a basemap.
+    setConfig({ lightStyle: '', darkStyle: '' });
+    const { basemapStyle, LIGHT_STYLE, DARK_STYLE } = await freshLoader();
+    expect(basemapStyle(false)).toBe(LIGHT_STYLE);
+    expect(basemapStyle(true)).toBe(DARK_STYLE);
+  });
+
+  it('skips an empty mode-specific style for the other configured one', async () => {
+    setConfig({ lightStyle: '/light.json', darkStyle: '' });
+    const { basemapStyle } = await freshLoader();
+    expect(basemapStyle(true)).toBe('/light.json');
+    setConfig({ lightStyle: '', darkStyle: '/dark.json' });
+    expect(basemapStyle(false)).toBe('/dark.json');
+  });
+
+  it('uses the one configured style for both modes when only one key is set', async () => {
+    const { basemapStyle } = await freshLoader();
+    setConfig({ lightStyle: '/light.json' });
+    expect(basemapStyle(false)).toBe('/light.json');
+    expect(basemapStyle(true)).toBe('/light.json');
+    setConfig({ darkStyle: '/dark.json' });
+    expect(basemapStyle(false)).toBe('/dark.json');
+    expect(basemapStyle(true)).toBe('/dark.json');
+  });
+
+  it('uses each mode its own style when both are set', async () => {
+    setConfig({ lightStyle: '/light.json', darkStyle: '/dark.json' });
+    const { basemapStyle } = await freshLoader();
+    expect(basemapStyle(false)).toBe('/light.json');
+    expect(basemapStyle(true)).toBe('/dark.json');
+  });
+});
