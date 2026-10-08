@@ -1,6 +1,7 @@
 <script lang="ts">
   import { MAX_PAGE } from '../lib/urlState';
   import { t } from '../lib/i18n';
+  import '../styles/buttons.css';
 
   /**
    * The one results pager (a search block's results and the federated "All"
@@ -46,14 +47,16 @@
   <nav class="dre-pager" aria-label={t('pagination')}>
     <button
       type="button"
-      class="dre-pager__btn"
+      class="dre-pager__btn dre-button-secondary"
       disabled={page <= 1}
       aria-label={t('previous_page')}
       onclick={() => go(page - 1)}>‹</button
     >
 
     {#if firstWindow > 1}
-      <button type="button" class="dre-pager__btn" onclick={() => go(1)}>1</button>
+      <button type="button" class="dre-pager__btn dre-button-secondary" onclick={() => go(1)}
+        >1</button
+      >
       {#if firstWindow > 2}
         <span class="dre-pager__gap" aria-hidden="true">…</span>
       {/if}
@@ -62,7 +65,7 @@
     {#each windowPages as p (p)}
       <button
         type="button"
-        class="dre-pager__btn"
+        class="dre-pager__btn dre-button-secondary"
         class:dre-pager__btn--active={p === page}
         aria-current={p === page ? 'page' : undefined}
         onclick={() => go(p)}>{p}</button
@@ -73,14 +76,16 @@
       {#if lastWindow < totalPages - 1}
         <span class="dre-pager__gap" aria-hidden="true">…</span>
       {/if}
-      <button type="button" class="dre-pager__btn" onclick={() => go(totalPages)}
-        >{totalPages}</button
+      <button
+        type="button"
+        class="dre-pager__btn dre-button-secondary"
+        onclick={() => go(totalPages)}>{totalPages}</button
       >
     {/if}
 
     <button
       type="button"
-      class="dre-pager__btn"
+      class="dre-pager__btn dre-button-secondary"
       disabled={page >= totalPages}
       aria-label={t('next_page')}
       onclick={() => go(page + 1)}>›</button
@@ -97,44 +102,18 @@
     margin-top: var(--space-md, 1rem);
     justify-content: center;
   }
+  /* The secondary button (styles/buttons.css), square and numeric. */
   .dre-pager__btn {
     min-width: var(--size-control-lg, 2.75rem);
-    height: var(--size-control-lg, 2.75rem);
-    margin: 0;
-    padding: 0 0.5rem;
-    border: 1px solid var(--border, #dbd7d1);
-    border-radius: var(--radius-md, 0.5rem);
-    background: var(--surface, #fdfcf9);
-    color: var(--ink, #3c342d);
-    font: inherit;
+    padding: 0 var(--space-2, 0.5rem);
     font-variant-numeric: tabular-nums;
-    cursor: pointer;
-    transition:
-      border-color var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1)),
-      background var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
   }
-  /* Exclude the active page: it carries the filled-primary green, so turning the
-     label primary on hover would put primary text on the primary fill. The
-     background is restated so a host theme's button:hover fill cannot bleed in. */
-  .dre-pager__btn:hover:not(:disabled):not(.dre-pager__btn--active) {
-    border-color: var(--primary, #007a50);
-    color: var(--primary, #007a50);
-    background: var(--surface, #fdfcf9);
-  }
+  /* The current page is the one filled control. This rule (0,2,0 with Svelte's
+     scope class) outranks the secondary hover, so it stays filled. */
   .dre-pager__btn--active {
     background: var(--primary, #007a50);
     border-color: var(--primary, #007a50);
     color: var(--primary-contrast, #fcfcf9);
-    font-weight: 600;
-  }
-  .dre-pager__btn:disabled {
-    opacity: 0.45;
-    cursor: default;
-  }
-  .dre-pager__btn:focus-visible {
-    outline: 2px solid var(--primary, #007a50);
-    outline-offset: 2px;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
   .dre-pager__gap {
     color: var(--muted, #716a66);

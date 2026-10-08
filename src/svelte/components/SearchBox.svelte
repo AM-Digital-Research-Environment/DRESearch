@@ -360,7 +360,7 @@
     font-size: var(--text-base, 1.0625rem);
     color: var(--ink, #3c342d);
     background: var(--surface, #fdfcf9);
-    border: 1px solid var(--border, #dbd7d1);
+    border: 1px solid var(--field-border, #8b857f);
     border-radius: var(--radius-md, 0.5rem);
     box-shadow: var(--shadow-xs, 0 1px 2px 0 rgba(52, 37, 26, 0.07));
     transition:
@@ -376,7 +376,10 @@
     display: none;
   }
   .dre-search-box__input:focus {
-    outline: none;
+    /* The theme's field focus (DRE-theme base/elements/_fields.scss): the ring is
+       a box-shadow, which forced-colors mode drops, so the outline stays —
+       transparent — and is painted in the system focus colour there. */
+    outline: 2px solid transparent;
     border-color: var(--primary, #007a50);
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
@@ -413,9 +416,8 @@
     color: var(--ink, #3c342d);
   }
   .dre-search-box__clear:focus-visible {
-    outline: 2px solid var(--primary, #007a50);
+    outline: 2px solid var(--focus-color, #007a50);
     outline-offset: 2px;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
 
   .dre-search-box__suggest {
@@ -440,7 +442,7 @@
   .dre-search-box__suggestion {
     display: flex;
     flex-direction: column;
-    gap: 0.1rem;
+    gap: 0;
     padding: var(--space-sm, 0.5rem) var(--space-sm, 0.5rem);
     border-radius: var(--radius-sm, 0.375rem);
     color: var(--ink, #3c342d);
@@ -465,12 +467,12 @@
     list-style: none;
   }
   .dre-search-box__recent-label {
-    padding: 0.4rem 0.5rem 0.2rem;
+    padding: var(--space-2, 0.5rem) var(--space-2, 0.5rem) var(--space-1, 0.25rem);
     color: var(--muted, #716a66);
     font-size: var(--text-xs, 0.8125rem);
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-wide, 0.04em);
   }
   .dre-search-box__recent {
     display: block;

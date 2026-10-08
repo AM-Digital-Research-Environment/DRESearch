@@ -40,14 +40,14 @@
        off-centre inside the toolbar; zero it. */
     margin: 0;
     padding-block: 0;
-    padding-inline: var(--space-sm, 0.5rem) 1.9rem;
+    padding-inline: var(--space-sm, 0.5rem) var(--space-8, 2rem);
     font: inherit;
     color: var(--ink, #3c342d);
     /* background-color (not the `background` shorthand) so we don't blow away
        the chevron drawn on .dre-sort::after; also drop the host's arrow asset. */
     background-color: var(--surface, #fdfcf9);
     background-image: none;
-    border: 1px solid var(--border, #dbd7d1);
+    border: 1px solid var(--field-border, #8b857f);
     border-radius: var(--radius-md, 0.5rem);
     cursor: pointer;
     -webkit-appearance: none;
@@ -69,9 +69,25 @@
     -webkit-mask: var(--dre-chevron) center / contain no-repeat;
     mask: var(--dre-chevron) center / contain no-repeat;
   }
+  /* Forced colours repaint backgrounds, which would erase the mask chevron —
+     the theme's %svg-icon-forced rule (DRE-theme abstracts/mixins/_mixins.scss). */
+  @media (forced-colors: active) {
+    .dre-sort::after {
+      forced-color-adjust: none;
+      background-color: CanvasText;
+    }
+    @supports (forced-color-adjust: preserve-parent-color) {
+      .dre-sort::after {
+        forced-color-adjust: preserve-parent-color;
+        background-color: currentColor;
+      }
+    }
+  }
   .dre-sort__select:focus-visible {
-    outline: 2px solid var(--primary, #007a50);
-    outline-offset: 2px;
+    /* The theme's field focus (DRE-theme base/elements/_fields.scss): the ring is
+       a box-shadow, which forced-colors mode drops, so the outline stays —
+       transparent — and is painted in the system focus colour there. */
+    outline: 2px solid transparent;
     border-color: var(--primary, #007a50);
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }

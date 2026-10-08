@@ -166,7 +166,7 @@
     color: var(--ink-strong, #261d15);
     font-size: var(--text-xs, 0.8125rem);
     font-weight: 700;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--tracking-wide, 0.04em);
     text-transform: uppercase;
     text-align: start;
   }
@@ -182,13 +182,13 @@
     border-radius: var(--radius-full, 9999px);
     min-width: 1.25rem;
     height: 1.25rem;
-    padding: 0 0.4rem;
+    padding: 0 var(--space-2, 0.5rem);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     font-size: var(--text-xs, 0.8125rem);
     font-weight: 600;
-    letter-spacing: 0;
+    letter-spacing: var(--tracking-normal, 0);
   }
   .dre-facet__chevron {
     color: var(--muted, #716a66);
@@ -202,10 +202,12 @@
   .dre-facet__search-input {
     box-sizing: border-box;
     width: 100%;
+    /* A dense control: --size-control-sm, as the contract allows for filters. */
+    height: var(--size-control-sm, 2.25rem);
     margin: 0;
-    padding: 0.3rem 0.5rem;
-    border: 1px solid var(--border, #dbd7d1);
-    border-radius: var(--radius-sm, 0.375rem);
+    padding: 0 var(--space-2, 0.5rem);
+    border: 1px solid var(--field-border, #8b857f);
+    border-radius: var(--radius-md, 0.5rem);
     background: var(--surface, #fdfcf9);
     color: var(--ink, #3c342d);
     font: inherit;
@@ -219,8 +221,10 @@
   }
   .dre-facet__search-input:focus,
   .dre-facet__search-input:focus-visible {
-    outline: 2px solid var(--primary, #007a50);
-    outline-offset: 2px;
+    /* The theme's field focus (DRE-theme base/elements/_fields.scss): the ring is
+       a box-shadow, which forced-colors mode drops, so the outline stays —
+       transparent — and is painted in the system focus colour there. */
+    outline: 2px solid transparent;
     border-color: var(--primary, #007a50);
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
@@ -231,7 +235,7 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.15rem;
+    gap: var(--space-1, 0.25rem);
     /* Keep a long (searched) list from dominating the sidebar; scroll within. */
     max-height: 22rem;
     overflow-y: auto;
@@ -241,7 +245,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-sm, 0.5rem);
-    padding: 0.2rem 0.25rem;
+    padding: var(--space-1, 0.25rem);
     border-radius: var(--radius-sm, 0.375rem);
     cursor: pointer;
     font-size: var(--text-sm, 0.9375rem);
@@ -269,7 +273,7 @@
   }
   .dre-facet__nomatch {
     margin: var(--space-sm, 0.5rem) 0 0;
-    padding: 0.2rem 0.25rem;
+    padding: var(--space-1, 0.25rem);
     color: var(--muted, #716a66);
     font-size: var(--text-sm, 0.9375rem);
   }

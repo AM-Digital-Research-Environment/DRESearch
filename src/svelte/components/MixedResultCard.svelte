@@ -30,7 +30,7 @@
   {:else if doc._kind === 'person'}<PersonCard {doc} {itemUrlBase} onAddFilter={add} />
   {:else if doc._kind === 'section'}<SectionCard {doc} {itemUrlBase} onAddFilter={add} />
   {:else if doc._kind === 'organisation'}<OrganisationCard {doc} {itemUrlBase} onAddFilter={add} />
-  {:else if doc._kind === 'term'}<TermCard {doc} {itemUrlBase} onAddFilter={add} />
+  {:else if doc._kind === 'term'}<TermCard {doc} {itemUrlBase} {profile} onAddFilter={add} />
   {:else}<ResultItem {doc} {itemUrlBase} onAddFilter={add} />{/if}
 </div>
 
@@ -43,7 +43,8 @@
   .dre-mixed__source {
     align-self: flex-end;
     margin: 0;
-    padding: 0.16rem 0.5rem;
+    min-height: 1.5rem;
+    padding: 0 var(--space-2, 0.5rem);
     border: 1px solid var(--border, #dbd7d1);
     border-radius: var(--radius-full, 9999px);
     background: var(--surface-sunken, #f3f0eb);
@@ -55,5 +56,9 @@
   }
   .dre-mixed__source:hover {
     background: var(--surface-sunken, #f3f0eb);
+  }
+  .dre-mixed__source:focus-visible {
+    outline: 2px solid var(--focus-color, #007a50);
+    outline-offset: 2px;
   }
 </style>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { CardKind, Doc } from '../lib/types';
   import { t } from '../lib/i18n';
+  import '../styles/buttons.css';
   import { download, serialize, type ExportFormat, type ExportMeta } from '../lib/export';
 
   /**
@@ -60,9 +61,13 @@
 <details class="dre-cite">
   <summary>{t('cite')}</summary>
   <div class="dre-cite__actions" role="group" aria-label={t('cite')}>
-    <button type="button" onclick={() => copy('bibtex')}>{t('copy_bibtex')}</button>
-    <button type="button" onclick={() => copy('ris')}>{t('copy_ris')}</button>
-    <button type="button" onclick={save}>{t('download_ris')}</button>
+    <button type="button" class="dre-button-secondary" onclick={() => copy('bibtex')}
+      >{t('copy_bibtex')}</button
+    >
+    <button type="button" class="dre-button-secondary" onclick={() => copy('ris')}
+      >{t('copy_ris')}</button
+    >
+    <button type="button" class="dre-button-secondary" onclick={save}>{t('download_ris')}</button>
   </div>
   <p class="dre-cite__status" role="status" aria-live="polite">{status}</p>
 </details>
@@ -79,9 +84,8 @@
     color: var(--primary, #007a50);
     cursor: pointer;
   }
-  .dre-cite summary:focus-visible,
-  .dre-cite button:focus-visible {
-    outline: 2px solid var(--primary, #007a50);
+  .dre-cite summary:focus-visible {
+    outline: 2px solid var(--focus-color, #007a50);
     outline-offset: 2px;
   }
   .dre-cite__actions {
@@ -90,21 +94,10 @@
     gap: var(--space-xs, 0.25rem);
     margin-block-start: var(--space-xs, 0.25rem);
   }
+  /* The shared secondary button (styles/buttons.css), at the card's size. */
   .dre-cite button {
-    min-height: var(--size-control-lg, 2.75rem);
-    margin: 0;
-    padding: var(--space-xs, 0.25rem) var(--space-sm, 0.5rem);
-    border: 1px solid var(--border, #dbd7d1);
-    border-radius: var(--radius-md, 0.5rem);
-    background: var(--surface, #fdfcf9) !important;
-    color: var(--ink, #3c342d);
-    font: inherit;
-    cursor: pointer;
-    box-shadow: none !important;
-  }
-  .dre-cite button:hover {
-    border-color: var(--primary, #007a50);
-    color: var(--primary, #007a50);
+    padding-inline: var(--space-sm, 0.5rem);
+    font-size: var(--text-xs, 0.8125rem);
   }
   .dre-cite__status {
     margin: 0;

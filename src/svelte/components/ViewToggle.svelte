@@ -41,12 +41,12 @@
   button {
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
+    gap: var(--space-1, 0.25rem);
     min-height: var(--size-control-lg, 2.75rem);
     min-width: var(--size-control-lg, 2.75rem);
     justify-content: center;
     margin: 0;
-    padding: 0.35rem 0.6rem;
+    padding: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
     border: 0;
     border-inline-end: 1px solid var(--border, #dbd7d1);
     background: var(--surface, #fdfcf9);
@@ -67,12 +67,16 @@
     box-shadow: inset 0 -2px var(--primary, #007a50);
     font-weight: 700;
   }
+  button:focus-visible {
+    outline: 2px solid var(--focus-color, #007a50);
+    outline-offset: -2px;
+  }
   svg {
     width: 1rem;
     height: 1rem;
     fill: currentColor;
   }
-  @media (max-width: 32rem) {
+  @media (max-width: 37.5rem) {
     button span {
       position: absolute;
       width: 1px;

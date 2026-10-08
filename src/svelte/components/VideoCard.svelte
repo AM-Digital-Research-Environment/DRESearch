@@ -146,7 +146,7 @@
     color: var(--muted, #716a66);
     font-size: var(--text-xs, 0.8125rem);
     font-weight: 600;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--tracking-wide, 0.04em);
     font-variant-numeric: tabular-nums;
   }
   /* The language is a FilterLink span — see that component for the styling. */

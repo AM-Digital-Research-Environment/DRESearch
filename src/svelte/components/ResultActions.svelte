@@ -24,18 +24,25 @@
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: var(--space-2, 0.5rem);
   }
   summary {
+    display: flex;
+    align-items: center;
     cursor: pointer;
     min-height: var(--size-control-lg, 2.75rem);
-    padding: 0.5rem 0.75rem;
-    color: var(--ink, #3c342d);
-    border: 1px solid var(--border, #dbd7d1);
+    padding: 0 var(--space-3, 0.75rem);
+    color: var(--primary-text, #006440);
+    font-weight: 600;
+    border: 1px solid var(--border-strong, #bfbab3);
     border-radius: var(--radius-md, 0.5rem);
   }
+  summary:hover {
+    background-color: var(--primary-muted, #e4f0e6);
+    border-color: var(--primary, #007a50);
+  }
   summary:focus-visible {
-    outline: 2px solid var(--primary, #007a50);
+    outline: 2px solid var(--focus-color, #007a50);
     outline-offset: 2px;
   }
   @media (min-width: 48rem) {
@@ -45,7 +52,7 @@
   }
   @media (max-width: 48rem) {
     .dre-actions[open] > div {
-      padding-block-start: 0.5rem;
+      padding-block-start: var(--space-2, 0.5rem);
     }
   }
 </style>

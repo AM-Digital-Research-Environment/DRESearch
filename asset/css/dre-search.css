@@ -35,7 +35,7 @@
 }
 
 .dre-search-block__skeleton-input {
-    height: 2.75rem;
+    height: var(--size-control-lg, 2.75rem);
     border-radius: var(--radius-md, 0.5rem);
     background: var(--surface-sunken, #f3f0eb);
 }
@@ -50,7 +50,7 @@
     height: 4.5rem;
     border-radius: var(--radius-md, 0.5rem);
     background: var(--surface-sunken, #f3f0eb);
-    animation: dre-search-pulse 1.4s ease-in-out infinite;
+    animation: dre-search-pulse 1.6s ease-in-out infinite;
 }
 
 @keyframes dre-search-pulse {
@@ -103,7 +103,7 @@
 }
 
 .dre-federated__skeleton-tabs {
-    height: 2.5rem;
+    height: var(--size-control-md, 2.5rem);
     border-radius: var(--radius-md, 0.5rem);
     background: var(--surface-sunken, #f3f0eb);
 }
@@ -112,7 +112,7 @@
     height: 4.5rem;
     border-radius: var(--radius-md, 0.5rem);
     background: var(--surface-sunken, #f3f0eb);
-    animation: dre-search-pulse 1.4s ease-in-out infinite;
+    animation: dre-search-pulse 1.6s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

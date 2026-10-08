@@ -55,11 +55,10 @@
     text-decoration-color: currentColor;
   }
   .dre-filter-link:focus-visible {
-    outline: 2px solid var(--primary, #007a50);
+    outline: 2px solid var(--focus-color, #007a50);
     outline-offset: 2px;
     border-radius: var(--radius-sm, 0.375rem);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
-    /* Repeat the ring on every line box when the value wraps, instead of
+    /* Repeat the outline on every line box when the value wraps, instead of
        drawing one ring around the union of the fragments. */
     -webkit-box-decoration-break: clone;
     box-decoration-break: clone;

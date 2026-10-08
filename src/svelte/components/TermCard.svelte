@@ -5,6 +5,7 @@
   import Sparkline from './Sparkline.svelte';
   import '../styles/card.css';
   import { associationSeries } from '../lib/sparkline';
+  import { entityTagClass } from '../lib/entity';
 
   /**
    * One authority-term card — a genre, language, location, or subject/tag:
@@ -25,9 +26,11 @@
     doc: Doc;
     itemUrlBase: string;
     onAddFilter: (field: string, value: string) => void;
+    /** The corpus, which names the entity hue of the type tag. */
+    profile?: string;
   }
 
-  const { doc, itemUrlBase, onAddFilter }: Props = $props();
+  const { doc, itemUrlBase, onAddFilter, profile }: Props = $props();
 
   const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
   const name = $derived(doc.title || t('untitled'));
@@ -55,7 +58,11 @@
       <a href={url}><Highlight value={nameHl ?? name} /></a>
     </h3>
     {#if type}
-      <button type="button" class="dre-shell__tag" onclick={() => onAddFilter('type_s', type)}>
+      <button
+        type="button"
+        class="dre-shell__tag {entityTagClass(profile)}"
+        onclick={() => onAddFilter('type_s', type)}
+      >
         {type}
       </button>
     {/if}

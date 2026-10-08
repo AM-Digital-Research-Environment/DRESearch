@@ -58,7 +58,11 @@
         <a href={url}><Highlight value={nameHl ?? name} /></a>
       </h3>
       {#if type}
-        <button type="button" class="dre-shell__tag" onclick={() => onAddFilter('type_s', type)}>
+        <button
+          type="button"
+          class="dre-shell__tag dre-shell__tag--organisation"
+          onclick={() => onAddFilter('type_s', type)}
+        >
           {type}
         </button>
       {/if}

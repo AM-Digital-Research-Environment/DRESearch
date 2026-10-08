@@ -410,9 +410,8 @@
     color: var(--ink-strong, #261d15);
   }
   .dre-search-bar__toggle:focus-visible {
-    outline: 2px solid var(--primary, #007a50);
+    outline: 2px solid var(--focus-color, #007a50);
     outline-offset: 2px;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
 
   /* When collapsible & expanded, float the input as an overlay so it never
@@ -442,12 +441,14 @@
     width: 100%;
     height: var(--size-control-lg, 2.75rem);
     /* leave room for the leading icon and the trailing clear button */
-    padding-inline: 2.1rem calc(var(--size-control-lg, 2.75rem) + var(--space-xs, 0.25rem));
+    padding-inline: var(--space-8, 2rem)
+      calc(var(--size-control-lg, 2.75rem) + var(--space-xs, 0.25rem));
     margin: 0;
     font-size: var(--text-sm, 0.9375rem);
     color: var(--ink, #3c342d);
     background: var(--surface, #fdfcf9);
-    border: 1px solid var(--border, #dbd7d1);
+    border: 1px solid var(--field-border, #8b857f);
+    /* Pill, not --radius-md: the theme's own header search field is one. */
     border-radius: var(--radius-full, 9999px);
     box-shadow: var(--shadow-xs, 0 1px 2px 0 rgba(52, 37, 26, 0.07));
     transition:
@@ -463,7 +464,10 @@
     display: none;
   }
   .dre-search-bar__input:focus {
-    outline: none;
+    /* The theme's field focus (DRE-theme base/elements/_fields.scss): the ring is
+       a box-shadow, which forced-colors mode drops, so the outline stays —
+       transparent — and is painted in the system focus colour there. */
+    outline: 2px solid transparent;
     border-color: var(--primary, #007a50);
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
@@ -498,9 +502,8 @@
     color: var(--ink, #3c342d);
   }
   .dre-search-bar__clear:focus-visible {
-    outline: 2px solid var(--primary, #007a50);
+    outline: 2px solid var(--focus-color, #007a50);
     outline-offset: 2px;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
 
   /* ── Suggestions dropdown ────────────────────────────────────────────────── */
@@ -508,7 +511,7 @@
     position: absolute;
     z-index: var(--z-dropdown, 100);
     inset-inline-end: 0;
-    top: calc(100% + 0.3rem);
+    top: calc(100% + var(--space-1, 0.25rem));
     width: min(26rem, 92vw);
     margin: 0;
     padding: 0.25rem;
@@ -524,22 +527,22 @@
     overflow-y: auto;
   }
   .dre-search-bar__group + .dre-search-bar__group {
-    margin-top: 0.15rem;
+    margin-top: var(--space-1, 0.25rem);
     border-top: 1px solid var(--border-light, #eae8e3);
-    padding-top: 0.15rem;
+    padding-top: var(--space-1, 0.25rem);
   }
   .dre-search-bar__group-label {
-    padding: 0.35rem var(--space-sm, 0.5rem) 0.15rem;
+    padding: var(--space-2, 0.5rem) var(--space-sm, 0.5rem) var(--space-1, 0.25rem);
     font-size: var(--text-xs, 0.8125rem);
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: var(--tracking-wide, 0.04em);
     text-transform: uppercase;
     color: var(--muted, #716a66);
   }
   .dre-search-bar__option {
     display: flex;
     flex-direction: column;
-    gap: 0.1rem;
+    gap: 0;
     padding: var(--space-xs, 0.25rem) var(--space-sm, 0.5rem);
     border-radius: var(--radius-sm, 0.375rem);
     color: var(--ink, #3c342d);
@@ -562,7 +565,7 @@
      past the grouped suggestions. */
   .dre-search-bar__see-all {
     display: block;
-    margin-bottom: 0.15rem;
+    margin-bottom: var(--space-1, 0.25rem);
     padding: var(--space-sm, 0.5rem);
     border-bottom: 1px solid var(--border-light, #eae8e3);
     color: var(--primary, #007a50);

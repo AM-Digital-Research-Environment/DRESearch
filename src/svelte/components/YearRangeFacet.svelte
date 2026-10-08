@@ -188,7 +188,7 @@
     width: 5.5rem;
     min-height: var(--size-control-lg, 2.75rem);
     padding-inline: var(--space-sm, 0.5rem);
-    border: 1px solid var(--border, #dbd7d1);
+    border: 1px solid var(--field-border, #8b857f);
     border-radius: var(--radius-md, 0.5rem);
     background: var(--surface, #fdfcf9);
     color: var(--ink, #3c342d);
@@ -198,9 +198,12 @@
     font-variant-numeric: tabular-nums;
   }
   .dre-yr__number:focus {
-    outline: 2px solid var(--primary, #007a50);
-    outline-offset: 1px;
+    /* The theme's field focus (DRE-theme base/elements/_fields.scss): the ring is
+       a box-shadow, which forced-colors mode drops, so the outline stays —
+       transparent — and is painted in the system focus colour there. */
+    outline: 2px solid transparent;
     border-color: var(--primary, #007a50);
+    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
   .dre-yr__sr {
     position: absolute;
@@ -228,7 +231,7 @@
     color: var(--ink-strong, #261d15);
     font-size: var(--text-xs, 0.8125rem);
     font-weight: 700;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--tracking-wide, 0.04em);
     text-transform: uppercase;
     text-align: start;
   }
@@ -242,13 +245,13 @@
     background: var(--primary, #007a50);
     color: var(--primary-contrast, #fcfcf9);
     border-radius: var(--radius-full, 9999px);
-    padding: 0 0.45rem;
+    padding: 0 var(--space-2, 0.5rem);
     height: 1.25rem;
     display: inline-flex;
     align-items: center;
     font-size: var(--text-xs, 0.8125rem);
     font-weight: 600;
-    letter-spacing: 0;
+    letter-spacing: var(--tracking-normal, 0);
     font-variant-numeric: tabular-nums;
   }
   .dre-yr__chevron {
@@ -313,7 +316,7 @@
      the thumb only. */
   .dre-yr__input:focus,
   .dre-yr__input:focus-visible {
-    outline: 2px solid var(--primary, #007a50);
+    outline: 2px solid var(--focus-color, #007a50);
     outline-offset: 2px;
     border: none;
     box-shadow: none;

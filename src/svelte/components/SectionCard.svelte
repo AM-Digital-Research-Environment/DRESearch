@@ -107,7 +107,8 @@
   .dre-scard__phase {
     display: inline-flex;
     align-items: center;
-    padding: 0.1rem 0.55rem;
+    min-height: 1.5rem;
+    padding: 0 var(--space-2, 0.5rem);
     background: color-mix(in srgb, var(--primary, #007a50) 14%, var(--surface, #fdfcf9));
     color: var(--ink-strong, #261d15);
     border: none;
@@ -115,7 +116,7 @@
     font: inherit;
     font-size: var(--text-xs, 0.8125rem);
     font-weight: 600;
-    letter-spacing: 0.04em;
+    letter-spacing: var(--tracking-wide, 0.04em);
     text-transform: uppercase;
     white-space: nowrap;
     cursor: pointer;
@@ -125,22 +126,21 @@
     background: color-mix(in srgb, var(--primary, #007a50) 28%, var(--surface, #fdfcf9));
   }
   .dre-scard__phase:focus-visible {
-    outline: 2px solid var(--primary, #007a50);
+    outline: 2px solid var(--focus-color, #007a50);
     outline-offset: 2px;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
   .dre-scard__count {
     color: var(--muted, #716a66);
     font-size: var(--text-xs, 0.8125rem);
     font-weight: 600;
-    letter-spacing: 0.04em;
+    letter-spacing: var(--tracking-wide, 0.04em);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
   .dre-scard__leaders-label {
     font-weight: 700;
     font-size: var(--text-xs, 0.8125rem);
-    letter-spacing: 0.04em;
+    letter-spacing: var(--tracking-wide, 0.04em);
     text-transform: uppercase;
     color: var(--muted, #716a66);
     margin-inline-end: 0.3rem;

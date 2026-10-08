@@ -5,12 +5,6 @@
 # only ever be REMOVED. Regenerate with --update-allowlist after a pass,
 # and check the diff — a new line means new drift got in.
 
-# media — 4 file(s)
-media  src/svelte/components/FederatedApp.svelte
-media  src/svelte/components/MapView.svelte
-media  src/svelte/components/ViewToggle.svelte
-media  src/svelte/styles/card.css
-
 # pxGeometry — 8 file(s)
 pxGeometry  src/svelte/components/ExportMenu.svelte
 pxGeometry  src/svelte/components/MapView.svelte
@@ -21,27 +15,5 @@ pxGeometry  src/svelte/components/YearRangeFacet.svelte
 pxGeometry  src/svelte/lib/tokenBridge.ts
 pxGeometry  src/svelte/styles/card.css
 
-# radius — 2 file(s)
-radius  src/svelte/components/Highlight.svelte
-radius  src/svelte/components/ResultSkeleton.svelte
-
-# spacing — 19 file(s)
-spacing  src/svelte/App.svelte
-spacing  src/svelte/components/CopyLinkButton.svelte
-spacing  src/svelte/components/FacetGroup.svelte
-spacing  src/svelte/components/FacetPanel.svelte
-spacing  src/svelte/components/FederatedApp.svelte
-spacing  src/svelte/components/FilterChip.svelte
-spacing  src/svelte/components/MapView.svelte
-spacing  src/svelte/components/MixedResultCard.svelte
-spacing  src/svelte/components/ProjectCard.svelte
-spacing  src/svelte/components/PublicationCard.svelte
-spacing  src/svelte/components/ResultSkeleton.svelte
-spacing  src/svelte/components/ResultSummary.svelte
-spacing  src/svelte/components/SearchBar.svelte
-spacing  src/svelte/components/SearchBox.svelte
-spacing  src/svelte/components/SectionCard.svelte
-spacing  src/svelte/components/SortSelect.svelte
-spacing  src/svelte/components/ViewToggle.svelte
+# spacing — 1 file(s)
 spacing  src/svelte/components/YearRangeFacet.svelte
-spacing  src/svelte/styles/card.css

@@ -18,6 +18,7 @@
     type ExportMeta,
   } from '../lib/export';
   import { formatNumber, t } from '../lib/i18n';
+  import '../styles/buttons.css';
 
   /**
    * "Export" disclosure in the results toolbar: a small outlined trigger (same
@@ -135,7 +136,7 @@
   <button
     bind:this={trigger}
     type="button"
-    class="dre-export__trigger"
+    class="dre-export__trigger dre-button-secondary"
     aria-expanded={open}
     aria-controls={open ? menuId : undefined}
     aria-label={t('export_results')}
@@ -192,41 +193,9 @@
     display: inline-flex;
   }
 
-  /*
-   * Trigger mirrors the toolbar's control vocabulary (SortSelect): outlined,
-   * surface background, primary on hover. The surface background + border below
-   * override the native button chrome (the host theme no longer styles bare
-   * <button>s, so no override fight is needed).
-   */
+  /* The trigger is the shared secondary button (styles/buttons.css). */
   .dre-export__trigger {
-    display: inline-flex;
-    align-items: center;
     gap: var(--space-xs, 0.25rem);
-    height: var(--size-control-lg, 2.75rem);
-    margin: 0;
-    padding-inline: var(--space-md, 1rem);
-    border: 1px solid var(--border, #dbd7d1);
-    border-radius: var(--radius-md, 0.5rem);
-    background: var(--surface, #fdfcf9);
-    color: var(--ink, #3c342d);
-    font: inherit;
-    font-size: var(--text-sm, 0.9375rem);
-    font-weight: 500;
-    cursor: pointer;
-    transition:
-      border-color var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1)),
-      color var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
-  }
-  .dre-export__trigger:hover {
-    border-color: var(--primary, #007a50);
-    color: var(--primary, #007a50);
-    background: var(--surface, #fdfcf9);
-  }
-  .dre-export__trigger:focus-visible {
-    outline: 2px solid var(--primary, #007a50);
-    outline-offset: 2px;
-    border-color: var(--primary, #007a50);
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
   .dre-export__trigger:disabled {
     opacity: 0.6;
@@ -247,9 +216,12 @@
     background: var(--surface, #fdfcf9);
     border: 1px solid var(--border, #dbd7d1);
     border-radius: var(--radius-md, 0.5rem);
-    box-shadow:
-      0 4px 12px rgba(0, 0, 0, 0.08),
-      0 1px 3px rgba(0, 0, 0, 0.05);
+    /* The theme's elevation, not a cold black rgba that ignored the mode. */
+    box-shadow: var(
+      --shadow-md,
+      0 4px 6px -1px rgba(42, 28, 16, 0.14),
+      0 2px 4px -2px rgba(52, 37, 26, 0.07)
+    );
     overflow: hidden;
   }
   .dre-export__item {
@@ -276,8 +248,11 @@
   .dre-export__item:focus-visible {
     background: color-mix(in srgb, var(--primary, #007a50) 8%, var(--surface, #fdfcf9));
     color: var(--ink, #3c342d);
-    outline: 2px solid var(--primary, #007a50);
-    outline-offset: 2px;
+  }
+  /* Inset: the menu clips its overflow, so an outside offset would be cut. */
+  .dre-export__item:focus-visible {
+    outline: 2px solid var(--focus-color, #007a50);
+    outline-offset: -2px;
   }
   .dre-export__item:disabled {
     opacity: 0.6;

@@ -1,0 +1,57 @@
+/*
+ * The secondary button — the theme's `secondary-button` mixin
+ * (DRE-theme asset/sass/abstracts/mixins/_mixins.scss), written once for every
+ * outlined control in the client: pager, export, copy link, cite, the mobile
+ * filters toggle and the empty-state actions. Before, each component drew its
+ * own outline button (a --border outline, --ink text, a primary-coloured hover
+ * label and an outline-plus-ring focus), five slightly different ways, none of
+ * them the theme's.
+ *
+ * Global on purpose, like card.css: the class is applied by several
+ * components. It is single-class (0,1,0) and the state selectors are wrapped in
+ * :where(), as in the theme, so a component's scoped rule (0,2,0) can still
+ * resize or recolour it without !important.
+ */
+
+.dre-button-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2, 0.5rem);
+  min-height: var(--size-control-lg, 2.75rem);
+  margin: 0;
+  padding: 0 var(--space-4, 1rem);
+  border: 1px solid var(--border-strong, #bfbab3);
+  border-radius: var(--radius-md, 0.5rem);
+  background-color: transparent;
+  color: var(--primary-text, #006440);
+  font: inherit;
+  font-size: var(--text-sm, 0.9375rem);
+  font-weight: 600;
+  line-height: var(--leading-snug, 1.25);
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  transition:
+    background-color var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1)),
+    border-color var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1)),
+    color var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1));
+}
+.dre-button-secondary:where(:hover:not(:disabled)) {
+  background-color: var(--primary-muted, #e4f0e6);
+  border-color: var(--primary, #007a50);
+  color: var(--primary-text, #006440);
+}
+.dre-button-secondary:where(:active:not(:disabled)) {
+  background-color: color-mix(in oklab, var(--primary-muted, #e4f0e6), var(--primary, #007a50) 10%);
+}
+.dre-button-secondary:where(:focus-visible) {
+  outline: 2px solid var(--focus-color, #007a50);
+  outline-offset: 2px;
+}
+.dre-button-secondary:where(:disabled) {
+  border-color: var(--border, #dbd7d1);
+  color: var(--muted, #716a66);
+  cursor: default;
+}

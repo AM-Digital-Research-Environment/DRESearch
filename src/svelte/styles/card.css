@@ -29,11 +29,20 @@
     0 2px 4px -2px rgba(52, 37, 26, 0.07)
   );
 }
-/* A thumbnail column beside the body. */
+/* A thumbnail column beside the body — while the card is wide enough; see the
+   container query at the end of this file. The card is its own query container,
+   as the theme's browse cards are (DRE-theme components/resources/
+   _resource-grid.scss): whether it can afford the thumbnail beside its text
+   depends on the CARD's width, not the viewport's. A two-up masonry column or a
+   rail can be narrow on a wide screen. Its inline size always comes from
+   outside (a list row, a grid track, a masonry column), never from its content,
+   so the containment changes nothing about how it is laid out. Column and row
+   gaps differ because the row gap only shows once the thumbnail stacks. */
 .dre-shell--media {
+  container: dre-card / inline-size;
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--space-md, 1rem);
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-sm, 0.5rem) var(--space-md, 1rem);
 }
 .dre-shell--no-thumb {
   grid-template-columns: 1fr;
@@ -142,7 +151,7 @@
   color: var(--muted, #716a66);
   font-size: var(--text-xs, 0.8125rem);
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-wide, 0.04em);
   text-transform: uppercase;
   font-variant-numeric: tabular-nums;
 }
@@ -150,13 +159,14 @@
 .dre-shell__pill {
   display: inline-flex;
   align-items: center;
-  padding: 0.1rem 0.5rem;
+  min-height: 1.5rem;
+  padding: 0 var(--space-2, 0.5rem);
   background: color-mix(in srgb, var(--primary, #007a50) 14%, var(--surface, #fdfcf9));
   color: var(--ink-strong, #261d15);
   border-radius: var(--radius-full, 9999px);
   font-size: var(--text-xs, 0.8125rem);
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-wide, 0.04em);
   white-space: nowrap;
 }
 .dre-shell__title {
@@ -226,7 +236,9 @@
   text-decoration-color: currentColor;
 }
 
-/* ── Chips: buttons that add a facet filter; reset the native button chrome ── */
+/* ── Chips: buttons that add a facet filter; reset the native button chrome ──
+   Chip, tag and pill share the contract's label shape: --radius-full, --text-xs
+   at weight 600 (DRE-theme docs/DESIGN-INTEGRATION.md, "Form controls"). */
 
 .dre-shell__chips {
   list-style: none;
@@ -239,14 +251,15 @@
 .dre-shell__chip {
   display: inline-flex;
   align-items: center;
-  padding: 0.1rem 0.5rem;
+  min-height: 1.5rem;
+  padding: 0 var(--space-2, 0.5rem);
   background: var(--surface-sunken, #f3f0eb);
   color: var(--ink-light, #5f5650);
   border: none;
-  border-radius: var(--radius-sm, 0.375rem);
+  border-radius: var(--radius-full, 9999px);
   font-family: inherit;
   font-size: var(--text-xs, 0.8125rem);
-  font-weight: 500;
+  font-weight: 600;
   line-height: var(--leading-normal, 1.6);
   cursor: pointer;
   transition:
@@ -275,15 +288,22 @@
 .dre-shell__chip--role:hover {
   background: color-mix(in srgb, var(--primary, #007a50) 28%, var(--surface, #fdfcf9));
 }
-/* The type tag beside an authority name (organisations, terms). */
+/* The type tag beside an authority name (organisations, terms). It takes the
+   hue of its ENTITY type — the named --entity-* family that colours the same
+   type in charts, maps and networks — so a location reads as a location
+   everywhere. The hue is a tint and an edge, never the text: --ink-strong on a
+   16% mix keeps the label's contrast in both modes. The modifier is set from
+   the corpus (lib/entity.ts); an unknown corpus keeps the generic term hue. */
 .dre-shell__tag {
+  --dre-tag-hue: var(--type-entity-term, #d57912);
   flex: none;
   display: inline-flex;
   align-items: center;
-  padding: 0.1rem 0.5rem;
-  background: color-mix(in srgb, var(--accent, #ca7210) 16%, var(--surface, #fdfcf9));
+  min-height: 1.5rem;
+  padding: 0 var(--space-2, 0.5rem);
+  background: color-mix(in srgb, var(--dre-tag-hue) 16%, var(--surface, #fdfcf9));
   color: var(--ink-strong, #261d15);
-  border: none;
+  border: 1px solid color-mix(in srgb, var(--dre-tag-hue) 55%, transparent);
   border-radius: var(--radius-full, 9999px);
   font-family: inherit;
   font-size: var(--text-xs, 0.8125rem);
@@ -294,13 +314,27 @@
   transition: background var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
 }
 .dre-shell__tag:hover {
-  background: color-mix(in srgb, var(--accent, #ca7210) 30%, var(--surface, #fdfcf9));
+  background: color-mix(in srgb, var(--dre-tag-hue) 30%, var(--surface, #fdfcf9));
+}
+.dre-shell__tag--organisation {
+  --dre-tag-hue: var(--entity-organisation, #44b8f2);
+}
+.dre-shell__tag--location {
+  --dre-tag-hue: var(--entity-location, #00268a);
+}
+.dre-shell__tag--subject {
+  --dre-tag-hue: var(--entity-subject, #d57912);
+}
+.dre-shell__tag--genre {
+  --dre-tag-hue: var(--entity-genre, #cca352);
+}
+.dre-shell__tag--language {
+  --dre-tag-hue: var(--entity-language, #0e7c71);
 }
 .dre-shell__chip:focus-visible,
 .dre-shell__tag:focus-visible {
-  outline: 2px solid var(--primary, #007a50);
+  outline: 2px solid var(--focus-color, #007a50);
   outline-offset: 2px;
-  box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
 }
 
 /* ── Footer: transcript badge + external link (podcasts, videos) ───────────── */
@@ -317,14 +351,15 @@
 .dre-shell__badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.15rem 0.6rem;
+  gap: var(--space-1, 0.25rem);
+  min-height: 1.5rem;
+  padding: 0 var(--space-3, 0.75rem);
   background: var(--surface-sunken, #f3f0eb);
   color: var(--muted, #716a66);
   border-radius: var(--radius-full, 9999px);
   font-size: var(--text-xs, 0.8125rem);
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-wide, 0.04em);
   white-space: nowrap;
 }
 .dre-shell__badge::before {
@@ -337,19 +372,35 @@
   -webkit-mask: var(--dre-doc) center / contain no-repeat;
   mask: var(--dre-doc) center / contain no-repeat;
 }
+/* Forced colours (Windows High Contrast) repaint backgrounds, which would erase
+   a mask icon drawn with background-color: currentColor. The theme's
+   %svg-icon-forced rule (DRE-theme abstracts/mixins/_mixins.scss). */
+@media (forced-colors: active) {
+  .dre-shell__badge::before {
+    forced-color-adjust: none;
+    background-color: CanvasText;
+  }
+  @supports (forced-color-adjust: preserve-parent-color) {
+    .dre-shell__badge::before {
+      forced-color-adjust: preserve-parent-color;
+      background-color: currentColor;
+    }
+  }
+}
 /* "Listen" / "Watch" — a brand-coloured outline pill that fills on hover, with
    an external-link arrow. */
 .dre-shell__external {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.15rem 0.7rem;
+  gap: var(--space-1, 0.25rem);
+  min-height: 1.5rem;
+  padding: 0 var(--space-3, 0.75rem);
   border: 1px solid color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dbd7d1));
   border-radius: var(--radius-full, 9999px);
   color: var(--primary, #007a50);
   font-size: var(--text-xs, 0.8125rem);
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-wide, 0.04em);
   text-decoration: none;
   white-space: nowrap;
   transition:
@@ -365,19 +416,34 @@
   color: var(--primary-contrast, #fcfcf9);
 }
 
-/* ── Narrow screens: the thumbnail goes above the text ─────────────────────── */
+/* ── Narrow cards: the thumbnail goes above the text ───────────────────────── */
 
-@media (max-width: 32rem) {
-  .dre-shell--media {
-    grid-template-columns: 1fr;
-    gap: var(--space-sm, 0.5rem);
+/* The theme's rule: the thumbnail sits beside the text only while the CARD is at
+   least 28rem wide, which leaves the text column a readable title measure. A
+   container query measures the content box, and this card has --space-md of
+   padding on each side, so 26rem of content is the 28rem card. (This used to be
+   a 32rem VIEWPORT query, which kept a 7rem thumbnail squeezing the text of a
+   card in a narrow column on a wide screen.)
+
+   Only the large thumbnails stack. A 3.25rem avatar or emblem leaves a narrow
+   card most of its width, and stacking it would put a lone face above the
+   name; it stays beside the text at every width. The gallery tile is a column
+   already. */
+@container dre-card (width < 26rem) {
+  .dre-shell--media:not(.dre-shell--gallery):has(
+      > .dre-shell__thumb--item,
+      > .dre-shell__thumb--logo,
+      > .dre-shell__thumb--poster
+    )
+    > * {
+    grid-column: 1 / -1;
   }
-  .dre-shell__thumb--item,
-  .dre-shell__thumb--logo {
+  .dre-shell--media:not(.dre-shell--gallery) > .dre-shell__thumb--item,
+  .dre-shell--media:not(.dre-shell--gallery) > .dre-shell__thumb--logo {
     width: 100%;
     height: 8rem;
   }
-  .dre-shell__thumb--poster {
+  .dre-shell--media:not(.dre-shell--gallery) > .dre-shell__thumb--poster {
     width: 100%;
   }
 }

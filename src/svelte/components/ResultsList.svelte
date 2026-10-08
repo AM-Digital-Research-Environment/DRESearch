@@ -18,6 +18,8 @@
     perPage: number;
     itemUrlBase: string;
     cardKind: CardKind;
+    /** The corpus, for the entity hue of a term card's type tag. */
+    profile?: string;
     /** Pack the compact two-up cards as a masonry instead of a row-aligned grid. */
     masonry?: boolean;
     view?: ViewMode;
@@ -32,6 +34,7 @@
     perPage,
     itemUrlBase,
     cardKind,
+    profile,
     masonry = false,
     view = 'list',
     onPageChange,
@@ -62,7 +65,7 @@
       {:else if cardKind === 'organisation'}
         <OrganisationCard {doc} {itemUrlBase} {onAddFilter} />
       {:else if cardKind === 'term'}
-        <TermCard {doc} {itemUrlBase} {onAddFilter} />
+        <TermCard {doc} {itemUrlBase} {profile} {onAddFilter} />
       {:else}
         <ResultItem {doc} {itemUrlBase} {onAddFilter} {view} eager={index < 4} />
       {/if}

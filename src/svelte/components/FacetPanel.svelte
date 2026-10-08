@@ -141,7 +141,7 @@
     );
     font-size: var(--text-xs, 0.8125rem);
     font-weight: 700;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--tracking-wide, 0.04em);
     text-transform: uppercase;
     color: var(--ink-strong, #261d15);
   }
@@ -176,7 +176,7 @@
   }
   .dre-facets__fulltext {
     margin-block: var(--space-md, 1rem) 0;
-    padding: 0.55rem 0.7rem;
+    padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
     border: 1px solid var(--border, #dbd7d1);
     border-radius: var(--radius-md, 0.5rem);
     background: var(--surface, #fdfcf9);

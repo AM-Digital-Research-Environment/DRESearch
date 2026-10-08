@@ -423,14 +423,17 @@
     height: var(--size-control-lg, 2.75rem);
     margin: 0;
     padding-inline: 1rem 3rem;
-    border: 1px solid var(--border, #dbd7d1);
+    border: 1px solid var(--field-border, #8b857f);
     border-radius: var(--radius-md, 0.5rem);
     background: var(--surface, #fdfcf9);
     color: var(--ink, #3c342d);
     font: inherit;
   }
   .dre-fed__search input:focus {
-    outline: 0;
+    /* The theme's field focus (DRE-theme base/elements/_fields.scss): the ring is
+       a box-shadow, which forced-colors mode drops, so the outline stays —
+       transparent — and is painted in the system focus colour there. */
+    outline: 2px solid transparent;
     border-color: var(--primary, #007a50);
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
   }
@@ -449,6 +452,10 @@
     font-size: var(--text-lg, 1.1875rem);
     cursor: pointer;
   }
+  .dre-fed__search > button:focus-visible {
+    outline: 2px solid var(--focus-color, #007a50);
+    outline-offset: 2px;
+  }
   /* Desktop exposes corpus tabs; narrow screens use the labelled chooser. */
   .dre-fed__chooser {
     display: none;
@@ -456,43 +463,53 @@
   @media (max-width: 48rem) {
     .dre-fed__chooser {
       display: grid;
-      gap: 0.35rem;
+      gap: var(--space-1, 0.25rem);
     }
     .dre-fed__chooser select {
       width: 100%;
-      min-height: 2.75rem;
-      padding: 0.5rem;
+      min-height: var(--size-control-lg, 2.75rem);
+      margin: 0;
+      padding: var(--space-2, 0.5rem);
       font: inherit;
       color: var(--ink, #3c342d);
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
+      background: var(--surface, #fdfcf9);
+      border: 1px solid var(--field-border, #8b857f);
+      border-radius: var(--radius-md, 0.5rem);
     }
-    .dre-fed__tabs {
-      display: none !important;
+    .dre-fed__chooser select:focus {
+      outline: 2px solid transparent;
+      border-color: var(--primary, #007a50);
+      box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
+    }
+    /* Doubled class, not !important: it must outrank the flex rule below. */
+    .dre-fed__tabs.dre-fed__tabs {
+      display: none;
     }
   }
   .dre-fed__tabs {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.3rem;
-    padding-block-end: 0.6rem;
+    gap: var(--space-1, 0.25rem);
+    padding-block-end: var(--space-2, 0.5rem);
     border-bottom: 1px solid var(--border, #dbd7d1);
   }
+  /* The thirteen corpus tabs are a dense, repeated control: they use the WCAG
+     2.2 spacing exception instead of 44px boxes (DRE-theme integration
+     contract, "Touch-target contract"). No !important: the theme stopped
+     painting bare <button>s (DRE-theme base/elements/_buttons.scss), so these
+     single-class rules hold on their own. */
   .dre-fed__tabs button {
     display: flex;
     align-items: center;
-    gap: 0.3rem;
+    gap: var(--space-1, 0.25rem);
     flex: none;
     margin: 0;
-    padding: 0.35rem 0.7rem;
+    padding: var(--space-1, 0.25rem) var(--space-3, 0.75rem);
     border: 1px solid var(--border, #dbd7d1);
     border-radius: var(--radius-full, 9999px);
-    /* The host theme paints every bare <button> as a filled primary button, and
-       its button:hover bleeds green — !important is this module's fix idiom. */
-    background: var(--surface, #fdfcf9) !important;
-    box-shadow: none !important;
-    transform: none !important;
+    background: var(--surface, #fdfcf9);
+    box-shadow: none;
+    transform: none;
     color: var(--muted, #716a66);
     font: inherit;
     /* em, not rem: the host theme's body face runs at 17px, and a chip strip this
@@ -508,17 +525,16 @@
   .dre-fed__tabs button.active,
   .dre-fed__tabs button.active:hover {
     border-color: var(--primary, #007a50);
-    background: var(--primary, #007a50) !important;
+    background: var(--primary, #007a50);
     color: var(--primary-contrast, #fcfcf9);
     font-weight: 600;
   }
   .dre-fed__tabs button:focus-visible {
-    outline: 2px solid var(--primary, #007a50);
+    outline: 2px solid var(--focus-color, #007a50);
     outline-offset: 2px;
-    box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32)) !important;
   }
   .dre-fed__tabs small {
-    padding: 0.05rem 0.35rem;
+    padding: 0 var(--space-1, 0.25rem);
     border-radius: var(--radius-full, 9999px);
     background: var(--surface-sunken, #f3f0eb);
     color: var(--muted, #716a66);
@@ -538,15 +554,20 @@
   }
   .dre-fed__panel {
     min-width: 0;
-    outline: none;
+  }
+  /* The panel is focusable (tabindex=0, per the tabs pattern), so it keeps a
+     visible focus indicator rather than `outline: none`. */
+  .dre-fed__panel:focus-visible {
+    outline: 2px solid var(--focus-color, #007a50);
+    outline-offset: 2px;
   }
   .dre-fed__all-summary {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: var(--space-3, 0.75rem);
     flex-wrap: wrap;
     justify-content: space-between;
-    padding-block: 0.65rem;
+    padding-block: var(--space-3, 0.75rem);
     border-block: 1px solid var(--border-light, #eae8e3);
     color: var(--muted, #716a66);
     font-size: var(--text-sm, 0.9375rem);
@@ -575,7 +596,7 @@
        permanently on its fallback and painted the same cold red in both modes. */
     border-color: var(--error, #cc272e);
   }
-  @media (max-width: 40rem) {
+  @media (max-width: 37.5rem) {
     .dre-fed__all-summary {
       align-items: flex-start;
       flex-direction: column;

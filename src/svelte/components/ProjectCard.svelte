@@ -123,7 +123,8 @@
   .dre-pcard__count {
     display: inline-flex;
     align-items: center;
-    padding: 0.1rem 0.5rem;
+    min-height: 1.5rem;
+    padding: 0 var(--space-2, 0.5rem);
     background: color-mix(in srgb, var(--primary, #007a50) 12%, var(--surface, #fdfcf9));
     color: var(--ink-strong, #261d15);
     border-radius: var(--radius-full, 9999px);
@@ -135,7 +136,7 @@
   .dre-pcard__pi-label {
     font-weight: 700;
     font-size: var(--text-xs, 0.8125rem);
-    letter-spacing: 0.04em;
+    letter-spacing: var(--tracking-wide, 0.04em);
     text-transform: uppercase;
     color: var(--muted, #716a66);
     margin-inline-end: 0.15rem;

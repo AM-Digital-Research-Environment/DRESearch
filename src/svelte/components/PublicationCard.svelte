@@ -216,7 +216,7 @@
     color: var(--muted, #716a66);
     font-size: var(--text-xs, 0.8125rem);
     font-weight: 600;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--tracking-wide, 0.04em);
     font-variant-numeric: tabular-nums;
   }
   .dre-bcard__type {
@@ -248,13 +248,14 @@
   .dre-bcard__doi {
     display: inline-flex;
     align-items: center;
-    padding: 0.1rem 0.6rem;
+    min-height: 1.5rem;
+    padding: 0 var(--space-3, 0.75rem);
     border: 1px solid color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dbd7d1));
     border-radius: var(--radius-full, 9999px);
     color: var(--primary, #007a50);
     font-size: var(--text-xs, 0.8125rem);
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: var(--tracking-wide, 0.04em);
     text-decoration: none;
     white-space: nowrap;
     transition:

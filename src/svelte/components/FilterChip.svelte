@@ -23,9 +23,9 @@
   .dre-filter-chip {
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: var(--space-1, 0.25rem);
     max-width: 100%;
-    padding: 0.2rem 0.55rem;
+    padding: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
     border: 1px solid color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dbd7d1));
     border-radius: var(--radius-full, 9999px);
     background: var(--surface, #fdfcf9);
@@ -33,6 +33,10 @@
     font: inherit;
     font-size: var(--text-xs, 0.8125rem);
     cursor: pointer;
+  }
+  .dre-filter-chip:focus-visible {
+    outline: 2px solid var(--focus-color, #007a50);
+    outline-offset: 2px;
   }
   .dre-filter-chip:hover {
     background: var(--primary, #007a50);

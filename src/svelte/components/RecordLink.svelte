@@ -53,7 +53,7 @@
     color: var(--primary, #007a50);
   }
   .dre-record-link:focus-visible {
-    outline: 2px solid var(--primary, #007a50);
+    outline: 2px solid var(--focus-color, #007a50);
     outline-offset: 2px;
   }
 </style>

@@ -282,7 +282,7 @@
     inset-inline: 1rem;
     bottom: 1rem;
     margin: 0;
-    padding: 0.55rem 0.75rem;
+    padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
     border-radius: 0.375rem;
     background: var(--surface, #fdfcf9);
     box-shadow: var(
@@ -315,7 +315,7 @@
   .dre-map__places li span {
     color: var(--muted, #716a66);
   }
-  @media (max-width: 40rem) {
+  @media (max-width: 37.5rem) {
     .dre-map {
       min-height: 24rem;
     }

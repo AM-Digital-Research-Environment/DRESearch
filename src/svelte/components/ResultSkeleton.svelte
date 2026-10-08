@@ -36,7 +36,7 @@
   .dre-skeleton {
     display: grid;
     grid-template-columns: 7rem 1fr;
-    gap: 1rem;
+    gap: var(--space-4, 1rem);
     min-height: 8.5rem;
     padding: 1rem;
     border: 1px solid var(--border-light, #eae8e3);
@@ -45,28 +45,30 @@
   .dre-skeleton__image,
   .dre-skeleton i {
     display: block;
+    /* The highlight is --surface, not white: a white sweep glared across the
+       dark theme. Timing per the contract's skeleton rule. */
     background: linear-gradient(
       90deg,
       var(--surface-sunken, #f3f0eb) 25%,
-      color-mix(in srgb, var(--surface-sunken, #f3f0eb) 65%, white) 50%,
+      var(--surface, #fdfcf9) 50%,
       var(--surface-sunken, #f3f0eb) 75%
     );
     background-size: 200% 100%;
-    animation: dre-shimmer 1.3s linear infinite;
+    animation: dre-shimmer 1.6s ease-in-out infinite;
   }
   .dre-skeleton__image {
     aspect-ratio: 1;
-    border-radius: 0.375rem;
+    border-radius: var(--radius-sm, 0.375rem);
   }
   .dre-skeleton__body {
     display: flex;
     flex-direction: column;
-    gap: 0.65rem;
-    padding-top: 0.2rem;
+    gap: var(--space-3, 0.75rem);
+    padding-top: var(--space-1, 0.25rem);
   }
   .dre-skeleton i {
     height: 0.8rem;
-    border-radius: 0.2rem;
+    border-radius: var(--radius-sm, 0.375rem);
   }
   .dre-skeleton i:first-child {
     height: 1.2rem;

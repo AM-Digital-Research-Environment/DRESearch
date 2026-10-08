@@ -32,6 +32,7 @@
   import ResultActions from './components/ResultActions.svelte';
   import CopyLinkButton from './components/CopyLinkButton.svelte';
   import MapView from './components/MapView.svelte';
+  import './styles/buttons.css';
 
   /**
    * One instance per mounted block. Owns the search state (query, page, sort,
@@ -605,7 +606,7 @@
     {#if hasSidebar}
       <button
         type="button"
-        class="dre-search__facets-toggle"
+        class="dre-search__facets-toggle dre-button-secondary"
         aria-expanded={facetsOpen}
         aria-controls="dre-facets-{bootstrap.block_id}"
         onclick={toggleFacets}
@@ -685,7 +686,11 @@
             <strong>{t('no_results_title')}</strong>
             {#if activeCount > 0}
               <p>{t('try_removing_filter')}</p>
-              <button type="button" class="dre-search__clear-link" onclick={handleClearAll}>
+              <button
+                type="button"
+                class="dre-search__clear-link dre-button-secondary"
+                onclick={handleClearAll}
+              >
                 {t('clear_all_filters')}
               </button>
             {:else if query.trim() !== ''}
@@ -693,7 +698,7 @@
               {#if correction}
                 <button
                   type="button"
-                  class="dre-search__clear-link"
+                  class="dre-search__clear-link dre-button-secondary"
                   onclick={() => handleQueryChange(correction ?? '')}
                 >
                   {t('did_you_mean', { q: correction })}
@@ -730,6 +735,7 @@
               perPage={bootstrap.per_page}
               itemUrlBase={bootstrap.item_url_base}
               cardKind={bootstrap.card_kind}
+              profile={bootstrap.profile}
               masonry={masonryLayout}
               {view}
               onPageChange={handlePageChange}
@@ -765,28 +771,11 @@
   }
 
   /* Mobile-only filters toggle — hidden on wider viewports where the sidebar is
-     always visible. */
+     always visible. The shared secondary button (styles/buttons.css). */
   .dre-search__facets-toggle {
     display: none;
-    align-items: center;
-    justify-content: center;
     gap: var(--space-xs, 0.25rem);
     width: 100%;
-    padding: 0.6rem 0.9rem;
-    border: 1px solid var(--border, #dbd7d1);
-    border-radius: var(--radius-md, 0.5rem);
-    background: var(--surface, #fdfcf9);
-    color: var(--ink-strong, #261d15);
-    font: inherit;
-    font-size: var(--text-sm, 0.9375rem);
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .dre-search__facets-toggle:hover {
-    border-color: var(--primary, #007a50);
-    /* Stay an outline button — the host would fill it green with a white label. */
-    background: var(--surface, #fdfcf9);
-    color: var(--primary, #007a50);
   }
   .dre-search__facets-toggle-badge {
     display: inline-flex;
@@ -794,7 +783,7 @@
     justify-content: center;
     min-width: 1.25rem;
     height: 1.25rem;
-    padding: 0 0.4rem;
+    padding: 0 var(--space-2, 0.5rem);
     border-radius: var(--radius-full, 9999px);
     background: var(--primary, #007a50);
     color: var(--primary-contrast, #fcfcf9);
@@ -891,18 +880,7 @@
     margin: 0;
   }
   .dre-search__clear-link {
-    background: none;
-    border: 1px solid var(--primary, #007a50);
-    color: var(--primary, #007a50);
-    border-radius: var(--radius-md, 0.5rem);
-    padding: 0.4rem 0.75rem;
-    font-size: var(--text-sm, 0.9375rem);
-    cursor: pointer;
     margin-top: var(--space-xs, 0.25rem);
-  }
-  .dre-search__clear-link:hover {
-    background: var(--primary, #007a50);
-    color: var(--primary-contrast, #fcfcf9);
   }
 
   @media (max-width: 48rem) {

@@ -33,8 +33,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.75rem;
-    padding-block: 0.65rem;
+    gap: var(--space-3, 0.75rem);
+    padding-block: var(--space-3, 0.75rem);
     border-block: 1px solid var(--border-light, #eae8e3);
   }
   .dre-summary__scope {
