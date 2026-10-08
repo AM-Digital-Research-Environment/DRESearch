@@ -3,6 +3,12 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.26.2] - 2026-10-08
+
+### Fixed
+
+- Ships the 1.26.1 Mirador fix. 1.26.1 was tagged but never packaged: its release stopped at static analysis because PHPStan's Omeka stub did not declare the `inlineScript()` view helper the fix uses. The stub now declares it. There is no runtime change from 1.26.1.
+
 ## [1.26.1] - 2026-10-08
 
 ### Fixed

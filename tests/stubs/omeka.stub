@@ -36,6 +36,7 @@ namespace Laminas\View\Renderer;
  * @method string partial(string $name, array<string,mixed> $values = [])
  * @method \Laminas\View\Helper\HeadLink headLink()
  * @method \Laminas\View\Helper\HeadScript headScript()
+ * @method \Laminas\View\Helper\InlineScript inlineScript()
  */
 class PhpRenderer {}
 
