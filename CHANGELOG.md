@@ -3,6 +3,15 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.26.1] - 2026-10-08
+
+### Fixed
+
+- **Mirador works again in Firefox.** Since 1.24.0 the bundle's `<link rel="modulepreload">` hints, and its entry `<script type="module">`, sat in the page head. Firefox discards every import map that follows a module load or a modulepreload. Mirador mounts through an import map (`import … from "mirador"`), so every viewer on a page with the search bar stayed blank, with "Import maps are not allowed after a module load or preload has started". Chromium and WebKit accept late import maps, which is why this went unnoticed.
+  - The hints are now `<link rel="preload" as="script" crossorigin="anonymous">`. They start no module load, and the module fetch still reuses them.
+  - The entry script is printed at the end of `<body>` through `inlineScript()`, after every import map in the head. It is preloaded from the head, so it does not start later.
+  - `BundleAssetsTest` pins that nothing in the head starts a module load.
+
 ## [1.26.0] - 2026-10-08
 
 ### Fixed

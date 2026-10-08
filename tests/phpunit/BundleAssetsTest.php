@@ -81,7 +81,7 @@ final class BundleAssetsTest extends TestCase
         foreach (['chunks/i18n-A.js', 'chunks/App-B.js'] as $file) {
             self::assertSame(
                 1,
-                substr_count($links, '<link href="/modules/DRESearch/asset/dist/' . $file . '" rel="modulepreload">'),
+                substr_count($links, '<link as="script" crossorigin="anonymous" href="/modules/DRESearch/asset/dist/' . $file . '" rel="preload">'),
                 $file,
             );
         }
@@ -91,7 +91,26 @@ final class BundleAssetsTest extends TestCase
         );
         self::assertStringNotContainsString('FederatedApp', $links);
         self::assertSame(1, substr_count($links, 'dist/dre-search.css?v=1'), 'The entry stylesheet stays versioned and render-blocking.');
-        self::assertSame(1, substr_count($this->html($view->headScript()), 'dist/dre-search.js?v=1'));
+        self::assertSame(1, substr_count($links, '<link as="script" crossorigin="anonymous" href="/modules/DRESearch/asset/dist/dre-search.js?v=1" rel="preload">'));
+        self::assertSame(1, substr_count($this->html($view->inlineScript()), '<script type="module" src="/modules/DRESearch/asset/dist/dre-search.js?v=1">'));
+    }
+
+    /**
+     * Firefox drops every import map that follows a module load or a
+     * modulepreload, and Mirador mounts through one: nothing this module puts
+     * in the head may start a module load, whatever the surface.
+     */
+    public function testTheHeadStartsNoModuleLoadThatWouldDisableAnImportMap(): void
+    {
+        $view = $this->view();
+        $manifest = BundleManifest::fromArray(self::MANIFEST);
+        foreach ([null, BundleAssets::SEARCH_BLOCK, BundleAssets::FEDERATED] as $surface) {
+            BundleAssets::inject($view, $surface, $manifest);
+        }
+        $head = $this->html($view->headLink()) . $this->html($view->headScript());
+        self::assertStringNotContainsString('modulepreload', $head);
+        self::assertDoesNotMatchRegularExpression('/<script[^>]*type="module"/', $head);
+        self::assertStringContainsString('type="module"', $this->html($view->inlineScript()));
     }
 
     public function testTheHeaderBarPreloadsOnlyWhatTheEntryImports(): void
@@ -99,9 +118,9 @@ final class BundleAssetsTest extends TestCase
         $view = $this->view();
         BundleAssets::inject($view, null, BundleManifest::fromArray(self::MANIFEST));
         $links = $this->html($view->headLink());
-        self::assertStringContainsString('dist/chunks/i18n-A.js" rel="modulepreload"', $links);
+        self::assertStringContainsString('dist/chunks/i18n-A.js" rel="preload"', $links);
         self::assertStringNotContainsString('App-B', $links, 'Pages without a search block do not fetch its chunk.');
-        self::assertStringNotContainsString('rel="preload"', $links);
+        self::assertStringNotContainsString('as="style"', $links, 'Nor its stylesheet.');
     }
 
     public function testWithoutAManifestTheBundleStillLoads(): void
@@ -109,7 +128,7 @@ final class BundleAssetsTest extends TestCase
         $view = $this->view();
         BundleAssets::inject($view, BundleAssets::SEARCH_BLOCK, BundleManifest::fromArray([]));
         self::assertStringNotContainsString('modulepreload', $this->html($view->headLink()));
-        self::assertStringContainsString('dist/dre-search.js?v=1', $this->html($view->headScript()));
+        self::assertStringContainsString('dist/dre-search.js?v=1', $this->html($view->inlineScript()));
     }
 
     /** The head as a browser reads it (the helpers entity-encode attribute values). */

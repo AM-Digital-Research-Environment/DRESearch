@@ -13,9 +13,19 @@ use Laminas\View\Renderer\PhpRenderer;
  * Without hints the browser found the bundle one round trip at a time: the
  * entry, then the shared runtime chunk it imports, then (after the entry ran)
  * the page chunk and its stylesheet. The build manifest names all of them, so
- * the head now announces them up front: `modulepreload` for the entry's static
- * imports on every page, plus the page chunk and a stylesheet `preload` for
- * the surface that will mount.
+ * the head now announces them up front: a script `preload` for the entry and
+ * its static imports on every page, plus the page chunk and a stylesheet
+ * `preload` for the surface that will mount.
+ *
+ * NO MODULE LOAD IN THE HEAD. Firefox discards every import map that follows
+ * a module script or a `modulepreload`, and Mirador mounts through one
+ * (`import … from "mirador"`), so from 1.24 every Mirador viewer on a page
+ * with the search bar stayed blank in Firefox. A plain `preload as="script"`
+ * starts no module load, so it blocks no import map, and the module fetch
+ * still reuses its response (same URL, same CORS mode — hence `crossorigin`).
+ * The entry `<script type="module">` itself goes to inlineScript(), which the
+ * layout prints at the end of <body>, after every import map in the head;
+ * module scripts are deferred anyway, so it runs no later than it did.
  *
  * Hashed chunks are preloaded WITHOUT Omeka's `?v=` query: the module graph
  * requests them by the URL the entry resolves (`./chunks/…`, no query), and a
@@ -48,7 +58,9 @@ final class BundleAssets
         $headLink->appendStylesheet($asset('css/dre-search.css'));
         // The entry stylesheet contains the header UI; page chunks load their own CSS.
         $headLink->appendStylesheet($asset('dist/dre-search.css'));
-        $view->headScript()->appendFile($asset('dist/dre-search.js'), 'module', ['defer' => true]);
+        $entry = $asset('dist/dre-search.js');
+        self::hint($view, ['rel' => 'preload', 'as' => 'script', 'crossorigin' => 'anonymous', 'href' => $entry]);
+        $view->inlineScript()->appendFile($entry, 'module');
 
         $manifest ??= BundleManifest::fromFile(dirname(__DIR__, 2) . self::MANIFEST);
         $modules = $manifest->modules(self::ENTRY, false);
@@ -58,7 +70,12 @@ final class BundleAssets
             $styles = $manifest->styles($surface);
         }
         foreach (array_unique($modules) as $file) {
-            self::hint($view, ['rel' => 'modulepreload', 'href' => $asset('dist/' . $file, false)]);
+            self::hint($view, [
+                'rel' => 'preload',
+                'as' => 'script',
+                'crossorigin' => 'anonymous',
+                'href' => $asset('dist/' . $file, false),
+            ]);
         }
         foreach ($styles as $file) {
             // Vite's loader inserts the stylesheet with crossorigin="", and a
