@@ -125,3 +125,55 @@ describe('publication languages', () => {
     expect(container.querySelector('.dre-bcard__languages')).toBeNull();
   });
 });
+
+describe('publication footer', () => {
+  const monograph = {
+    ...doc,
+    editor_ss: [],
+    container_ss: ['Afrikanische Literaturen Transmedial, Transregional, Transkulturell'],
+    volume_s: '1',
+    pages_s: '370 pp.',
+    publisher_ss: ['Akademische Verlagsanstalt'],
+  } as unknown as Doc;
+
+  it('prints a page count once, without a doubled full stop', () => {
+    render(PublicationCard, { doc: monograph, itemUrlBase: '/s/site/item', onAddFilter: vi.fn() });
+    expect(document.querySelector('.dre-bcard__ref')?.textContent).toBe(
+      'Afrikanische Literaturen Transmedial, Transregional, Transkulturell, ' +
+        'vol. 1, 370 pp. Akademische Verlagsanstalt',
+    );
+  });
+
+  it('links the open-access full text beside the DOI and Cite', () => {
+    const { container, getByRole } = render(PublicationCard, {
+      doc: {
+        ...monograph,
+        has_fulltext: 'Yes',
+        fulltext_url_s: 'https://epub.uni-bayreuth.de/id/eprint/9405/',
+        doi_s: 'https://doi.org/10.1007/s12115-026-01169-1',
+      },
+      itemUrlBase: '/s/site/item',
+      onAddFilter: vi.fn(),
+    });
+    expect(getByRole('link', { name: 'Full text' }).getAttribute('href')).toBe(
+      'https://epub.uni-bayreuth.de/id/eprint/9405/',
+    );
+    const actions = container.querySelector('.dre-bcard__actions');
+    // One row, in reading order; Cite is labelled by its <summary>.
+    expect(
+      [...(actions?.children ?? [])].map((el) =>
+        (el.querySelector('summary') ?? el).textContent?.trim(),
+      ),
+    ).toEqual(['Full text', 'DOI', 'Cite']);
+  });
+
+  it('keeps Cite in the footer when there is no full text, DOI or keyword', () => {
+    const { container, queryByRole } = render(PublicationCard, {
+      doc: monograph,
+      itemUrlBase: '/s/site/item',
+      onAddFilter: vi.fn(),
+    });
+    expect(queryByRole('link', { name: 'Full text' })).toBeNull();
+    expect(container.querySelector('.dre-bcard__footer .dre-cite')).not.toBeNull();
+  });
+});

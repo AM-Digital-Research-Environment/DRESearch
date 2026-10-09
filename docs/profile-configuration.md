@@ -20,6 +20,13 @@ computes the value. `index: false` is for payload-only fields and cannot be
 faceted, sorted, or search-only. `search_only: true` indexes large text such as a
 transcript but excludes it from returned documents.
 
+A publication profile may name a `fulltext_source`: a `property` and an http(s)
+`url_prefix`. The first value of that property under the prefix marks the record
+`has_fulltext: "Yes"` and is returned as `fulltext_url_s`, the card's **Full
+text** link. AMIRA reads EPub Bayreuth permalinks off `bibo:uri`, because a
+record there carries an open-access PDF. Without `fulltext_source`, any record
+with extracted text (the `fulltext` display field) is flagged instead.
+
 ## Overriding from local.config.php
 
 Omeka merges `local.config.php` over module config with

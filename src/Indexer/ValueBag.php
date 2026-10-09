@@ -121,6 +121,20 @@ final class ValueBag
         return null;
     }
 
+    /** The first absolute HTTP(S) URL that starts with `$prefix` (case-insensitive). */
+    public function firstUrlUnder(?string $term, string $prefix): ?string
+    {
+        foreach ($this->rows($term) as $row) {
+            foreach ([$row['uri'] ?? null, $row['value'] ?? null] as $candidate) {
+                $url = self::safeHttpUrl((string) ($candidate ?? ''));
+                if ($url !== null && $prefix !== '' && stripos($url, $prefix) === 0) {
+                    return $url;
+                }
+            }
+        }
+        return null;
+    }
+
     public function firstYear(?string $term): ?int
     {
         foreach ($this->rows($term) as $row) {

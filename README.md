@@ -74,9 +74,10 @@ don't want a search backend.
     people**, so you can pivot to every project that person is involved in).
 - A **Publications search** page block: cards show a formatted bibliographic
   reference — title, authors (linked to their person pages), venue (journal or
-  book + series), volume/issue, pages, publisher, year, abstract, and a DOI link.
-  - Facets: a **Year** range slider, **Type, Author, Journal / Book, Publisher,
-    Keyword, Language**.
+  book + series), volume/issue, pages, publisher, year, abstract, a **Full text**
+  link to the open-access copy on EPub Bayreuth, a DOI link and **Cite**.
+  - Facets: a **Year** range slider, a **Full text available** toggle, **Type,
+    Author, Journal / Book, Publisher, Keyword, Language**.
 - A **Podcasts search** page block: cards show the podcast **series logo** as the
   thumbnail (every episode of a series shares it), the episode number and date, the
   title, a series chip, the hosts, guests and sound engineer (linked to their person
@@ -336,22 +337,32 @@ profile scopes by **`item_set_id` (29918)** with **`template_id: null`** — the
 only profile with no template filter, and the reason new publication types need
 no change here.
 
-| Field                  | Omeka property                                          | Notes                                                        |
-| ---------------------- | ------------------------------------------------------- | ------------------------------------------------------------ |
-| Type (facet)           | `dcterms:type`                                          | linked publication-type title (set 30613)                    |
-| Author (facet + card)  | `bibo:authorList`                                       | linked person titles (set 18); `author_ids` link the card    |
-| Journal / Book (facet) | `dcterms:isPartOf`                                      | literal venue + series                                       |
-| Publisher (facet)      | `dcterms:publisher`                                     | literal                                                      |
-| Keyword (facet)        | `dcterms:subject`                                       | linked subject titles (set 1852), literal fallback           |
-| Language (facet)       | `dcterms:language`                                      | linked language (set 19), literal fallback                   |
-| Year (range slider)    | `dcterms:date`                                          | `numeric:timestamp` → single `year`                          |
-| Reference bits (card)  | `bibo:editorList`, `bibo:volume`, `bibo:issue`, pages\* | editors, volume/issue, recombined page string                |
-| DOI (card)             | `bibo:doi`                                              | the URI value's `@id` (full `https://doi.org/…` link)        |
-| Abstract (card)        | `bibo:abstract`                                         | publications use `bibo:abstract`, **not** `dcterms:abstract` |
+| Field                     | Omeka property                                          | Notes                                                        |
+| ------------------------- | ------------------------------------------------------- | ------------------------------------------------------------ |
+| Type (facet)              | `dcterms:type`                                          | linked publication-type title (set 30613)                    |
+| Author (facet + card)     | `bibo:authorList`                                       | linked person titles (set 18); `author_ids` link the card    |
+| Journal / Book (facet)    | `dcterms:isPartOf`                                      | literal venue + series                                       |
+| Publisher (facet)         | `dcterms:publisher`                                     | literal                                                      |
+| Keyword (facet)           | `dcterms:subject`                                       | linked subject titles (set 1852), literal fallback           |
+| Language (facet)          | `dcterms:language`                                      | linked language (set 19), literal fallback                   |
+| Year (range slider)       | `dcterms:date`                                          | `numeric:timestamp` → single `year`                          |
+| Reference bits (card)     | `bibo:editorList`, `bibo:volume`, `bibo:issue`, pages\* | editors, volume/issue, recombined page string                |
+| DOI (card)                | `bibo:doi`                                              | the URI value's `@id` (full `https://doi.org/…` link)        |
+| Full text (toggle + card) | `bibo:uri`                                              | the EPub Bayreuth permalink, via `fulltext_source` (below)   |
+| Abstract (card)           | `bibo:abstract`                                         | publications use `bibo:abstract`, **not** `dcterms:abstract` |
 
 \* Pages come from `bibo:pages` / `bibo:pageStart` / `bibo:pageEnd` /
 `bibo:numPages` (the pipeline splits them by publication kind) and are recombined
 into one display string — `141–165`, a lone start, or `121 pp.`.
+
+**Full text available** means EPub Bayreuth, the cluster's open-access
+repository, holds the record; ERef is metadata-only. The profile's
+`fulltext_source` (`property` + `url_prefix`) names where to look: the first
+`bibo:uri` under `https://epub.uni-bayreuth.de/id/eprint/` sets `has_fulltext`
+(the toggle) and becomes `fulltext_url_s`, the card's **Full text** link. Text
+extracted from the PDF into `bibo:content` is searched either way, but does not
+decide availability. A profile without `fulltext_source` flags any record that
+has extracted text.
 
 ### Podcasts (`research_podcasts`) — resource template 21, item set 39095
 

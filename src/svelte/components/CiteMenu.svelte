@@ -87,31 +87,82 @@
 </details>
 
 <style>
+  /* The trigger is a pill beside the card's Full text / DOI pills
+     (.dre-shell__external, styles/card.css), with a caret for a menu where
+     they carry an external-link arrow. Opening it floats the actions over the
+     cards below, anchored at its end edge, instead of growing the card. */
   .dre-cite {
-    display: inline-block;
+    position: relative;
+    display: inline-flex;
     font-size: var(--text-xs, 0.8125rem);
   }
   .dre-cite summary {
     display: inline-flex;
     align-items: center;
+    gap: var(--space-1, 0.25rem);
+    /* The theme leaves <summary> content-box; the pills beside it are not. */
+    box-sizing: border-box;
     min-height: 1.5rem;
+    padding: 0 var(--space-3, 0.75rem);
+    border: 1px solid color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dbd7d1));
+    border-radius: var(--radius-full, 9999px);
     color: var(--primary, #007a50);
+    font-weight: 700;
+    letter-spacing: var(--tracking-wide, 0.04em);
+    white-space: nowrap;
+    list-style: none;
     cursor: pointer;
+    transition:
+      background var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1)),
+      color var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
+  }
+  .dre-cite summary::-webkit-details-marker {
+    display: none;
+  }
+  /* Decorative: the empty alternative keeps screen readers from reading the
+     caret; browsers without that syntax keep the first declaration. */
+  .dre-cite summary::after {
+    content: '▾';
+    content: '▾' / '';
+    font-weight: 400;
+  }
+  .dre-cite summary:hover,
+  .dre-cite[open] summary {
+    background: var(--primary, #007a50);
+    color: var(--primary-contrast, #fcfcf9);
   }
   .dre-cite summary:focus-visible {
     outline: 2px solid var(--focus-color, #007a50);
     outline-offset: 2px;
   }
   .dre-cite__actions {
+    position: absolute;
+    inset-inline-end: 0;
+    inset-block-start: calc(100% + var(--space-xs, 0.25rem));
+    z-index: var(--z-dropdown, 100);
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: var(--space-xs, 0.25rem);
-    margin-block-start: var(--space-xs, 0.25rem);
+    min-width: 11rem;
+    padding: var(--space-xs, 0.25rem);
+    background: var(--surface, #fdfcf9);
+    border: 1px solid var(--border, #dbd7d1);
+    border-radius: var(--radius-md, 0.5rem);
+    /* The theme's elevation, with no px fallback (the token linter's geometry
+       rule); without the theme, the border still frames the panel. */
+    box-shadow: var(--shadow-md);
   }
   /* The shared secondary button (styles/buttons.css), at the card's size. */
   .dre-cite button {
+    justify-content: flex-start;
     padding-inline: var(--space-sm, 0.5rem);
     font-size: var(--text-xs, 0.8125rem);
+    white-space: nowrap;
+  }
+  @media print {
+    .dre-cite {
+      display: none;
+    }
   }
   /* Spoken only: the button label already shows "Copied". */
   .dre-cite__status {

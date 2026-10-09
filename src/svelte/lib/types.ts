@@ -135,7 +135,10 @@ export interface Doc {
   pages_s?: string;
   /** Resolvable DOI link, e.g. "https://doi.org/10.1163/…". */
   doi_s?: string;
+  /** "Yes" when the open-access repository (EPub Bayreuth) holds the record. */
   has_fulltext?: string;
+  /** That repository's landing page, which carries the PDF. */
+  fulltext_url_s?: string;
 
   // Podcast fields. people_ss (union of hosts + guests) and language_ss are shared
   // with the corpora above; series_s is single-valued.

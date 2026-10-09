@@ -20,15 +20,16 @@
    *   │ In: Ganteau, J.-M.; Onega, S. (eds.), Handbook of …,   │
    *   │   vol. 4, pp. 141–165. Brill                           │
    *   │ Abstract, clamped to a few lines…                     │
-   *   │ [keyword] [keyword]                            DOI ↗   │
+   *   │ [keyword] [keyword]   (Full text ↗) (DOI ↗) (Cite ▾)  │
    *   └────────────────────────────────────────────────────┘
    *
    * Authors and editors are FilterLinks that add the person to the "Author / Editor"
    * facet (onAddFilter creator_ss); the venue (journal / book) and publisher filter
-   * on container_ss / publisher_ss; the keyword chips add a keyword filter; the DOI
-   * opens the canonical record. Editors render as their own byline for an edited
-   * volume (editors, no container) and inside the "In: … (eds.), <venue>" line for
-   * a chapter.
+   * on container_ss / publisher_ss; the keyword chips add a keyword filter; "Full
+   * text" opens the open-access copy (the EPub Bayreuth record), the DOI the
+   * canonical record, and Cite copies or downloads the reference. Editors render
+   * as their own byline for an edited volume (editors, no container) and inside
+   * the "In: … (eds.), <venue>" line for a chapter.
    */
 
   interface Props {
@@ -52,6 +53,8 @@
   const keywords = $derived((doc.keyword_ss ?? []).slice(0, 8));
   const keywordHl = $derived(markedLookup(doc, 'keyword_ss'));
   const doi = $derived(safeExternalUrl(doc.doi_s));
+  // The open-access copy's landing page (EPub Bayreuth on AMIRA).
+  const fulltext = $derived(safeExternalUrl(doc.fulltext_url_s));
   const languages = $derived(doc.language_ss ?? []);
 
   // Authors — filter buttons (click adds the person to the creator_ss facet,
@@ -88,8 +91,11 @@
     } else if (issue) {
       bits.push(`${t('no_short')} ${issue}`);
     }
-    if (doc.pages_s) {
-      bits.push(`${t('pp_short')} ${doc.pages_s}`);
+    // A range takes the "pp." prefix; a monograph's page count already reads
+    // "370 pp." (PublicationMapper), and prefixing it gave "pp. 370 pp.".
+    const pages = doc.pages_s ?? '';
+    if (pages) {
+      bits.push(/\spp\.$/.test(pages) ? pages : `${t('pp_short')} ${pages}`);
     }
     return bits.join(', ');
   });
@@ -102,7 +108,10 @@
     if (metrics) return ', ';
     return publisher ? '. ' : '';
   });
-  const sepAfterMetrics = $derived(metrics && publisher ? '. ' : '');
+  // No second full stop after a metric that already ends in one ("370 pp.").
+  const sepAfterMetrics = $derived(
+    metrics && publisher ? (metrics.endsWith('.') ? ' ' : '. ') : '',
+  );
 
   const hasReference = $derived(Boolean(container || metrics || publisher));
 </script>
@@ -171,31 +180,37 @@
       <p class="dre-shell__snippet"><Highlight value={snippet} /></p>
     {/if}
 
-    {#if keywords.length > 0 || doi}
-      <div class="dre-bcard__footer">
-        {#if keywords.length > 0}
-          <ul class="dre-shell__chips dre-bcard__chips">
-            {#each keywords as kw (kw)}
-              <li>
-                <button
-                  type="button"
-                  data-print
-                  class="dre-shell__chip"
-                  onclick={() => onAddFilter('keyword_ss', kw)}
-                >
-                  <Highlight value={keywordHl.get(kw) ?? kw} />
-                </button>
-              </li>
-            {/each}
-          </ul>
+    <div class="dre-bcard__footer">
+      {#if keywords.length > 0}
+        <ul class="dre-shell__chips dre-bcard__chips">
+          {#each keywords as kw (kw)}
+            <li>
+              <button
+                type="button"
+                data-print
+                class="dre-shell__chip"
+                onclick={() => onAddFilter('keyword_ss', kw)}
+              >
+                <Highlight value={keywordHl.get(kw) ?? kw} />
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+      <div class="dre-bcard__actions">
+        {#if fulltext}
+          <a class="dre-shell__external" href={fulltext} target="_blank" rel="noopener noreferrer">
+            {t('fulltext_link')}
+          </a>
         {/if}
         {#if doi}
-          <a class="dre-bcard__doi" href={doi} target="_blank" rel="noopener noreferrer">
+          <a class="dre-shell__external" href={doi} target="_blank" rel="noopener noreferrer">
             {t('doi_label')}
           </a>
         {/if}
+        <CiteMenu {doc} kind="publication" {itemUrlBase} />
       </div>
-    {/if}
+    </div>
 
     <MatchedIn
       {doc}
@@ -209,7 +224,6 @@
         'keyword_ss',
       ]}
     />
-    <CiteMenu {doc} kind="publication" {itemUrlBase} />
   </div>
 </article>
 
@@ -248,25 +262,14 @@
     margin: 0;
     min-width: 0;
   }
-  .dre-bcard__doi {
-    display: inline-flex;
+  /* Full text, DOI and Cite: one row of pills (Full text and DOI are the
+     shared external-link pill, styles/card.css), held at the end of the
+     footer whether or not keyword chips share the row. */
+  .dre-bcard__actions {
+    display: flex;
     align-items: center;
-    min-height: 1.5rem;
-    padding: 0 var(--space-3, 0.75rem);
-    border: 1px solid color-mix(in srgb, var(--primary, #007a50) 40%, var(--border, #dbd7d1));
-    border-radius: var(--radius-full, 9999px);
-    color: var(--primary, #007a50);
-    font-size: var(--text-xs, 0.8125rem);
-    font-weight: 700;
-    letter-spacing: var(--tracking-wide, 0.04em);
-    text-decoration: none;
-    white-space: nowrap;
-    transition:
-      background var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1)),
-      color var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
-  }
-  .dre-bcard__doi:hover {
-    background: var(--primary, #007a50);
-    color: var(--primary-contrast, #fcfcf9);
+    flex-wrap: wrap;
+    gap: var(--space-xs, 0.25rem);
+    margin-inline-start: auto;
   }
 </style>

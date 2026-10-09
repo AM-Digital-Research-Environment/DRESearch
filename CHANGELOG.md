@@ -3,6 +3,23 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.27.0] - 2026-10-09
+
+**Reindex the Publications corpus after upgrading**, then tick **Full text available** in the Publications block's facet list: a block saved before the toggle existed keeps its saved facet list, so it never showed the toggle.
+
+### Added
+
+- **Publications say whether their full text is available, and link to it.** A publication has full text when EPub Bayreuth, the cluster's open-access repository, holds it. The publications sync attaches EPub's PDF and writes the EPub permalink to `bibo:uri`; ERef is metadata-only. The new profile key `fulltext_source` (`property` + `url_prefix`) names that permalink.
+  - Each such card gets a **Full text ↗** pill that opens the EPub record, next to **DOI ↗**.
+  - The **Full text available** toggle now filters on the EPub record, not on whether text has been extracted from the PDF into `bibo:content`. Today the two sets match (60 of 555 publications), but a new EPub deposit now counts as soon as it syncs, before text extraction runs. Extracted text is still searched.
+  - The toggle moves to the top of the filter rail, under the year. It used to sit below the long Keyword and Language lists.
+  - A profile without `fulltext_source` keeps the old behaviour: any record with extracted text is flagged.
+
+### Fixed
+
+- **Cite sits with the other card actions.** It was a bare text link on its own line under the DOI pill. It is now a pill in the card footer, beside Full text and DOI and aligned to the end. Its Copy BibTeX / Copy RIS / Download .ris panel floats over the cards below instead of making the card taller, and Cite is hidden when printing.
+- **A monograph's page count reads once.** A reference with a total page count read "vol. 1, pp. 370 pp.. Publisher"; it now reads "vol. 1, 370 pp. Publisher".
+
 ## [1.26.4] - 2026-10-08
 
 ### Fixed

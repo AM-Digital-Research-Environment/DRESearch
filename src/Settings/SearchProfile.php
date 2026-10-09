@@ -48,6 +48,7 @@ final class SearchProfile
      * @param list<string> $readProperties
      * @param array{from_template:int,property:string,public_only:bool}|null $itemLink
      * @param array{counts?:array<string,array<string,mixed>>,roles?:list<array<string,mixed>>}|null $reverseLinks
+     * @param array{property:string,url_prefix:string}|null $fulltextSource
      */
     public function __construct(
         private readonly string $name,
@@ -71,6 +72,7 @@ final class SearchProfile
         private readonly array $extraSources,
         private readonly array $sortFields,
         private readonly ?string $thumbnailProperty,
+        private readonly ?array $fulltextSource = null,
     ) {
         $this->assertValid();
     }
@@ -82,7 +84,7 @@ final class SearchProfile
                 throw new \InvalidArgumentException(sprintf('Profile "%s" key "%s" must be an array.', $name, $key));
             }
         }
-        foreach (['date', 'item_link', 'reverse_links', 'person_links', 'sort_count'] as $key) {
+        foreach (['date', 'item_link', 'reverse_links', 'person_links', 'sort_count', 'fulltext_source'] as $key) {
             if (isset($c[$key]) && !is_array($c[$key])) {
                 throw new \InvalidArgumentException(sprintf('Profile "%s" key "%s" must be an object.', $name, $key));
             }
@@ -168,6 +170,13 @@ final class SearchProfile
             // Resolve the episode thumbnail from a linked resource (e.g. the podcast
             // series item's image) instead of the item's own media. '' / unset → own.
             isset($c['thumbnail_property']) && $c['thumbnail_property'] !== '' ? (string) $c['thumbnail_property'] : null,
+            // Where a record's open-access full text lives: the first `property`
+            // URL under `url_prefix` (e.g. an EPub permalink on bibo:uri). Unset →
+            // the publication mapper flags extracted text instead.
+            isset($c['fulltext_source']) ? [
+                'property'   => (string) ($c['fulltext_source']['property'] ?? ''),
+                'url_prefix' => (string) ($c['fulltext_source']['url_prefix'] ?? ''),
+            ] : null,
         );
     }
 
@@ -228,6 +237,13 @@ final class SearchProfile
             if (!preg_match('/^[A-Za-z][A-Za-z0-9._-]*:[A-Za-z][A-Za-z0-9._-]*$/', $term)) {
                 throw new \InvalidArgumentException(sprintf('Invalid Omeka property term "%s" in profile "%s".', $term, $this->name));
             }
+        }
+        $source = $this->fulltextSource;
+        if ($source !== null && ($source['property'] === '' || !preg_match('~^https?://[^/\s]+/~i', $source['url_prefix']))) {
+            throw new \InvalidArgumentException(sprintf(
+                'fulltext_source in profile "%s" needs a property and an http(s) url_prefix with a path.',
+                $this->name,
+            ));
         }
         if (!in_array($this->defaultSort, $this->sortOptionValues(), true)) {
             throw new \InvalidArgumentException(sprintf('Invalid default sort "%s" in profile "%s".', $this->defaultSort, $this->name));
@@ -539,6 +555,18 @@ final class SearchProfile
         return $this->thumbnailProperty;
     }
 
+    /**
+     * Where a publication's open-access full text lives: its first `property`
+     * URL that starts with `url_prefix` (the AMIRA instance reads the EPub
+     * Bayreuth permalink off bibo:uri). Null when the profile names no source.
+     *
+     * @return array{property:string,url_prefix:string}|null
+     */
+    public function fulltextSource(): ?array
+    {
+        return $this->fulltextSource;
+    }
+
     // ── Reindex ─────────────────────────────────────────────────────────────
     /**
      * Every Omeka property term the reindexer must SELECT: facet properties,
@@ -561,6 +589,9 @@ final class SearchProfile
         }
         if ($this->date['property']) {
             $terms[$this->date['property']] = true;
+        }
+        if ($this->fulltextSource !== null) {
+            $terms[$this->fulltextSource['property']] = true;
         }
         foreach ($this->readProperties as $t) {
             if ($t !== '') {

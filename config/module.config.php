@@ -550,6 +550,11 @@ return [
                 'date'        => ['mode' => 'single', 'property' => 'dcterms:date', 'label' => 'Year', 'facet' => true],
 
                 'facets' => [
+                    // Derived single-value facet rendered as a compact quick
+                    // toggle rather than a checkbox group, first so it sits
+                    // under the year instead of below the long lists: "Yes"
+                    // when fulltext_source (below) finds the record.
+                    'has_fulltext' => ['property' => null,                'label' => 'Full text available', 'array' => false, 'derived' => true],
                     'type_s'       => ['property' => 'dcterms:type',      'label' => 'Type',            'array' => false],
                     // Person facet — the union of authors + editors, so one filter
                     // finds everything a person authored OR edited. Mapper-emitted
@@ -560,9 +565,16 @@ return [
                     'publisher_ss' => ['property' => 'dcterms:publisher', 'label' => 'Publisher',       'array' => true],
                     'keyword_ss'   => ['property' => 'dcterms:subject',   'label' => 'Keyword',         'array' => true],
                     'language_ss'  => ['property' => 'dcterms:language',  'label' => 'Language',        'array' => true],
-                    // Derived single-value facet rendered as a compact quick
-                    // toggle in the filter rail rather than a checkbox group.
-                    'has_fulltext' => ['property' => null,                'label' => 'Full text available', 'array' => false, 'derived' => true],
+                ],
+
+                // Full text is available when EPub Bayreuth, the cluster's
+                // open-access repository, holds the record: the publications
+                // sync attaches EPub's PDF and writes its permalink to bibo:uri
+                // (ERef is metadata-only). The mapper flags has_fulltext and
+                // emits the permalink as fulltext_url_s for the card's link.
+                'fulltext_source' => [
+                    'property'   => 'bibo:uri',
+                    'url_prefix' => 'https://epub.uni-bayreuth.de/id/eprint/',
                 ],
 
                 // Display fields. author_ss / editor_ss keep the two roles apart for
@@ -576,6 +588,7 @@ return [
                     'issue_s'    => ['property' => 'bibo:issue',      'type' => 'string', 'facet' => false, 'index' => false],
                     'pages_s'    => ['property' => null,              'type' => 'string', 'facet' => false, 'index' => false],
                     'doi_s'      => ['property' => null,              'type' => 'string', 'facet' => false, 'index' => false],
+                    'fulltext_url_s' => ['property' => null,          'type' => 'string', 'facet' => false, 'index' => false],
                     // Searchable extracted text, never returned in result
                     // documents. A centred highlight still identifies matches.
                     'fulltext'   => ['property' => 'bibo:content',     'type' => 'string', 'facet' => false, 'search_only' => true],

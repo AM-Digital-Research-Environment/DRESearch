@@ -284,7 +284,7 @@ msgstr ""
 msgid "From"
 msgstr ""
 
-#: src/svelte/lib/i18n.ts (field_fulltext)
+#: src/svelte/lib/i18n.ts (field_fulltext) src/svelte/lib/i18n.ts (fulltext_link)
 msgid "Full text"
 msgstr ""
 
@@ -462,7 +462,7 @@ msgstr ""
 msgid "Member"
 msgstr ""
 
-#: src/Settings/SearchProfile.php:475
+#: src/Settings/SearchProfile.php:491
 msgid "Most results"
 msgstr ""
 

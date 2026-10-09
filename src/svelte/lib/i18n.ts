@@ -169,6 +169,7 @@ const ENGLISH_STRINGS: Record<string, string> = {
   no_short: 'no.',
   pp_short: 'pp.',
   doi_label: 'DOI',
+  fulltext_link: 'Full text',
 
   // Podcast card.
   episode_label: 'Episode {n}',

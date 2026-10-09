@@ -53,11 +53,26 @@ final class PublicationMapper implements MapperInterface
             $doc['abstract'] = $abstract;
         }
 
-        // Extracted publication full text is a search-only payload. The compact
-        // derived facet gives the client one stable token for its quick toggle.
+        // Extracted publication full text is a search-only payload.
         $fulltextProperty = $this->profile->displayFields()['fulltext']['property'] ?? 'bibo:content';
-        if (($fulltext = $bag->firstLiteral($fulltextProperty)) !== null) {
+        $fulltext = $bag->firstLiteral($fulltextProperty);
+        if ($fulltext !== null) {
             $doc['fulltext'] = $fulltext;
+        }
+
+        // "Full text available" means the open-access repository holds the
+        // record (on AMIRA, an EPub Bayreuth permalink), not that text has been
+        // extracted yet; the permalink becomes the card's "Full text" link. A
+        // profile without a fulltext_source falls back to the extracted text.
+        // has_fulltext is the one stable token behind the client's quick toggle.
+        $source = $this->profile->fulltextSource();
+        if ($source !== null) {
+            $fulltextUrl = $bag->firstUrlUnder($source['property'], $source['url_prefix']);
+            if ($fulltextUrl !== null) {
+                $doc['fulltext_url_s'] = $fulltextUrl;
+                $doc['has_fulltext'] = 'Yes';
+            }
+        } elseif ($fulltext !== null) {
             $doc['has_fulltext'] = 'Yes';
         }
 
