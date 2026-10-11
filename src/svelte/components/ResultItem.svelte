@@ -72,6 +72,7 @@
     gallery={view === 'gallery'}
     {eager}
     placeholder
+    type={doc.type_s}
   />
 
   <div class="dre-shell__body">

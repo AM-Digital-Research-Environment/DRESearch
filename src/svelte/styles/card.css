@@ -83,8 +83,25 @@
 .dre-shell:hover .dre-shell__thumb--item img {
   filter: saturate(1) contrast(1);
 }
+/* No image: a still, neutral tile carrying the record type's line glyph (see
+   lib/typeGlyph.ts). It was a diagonal gradient, which read as a skeleton still
+   loading, beside a result list that has a real shimmering skeleton. The glyph
+   is muted ink at rest and takes the primary on card hover, as the image takes
+   its full colour. */
 .dre-shell__thumb--empty {
-  background: linear-gradient(135deg, var(--surface-sunken, #f3f0eb), var(--border-light, #eae8e3));
+  display: grid;
+  place-items: center;
+  color: var(--muted, #716a66);
+  background: color-mix(in oklab, var(--primary, #007a50) 5%, var(--surface-sunken, #f3f0eb));
+}
+.dre-shell__glyph {
+  width: 2.25rem;
+  height: 2.25rem;
+  stroke-width: 1.5;
+  transition: color var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1));
+}
+.dre-shell:hover .dre-shell__glyph {
+  color: var(--primary, #007a50);
 }
 /* Podcast: the series logo. */
 .dre-shell__thumb--logo {
@@ -114,6 +131,10 @@
   aspect-ratio: 4/3;
   border: 0;
   border-radius: 0;
+}
+.dre-shell--gallery .dre-shell__glyph {
+  width: 3rem;
+  height: 3rem;
 }
 /* Mode comes from the THEME, never from the OS. The DRE theme's head script
    resolves the mode (stored choice, else OS preference) and writes it to

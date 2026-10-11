@@ -3,6 +3,12 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.28.0] - 2026-10-11
+
+### Added
+
+- **Research items without an image show their type's icon.** Most research items have no media: 2,374 of 3,793 on the live site. Each of their cards showed an empty box with a diagonal gradient, which looked like an image still loading. The box now shows the line icon of the item's type, for example a film for Moving image, a waveform for Audio, a scroll for Manuscript, a database for Dataset and a map for Cartographic. The icons are Lucide, the theme's icon set. A type without its own icon gets a plain file. All types share one neutral tile, because the theme reserves colour for entity types. The icon is muted until the card is hovered, and the box links to the record as an image thumbnail does. This applies to the list and gallery views.
+
 ## [1.27.0] - 2026-10-09
 
 **Reindex the Publications corpus after upgrading**, then tick **Full text available** in the Publications block's facet list: a block saved before the toggle existed keeps its saved facet list, so it never showed the toggle.

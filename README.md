@@ -58,6 +58,8 @@ don't want a search backend.
 - A **Research items search** page block: full-text search with autocomplete,
   faceted filtering, sorting, pagination, and result cards (title, type,
   project, origin year, **place of origin**, **current location**, thumbnail).
+  An item with no image shows its type's icon instead (a film for Moving image,
+  a waveform for Audio, a scroll for Manuscript…).
   - Facets: a **Year** range slider, plus **Type, Project, Place of origin,
     Country, Current location, Language, Subject, Tag, Target audience,
     Digitisation method**.
