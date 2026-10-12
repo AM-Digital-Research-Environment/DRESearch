@@ -3,6 +3,16 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.28.1] - 2026-10-12
+
+### Fixed
+
+- **Copy link and Export are back in reach on phones.** Below 768px the two actions were hidden behind a "Share and export" button. It cost a tap to reach two buttons, and opening it moved the button onto a line of its own, with Copy link and Export appearing under it. On the research items page it already wrapped onto a second line while closed. The disclosure is gone:
+  - On a narrow results column, Copy link and Export sit at the end of the result count's row, and sort and view take the row below, with the view switch under the two actions. On phones they show only their icons, as the view switch already did: a link, which turns into a check once copied, and a download. Their names stay available to screen readers.
+  - The toolbar folds by the width of the results column, not the screen. Beside the filter rail at 768px the column is 432px wide, and the single row used to stack Copy link above Export there.
+  - Copy link gets the Lucide link icon on wide screens too, beside Export's download icon.
+- **The toolbar's controls are all 44px tall.** The view switch's border sat outside its 44px buttons, so it stood 2px taller than the sort select beside it. Its outline now matches the secondary buttons that share its row, not the lighter separator colour.
+
 ## [1.28.0] - 2026-10-11
 
 ### Added

@@ -115,6 +115,19 @@ describe('disclosure popovers', () => {
   });
 });
 
+describe('result toolbar', () => {
+  it('shows Copy link and Export directly, not behind a "Share and export" disclosure', () => {
+    const { container } = render(App, { bootstrap: bootstrap() });
+    const group = screen.getByRole('group', { name: 'Share and export' });
+    expect(group.querySelector('summary')).toBeNull();
+    expect(container.querySelector('.dre-summary details')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Copy link' }).closest('[role="group"]')).toBe(group);
+    expect(screen.getByRole('button', { name: 'Export results' }).closest('[role="group"]')).toBe(
+      group,
+    );
+  });
+});
+
 describe('copy feedback', () => {
   it('reads "Copied" for two seconds and speaks through DREUtils when the theme is there', async () => {
     const announce = vi.fn();

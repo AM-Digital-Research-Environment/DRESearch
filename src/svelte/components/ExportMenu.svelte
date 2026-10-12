@@ -153,7 +153,7 @@
         <line x1="12" x2="12" y1="15" y2="3" />
       </svg>
     </span>
-    {busy ? t('exporting') : t('export')}
+    <span class="dre-export__label">{busy ? t('exporting') : t('export')}</span>
   </button>
 
   {#if open}
@@ -197,6 +197,22 @@
   .dre-export__icon {
     display: inline-flex;
     align-items: center;
+  }
+  /* Below 600px the trigger is its icon alone, as the view switch's buttons
+     are; its accessible name is the aria-label either way. */
+  @media (max-width: 599px) {
+    .dre-export__trigger {
+      min-width: var(--size-control-lg, 2.75rem);
+      padding-inline: 0;
+    }
+    .dre-export__label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
   }
 
   /* Floating format menu. */

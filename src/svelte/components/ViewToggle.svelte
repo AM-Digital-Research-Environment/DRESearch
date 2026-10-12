@@ -34,7 +34,8 @@
 <style>
   .dre-view {
     display: inline-flex;
-    border: 1px solid var(--border, #dbd7d1);
+    /* The secondary buttons' outline (styles/buttons.css), which share its row. */
+    border: 1px solid var(--border-strong, #bfbab3);
     border-radius: var(--radius-md, 0.5rem);
     overflow: hidden;
   }
@@ -42,7 +43,9 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-1, 0.25rem);
-    min-height: var(--size-control-lg, 2.75rem);
+    /* Less the group's border, so the group is 44px like the sort select
+       beside it, not 46px. */
+    min-height: calc(var(--size-control-lg, 2.75rem) - 2px);
     min-width: var(--size-control-lg, 2.75rem);
     justify-content: center;
     margin: 0;

@@ -1,11 +1,10 @@
 /**
- * Disclosure popovers — the export menu, the per-record "Cite" menu and the
- * mobile "Share and export" disclosure — close the same way, as the shared
- * contract asks (DRE-theme docs/DESIGN-INTEGRATION.md, "Shared widgets"):
- * Escape closes the open popover and returns focus to its trigger; a press
- * outside closes it without moving focus. The export menu did this on its
- * own; the two <details> menus did neither, so one Escape closed one menu and
- * not the other.
+ * Disclosure popovers — the export menu and the per-record "Cite" menu —
+ * close the same way, as the shared contract asks (DRE-theme
+ * docs/DESIGN-INTEGRATION.md, "Shared widgets"): Escape closes the open popover
+ * and returns focus to its trigger; a press outside closes it without moving
+ * focus. The export menu did this on its own; the <details> menus did neither,
+ * so one Escape closed one menu and not the other.
  */
 
 /**
@@ -30,21 +29,13 @@ export function dismissOnEscapeOrOutside(
   };
 }
 
-/**
- * Svelte action for a `<details>` popover. `enabled: false` leaves it alone —
- * the results toolbar's disclosure is pinned open on wide screens, where its
- * summary is hidden and there is nothing to dismiss.
- */
-export function detailsPopover(
-  node: HTMLDetailsElement,
-  options: { enabled?: boolean } = {},
-): { update(next: { enabled?: boolean }): void; destroy(): void } {
-  let enabled = options.enabled ?? true;
+/** Svelte action for a `<details>` popover. */
+export function detailsPopover(node: HTMLDetailsElement): { destroy(): void } {
   let stop: (() => void) | null = null;
   const sync = (): void => {
     stop?.();
     stop = null;
-    if (!node.open || !enabled) return;
+    if (!node.open) return;
     stop = dismissOnEscapeOrOutside(node, (returnFocus) => {
       node.open = false;
       if (returnFocus) node.querySelector('summary')?.focus();
@@ -53,10 +44,6 @@ export function detailsPopover(
   node.addEventListener('toggle', sync);
   sync();
   return {
-    update(next) {
-      enabled = next.enabled ?? true;
-      sync();
-    },
     destroy() {
       node.removeEventListener('toggle', sync);
       stop?.();

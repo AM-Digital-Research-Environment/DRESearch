@@ -31,7 +31,6 @@
   import ResultSummary from './components/ResultSummary.svelte';
   import ResultSkeleton from './components/ResultSkeleton.svelte';
   import ViewToggle from './components/ViewToggle.svelte';
-  import ResultActions from './components/ResultActions.svelte';
   import CopyLinkButton from './components/CopyLinkButton.svelte';
   import MapView from './components/MapView.svelte';
   import './styles/buttons.css';
@@ -713,28 +712,29 @@
                 options={viewOptions}
                 onChange={handleViewChange}
               />{/if}
-            <ResultActions>
-              <CopyLinkButton />
-              {#if (response?.found ?? 0) > 0}
-                <ExportMenu
-                  fetchDocs={handleExportFetch}
-                  {query}
-                  found={response?.found ?? 0}
-                  kind={bootstrap.card_kind}
-                  itemUrlBase={bootstrap.item_url_base}
-                  {filters}
-                  {yearFrom}
-                  {yearTo}
-                  facetLabels={bootstrap.facet_labels}
-                />
-              {/if}
-            </ResultActions>
+          {/snippet}
+          {#snippet summaryActions()}
+            <CopyLinkButton />
+            {#if (response?.found ?? 0) > 0}
+              <ExportMenu
+                fetchDocs={handleExportFetch}
+                {query}
+                found={response?.found ?? 0}
+                kind={bootstrap.card_kind}
+                itemUrlBase={bootstrap.item_url_base}
+                {filters}
+                {yearFrom}
+                {yearTo}
+                facetLabels={bootstrap.facet_labels}
+              />
+            {/if}
           {/snippet}
           <ResultSummary
             found={view === 'map' ? (mapResponse?.found ?? response.found) : response.found}
             chips={scopeChips}
             onRemove={handleRemoveChip}
             tools={summaryTools}
+            actions={summaryActions}
           />
         {/if}
 
