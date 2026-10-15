@@ -5,6 +5,8 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+## [1.29.0] - 2026-10-15
+
 **Upgrade:** run the Omeka module upgrade. It adds the new Project records block to every site's item pages; no reindex is needed.
 
 ### Added
