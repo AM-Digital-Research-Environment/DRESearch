@@ -293,6 +293,37 @@ Facet behaviour is the same across every block, with nothing to configure:
 - On narrow screens the whole filter sidebar collapses behind a **Filters** toggle
   (with an active-filter count) that opens and closes it.
 
+## The Project records block (item pages)
+
+A research project's item page can list the project's research records through
+the research items search, instead of Omeka's plain **Linked resources** list:
+the search box, the facets, sorting and paging all work, and the list stays
+locked to that project. It is a **resource page block**, **Project records (DRE
+Search)** (`dreSearchProjectRecords`), compatible with items, under a heading
+"Records of this project" with the record count.
+
+- It renders only on a project: an item of class `foaf:Project`, or one in the
+  research items profile's `project` authority item set (20 on AMIRA). On any
+  other item, on a project without research records, and while search is
+  unavailable it renders nothing, so the page keeps its Linked resources.
+- Its facets, default sort and page size are the Research items block's
+  defaults, without the Project facet: the list is locked to one project.
+- It sends only the project's item id (`scope_item`); the server rebuilds the
+  `project_s` filter from the item the visitor can read, so the list cannot be
+  widened. See [Scope](docs/public-api.md#scope).
+- Its URL state is namespaced `r<item id>.` (for example `?r1797.q=interview`),
+  clear of the item page's own parameters.
+- Themes style it by its root class, `dre-search-project-records`.
+
+**No admin work is needed.** On install and on the upgrade to 1.29.0, the
+module adds the block to every site's saved Resource pages configuration that
+lacks it, right before Linked resources (else after the last record block —
+media, values, item sets, media list, viewer — else last). Nothing else is
+moved or removed, a block already placed in any item region stays where it is,
+and the migration runs once: to opt a site out, remove the block under its
+Theme → **Configure resource pages**. A site that never saved that screen gets it through
+the module's `resource_page_blocks_default`.
+
 ## Data model
 
 All instance-specific mapping lives in the `dre_search.profiles` block of
@@ -586,6 +617,7 @@ integration-test services and the dev-container workflow.
 - **PHP**: `src/Search` (proxy, query builder, lazy client provider),
   `src/Indexer` (schema, authority resolver, mappers, analytics sync, paged
   reindexer and shared reindex orchestrator), `src/Job` (background operations), `src/Site/BlockLayout` (the blocks),
+  `src/Site/ResourcePageBlockLayout` (the item-page Project records block),
   `src/Controller` (public proxy + federated results page + admin maintenance),
   `src/View/Helper` (the `dreSearchBar` / `dreFederatedSearch` / `dreSearchAssets`
   surfaces), `src/Settings` (`SearchProfile`, `ProfileRegistry`, `SortOptions`).

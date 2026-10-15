@@ -7,11 +7,36 @@ namespace DRESearch\Search;
 use Doctrine\DBAL\Connection;
 use DRESearch\Search\Exception\RequestValidationException;
 
-/** Resolves enforceable block scope from persisted server-side block data. */
+/**
+ * Resolves enforceable request scope from server-side data: a saved page
+ * block's locked filter (`block_id`), or a research project's records
+ * (`scope_item`, through {@see ResourceScopeResolver}).
+ */
 final class BlockScopeResolver
 {
-    public function __construct(private readonly Connection $connection)
+    public function __construct(
+        private readonly Connection $connection,
+        private readonly ?ResourceScopeResolver $resources = null,
+    ) {
+    }
+
+    /**
+     * The one server filter a request runs under, or null for none. A request
+     * names at most one scope: two would have to be combined, and refusing the
+     * pair is simpler to trust than any combination rule.
+     */
+    public function resolveScope(?int $blockId, ?int $scopeItem, string $profile): ?string
     {
+        if ($blockId !== null && $scopeItem !== null) {
+            throw new RequestValidationException('conflicting_scope', 'Send either block_id or scope_item, not both.');
+        }
+        if ($scopeItem !== null) {
+            if ($this->resources === null) {
+                throw ResourceScopeResolver::unavailable();
+            }
+            return $this->resources->resolve($scopeItem, $profile);
+        }
+        return $this->resolve($blockId, $profile);
     }
 
     public function resolve(?int $blockId, string $profile): ?string

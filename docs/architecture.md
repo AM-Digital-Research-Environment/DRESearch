@@ -4,8 +4,10 @@ DRE Search is an Omeka S module with three boundaries:
 
 1. The indexer reads Omeka records from MySQL, maps them into profile-specific
    Typesense documents, and publishes only a verified complete generation.
-2. The PHP proxy validates anonymous requests, injects visibility and saved
-   block scope, calls Typesense with the server-held key, and normalizes output.
+2. The PHP proxy validates anonymous requests, injects visibility and the
+   server-side scope (a saved block's locked filter, or a research project's
+   records for the item-page Project records block), calls Typesense with the
+   server-held key, and normalizes output.
 3. The compiled Svelte client consumes only the module API. It never talks to
    Typesense directly.
 

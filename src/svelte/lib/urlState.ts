@@ -13,6 +13,10 @@ import type { ActiveFilters, SortKey, ViewMode } from './types';
  *     the host page's own ?page=/?q=):
  *       ?b42.q=ramadan&b42.f.subject_ss=Islam&b7.f.country_ss=Niger
  *
+ *   - The Project records block on a project's item page (prefix `r{item_id}.`)
+ *     → the same, keyed by the project item, clear of the item page's own params:
+ *       /s/amira/item/1797?r1797.q=interview&r1797.f.type_s=Sound
+ *
  * Multi-value facets use repeated query params (URLSearchParams.getAll() handles
  * them natively). Defaults are omitted so a pristine surface keeps a clean URL.
  *
@@ -70,6 +74,22 @@ function resolve(options: UrlSyncOptions): ResolvedOptions {
     defaultSort: options.defaultSort ?? DEFAULT_SORT,
     includeQuery: options.includeQuery ?? true,
   };
+}
+
+/**
+ * The URL namespace of an embedded search surface, which doubles as its
+ * instance key: `b{block_id}.` for a page block, `r{item_id}.` for the Project
+ * records block on a project's item page (its `scope_item`). Item pages have
+ * their own params, so neither ever writes bare keys there. Null when the
+ * surface is neither (the federated page passes its own prefix).
+ */
+export function embeddedUrlPrefix(scope: {
+  block_id?: number | null;
+  scope_item?: number | null;
+}): string | null {
+  if (scope.block_id != null) return `b${scope.block_id}.`;
+  if (scope.scope_item != null) return `r${scope.scope_item}.`;
+  return null;
 }
 
 /** Parse the URL into this prefix's search state. */

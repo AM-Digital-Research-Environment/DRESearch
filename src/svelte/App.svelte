@@ -11,6 +11,7 @@
   import { untrack } from 'svelte';
   import { SearchApi } from './lib/api';
   import {
+    embeddedUrlPrefix,
     onUrlPop,
     readUrlState,
     syncToUrl,
@@ -55,7 +56,10 @@
      * shell owns the shared ?q/?profile.
      */
     syncUrl?: boolean;
-    /** URL key namespace. Bare ('') on the federated page; `b{block_id}.` per block. */
+    /**
+     * URL key namespace. Bare ('') on the federated page; `b{block_id}.` per
+     * block; `r{item_id}.` for an item page's Project records.
+     */
     urlPrefix?: string;
     /** Whether this App owns the `q` key (false on the federated page — the shell does). */
     includeQuery?: boolean;
@@ -90,14 +94,30 @@
   $effect(() => () => window.clearTimeout(noticeTimer));
 
   const api = $derived.by(
-    () => new SearchApi(bootstrap.endpoints, bootstrap.profile, bootstrap.block_id),
+    () =>
+      new SearchApi(
+        bootstrap.endpoints,
+        bootstrap.profile,
+        bootstrap.block_id,
+        bootstrap.scope_item ?? null,
+      ),
   );
 
   // URL ↔ state sync config. A block that owns its search box syncs by default;
   // the federated page overrides these so its reused per-corpus App writes the
   // corpus's facets/sort/page/year while the shell keeps ?q/?profile.
   const syncUrl = $derived(syncUrlProp ?? showSearchBox);
-  const urlPrefix = $derived(urlPrefixProp ?? `b${bootstrap.block_id}.`);
+  // `b{block_id}.` for a page block, `r{item_id}.` for an item page's Project
+  // records; it also keys this instance's element ids.
+  const embeddedPrefix = $derived(embeddedUrlPrefix(bootstrap));
+  const urlPrefix = $derived(urlPrefixProp ?? embeddedPrefix ?? `b${bootstrap.block_id}.`);
+  const instanceKey = $derived(
+    bootstrap.block_id != null
+      ? String(bootstrap.block_id)
+      : bootstrap.scope_item != null
+        ? `r${bootstrap.scope_item}`
+        : bootstrap.profile,
+  );
   const includeQuery = $derived(includeQueryProp ?? true);
   const urlOptions = $derived<UrlSyncOptions>({
     prefix: urlPrefix,
@@ -622,7 +642,7 @@
       {placeholder}
       {api}
       itemUrlBase={bootstrap.item_url_base}
-      instanceId={String(bootstrap.block_id ?? bootstrap.profile)}
+      instanceId={instanceKey}
       onQueryChange={handleQueryChange}
     />
   {/if}
@@ -650,7 +670,7 @@
         type="button"
         class="dre-search__facets-toggle dre-button-secondary"
         aria-expanded={facetsOpen}
-        aria-controls="dre-facets-{bootstrap.block_id}"
+        aria-controls="dre-facets-{instanceKey}"
         onclick={toggleFacets}
       >
         <span>{facetsOpen ? t('hide_filters') : t('show_filters')}</span>
@@ -663,7 +683,7 @@
     <div class="dre-search__layout" class:dre-search__layout--no-facets={!hasSidebar}>
       {#if hasSidebar}
         <aside
-          id="dre-facets-{bootstrap.block_id}"
+          id="dre-facets-{instanceKey}"
           class="dre-search__facets"
           class:dre-search__facets--open={facetsOpen}
           aria-label={t('filters')}

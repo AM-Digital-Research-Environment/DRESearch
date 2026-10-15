@@ -147,7 +147,7 @@ msgstr ""
 msgid "Configured"
 msgstr ""
 
-#: Module.php:357
+#: Module.php:367
 msgid "Connection values in effect:"
 msgstr ""
 
@@ -635,6 +635,10 @@ msgstr ""
 msgid "Project"
 msgstr ""
 
+#: src/Site/ResourcePageBlockLayout/ProjectRecords.php:49
+msgid "Project records (DRE Search)"
+msgstr ""
+
 #: src/Form/ConfigForm.php:41
 msgid "Protocol"
 msgstr ""
@@ -681,6 +685,10 @@ msgstr ""
 
 #: src/svelte/lib/i18n.ts (recent_searches)
 msgid "Recent searches"
+msgstr ""
+
+#: view/common/resource-page-block-layout/dre-search-project-records.phtml:18
+msgid "Records of this project"
 msgstr ""
 
 #: view/dre-search/admin/maintenance/index.phtml:258 view/dre-search/admin/maintenance/index.phtml:289
@@ -836,7 +844,7 @@ msgstr ""
 msgid "Search publications…"
 msgstr ""
 
-#: view/common/block-layout/dre-search-block.phtml:33 view/dre-search/federated.phtml:23
+#: view/common/block-layout/dre-search-block.phtml:33 view/common/resource-page-block-layout/dre-search-project-records.phtml:23 view/dre-search/federated.phtml:23
 msgid "Search requires JavaScript to be enabled."
 msgstr ""
 
@@ -1133,16 +1141,16 @@ msgstr ""
 msgid "documents imported"
 msgstr ""
 
-#: Module.php:345
+#: Module.php:355
 #, php-format
 msgid "environment variable %s"
 msgstr ""
 
-#: Module.php:347
+#: Module.php:357
 msgid "module default"
 msgstr ""
 
-#: Module.php:349
+#: Module.php:359
 msgid "not set"
 msgstr ""
 
@@ -1150,7 +1158,7 @@ msgstr ""
 msgid "range slider"
 msgstr ""
 
-#: Module.php:343
+#: Module.php:353
 msgid "saved in these settings"
 msgstr ""
 

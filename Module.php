@@ -127,6 +127,9 @@ class Module extends AbstractModule
             );
         }
         $this->installOperationalTables($services);
+        // A site whose item-page blocks were saved ignores the module default
+        // (config resource_page_blocks_default): add Project records there.
+        Site\ResourcePagePlacement::repair($services->get('Omeka\Connection'));
     }
 
     /**
@@ -166,6 +169,13 @@ class Module extends AbstractModule
             // It starts empty, so nothing reaches visitors until an editor
             // approves it.
             $this->installOperationalTables($services);
+        }
+        if (version_compare((string) $oldVersion, '1.29.0', '<')) {
+            // Project records replace Linked resources on a project's item
+            // page, so the block must be on every site, including those whose
+            // saved Resource pages configuration predates it. Static and
+            // connection-only: no module service exists during upgrade().
+            Site\ResourcePagePlacement::repair($services->get('Omeka\Connection'));
         }
     }
 

@@ -320,13 +320,14 @@ final class SearchProxy
         string $q,
         ?int $blockId = null,
         ?string $requestId = null,
+        ?int $scopeItem = null,
     ): array {
         $q = SearchRequest::query($q);
         $profile = $this->registry->get($profileName);
         if ($profile === null) {
             throw new RequestValidationException('unknown_profile', 'Unknown search profile.');
         }
-        $serverFilter = $this->scopeResolver->resolve($blockId, $profile->name());
+        $serverFilter = $this->scopeResolver->resolveScope($blockId, $scopeItem, $profile->name());
         $client = $this->client();
         $state = $this->state($profile);
         if ($client === null || !$state['ready'] || $q === '') {
@@ -1018,7 +1019,11 @@ final class SearchProxy
         return ($end !== null && $end !== $start) ? $start . '–' . $end : (string) $start;
     }
 
-    /** Validate public input before resolving trusted persisted block scope. */
+    /**
+     * Validate public input before resolving trusted server-side scope: a
+     * saved block's locked filter (`block_id`) or a project's records
+     * (`scope_item`), never both.
+     */
     private function prepare(string $profileName, array $req, string $mode): array
     {
         $profile = $this->registry->get($profileName);
@@ -1027,7 +1032,8 @@ final class SearchProxy
         }
         $validated = SearchRequest::fromArray($req, $profile, $mode)->toArray();
         $blockId = isset($validated['block_id']) ? (int) $validated['block_id'] : null;
-        $serverFilter = $this->scopeResolver->resolve($blockId, $profile->name());
+        $scopeItem = isset($validated['scope_item']) ? (int) $validated['scope_item'] : null;
+        $serverFilter = $this->scopeResolver->resolveScope($blockId, $scopeItem, $profile->name());
         return [$profile, $validated, $serverFilter];
     }
 

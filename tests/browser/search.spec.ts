@@ -206,3 +206,31 @@ test.describe('federated results page', () => {
     expect(overflow).toBeLessThanOrEqual(0);
   });
 });
+
+test.describe('project records (item page)', () => {
+  test('searches within the project and keeps its state under its own prefix', async ({ page }) => {
+    const stub = await serve(page, 'project-records');
+    await page.goto('/?page=3');
+    await expect(page.getByRole('article')).toHaveCount(2);
+    await expect(
+      page.getByRole('heading', { level: 4, name: 'Photograph of the Bayreuth market' }),
+    ).toBeVisible();
+
+    await page.getByRole('checkbox', { name: /Audio/ }).check();
+    await expect(page.getByRole('article')).toHaveCount(1);
+    const sent = stub.searches.at(-1);
+    expect(sent).toMatchObject({ profile: 'research_items', scope_item: 1797 });
+    expect(sent).not.toHaveProperty('block_id');
+
+    const params = new URL(page.url()).searchParams;
+    expect(params.getAll('r1797.f.type_s')).toEqual(['Audio']);
+    expect(params.get('page')).toBe('3');
+  });
+
+  test('has no serious or critical axe violations', async ({ page }) => {
+    await serve(page, 'project-records');
+    await page.goto('/');
+    await expect(page.getByRole('article').first()).toBeVisible();
+    expect(await seriousViolations(page)).toEqual([]);
+  });
+});

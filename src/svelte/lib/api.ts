@@ -45,6 +45,8 @@ export class SearchApi {
     private readonly endpoints: Bootstrap['endpoints'],
     private readonly profile: string,
     private readonly blockId: number | null = null,
+    /** A project item whose records the server locks this search to (`scope_item`). */
+    private readonly scopeItem: number | null = null,
   ) {}
 
   /**
@@ -109,7 +111,8 @@ export class SearchApi {
     const url =
       `${this.endpoints.suggest}?profile=${encodeURIComponent(this.profile)}` +
       `&q=${encodeURIComponent(q)}` +
-      (this.blockId !== null ? `&block_id=${encodeURIComponent(this.blockId)}` : '');
+      (this.blockId !== null ? `&block_id=${encodeURIComponent(this.blockId)}` : '') +
+      (this.scopeItem !== null ? `&scope_item=${encodeURIComponent(this.scopeItem)}` : '');
     try {
       const res = await fetch(url, { headers: { Accept: 'application/json' }, signal });
       if (!res.ok) {
@@ -141,6 +144,7 @@ export class SearchApi {
       ...req,
       profile: this.profile,
       ...(this.blockId !== null ? { block_id: this.blockId } : {}),
+      ...(this.scopeItem !== null ? { scope_item: this.scopeItem } : {}),
     };
   }
 }

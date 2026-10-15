@@ -38,8 +38,13 @@ export interface YearBounds {
 
 /** Per-block config the server inlines; read once on mount. */
 export interface Bootstrap {
-  /** Persisted Omeka block id. Null on the federated surface. */
+  /** Persisted Omeka block id. Null on the federated surface and on an item page. */
   block_id: number | null;
+  /**
+   * A research project's item id, set by the item-page Project records block:
+   * the server locks the search to that project's records (`scope_item`).
+   */
+  scope_item?: number | null;
   /** Search profile (corpus) this block queries, e.g. "research_projects". */
   profile: string;
   /** Result card to render. */
@@ -265,6 +270,8 @@ export interface SearchRequest {
   facets: string[];
   /** Server resolves any saved locked filter from this id. */
   block_id?: number;
+  /** Server locks the search to this project item's records. */
+  scope_item?: number;
   /** Year bounds — null means "no constraint at that end". */
   year_from?: number | null;
   year_to?: number | null;
@@ -280,6 +287,7 @@ export interface ExportRequest {
   sort: SortKey;
   filters: ActiveFilters;
   block_id?: number;
+  scope_item?: number;
   year_from?: number | null;
   year_to?: number | null;
 }

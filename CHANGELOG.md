@@ -3,6 +3,22 @@
 All notable changes to DRE Search are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+**Upgrade:** run the Omeka module upgrade. It adds the new Project records block to every site's item pages; no reindex is needed.
+
+### Added
+
+- **A research project's page lists its records through Search.** On a project's item page (for example a project with 487 research records), the records used to appear as Omeka's plain Linked resources list. The new **Project records (DRE Search)** item-page block shows them through the research items search instead, under "Records of this project" and the record count: the search box, the facets, sorting, paging, export and the year slider all work, and the list stays locked to the project. The Project facet is left out, since it would hold one value.
+  - The block appears only on a project: an item of class `foaf:Project`, or one in the research items profile's project item set. On other items, on a project without records, and while search is unavailable it renders nothing, so the page keeps its Linked resources.
+  - It needs no admin work. The install and the upgrade add it to every site whose Resource pages configuration was saved, right before Linked resources (else after the last record block, else last), without moving or removing anything else, and only where it is not already placed. Sites that never saved that screen get it from the module's default. To opt a site out, remove the block under its Theme → Configure resource pages.
+  - Its search state is kept in the address under its own `r<item id>.` prefix, so it never clashes with the item page's own parameters, and a search can be shared as a link.
+  - Themes can style it through its root class, `dre-search-project-records`.
+
+### Security
+
+- **The project scope is enforced by the server.** The block sends only the project's item id, as the new `scope_item` parameter of the search, facet, export, map and suggest endpoints. The server reads that item as the current visitor, so a private project is not found; requires it to be a project; accepts it only for the research items corpus; and filters on the project's title exactly as the index stores it. A title that Typesense could not match literally, such as one containing a backtick, gives no scope rather than a wider one. Every refusal gives the same `invalid_block_scope` answer as an unusable block scope, so the endpoint does not reveal which items exist. A request may not combine `block_id` and `scope_item`: it is refused with `conflicting_scope`. See `docs/public-api.md`.
+
 ## [1.28.1] - 2026-10-12
 
 ### Fixed
