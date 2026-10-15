@@ -14,6 +14,13 @@ updates:
     groups:
       frontend-toolchain:
         update-types: [minor, patch]
+    ignore:
+      # TypeScript 7 is the Go port and ships no JavaScript compiler API, which
+      # svelte-check (`npm run check`) and typescript-eslint's typed lint both
+      # load: svelte-check 4.7 peers on ^5 || ^6, typescript-eslint 8 on <6.1,
+      # and `npm ci` refuses the bump outright. Lift this once both accept 7.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: composer
     directory: /
