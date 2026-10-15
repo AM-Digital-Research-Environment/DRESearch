@@ -153,6 +153,41 @@ function blockPage(title: string): string {
 </section>`;
 }
 
+/**
+ * The item-page Project records block
+ * (view/common/resource-page-block-layout/dre-search-project-records.phtml):
+ * no block id, the project item as `scope_item`, and `r<item id>` as the
+ * mount and state-script key.
+ */
+function projectRecordsPage(): string {
+  const bootstrap = {
+    block_id: null,
+    scope_item: 1797,
+    profile: 'research_items',
+    card_kind: 'item',
+    date_mode: 'single',
+    show_year: false,
+    year_bounds: null,
+    facets: ['type_s'],
+    facet_labels: { type_s: 'Type' },
+    default_sort: 'relevance',
+    sort_options: PROFILES[0]!.sort_options,
+    per_page: 20,
+    item_url_base: '/s/site/item',
+    endpoints: ENDPOINTS,
+    initial_response: searchResponse(HITS),
+  };
+  return `<section class="dre-search-project-records dre-search-block" aria-labelledby="dre-search-title-r1797">
+  <h2 class="dre-search-block__title" id="dre-search-title-r1797">Records of this project
+    <span class="dre-search-project-records__count">2</span></h2>
+  <div data-dre-search-root data-dre-block-id="r1797" data-dre-heading-level="3"
+       class="dre-search-block__root" id="dre-search-root-r1797">
+    <div class="dre-search-block__skeleton" aria-hidden="true"></div>
+  </div>
+  <script type="application/json" id="dre-search-state-r1797">${JSON.stringify(bootstrap)}</script>
+</section>`;
+}
+
 function federatedPage(): string {
   const bootstrap = {
     variant: 'federated',
@@ -208,7 +243,7 @@ function json(route: Route, body: unknown, status = 200): Promise<void> {
  */
 export async function serve(
   page: Page,
-  surface: 'block' | 'titled-block' | 'federated' = 'block',
+  surface: 'block' | 'titled-block' | 'federated' | 'project-records' = 'block',
 ): Promise<ApiStub> {
   const stub: ApiStub = { failSearches: 0, searches: [] };
 
@@ -220,7 +255,12 @@ export async function serve(
       const html =
         surface === 'federated'
           ? shell(federatedPage(), 'Search')
-          : shell(blockPage(surface === 'titled-block' ? 'Find research items' : ''), 'Collection');
+          : surface === 'project-records'
+            ? shell(projectRecordsPage(), 'Muslim Youth in Kenya')
+            : shell(
+                blockPage(surface === 'titled-block' ? 'Find research items' : ''),
+                'Collection',
+              );
       return route.fulfill({ contentType: 'text/html', body: html });
     }
     if (path === '/tokens.css') {

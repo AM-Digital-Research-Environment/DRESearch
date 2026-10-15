@@ -26,7 +26,7 @@ final class SearchRequest
     {
         $allowed = [
             'profile', 'q', 'page', 'per_page', 'sort', 'filters', 'facets',
-            'year_from', 'year_to', 'block_id', 'include_counts', 'record_query', 'analytics_id',
+            'year_from', 'year_to', 'block_id', 'scope_item', 'include_counts', 'record_query', 'analytics_id',
         ];
         if ($mode === 'facet') {
             $allowed = array_merge($allowed, ['facet_field', 'facet_query']);
@@ -92,6 +92,9 @@ final class SearchRequest
         if (isset($input['block_id']) && $input['block_id'] !== '') {
             $data['block_id'] = self::integer($input['block_id'], 'block_id', 1, PHP_INT_MAX);
         }
+        if (isset($input['scope_item']) && $input['scope_item'] !== '') {
+            $data['scope_item'] = self::integer($input['scope_item'], 'scope_item', 1, PHP_INT_MAX);
+        }
 
         if (isset($input['record_query']) && !is_bool($input['record_query'])) {
             throw new RequestValidationException('invalid_record_query', 'Invalid analytics flag.');
@@ -129,6 +132,15 @@ final class SearchRequest
             return null;
         }
         return self::integer($value, 'block_id', 1, PHP_INT_MAX);
+    }
+
+    /** The `scope_item` parameter: a research project's item id, or null. */
+    public static function scopeItem(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        return self::integer($value, 'scope_item', 1, PHP_INT_MAX);
     }
 
     /**

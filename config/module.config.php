@@ -76,6 +76,24 @@ return [
         ],
     ],
 
+    // Resource page block: a research project's item page lists the project's
+    // research records through the research-items search, locked to the
+    // project server-side (scope_item). Renders nothing on any other item.
+    'resource_page_block_layouts' => [
+        'factories' => [
+            'dreSearchProjectRecords' => Service\BlockLayout\ProjectRecordsFactory::class,
+        ],
+    ],
+    // Used only by sites that never saved their Resource pages configuration
+    // (core appends it to the theme's blocks); Module::install()/upgrade() add
+    // it to saved configurations (Site\ResourcePagePlacement). A literal: a
+    // class constant here would autoload the class while Omeka merges configs.
+    'resource_page_blocks_default' => [
+        'items' => [
+            'main' => ['dreSearchProjectRecords'],
+        ],
+    ],
+
     'view_helpers' => [
         'invokables' => [
             // Serialises the per-block bootstrap blob with consistent,

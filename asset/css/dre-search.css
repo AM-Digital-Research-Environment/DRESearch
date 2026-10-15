@@ -32,6 +32,14 @@
     margin-block: 0 var(--space-4, 1rem);
 }
 
+/* Project records (item-page block): the project's record count after the heading. */
+.dre-search-project-records__count {
+    font-size: var(--text-lg, 1.1875rem);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-light, #5f5650);
+    margin-inline-start: var(--space-2, 0.5rem);
+}
+
 .dre-search-block__intro {
     color: var(--ink-light, #5f5650);
     margin-block-end: var(--space-4, 1rem);

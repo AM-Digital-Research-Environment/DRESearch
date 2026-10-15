@@ -81,7 +81,10 @@ class SearchController extends AbstractActionController
             $blockId = SearchRequest::blockId(
                 $this->params()->fromQuery('block_id') ?? $this->params()->fromPost('block_id')
             );
-            return $this->proxy->suggest($profile, $q, $blockId, $requestId);
+            $scopeItem = SearchRequest::scopeItem(
+                $this->params()->fromQuery('scope_item') ?? $this->params()->fromPost('scope_item')
+            );
+            return $this->proxy->suggest($profile, $q, $blockId, $requestId, $scopeItem);
         }, 'no-store');
     }
 

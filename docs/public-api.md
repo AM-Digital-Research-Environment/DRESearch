@@ -24,9 +24,33 @@ GET or POST parameters.
 Requests are strict: unknown keys, profiles/fields, unsupported sorts, oversized
 bodies/queries, invalid UTF-8 and out-of-range paging are rejected. Filter
 values are matched literally, so a value Typesense would reinterpret (a trailing
-`*` or `\`, or one wrapped in double quotes) is refused. Clients may send a saved
-`block_id`; the server resolves its locked filter and checks that its layout
-matches the profile. Raw `locked_filter` input is not accepted.
+`*` or `\`, or one wrapped in double quotes) is refused. Raw `locked_filter`
+input is not accepted.
+
+## Scope
+
+A request may name one server-side scope, which narrows every query it runs
+and which the client cannot weaken. Search, facet, export, map and the
+search-all active corpus read it from the JSON body; `suggest` from the query
+string or form.
+
+- `block_id`: a saved page block. The server resolves its locked filter and
+  checks that the block's layout matches the profile.
+- `scope_item`: a research project's item id, sent by the item-page **Project
+  records** block. Valid only with `profile: "research_items"`. The server reads
+  the item through the Omeka API as the current user (a private or absent item
+  is not found), requires it to be a project (resource class `foaf:Project`, or
+  membership of the profile's `project` authority item set), and filters on
+  `` project_s:=`<title>` ``, the item's title exactly as the indexer stores it.
+  A title Typesense cannot match literally (one containing a backtick, ending in
+  `*` or `\`, or wrapped in double quotes) gives no scope.
+
+An unusable scope answers `400` with `invalid_block_scope` — the same code and
+message for an absent block or item, a private item, an item that is not a
+project, a profile the scope does not belong to and an unusable title, so the
+answer reveals nothing about which ids exist. Sending both `block_id` and
+`scope_item` answers `400` with `conflicting_scope`: two scopes are refused,
+never combined.
 
 ## Availability
 

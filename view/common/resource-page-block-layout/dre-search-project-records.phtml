@@ -1,0 +1,44 @@
+<?php
+/**
+ * @var \Laminas\View\Renderer\PhpRenderer $this
+ * @var int $itemId    The project item whose records are listed.
+ * @var int $found     Its records in the search index (the heading's count).
+ * @var array $bootstrap Config blob the Svelte client reads on mount.
+ *
+ * "Project records (DRE Search)" on a research project's item page. The
+ * mount contract is the search block's (dre-search-block.phtml): the root's
+ * data-dre-block-id names the sibling state script, here `r<itemId>`, and the
+ * client keeps its URL state under the same `r<itemId>.` prefix. Themes key on
+ * the root class `dre-search-project-records`.
+ */
+$id = 'r' . (int) $itemId;
+?>
+<section class="dre-search-project-records dre-search-block" aria-labelledby="dre-search-title-<?= $this->escapeHtmlAttr($id) ?>">
+    <h2 class="dre-search-block__title dre-search-project-records__title" id="dre-search-title-<?= $this->escapeHtmlAttr($id) ?>">
+        <?= $this->escapeHtml($this->translate('Records of this project')) ?>
+        <span class="dre-search-project-records__count"><?= (int) $found ?></span>
+    </h2>
+
+    <noscript>
+        <p><?= $this->escapeHtml($this->translate('Search requires JavaScript to be enabled.')) ?></p>
+    </noscript>
+
+    <div
+        data-dre-search-root
+        data-dre-block-id="<?= $this->escapeHtmlAttr($id) ?>"
+        data-dre-heading-level="3"
+        class="dre-search-block__root"
+        id="dre-search-root-<?= $this->escapeHtmlAttr($id) ?>"
+    >
+        <div class="dre-search-block__skeleton" aria-hidden="true">
+            <div class="dre-search-block__skeleton-input"></div>
+            <div class="dre-search-block__skeleton-results">
+                <?php for ($i = 0; $i < 3; $i++): ?>
+                    <div class="dre-search-block__skeleton-row"></div>
+                <?php endfor; ?>
+            </div>
+        </div>
+    </div>
+
+    <script type="application/json" id="dre-search-state-<?= $this->escapeHtmlAttr($id) ?>"><?= $this->dreBootstrapJson($bootstrap) ?></script>
+</section>
