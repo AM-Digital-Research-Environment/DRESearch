@@ -227,6 +227,17 @@ test.describe('project records (item page)', () => {
     expect(params.get('page')).toBe('3');
   });
 
+  test('collapses and reopens from its heading bar', async ({ page }) => {
+    await serve(page, 'project-records');
+    await page.goto('/');
+    const head = page.locator('summary', { hasText: 'Records of this project' });
+    await expect(page.getByRole('article').first()).toBeVisible();
+    await head.click();
+    await expect(page.getByRole('article').first()).toBeHidden();
+    await head.click();
+    await expect(page.getByRole('article').first()).toBeVisible();
+  });
+
   test('has no serious or critical axe violations', async ({ page }) => {
     await serve(page, 'project-records');
     await page.goto('/');

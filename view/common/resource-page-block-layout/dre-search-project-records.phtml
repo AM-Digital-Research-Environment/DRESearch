@@ -10,35 +10,46 @@
  * data-dre-block-id names the sibling state script, here `r<itemId>`, and the
  * client keeps its URL state under the same `r<itemId>.` prefix. Themes key on
  * the root class `dre-search-project-records`.
+ *
+ * The block replaces the theme's Linked resources on a project's page and sits
+ * beside DRE Visualizations' dashboard, so it wears the same disclosure they
+ * do: a <details>, open by default, whose summary holds the page-section h2
+ * (the theme's global h2, not the search block's own title style) and a
+ * chevron.
  */
 $id = 'r' . (int) $itemId;
 ?>
-<section class="dre-search-project-records dre-search-block" aria-labelledby="dre-search-title-<?= $this->escapeHtmlAttr($id) ?>">
-    <h2 class="dre-search-block__title dre-search-project-records__title" id="dre-search-title-<?= $this->escapeHtmlAttr($id) ?>">
-        <?= $this->escapeHtml($this->translate('Records of this project')) ?>
-        <span class="dre-search-project-records__count"><?= (int) $found ?></span>
-    </h2>
+<details class="dre-search-project-records dre-search-block" aria-labelledby="dre-search-title-<?= $this->escapeHtmlAttr($id) ?>" open>
+    <summary class="dre-search-project-records__head">
+        <span class="dre-search-project-records__headwrap">
+            <h2 class="dre-search-project-records__title" id="dre-search-title-<?= $this->escapeHtmlAttr($id) ?>"><?= $this->escapeHtml($this->translate('Records of this project')) ?></h2>
+            <span class="dre-search-project-records__count"><?= (int) $found ?></span>
+        </span>
+        <span class="dre-search-project-records__chevron" aria-hidden="true"></span>
+    </summary>
 
-    <noscript>
-        <p><?= $this->escapeHtml($this->translate('Search requires JavaScript to be enabled.')) ?></p>
-    </noscript>
+    <div class="dre-search-project-records__panel">
+        <noscript>
+            <p><?= $this->escapeHtml($this->translate('Search requires JavaScript to be enabled.')) ?></p>
+        </noscript>
 
-    <div
-        data-dre-search-root
-        data-dre-block-id="<?= $this->escapeHtmlAttr($id) ?>"
-        data-dre-heading-level="3"
-        class="dre-search-block__root"
-        id="dre-search-root-<?= $this->escapeHtmlAttr($id) ?>"
-    >
-        <div class="dre-search-block__skeleton" aria-hidden="true">
-            <div class="dre-search-block__skeleton-input"></div>
-            <div class="dre-search-block__skeleton-results">
-                <?php for ($i = 0; $i < 3; $i++): ?>
-                    <div class="dre-search-block__skeleton-row"></div>
-                <?php endfor; ?>
+        <div
+            data-dre-search-root
+            data-dre-block-id="<?= $this->escapeHtmlAttr($id) ?>"
+            data-dre-heading-level="3"
+            class="dre-search-block__root"
+            id="dre-search-root-<?= $this->escapeHtmlAttr($id) ?>"
+        >
+            <div class="dre-search-block__skeleton" aria-hidden="true">
+                <div class="dre-search-block__skeleton-input"></div>
+                <div class="dre-search-block__skeleton-results">
+                    <?php for ($i = 0; $i < 3; $i++): ?>
+                        <div class="dre-search-block__skeleton-row"></div>
+                    <?php endfor; ?>
+                </div>
             </div>
         </div>
-    </div>
 
-    <script type="application/json" id="dre-search-state-<?= $this->escapeHtmlAttr($id) ?>"><?= $this->dreBootstrapJson($bootstrap) ?></script>
-</section>
+        <script type="application/json" id="dre-search-state-<?= $this->escapeHtmlAttr($id) ?>"><?= $this->dreBootstrapJson($bootstrap) ?></script>
+    </div>
+</details>

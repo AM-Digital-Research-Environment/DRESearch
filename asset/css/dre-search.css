@@ -32,12 +32,91 @@
     margin-block: 0 var(--space-4, 1rem);
 }
 
-/* Project records (item-page block): the project's record count after the heading. */
+/*
+ * Project records (item-page block): the disclosure the theme's Linked
+ * resources and DRE Visualizations' dashboard use (DRE-theme
+ * _linked-resources.scss), so the sections under a project's record read as
+ * one family. The heading is the theme's global h2; the whole bar toggles.
+ */
+.dre-search-project-records {
+    display: block;
+}
+
+.dre-search-project-records__head {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3, 0.75rem);
+    padding: var(--space-2, 0.5rem) 0;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border, #dbd7d1);
+}
+
+.dre-search-project-records__head::-webkit-details-marker {
+    display: none;
+}
+
+.dre-search-project-records__head:focus-visible {
+    outline: 2px solid var(--focus-color, #007a50);
+    outline-offset: 3px;
+    border-radius: var(--radius-sm, 0.375rem);
+}
+
+.dre-search-project-records__headwrap {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+}
+
+.dre-search-project-records__title {
+    margin: 0;
+    transition: color var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
+}
+
+.dre-search-project-records__head:hover .dre-search-project-records__title {
+    color: var(--primary-text, #006440);
+}
+
+/* The project's record count, as Linked resources shows its own. */
 .dre-search-project-records__count {
-    font-size: var(--text-lg, 1.1875rem);
+    font-size: var(--text-sm, 0.9375rem);
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
-    color: var(--ink-light, #5f5650);
-    margin-inline-start: var(--space-2, 0.5rem);
+    color: var(--ink, #3c342d);
+}
+
+/* A caret, masked so it takes the ink colour: points down when closed, flips
+   up when open. */
+.dre-search-project-records__chevron {
+    flex-shrink: 0;
+    margin-left: auto;
+    width: 0.875rem;
+    height: 0.875rem;
+    background-color: var(--ink-light, #5f5650);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M2.5 5l4.5 4.5L11.5 5' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='square'/%3E%3C/svg%3E") center / contain no-repeat;
+    transition:
+        transform var(--transition-base, 200ms cubic-bezier(0.25, 1, 0.5, 1)),
+        background-color var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
+}
+
+.dre-search-project-records__head:hover .dre-search-project-records__chevron {
+    background-color: var(--primary, #007a50);
+}
+
+.dre-search-project-records[open] .dre-search-project-records__chevron {
+    transform: rotate(180deg);
+}
+
+.dre-search-project-records__panel {
+    padding-top: var(--space-5, 1.25rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dre-search-project-records__title,
+    .dre-search-project-records__chevron {
+        transition: none;
+    }
 }
 
 .dre-search-block__intro {
