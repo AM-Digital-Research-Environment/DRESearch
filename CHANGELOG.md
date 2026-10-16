@@ -5,6 +5,8 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+## [1.30.0] - 2026-10-16
+
 ### Changed
 
 - **Project records open and close like the sections around them.** "Records of this project" is now a disclosure, open by default, in the same style as the theme's _Linked resources_ and DRE Visualizations' _Visualisations_: the theme's section heading, the record count beside it, and a chevron. Click the heading bar to collapse the list. The block's root class, `dre-search-project-records`, is now on a `<details>` element instead of a `<section>`.
