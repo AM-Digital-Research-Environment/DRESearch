@@ -177,15 +177,22 @@ function projectRecordsPage(): string {
     endpoints: ENDPOINTS,
     initial_response: searchResponse(HITS),
   };
-  return `<section class="dre-search-project-records dre-search-block" aria-labelledby="dre-search-title-r1797">
-  <h2 class="dre-search-block__title" id="dre-search-title-r1797">Records of this project
-    <span class="dre-search-project-records__count">2</span></h2>
-  <div data-dre-search-root data-dre-block-id="r1797" data-dre-heading-level="3"
-       class="dre-search-block__root" id="dre-search-root-r1797">
-    <div class="dre-search-block__skeleton" aria-hidden="true"></div>
+  return `<details class="dre-search-project-records dre-search-block" aria-labelledby="dre-search-title-r1797" open>
+  <summary class="dre-search-project-records__head">
+    <span class="dre-search-project-records__headwrap">
+      <h2 class="dre-search-project-records__title" id="dre-search-title-r1797">Records of this project</h2>
+      <span class="dre-search-project-records__count">2</span>
+    </span>
+    <span class="dre-search-project-records__chevron" aria-hidden="true"></span>
+  </summary>
+  <div class="dre-search-project-records__panel">
+    <div data-dre-search-root data-dre-block-id="r1797" data-dre-heading-level="3"
+         class="dre-search-block__root" id="dre-search-root-r1797">
+      <div class="dre-search-block__skeleton" aria-hidden="true"></div>
+    </div>
+    <script type="application/json" id="dre-search-state-r1797">${JSON.stringify(bootstrap)}</script>
   </div>
-  <script type="application/json" id="dre-search-state-r1797">${JSON.stringify(bootstrap)}</script>
-</section>`;
+</details>`;
 }
 
 function federatedPage(): string {

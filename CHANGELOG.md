@@ -5,6 +5,10 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+### Changed
+
+- **Project records open and close like the sections around them.** "Records of this project" is now a disclosure, open by default, in the same style as the theme's _Linked resources_ and DRE Visualizations' _Visualisations_: the theme's section heading, the record count beside it, and a chevron. Click the heading bar to collapse the list. The block's root class, `dre-search-project-records`, is now on a `<details>` element instead of a `<section>`.
+
 ## [1.29.0] - 2026-10-15
 
 **Upgrade:** run the Omeka module upgrade. It adds the new Project records block to every site's item pages; no reindex is needed.

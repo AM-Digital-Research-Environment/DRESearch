@@ -687,7 +687,7 @@ msgstr ""
 msgid "Recent searches"
 msgstr ""
 
-#: view/common/resource-page-block-layout/dre-search-project-records.phtml:18
+#: view/common/resource-page-block-layout/dre-search-project-records.phtml:25
 msgid "Records of this project"
 msgstr ""
 
@@ -844,7 +844,7 @@ msgstr ""
 msgid "Search publications…"
 msgstr ""
 
-#: view/common/block-layout/dre-search-block.phtml:33 view/common/resource-page-block-layout/dre-search-project-records.phtml:23 view/dre-search/federated.phtml:23
+#: view/common/block-layout/dre-search-block.phtml:33 view/common/resource-page-block-layout/dre-search-project-records.phtml:33 view/dre-search/federated.phtml:23
 msgid "Search requires JavaScript to be enabled."
 msgstr ""
 
