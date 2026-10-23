@@ -5,6 +5,8 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+## [1.31.0] - 2026-10-23
+
 **Upgrade:** run a full **Reindex** of People, Organisations, Subjects, Locations, Languages, Genres and Publications. Their schema gains a field, so the cards show identifiers only once those corpora are rebuilt.
 
 ### Added
