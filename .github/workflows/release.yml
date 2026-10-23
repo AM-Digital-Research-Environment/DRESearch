@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - uses: shivammathur/setup-php@5a89ae6dd61c772780c51d7542f4374d76990a0b # 2.40.0
+      - uses: shivammathur/setup-php@3bdfe21000ea9539e3a94c4f692f984b24fa97e0 # 2.40.0
         with:
           php-version: '8.3'
           tools: composer:v2
