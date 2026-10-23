@@ -71,6 +71,7 @@
     "guest_label": "Guest",
     "hide_filters": "Hide filters",
     "host_label": "Host",
+    "identifiers_label": "Identifiers in other registers",
     "in_prefix": "In:",
     "language_label": "Language",
     "listen_label": "Listen",

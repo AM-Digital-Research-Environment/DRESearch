@@ -4,6 +4,8 @@
   import { t, researchItemsLabel, publicationsLabel } from '../lib/i18n';
   import Highlight from './Highlight.svelte';
   import Sparkline from './Sparkline.svelte';
+  import IdentifierLinks from './IdentifierLinks.svelte';
+  import { externalIds } from '../lib/identifiers';
   import '../styles/card.css';
   import { associationSeries } from '../lib/sparkline';
   import { entityTagClass } from '../lib/entity';
@@ -52,6 +54,8 @@
     return out;
   });
   const series = $derived(associationSeries(doc.item_count, doc.publication_count));
+  // A subject's LCSH heading and Wikidata item; a place's or language's QID.
+  const ids = $derived(externalIds(doc.same_as_ss ?? []));
 </script>
 
 <article class="dre-shell dre-term">
@@ -94,6 +98,8 @@
       <p class="dre-shell__counts">{counts.join(' · ')}</p>
     </div>
   {/if}
+
+  <IdentifierLinks {ids} />
 </article>
 
 <style>

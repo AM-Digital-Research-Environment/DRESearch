@@ -174,6 +174,28 @@ final class ValueBag
         return null;
     }
 
+    /**
+     * The http(s) links a property holds — a URI value's URI, or a literal
+     * that is itself a URL — deduplicated (scheme and case aside) in source
+     * order. Literal identifiers that are not links are skipped.
+     *
+     * @return list<string>
+     */
+    public function uris(?string $term): array
+    {
+        $out = [];
+        foreach ($this->rows($term) as $row) {
+            $raw = ($row['uri'] ?? '') !== '' ? (string) $row['uri'] : (string) ($row['value'] ?? '');
+            $url = self::safeHttpUrl($raw);
+            if ($url === null) {
+                continue;
+            }
+            $key = strtolower((string) preg_replace('~^https?://(?:www\.)?~i', '', rtrim($url, '/')));
+            $out[$key] ??= $url;
+        }
+        return array_values($out);
+    }
+
     public static function safeHttpUrl(string $candidate): ?string
     {
         $candidate = trim($candidate);

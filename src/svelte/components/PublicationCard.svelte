@@ -8,6 +8,9 @@
   import Highlight from './Highlight.svelte';
   import MatchedIn from './MatchedIn.svelte';
   import CiteMenu from './CiteMenu.svelte';
+  import IdentifierLinks from './IdentifierLinks.svelte';
+  import RegisterMark from './RegisterMark.svelte';
+  import { externalIds } from '../lib/identifiers';
   import '../styles/card.css';
 
   /**
@@ -20,7 +23,7 @@
    *   │ In: Ganteau, J.-M.; Onega, S. (eds.), Handbook of …,   │
    *   │   vol. 4, pp. 141–165. Brill                           │
    *   │ Abstract, clamped to a few lines…                     │
-   *   │ [keyword] [keyword]   (Full text ↗) (DOI ↗) (Cite ▾)  │
+   *   │ [keyword]  ([|||] Q123 ↗) (Full text ↗) (DOI ↗) (Cite ▾) │
    *   └────────────────────────────────────────────────────┘
    *
    * Authors and editors are FilterLinks that add the person to the "Author / Editor"
@@ -53,6 +56,8 @@
   const keywords = $derived((doc.keyword_ss ?? []).slice(0, 8));
   const keywordHl = $derived(markedLookup(doc, 'keyword_ss'));
   const doi = $derived(safeExternalUrl(doc.doi_s));
+  // The work's Wikidata item. The DOI keeps its own action pill below.
+  const ids = $derived(externalIds(doc.same_as_ss ?? []).filter((ext) => ext.key !== 'doi'));
   // The open-access copy's landing page (EPub Bayreuth on AMIRA).
   const fulltext = $derived(safeExternalUrl(doc.fulltext_url_s));
   const languages = $derived(doc.language_ss ?? []);
@@ -198,6 +203,7 @@
         </ul>
       {/if}
       <div class="dre-bcard__actions">
+        <IdentifierLinks {ids} />
         {#if fulltext}
           <a class="dre-shell__external" href={fulltext} target="_blank" rel="noopener noreferrer">
             {t('fulltext_link')}
@@ -205,7 +211,7 @@
         {/if}
         {#if doi}
           <a class="dre-shell__external" href={doi} target="_blank" rel="noopener noreferrer">
-            {t('doi_label')}
+            <RegisterMark key="doi" />{t('doi_label')}
           </a>
         {/if}
         <CiteMenu {doc} kind="publication" {itemUrlBase} />
@@ -271,5 +277,9 @@
     flex-wrap: wrap;
     gap: var(--space-xs, 0.25rem);
     margin-inline-start: auto;
+  }
+  /* The Wikidata link joins the row rather than opening one of its own. */
+  .dre-bcard__actions :global(.dre-shell__ids) {
+    margin: 0;
   }
 </style>

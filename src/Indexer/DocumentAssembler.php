@@ -47,6 +47,17 @@ final class DocumentAssembler
                 $item['roles'] = $roles[$id] ?? [];
             }
             $doc = $this->mapper->map($item, $values[$id] ?? [], $thumbnails[$id] ?? null);
+            // Reconciled identifiers (ORCID, Wikidata, GND, LCSH…) mean the same
+            // on every kind of record, so they are laid in here rather than by
+            // each mapper: any profile that declares same_as_ss gets the URIs
+            // of its property, and the card names the register from the host.
+            $sameAs = $this->profile->displayFields()['same_as_ss'] ?? null;
+            if ($sameAs !== null && !isset($doc['same_as_ss'])) {
+                $uris = (new ValueBag($values[$id] ?? []))->uris($sameAs['property'] ?? null);
+                if ($uris !== []) {
+                    $doc['same_as_ss'] = $uris;
+                }
+            }
             $doc['_profile'] = $this->profile->name();
             $doc['_kind'] = $this->profile->kind();
             $docs[] = $doc;

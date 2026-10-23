@@ -600,6 +600,8 @@ return [
                 // query_by and merged into the creator_ss facet above. volume/issue/
                 // pages/doi are shown only, never searched/faceted.
                 'display_fields' => [
+                    // Reconciled identifiers (ORCID, Wikidata, GND, LCSH): the URIs only, shown as marked links.
+                    'same_as_ss' => ['property' => 'dcterms:identifier', 'type' => 'string[]', 'facet' => false, 'index' => false],
                     'author_ss'  => ['property' => 'bibo:authorList', 'type' => 'string[]', 'facet' => false],
                     'editor_ss'  => ['property' => 'bibo:editorList', 'type' => 'string[]', 'facet' => false],
                     'volume_s'   => ['property' => 'bibo:volume',     'type' => 'string', 'facet' => false, 'index' => false],
@@ -777,6 +779,8 @@ return [
 
                 // Card figures — association counts (mapper-emitted, sortable).
                 'display_fields' => [
+                    // Reconciled identifiers (ORCID, Wikidata, GND, LCSH): the URIs only, shown as marked links.
+                    'same_as_ss' => ['property' => 'dcterms:identifier', 'type' => 'string[]', 'facet' => false, 'index' => false],
                     'item_count'        => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
                     'publication_count' => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
                 ],
@@ -887,6 +891,8 @@ return [
                 // card shows only the non-zero ones, so groups read as "N research
                 // items" while institutions read as "N projects · N people".
                 'display_fields' => [
+                    // Reconciled identifiers (ORCID, Wikidata, GND, LCSH): the URIs only, shown as marked links.
+                    'same_as_ss' => ['property' => 'dcterms:identifier', 'type' => 'string[]', 'facet' => false, 'index' => false],
                     'project_count' => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
                     'item_count'    => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
                     'people_count'  => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
@@ -948,6 +954,8 @@ return [
                 'facets' => [],
 
                 'display_fields' => [
+                    // Reconciled identifiers (ORCID, Wikidata, GND, LCSH): the URIs only, shown as marked links.
+                    'same_as_ss' => ['property' => 'dcterms:identifier', 'type' => 'string[]', 'facet' => false, 'index' => false],
                     'item_count' => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
                 ],
 
@@ -979,6 +987,8 @@ return [
                 'facets' => [],
 
                 'display_fields' => [
+                    // Reconciled identifiers (ORCID, Wikidata, GND, LCSH): the URIs only, shown as marked links.
+                    'same_as_ss' => ['property' => 'dcterms:identifier', 'type' => 'string[]', 'facet' => false, 'index' => false],
                     'item_count'        => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
                     'publication_count' => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
                 ],
@@ -1040,6 +1050,8 @@ return [
                 ],
 
                 'display_fields' => [
+                    // Reconciled identifiers (ORCID, Wikidata, GND, LCSH): the URIs only, shown as marked links.
+                    'same_as_ss' => ['property' => 'dcterms:identifier', 'type' => 'string[]', 'facet' => false, 'index' => false],
                     'item_count' => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
                     // Typesense geopoints use [lat, lng]. Both fields are
                     // mapper-derived from geo:lat / geo:long and optional.
@@ -1087,6 +1099,8 @@ return [
                 ],
 
                 'display_fields' => [
+                    // Reconciled identifiers (ORCID, Wikidata, GND, LCSH): the URIs only, shown as marked links.
+                    'same_as_ss' => ['property' => 'dcterms:identifier', 'type' => 'string[]', 'facet' => false, 'index' => false],
                     'item_count'        => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
                     'publication_count' => ['property' => null, 'type' => 'int32', 'facet' => false, 'sort' => true],
                 ],

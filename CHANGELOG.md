@@ -5,6 +5,12 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+**Upgrade:** run a full **Reindex** of People, Organisations, Subjects, Locations, Languages, Genres and Publications. Their schema gains a field, so the cards show identifiers only once those corpora are rebuilt.
+
+### Added
+
+- **Reconciled identifiers on result cards.** People, organisation, subject, place, language and genre cards end with the registers the record is reconciled with: the register's mark and the identifier (ORCID, Wikidata, GND, Library of Congress…), each linking to the record there. A publication's Wikidata item joins its action row, and the DOI pill now carries the DOI mark. The indexer stores the `dcterms:identifier` URIs as a new display-only field, `same_as_ss`, on every profile that declares it; the card names the register from the host.
+
 ## [1.30.0] - 2026-10-16
 
 ### Changed

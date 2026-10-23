@@ -140,6 +140,11 @@ export interface Doc {
   pages_s?: string;
   /** Resolvable DOI link, e.g. "https://doi.org/10.1163/…". */
   doi_s?: string;
+  /**
+   * Reconciled identifiers as URIs (dcterms:identifier): ORCID, Wikidata, GND,
+   * LCSH… — people, organisations, terms and publications.
+   */
+  same_as_ss?: string[];
   /** "Yes" when the open-access repository (EPub Bayreuth) holds the record. */
   has_fulltext?: string;
   /** That repository's landing page, which carries the PDF. */

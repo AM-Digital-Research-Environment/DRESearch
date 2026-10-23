@@ -32,6 +32,26 @@ final class ValueBagTest extends TestCase
         self::assertSame('https://doi.org/10.1234/example', $bag->firstDoi());
     }
 
+    public function testUrisKeepsHttpLinksOnceInSourceOrder(): void
+    {
+        $row = static fn(?string $uri, ?string $value = null): array => ['vrid' => null, 'value' => $value, 'uri' => $uri, 'title' => null];
+        $bag = new ValueBag(['dcterms:identifier' => [
+            $row('https://orcid.org/0000-0002-1825-0097', 'ORCID 0000-0002-1825-0097'),
+            $row('http://www.wikidata.org/entity/Q42', 'Q42'),
+            $row('https://wikidata.org/entity/Q42/'),
+            $row(null, 'eprints-12345'),
+            $row(null, 'https://d-nb.info/gnd/118540238'),
+            $row('javascript:alert(1)'),
+        ]]);
+
+        self::assertSame([
+            'https://orcid.org/0000-0002-1825-0097',
+            'http://www.wikidata.org/entity/Q42',
+            'https://d-nb.info/gnd/118540238',
+        ], $bag->uris('dcterms:identifier'));
+        self::assertSame([], $bag->uris(null));
+    }
+
     public function testParsesFiniteCoordinatesOnly(): void
     {
         $bag = new ValueBag([

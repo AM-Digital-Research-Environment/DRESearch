@@ -4,6 +4,8 @@
   import { t, researchItemsLabel, projectsLabel, peopleLabel } from '../lib/i18n';
   import Highlight from './Highlight.svelte';
   import CardThumb from './CardThumb.svelte';
+  import IdentifierLinks from './IdentifierLinks.svelte';
+  import { externalIds } from '../lib/identifiers';
   import '../styles/card.css';
 
   /**
@@ -33,6 +35,8 @@
   const nameHl = $derived(doc._highlights?.title?.[0] ?? null);
   const type = $derived((doc.type_s ?? '').trim());
   const roles = $derived(doc.roles_ss ?? []);
+  // The institution's Wikidata item, when it has been reconciled.
+  const ids = $derived(externalIds(doc.same_as_ss ?? []));
 
   // Association counts — show only the non-zero ones, joined with "·". A group
   // typically shows just "N research items"; an institution shows projects/people.
@@ -91,6 +95,8 @@
     {#if counts.length > 0}
       <p class="dre-shell__counts dre-org__counts">{counts.join(' · ')}</p>
     {/if}
+
+    <IdentifierLinks {ids} />
   </div>
 </article>
 

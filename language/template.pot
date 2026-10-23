@@ -350,6 +350,10 @@ msgstr ""
 msgid "Hostname reachable from PHP (e.g. \"typesense\" inside Docker). Leave blank to disable search."
 msgstr ""
 
+#: src/svelte/lib/i18n.ts (identifiers_label)
+msgid "Identifiers in other registers"
+msgstr ""
+
 #: view/dre-search/admin/maintenance/index.phtml:113
 msgid "Idle — no changes waiting."
 msgstr ""

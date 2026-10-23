@@ -171,6 +171,9 @@ const ENGLISH_STRINGS: Record<string, string> = {
   doi_label: 'DOI',
   fulltext_link: 'Full text',
 
+  // Reconciled identifiers (ORCID, Wikidata, GND…) on entity cards.
+  identifiers_label: 'Identifiers in other registers',
+
   // Podcast card.
   episode_label: 'Episode {n}',
   host_label: 'Host',

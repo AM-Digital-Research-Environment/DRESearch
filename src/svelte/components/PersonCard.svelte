@@ -6,6 +6,8 @@
   import Highlight from './Highlight.svelte';
   import FilterLink from './FilterLink.svelte';
   import CardThumb from './CardThumb.svelte';
+  import IdentifierLinks from './IdentifierLinks.svelte';
+  import { externalIds } from '../lib/identifiers';
   import '../styles/card.css';
 
   /**
@@ -16,6 +18,7 @@
    *   │      University of Bayreuth                          │
    *   │      [Principal investigator] [Author]              │  ← roles, click to filter
    *   │      3 research items · 2 publications               │  ← association counts
+   *   │      [iD] 0000-0002-… ↗  [|||] Q123 ↗  [GND] 1324… ↗  │  ← reconciled identifiers
    *   └──────────────────────────────────────────────────┘
    *
    * Name links to the person's Omeka page; each affiliation (in the byline) and
@@ -40,6 +43,8 @@
   const roles = $derived(doc.roles_ss ?? []);
   const affilHl = $derived(markedLookup(doc, 'affiliation_ss'));
   const roleHl = $derived(markedLookup(doc, 'roles_ss'));
+  // ORCID, Wikidata, GND — the person as other registers know them.
+  const ids = $derived(externalIds(doc.same_as_ss ?? []));
 
   // Association counts — show only the non-zero ones, joined with "·".
   const counts = $derived.by(() => {
@@ -94,6 +99,8 @@
     {#if counts.length > 0}
       <p class="dre-shell__counts dre-person__counts">{counts.join(' · ')}</p>
     {/if}
+
+    <IdentifierLinks {ids} />
   </div>
 </article>
 

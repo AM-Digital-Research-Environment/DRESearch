@@ -63,8 +63,10 @@ const BASE_RULES = {
   // The client has no canvas palette of its own: since the map moved onto the
   // token bridge (src/svelte/lib/tokenBridge.ts) every colour it paints comes
   // from a token. The bridge itself names '#000' as the last-resort argument
-  // default, which is the one place a literal is correct.
-  hex: { allow: ['src/svelte/lib/tokenBridge.ts'] },
+  // default, which is the one place a literal is correct. The registers'
+  // marks (ORCID, Wikidata, GND, DOI, LoC) are other organisations' logos:
+  // their colours are part of the mark and must not follow the theme.
+  hex: { allow: ['src/svelte/lib/tokenBridge.ts', 'src/svelte/components/RegisterMark.svelte'] },
 };
 
 if (updateAllowlist) {
