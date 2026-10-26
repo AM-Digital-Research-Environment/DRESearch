@@ -34,7 +34,7 @@ when work starts.
 
 ## Policies
 
-- **PHP.** 8.4 is the minimum from the release after 1.31.0 (8.3 from 1.25.0); CI
+- **PHP.** 8.4 is the minimum since 1.32.0 (8.3 from 1.25.0); CI
   runs 8.4–8.5, and production AMIRA runs 8.5. The code must still parse on
   PHP 8.2 so that an under-version server degrades instead of failing, so
   syntax newer than 8.2 (typed class constants, for instance) waits for a

@@ -5,6 +5,8 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+## [1.32.0] - 2026-10-26
+
 **Upgrade:** the module now requires **PHP 8.4** or newer (was 8.3). On an older PHP it does not install, and an existing install reports search unavailable instead of failing the site. Production AMIRA runs PHP 8.5.
 
 ### Changed
