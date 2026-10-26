@@ -17,7 +17,7 @@ when work starts.
 
 | Item                                                                                                                                                                                    | Notes                                                                   |
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| **PHPUnit 12.** 12.5.38 (2026-10-07) needs PHP 8.3, which the new floor allows; 13.x needs PHP 8.4.1.                                                                                   | Next.                                                                   |
+| **PHPUnit 13.** Every 13.x release needs PHP 8.4.1, and the committed lock is resolved for exactly the declared floor (8.4.0); take it with the next floor raise.                       | With the next PHP floor.                                                |
 | **Autocomplete on the federated page's search box**, reusing `/dre-search/api/suggest-all`.                                                                                             |                                                                         |
 | **Fewer round trips:** the federated search (counts + active corpus) in one `multi_search`; export and map pages in one `multi_search`; Typesense `use_cache` for tab counts.           | Low priority.                                                           |
 | **Smaller server classes:** split `SearchProxy` (result normalising, paged collection) and build `QueryBuilder` modes from a shared core instead of `unset()` on the search parameters. | Prevents a new parameter leaking into counts, export, map and recounts. |
@@ -34,11 +34,11 @@ when work starts.
 
 ## Policies
 
-- **PHP.** 8.3 is the minimum since 1.25.0; CI runs 8.3–8.5, and production
-  AMIRA runs 8.5. The code must still parse on PHP 8.2 so that an
-  under-version server degrades instead of failing, so syntax newer than 8.2
-  (typed class constants, for instance) waits. Raise the minimum to 8.4 before
-  8.3's security support ends on 2027-12-31, then adopt 8.3 syntax.
+- **PHP.** 8.4 is the minimum from the release after 1.31.0 (8.3 from 1.25.0); CI
+  runs 8.4–8.5, and production AMIRA runs 8.5. The code must still parse on
+  PHP 8.2 so that an under-version server degrades instead of failing, so
+  syntax newer than 8.2 (typed class constants, for instance) waits for a
+  later release.
 - **Platform.** Omeka S `^4.2`, Typesense 30.x. Never bundle `laminas/*` or
   `psr/*` packages.
 

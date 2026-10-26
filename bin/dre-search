@@ -22,8 +22,8 @@ declare(strict_types=1);
 
 // The module's minimum PHP (DRESearch\MIN_PHP_VERSION_ID in Module.php). Checked
 // before Omeka boots: below it the module cannot load its dependencies.
-if (PHP_VERSION_ID < 80300) {
-    fwrite(STDERR, 'DRE Search requires PHP 8.3 or newer; this is PHP ' . PHP_VERSION . ".\n");
+if (PHP_VERSION_ID < 80400) {
+    fwrite(STDERR, 'DRE Search requires PHP 8.4 or newer; this is PHP ' . PHP_VERSION . ".\n");
     exit(1);
 }
 

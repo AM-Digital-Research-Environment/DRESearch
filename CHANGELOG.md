@@ -5,6 +5,16 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+**Upgrade:** the module now requires **PHP 8.4** or newer (was 8.3). On an older PHP it does not install, and an existing install reports search unavailable instead of failing the site. Production AMIRA runs PHP 8.5.
+
+### Changed
+
+- PHP 8.4 minimum; CI tests PHP 8.4 and 8.5, and the release archive's `vendor/` is resolved for 8.4.
+- Guzzle 8.3.1; `symfony/options-resolver` 8.0 (through the Typesense client).
+- The MapLibre CDN fallback is pinned to 6.16.0 (was 6.13.0), the version DRE Visualizations vendors, with new Subresource Integrity hashes.
+- Development: PHPUnit 12.5 (13 needs PHP 8.4.1, above the declared 8.4 floor), PHPStan 2.3.2, prettier-plugin-svelte 4, and minor and patch updates of Playwright, Vite, Vitest, ESLint and typescript-eslint. TypeScript stays on 6.0: typescript-eslint and svelte-check do not support 7 yet. Monolog stays on 2.x (core's PSR Log 1).
+- GitHub Actions: setup-php and CodeQL pins updated.
+
 ## [1.31.0] - 2026-10-23
 
 **Upgrade:** run a full **Reindex** of People, Organisations, Subjects, Locations, Languages, Genres and Publications. Their schema gains a field, so the cards show identifiers only once those corpora are rebuilt.

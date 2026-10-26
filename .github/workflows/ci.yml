@@ -26,7 +26,7 @@ jobs:
           node-version: 24
           cache: npm
       # lint:schema and lint:i18n are PHP scripts.
-      - uses: shivammathur/setup-php@5a89ae6dd61c772780c51d7542f4374d76990a0b # 2.40.0
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.4'
           coverage: none
@@ -60,7 +60,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.3', '8.4', '8.5']
+        php: ['8.4', '8.5']
     services:
       mysql:
         image: mysql:8.4
@@ -97,7 +97,7 @@ jobs:
       TYPESENSE_API_KEY: dre-search-ci-key
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: shivammathur/setup-php@5a89ae6dd61c772780c51d7542f4374d76990a0b # 2.40.0
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: ${{ matrix.php }}
           extensions: dom, json, mbstring, pdo_sqlite, pdo_mysql
@@ -116,7 +116,7 @@ jobs:
         with:
           path: ~/.cache/composer
           key: composer-${{ hashFiles('composer.lock') }}
-      # Installs the committed lock — resolved for PHP 8.3 (config.platform),
+      # Installs the committed lock — resolved for PHP 8.4 (config.platform),
       # i.e. exactly what the release archive ships — on every PHP version.
       - run: composer install --no-interaction --prefer-dist
       - run: composer audit --locked

@@ -23,21 +23,22 @@
  * used to request `dist/maplibre-gl.js`, the 5.x UMD file, which 6.x no longer
  * has: it was a 404.)
  */
-const VERSION = '6.13.0';
+const VERSION = '6.16.0';
 const CDN = `https://cdn.jsdelivr.net/npm/maplibre-gl@${VERSION}/dist/`;
 
 /**
  * Subresource Integrity for the pinned CDN files: sha384 of jsDelivr's copies
- * of maplibre-gl@6.13.0 (whose sha256 matched jsDelivr's published hashes).
+ * of maplibre-gl@6.16.0 (identical to the npm tarball, verified against the
+ * registry's sha512).
  * Changing VERSION means recomputing every one, e.g.
  *   curl -s <CDN>maplibre-gl.mjs | openssl dgst -sha384 -binary | openssl base64 -A
  * and checking the build layout still holds (see loadFromCdn).
  */
 export const CDN_INTEGRITY = {
-  'maplibre-gl.mjs': 'sha384-tG0qQdL7veKvVoyu6PbnmddDls/OVkTjaK9oVY5eq9afBA6zYptFui69Dx57duAh',
+  'maplibre-gl.mjs': 'sha384-uLwQnFL74rrONqIWx/ubL4wcAtA2h08tbMDZd9U4KbQ7GhaA7S1XKepHU89UkU7C',
   'maplibre-gl-worker.mjs':
-    'sha384-vHxGRAh5VPNspVXjsLuI5wxrF/Jbzfyct4wTbGl6bu89rV2rGJm3cOzMTWIfHK0y',
-  'maplibre-gl.css': 'sha384-yFNc3bs28S14jOJo1ZO9SnLiAmtyY2a3H9be8GkLMpDGlO5r1zZNP8fYu+fOCE/w',
+    'sha384-FgyfFzov+/WGwlmjlowNT14eHNk/fCYPBsD/J2FkqC+Pef7/36bn0gdsHaB/Oso/',
+  'maplibre-gl.css': 'sha384-S+OnE5M4U3Qc2nR0RgljGrVs06xqfRg8L7uFk/pOF5+sRuSDG4oKkqKZmFrx7w09',
 } as const;
 
 /** A static import of a relative path, which a module loaded from a blob: URL cannot resolve. */
@@ -186,7 +187,7 @@ function moduleUrl(code: string): string {
  *
  * A dynamic import() cannot carry an integrity hash. So the entry and the
  * worker are fetched with `integrity` instead, and only the verified text runs,
- * from blob: URLs. In 6.13 both are self-contained (6.1 split out a shared
+ * from blob: URLs. Since 6.13 both are self-contained (6.1 split out a shared
  * chunk). A build that splits them again would import a relative path that a
  * blob: module cannot resolve, so it is refused up front instead of failing
  * inside MapLibre. The worker URL is handed over explicitly, as for the

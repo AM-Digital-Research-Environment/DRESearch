@@ -22,8 +22,8 @@ composer analyse
 
 `asset/dist/` is a build product and is not tracked: the release workflow builds
 it into DRESearch.zip together with `vendor/` (from the committed `composer.lock`,
-resolved for PHP 8.3 by `config.platform`). Run `npm run build` before copying the
-module into a dev container. PHP 8.3 is the minimum; CI runs 8.3–8.5 and
+resolved for PHP 8.4 by `config.platform`). Run `npm run build` before copying the
+module into a dev container. PHP 8.4 is the minimum; CI runs 8.4–8.5 and
 production runs 8.5. After changing user-visible strings run `npm run i18n`. Omeka supplies Laminas and PSR interfaces
 at runtime, so the module must never bundle them in Composer.
 
@@ -61,7 +61,7 @@ The MySQL user needs permission to create and drop disposable databases named
 schema (`application/data/install/schema.sql` in the tree `OMEKA_VENDOR` points
 into), foreign keys and cascades included, and cleans up its own random
 Typesense collections. CI runs this against MySQL 8.4, Typesense
-30.2 and the released Omeka runtime on PHP 8.3–8.5. Missing service environment
+30.2 and the released Omeka runtime on PHP 8.4–8.5. Missing service environment
 variables skip the integration cases; they must be present for a release check.
 
 Coverage includes real entity event payloads, old/new dependencies, public value,

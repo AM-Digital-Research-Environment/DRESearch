@@ -27,8 +27,8 @@ namespace DRESearch;
  * a support policy: hold back syntax newer than PHP 8.2 (typed class
  * constants, for instance) until the next raise.
  */
-const MIN_PHP_VERSION_ID = 80300;
-const MIN_PHP_VERSION = '8.3';
+const MIN_PHP_VERSION_ID = 80400;
+const MIN_PHP_VERSION = '8.4';
 
 // Load the module's Composer autoloader at file scope so DRESearch\… classes
 // resolve even on first-time install, where Omeka instantiates Module and may

@@ -57,7 +57,7 @@ describe('MapLibre loader', () => {
     );
     for (const [url] of fetchMock.mock.calls) {
       expect(String(url)).toMatch(
-        /^https:\/\/cdn\.jsdelivr\.net\/npm\/maplibre-gl@6\.13\.0\/dist\//,
+        /^https:\/\/cdn\.jsdelivr\.net\/npm\/maplibre-gl@6\.16\.0\/dist\//,
       );
     }
 

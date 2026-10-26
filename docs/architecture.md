@@ -111,7 +111,7 @@ handoff to its corpus. Location maps page through at most 1,000 matching
 documents carrying a validated `geopoint`; MapLibre loads only after the user
 selects Map. It prefers a copy already on the page, then the one
 DRE-Visualizations vendors same-origin (`window.RV_LIBS`), and only then
-jsDelivr (pinned to the version DRE-Visualizations vendors, 6.13.0). MapLibre 6
+jsDelivr (pinned to the version DRE-Visualizations vendors, 6.16.0). MapLibre 6
 is ES modules only, so each copy is imported; the CDN's entry and worker modules
 are fetched with Subresource Integrity hashes and run from `blob:` URLs, because
 an `import()` cannot carry a hash itself. A host whose Content Security Policy
