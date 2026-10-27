@@ -587,11 +587,13 @@ return [
 
                 // Full text is available when EPub Bayreuth, the cluster's
                 // open-access repository, holds the record: the publications
-                // sync attaches EPub's PDF and writes its permalink to bibo:uri
-                // (ERef is metadata-only). The mapper flags has_fulltext and
-                // emits the permalink as fulltext_url_s for the card's link.
+                // sync attaches EPub's PDF and links the record's epub-N
+                // identifier to its permalink (dcterms:identifier; bibo:uri on
+                // records synced before 27 October 2026). ERef is metadata-only.
+                // The mapper flags has_fulltext and emits the permalink as
+                // fulltext_url_s for the card's link.
                 'fulltext_source' => [
-                    'property'   => 'bibo:uri',
+                    'property'   => ['dcterms:identifier', 'bibo:uri'],
                     'url_prefix' => 'https://epub.uni-bayreuth.de/id/eprint/',
                 ],
 

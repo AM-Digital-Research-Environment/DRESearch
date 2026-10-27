@@ -78,6 +78,43 @@ final class ImprovementMapperTest extends TestCase
         self::assertArrayNotHasKey('fulltext_url_s', $eref);
     }
 
+    public function testFullTextSourceReadsTheLinkedIdentifierFirst(): void
+    {
+        $profile = $this->profile([
+            'kind' => 'publication',
+            'query_by' => 'title',
+            'display_fields' => [
+                'fulltext_url_s' => ['property' => null, 'type' => 'string', 'index' => false],
+            ],
+            'facets' => [
+                'has_fulltext' => ['property' => null, 'label' => 'Full text available', 'array' => false, 'derived' => true],
+            ],
+            'fulltext_source' => [
+                'property' => ['dcterms:identifier', 'bibo:uri'],
+                'url_prefix' => 'https://epub.uni-bayreuth.de/id/eprint/',
+            ],
+        ]);
+        self::assertContains('dcterms:identifier', $profile->readProperties());
+        self::assertContains('bibo:uri', $profile->readProperties());
+        $link = static fn (string $url, string $label): array => ['vrid' => null, 'value' => $label, 'uri' => $url, 'title' => null];
+        $mapper = new PublicationMapper($profile);
+        $base = ['id' => 30087, 'is_public' => true, 'title' => 'Publication'];
+
+        // Since 27 October 2026 each source id labels its permalink link.
+        $linked = $mapper->map($base, ['dcterms:identifier' => [
+            $link('https://eref.uni-bayreuth.de/id/eprint/70514/', 'eref-70514'),
+            $link('https://epub.uni-bayreuth.de/id/eprint/5720/', 'epub-5720'),
+            $link('http://www.wikidata.org/entity/Q141722498', 'Q141722498'),
+        ]], null);
+        self::assertSame('https://epub.uni-bayreuth.de/id/eprint/5720/', $linked['fulltext_url_s']);
+
+        // A record synced before still carries the permalink in bibo:uri.
+        $older = $mapper->map($base, ['bibo:uri' => [
+            $link('https://epub.uni-bayreuth.de/id/eprint/5720/', 'https://epub.uni-bayreuth.de/id/eprint/5720/'),
+        ]], null);
+        self::assertSame('Yes', $older['has_fulltext']);
+    }
+
     public function testFullTextSourceNeedsAnHttpPrefix(): void
     {
         $this->expectException(\InvalidArgumentException::class);

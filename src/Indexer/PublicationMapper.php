@@ -67,7 +67,10 @@ final class PublicationMapper implements MapperInterface
         // has_fulltext is the one stable token behind the client's quick toggle.
         $source = $this->profile->fulltextSource();
         if ($source !== null) {
-            $fulltextUrl = $bag->firstUrlUnder($source['property'], $source['url_prefix']);
+            $fulltextUrl = null;
+            foreach ($source['properties'] as $term) {
+                $fulltextUrl ??= $bag->firstUrlUnder($term, $source['url_prefix']);
+            }
             if ($fulltextUrl !== null) {
                 $doc['fulltext_url_s'] = $fulltextUrl;
                 $doc['has_fulltext'] = 'Yes';

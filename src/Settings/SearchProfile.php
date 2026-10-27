@@ -48,7 +48,7 @@ final class SearchProfile
      * @param list<string> $readProperties
      * @param array{from_template:int,property:string,public_only:bool}|null $itemLink
      * @param array{counts?:array<string,array<string,mixed>>,roles?:list<array<string,mixed>>}|null $reverseLinks
-     * @param array{property:string,url_prefix:string}|null $fulltextSource
+     * @param array{properties:list<string>,url_prefix:string}|null $fulltextSource
      */
     public function __construct(
         private readonly string $name,
@@ -170,11 +170,15 @@ final class SearchProfile
             // Resolve the episode thumbnail from a linked resource (e.g. the podcast
             // series item's image) instead of the item's own media. '' / unset → own.
             isset($c['thumbnail_property']) && $c['thumbnail_property'] !== '' ? (string) $c['thumbnail_property'] : null,
-            // Where a record's open-access full text lives: the first `property`
-            // URL under `url_prefix` (e.g. an EPub permalink on bibo:uri). Unset →
-            // the publication mapper flags extracted text instead.
+            // Where a record's open-access full text lives: the first URL under
+            // `url_prefix` in `property` — one term, or a list tried in order
+            // (e.g. an EPub permalink on dcterms:identifier, else bibo:uri).
+            // Unset → the publication mapper flags extracted text instead.
             isset($c['fulltext_source']) ? [
-                'property'   => (string) ($c['fulltext_source']['property'] ?? ''),
+                'properties' => array_values(array_filter(
+                    array_map('strval', (array) ($c['fulltext_source']['property'] ?? [])),
+                    static fn (string $term): bool => $term !== '',
+                )),
                 'url_prefix' => (string) ($c['fulltext_source']['url_prefix'] ?? ''),
             ] : null,
         );
@@ -239,7 +243,7 @@ final class SearchProfile
             }
         }
         $source = $this->fulltextSource;
-        if ($source !== null && ($source['property'] === '' || !preg_match('~^https?://[^/\s]+/~i', $source['url_prefix']))) {
+        if ($source !== null && ($source['properties'] === [] || !preg_match('~^https?://[^/\s]+/~i', $source['url_prefix']))) {
             throw new \InvalidArgumentException(sprintf(
                 'fulltext_source in profile "%s" needs a property and an http(s) url_prefix with a path.',
                 $this->name,
@@ -556,11 +560,13 @@ final class SearchProfile
     }
 
     /**
-     * Where a publication's open-access full text lives: its first `property`
-     * URL that starts with `url_prefix` (the AMIRA instance reads the EPub
-     * Bayreuth permalink off bibo:uri). Null when the profile names no source.
+     * Where a publication's open-access full text lives: its first URL that
+     * starts with `url_prefix`, in `properties` tried in order (the AMIRA
+     * instance reads the EPub Bayreuth permalink off dcterms:identifier, and off
+     * bibo:uri on records synced before that). Null when the profile names no
+     * source.
      *
-     * @return array{property:string,url_prefix:string}|null
+     * @return array{properties:list<string>,url_prefix:string}|null
      */
     public function fulltextSource(): ?array
     {
@@ -590,8 +596,8 @@ final class SearchProfile
         if ($this->date['property']) {
             $terms[$this->date['property']] = true;
         }
-        if ($this->fulltextSource !== null) {
-            $terms[$this->fulltextSource['property']] = true;
+        foreach ($this->fulltextSource['properties'] ?? [] as $t) {
+            $terms[$t] = true;
         }
         foreach ($this->readProperties as $t) {
             if ($t !== '') {
