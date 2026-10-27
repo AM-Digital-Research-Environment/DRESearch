@@ -364,11 +364,13 @@ function bibtexType(d: Doc, kind: CardKind): string {
 
 /** Minimal BibTeX escaping for the DRE value space. */
 function bib(value: string): string {
-  return value
-    .replace(/[\\{}]/g, ' ')
-    .replace(/([&%#_$])/g, '\\$1')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return (
+    value
+      // One pass: backslashes and braces are dropped, TeX specials escaped.
+      .replace(/[\\{}&%#_$]/g, (c) => ('\\{}'.includes(c) ? ' ' : '\\' + c))
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
 }
 
 /**

@@ -61,7 +61,7 @@ if (reference) {
   // The release workflow builds its notes by slicing this heading out of the
   // changelog, and fails the release when the section is missing.
   if (
-    !new RegExp(`^## \\[${reference.version.replace(/\./g, '\\.')}\\]`, 'm').test(
+    !new RegExp(`^## \\[${reference.version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]`, 'm').test(
       read('CHANGELOG.md'),
     )
   ) {
