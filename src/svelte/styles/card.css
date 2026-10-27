@@ -450,6 +450,13 @@
   flex-wrap: wrap;
   gap: var(--space-xs, 0.25rem);
 }
+/* A flex item, not a block: a block <li> sets the pill on a line box of the
+   page's body line-height, which rides it above the pills beside the list. */
+.dre-shell__ids > li {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+}
 .dre-shell__id {
   display: inline-flex;
   align-items: center;
