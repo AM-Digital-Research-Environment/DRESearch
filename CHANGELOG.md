@@ -5,6 +5,12 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+## [1.32.2] - 2026-10-27
+
+### Fixed
+
+- The identifier pills on result cards (Wikidata, ORCID, GND, Library of Congress) now line up with the pills beside them. Each sat in a list item whose line took the page's body line-height, so on publication cards the Wikidata pill rode 1.6px above the DOI and Cite pills.
+
 ## [1.32.1] - 2026-10-27
 
 ### Fixed
