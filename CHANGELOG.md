@@ -5,6 +5,10 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The search page no longer jumps while it loads. The footer used to paint in view under the short loading placeholder, then got pushed off screen once the results appeared (a layout shift of 0.22 on phones and 0.15 on desktop, above Lighthouse's 0.1 limit). The results area now reserves at least the height of the screen, so the footer starts below the fold. A search with no results therefore leaves blank space above the footer.
+
 ## [1.32.0] - 2026-10-26
 
 **Upgrade:** the module now requires **PHP 8.4** or newer (was 8.3). On an older PHP it does not install, and an existing install reports search unavailable instead of failing the site. Production AMIRA runs PHP 8.5.

@@ -193,8 +193,15 @@
     margin-block: 0 var(--space-4, 1rem);
 }
 
+/*
+ * At least a viewport tall, so the footer starts below the fold. The skeleton
+ * is about 19rem and the mounted app (tabs, facets, a page of results) is far
+ * taller, so a shorter reservation let the footer paint in view and then jump
+ * off screen when the app mounted: CLS 0.22 on mobile, 0.15 on desktop.
+ */
 .dre-federated {
-    min-height: 12rem;
+    min-height: 100vh;
+    min-height: 100svh;
 }
 
 .dre-federated__skeleton {
