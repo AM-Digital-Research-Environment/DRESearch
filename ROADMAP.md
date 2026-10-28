@@ -10,8 +10,21 @@ Status: **done** (merged, not yet released) · **in progress** · **planned** ·
 
 ## Next release
 
-Nothing is in progress. Pick from **Planned** below and record the item here
-when work starts.
+**In progress: the cross-module review with IwacSearch (2026-10-28).** The two
+modules were compared file by file; what IwacSearch does better is being
+brought here, and the reverse there. The items below replace the matching
+**Planned** rows.
+
+| Area    | Item                                                                                                                                                                                                                                                                                     |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Client  | Search, map and typeahead state move out of `App.svelte` (and the duplicated combobox of `SearchBox`/`SearchBar`) into tested `.svelte.ts` modules; card field derivations become pure, tested functions.                                                                                |
+| Client  | Live region announces settled results only, debounced; result counts use `Intl.PluralRules`; a typing burst is one history entry; card filter values are labelled toggles with `aria-pressed`; a skip link to the results; requests time out; tests run in a west-of-Greenwich timezone. |
+| Server  | `SearchProxy` split (facet recount, one bulk pager for export and map, response normaliser, health); `QueryBuilder` modes from one core; per-kind subtitles in profile config.                                                                                                           |
+| Server  | Block render: first page cached, skipped when the URL carries the block's state; federated year bounds in one request; the header bar no longer builds the proxy; one bootstrap builder for blocks and federated tabs; a noscript link to item browse.                                   |
+| Server  | One data-driven block layout class instead of twelve subclasses (stored layout names unchanged); a scoped search-only Typesense key for the public proxy, the admin key kept for indexing; locked filters refuse backslashes.                                                            |
+| Indexer | One kind → mapper registry; `PersonMapper`/`OrganisationMapper` merged on `ValueBag::labels` (trimmed); mapper and assembler unit tests; Typesense plumbing in one injectable class; exact source counts before promotion; property ids resolved once; dead code removed.                |
+| Tooling | `npm run bump` as the only version writer; gzip bundle budgets; `npm audit` with documented exceptions; Lighthouse budgets in CI; MapLibre pin checked against DRE Visualizations; release jobs split by privilege; stacked-docblock check; PHPUnit in random order.                     |
+| Docs    | `CLAUDE.md` and a code map; the AMIRA data model moves out of the README; tests named by module rather than by release.                                                                                                                                                                  |
 
 ## Planned
 
