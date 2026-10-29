@@ -212,7 +212,7 @@ msgstr ""
 msgid "Decision"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:146
+#: src/Site/BlockLayout/SearchBlock.php:165
 msgid "Default sort"
 msgstr ""
 
@@ -276,7 +276,7 @@ msgstr ""
 msgid "Filters"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:117
+#: src/Site/BlockLayout/SearchBlock.php:136
 msgid "Filters to show"
 msgstr ""
 
@@ -300,7 +300,7 @@ msgstr ""
 msgid "Genres"
 msgstr ""
 
-#: src/Site/BlockLayout/ResearchGenresSearchBlock.php:16
+#: src/Settings/BlockProfiles.php:57
 msgid "Genres search"
 msgstr ""
 
@@ -378,7 +378,7 @@ msgstr ""
 msgid "Institution"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:106
+#: src/Site/BlockLayout/SearchBlock.php:125
 msgid "Intro HTML (optional)"
 msgstr ""
 
@@ -410,7 +410,7 @@ msgstr ""
 msgid "Languages"
 msgstr ""
 
-#: src/Site/BlockLayout/ResearchLanguagesSearchBlock.php:17
+#: src/Settings/BlockProfiles.php:61
 msgid "Languages search"
 msgstr ""
 
@@ -438,11 +438,11 @@ msgstr ""
 msgid "Locations"
 msgstr ""
 
-#: src/Site/BlockLayout/ResearchLocationsSearchBlock.php:17
+#: src/Settings/BlockProfiles.php:65
 msgid "Locations search"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:171
+#: src/Site/BlockLayout/SearchBlock.php:190
 msgid "Locked filter (optional)"
 msgstr ""
 
@@ -466,7 +466,7 @@ msgstr ""
 msgid "Member"
 msgstr ""
 
-#: src/Settings/SearchProfile.php:504
+#: src/Settings/SearchProfile.php:591
 msgid "Most results"
 msgstr ""
 
@@ -555,7 +555,7 @@ msgstr ""
 msgid "Organisations"
 msgstr ""
 
-#: src/Site/BlockLayout/ResearchOrganisationsSearchBlock.php:18
+#: src/Settings/BlockProfiles.php:53
 msgid "Organisations search"
 msgstr ""
 
@@ -575,7 +575,7 @@ msgstr ""
 msgid "People"
 msgstr ""
 
-#: src/Site/BlockLayout/ResearchPeopleSearchBlock.php:17
+#: src/Settings/BlockProfiles.php:45
 msgid "People search"
 msgstr ""
 
@@ -583,7 +583,7 @@ msgstr ""
 msgid "Phase"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:173
+#: src/Site/BlockLayout/SearchBlock.php:192
 msgid "Pins this block to a subset, Typesense filter_by syntax. Example: section_ss:=`Mobilities`"
 msgstr ""
 
@@ -591,7 +591,7 @@ msgstr ""
 msgid "Place of origin"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:107
+#: src/Site/BlockLayout/SearchBlock.php:126
 msgid "Plain HTML rendered above the search."
 msgstr ""
 
@@ -607,7 +607,7 @@ msgstr ""
 msgid "Podcasts"
 msgstr ""
 
-#: src/Site/BlockLayout/ResearchPodcastsSearchBlock.php:18
+#: src/Settings/BlockProfiles.php:37
 msgid "Podcasts search"
 msgstr ""
 
@@ -659,7 +659,7 @@ msgstr ""
 msgid "Publications"
 msgstr ""
 
-#: src/Site/BlockLayout/ResearchPublicationsSearchBlock.php:17
+#: src/Settings/BlockProfiles.php:33
 msgid "Publications search"
 msgstr ""
 
@@ -729,7 +729,7 @@ msgstr ""
 msgid "Research items"
 msgstr ""
 
-#: src/Site/BlockLayout/ResearchItemsSearchBlock.php:16
+#: src/Settings/BlockProfiles.php:25
 msgid "Research items search"
 msgstr ""
 
@@ -737,7 +737,7 @@ msgstr ""
 msgid "Research projects"
 msgstr ""
 
-#: src/Site/BlockLayout/ResearchProjectsSearchBlock.php:16
+#: src/Settings/BlockProfiles.php:29
 msgid "Research projects search"
 msgstr ""
 
@@ -753,7 +753,7 @@ msgstr ""
 msgid "Research sections"
 msgstr ""
 
-#: src/Site/BlockLayout/ResearchSectionsSearchBlock.php:17
+#: src/Settings/BlockProfiles.php:49
 msgid "Research sections search"
 msgstr ""
 
@@ -769,7 +769,7 @@ msgstr ""
 msgid "Results for “{q}”"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:161
+#: src/Site/BlockLayout/SearchBlock.php:180
 msgid "Results per page"
 msgstr ""
 
@@ -949,7 +949,7 @@ msgstr ""
 msgid "Subjects & tags"
 msgstr ""
 
-#: src/Site/BlockLayout/ResearchSubjectsSearchBlock.php:18
+#: src/Settings/BlockProfiles.php:69
 msgid "Subjects & tags search"
 msgstr ""
 
@@ -1014,7 +1014,7 @@ msgstr ""
 msgid "Title (A–Z)"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:96
+#: src/Site/BlockLayout/SearchBlock.php:115
 msgid "Title (optional)"
 msgstr ""
 
@@ -1104,7 +1104,7 @@ msgstr ""
 msgid "Watch"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:118
+#: src/Site/BlockLayout/SearchBlock.php:137
 msgid "Which facets appear in the sidebar."
 msgstr ""
 
@@ -1129,7 +1129,7 @@ msgstr ""
 msgid "YouTube videos"
 msgstr ""
 
-#: src/Site/BlockLayout/ResearchVideosSearchBlock.php:18
+#: src/Settings/BlockProfiles.php:41
 msgid "YouTube videos search"
 msgstr ""
 
@@ -1158,7 +1158,7 @@ msgstr ""
 msgid "not set"
 msgstr ""
 
-#: src/Site/BlockLayout/AbstractSearchBlock.php:128
+#: src/Site/BlockLayout/SearchBlock.php:147
 msgid "range slider"
 msgstr ""
 

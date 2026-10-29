@@ -6,22 +6,23 @@ namespace DRESearch\Service\BlockLayout;
 
 use DRESearch\Search\SearchProxy;
 use DRESearch\Settings\ProfileRegistry;
-use DRESearch\Site\BlockLayout\AbstractSearchBlock;
+use DRESearch\Site\BlockLayout\SearchBlock;
 use Laminas\ServiceManager\Factory\FactoryInterface;
 use Psr\Container\ContainerInterface;
 
-/** One factory for all profile-bound block layout subclasses. */
+/**
+ * Builds the search block for every registered layout name
+ * ({@see \DRESearch\Settings\BlockProfiles}): one class, bound to the profile
+ * the name stands for.
+ */
 final class SearchBlockFactory implements FactoryInterface
 {
-    public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null): AbstractSearchBlock
+    public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null): SearchBlock
     {
-        $class = \DRESearch\Settings\BlockProfiles::CLASSES[(string) $requestedName] ?? null;
-        if ($class === null) {
-            throw new \InvalidArgumentException(sprintf('Unknown DRE Search block layout "%s".', (string) $requestedName));
-        }
-        return new $class(
+        return new SearchBlock(
             $container->get(SearchProxy::class),
             $container->get(ProfileRegistry::class),
+            (string) $requestedName,
         );
     }
 }

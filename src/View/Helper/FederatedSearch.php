@@ -86,7 +86,7 @@ class FederatedSearch extends AbstractDreSearchHelper
 
     /**
      * Per-corpus metadata for one tab. Mirrors the per-profile portion of
-     * {@see \DRESearch\Site\BlockLayout\AbstractSearchBlock::render()} but with
+     * {@see \DRESearch\Site\BlockLayout\SearchBlock::render()} but with
      * defaults (no saved block data): all facets shown, the corpus default sort,
      * the standard page size.
      *

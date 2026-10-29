@@ -53,7 +53,7 @@ final class BlockScopeResolver
             // let anyone enumerate which block ids exist.
             throw new RequestValidationException('invalid_block_scope', 'The requested block scope is not available.');
         }
-        $expected = \DRESearch\Settings\BlockProfiles::PROFILES[(string) ($row['layout'] ?? '')] ?? null;
+        $expected = \DRESearch\Settings\BlockProfiles::profileFor((string) ($row['layout'] ?? ''));
         if ($expected === null || $expected !== $profile) {
             throw new RequestValidationException('invalid_block_scope', 'The requested block scope is not available.');
         }

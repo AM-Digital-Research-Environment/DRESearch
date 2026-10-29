@@ -9,7 +9,7 @@ use DRESearch\Search\BlockScopeResolver;
 use DRESearch\Search\SearchProxy;
 use DRESearch\Search\TypesenseClientProvider;
 use DRESearch\Settings\ProfileRegistry;
-use DRESearch\Site\BlockLayout\ResearchItemsSearchBlock;
+use DRESearch\Site\BlockLayout\SearchBlock;
 use DRESearch\View\ClientStrings;
 use PHPUnit\Framework\TestCase;
 
@@ -94,7 +94,7 @@ final class OmekaIntegrationContractTest extends TestCase
             new BlockScopeResolver(\Doctrine\DBAL\DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true])),
             $logger,
         );
-        $layout = new ResearchItemsSearchBlock($proxy, $registry);
+        $layout = new SearchBlock($proxy, $registry, 'dreSearch');
 
         $block = new \Omeka\Entity\SitePageBlock();
         $block->setData([

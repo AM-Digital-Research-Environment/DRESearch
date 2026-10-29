@@ -8,6 +8,7 @@ use DRESearch\Search\FilterExpression;
 use DRESearch\Search\SearchProxy;
 use DRESearch\Search\QueryBuilder;
 use DRESearch\Security\HtmlSanitizer;
+use DRESearch\Settings\BlockProfiles;
 use DRESearch\Settings\ProfileRegistry;
 use DRESearch\Settings\SearchProfile;
 use DRESearch\Settings\SortOptions;
@@ -22,11 +23,13 @@ use Omeka\Site\BlockLayout\TemplateableBlockLayoutInterface;
 use Omeka\Stdlib\ErrorStore;
 
 /**
- * Shared page block for a faceted search over one {@see SearchProfile}. A thin
- * subclass per corpus binds it to a profile name (research items, projects,
- * publications, people, sections, organisations, and the authority-term corpora —
- * genres, languages, locations, subjects & tags), each appearing as its own entry
- * in the block picker.
+ * The page block for a faceted search over one {@see SearchProfile}. One
+ * instance per registered layout name ({@see BlockProfiles}), built by
+ * {@see \DRESearch\Service\BlockLayout\SearchBlockFactory}: research items,
+ * projects, publications, podcasts, videos, people, sections, organisations,
+ * and the authority-term corpora — genres, languages, locations, subjects &
+ * tags — each appearing as its own entry in the block picker. The layout names
+ * are what `site_page_block.layout` stores, so they never change.
  *
  * Persisted block data (site_block.data):
  *   {
@@ -46,20 +49,36 @@ use Omeka\Stdlib\ErrorStore;
  * templates (`common/block-template/<name>`, declared under `block_templates`
  * in the theme config); the bootstrap and mount contract stay the same.
  */
-abstract class AbstractSearchBlock extends AbstractBlockLayout implements TemplateableBlockLayoutInterface
+final class SearchBlock extends AbstractBlockLayout implements TemplateableBlockLayoutInterface
 {
+    private readonly string $profileName;
+    private readonly string $label;
+
+    /** @param string $layout a registered layout name ({@see BlockProfiles::LAYOUTS}) */
     public function __construct(
         private readonly SearchProxy $proxy,
         private readonly ProfileRegistry $registry,
+        string $layout,
     ) {
+        $profile = BlockProfiles::profileFor($layout);
+        $label = BlockProfiles::labelFor($layout);
+        if ($profile === null || $label === null) {
+            throw new \InvalidArgumentException(sprintf('Unknown DRE Search block layout "%s".', $layout));
+        }
+        $this->profileName = $profile;
+        $this->label = $label;
     }
 
-    /** The profile name this block searches (e.g. 'research_items'). */
-    abstract protected function profileName(): string;
-
-    protected function profile(): ?SearchProfile
+    /** The block picker's entry (Omeka translates it). */
+    public function getLabel()
     {
-        return $this->registry->get($this->profileName());
+        return $this->label;
+    }
+
+    /** The profile this block searches, or null when the configuration no longer has it. */
+    private function profile(): ?SearchProfile
+    {
+        return $this->registry->get($this->profileName);
     }
 
     public function form(

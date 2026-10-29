@@ -55,8 +55,12 @@ return [
     ],
 
     // Page blocks — let editors drop a faceted search surface onto any Site
-    // page. One per corpus; factories (not invokables) so render() can pull
-    // SearchProxy for the server-rendered first page of results.
+    // page. One per corpus, all one class (Site\BlockLayout\SearchBlock) bound
+    // by the factory to the profile Settings\BlockProfiles names for each
+    // layout. Omeka's picker lists only names configured here, so each is
+    // repeated as a literal (a class constant would autoload the class while
+    // Omeka merges configs); a test keeps this list and BlockProfiles equal.
+    // Pages store these names: they never change.
     'block_layouts' => [
         'factories' => [
             // Research items: keeps the original 'dreSearch' id so blocks

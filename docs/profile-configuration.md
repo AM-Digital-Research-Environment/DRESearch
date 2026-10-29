@@ -51,10 +51,12 @@ return [
 Adding a corpus of an existing kind takes:
 
 1. a profile under `dre_search.profiles` (collection alias, source scope, fields);
-2. a block layout: a thin `AbstractSearchBlock` subclass returning the profile
-   name, registered under `block_layouts` in `config/module.config.php` and in
-   `Settings\BlockProfiles::CLASSES`/`PROFILES` (the scope resolver checks that
-   a block's layout matches the profile it searches);
+2. a block layout: a row in `Settings\BlockProfiles::LAYOUTS` (the layout
+   name, the profile it searches and its block-picker label), and the same
+   name under `block_layouts` in `config/module.config.php` with
+   `SearchBlockFactory` (a test keeps the two in step; the scope resolver checks
+   that a block's layout matches the profile it searches). A layout name is
+   stored by every block placed with it, so it never changes once released;
 3. optionally an entry in `federated.union_profiles`;
 4. `npm run i18n` to add its labels to `language/template.pot`;
 5. raising the profile count asserted in `tests/phpunit/SearchProfileTest.php`;
