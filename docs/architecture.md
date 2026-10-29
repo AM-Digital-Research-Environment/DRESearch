@@ -100,6 +100,14 @@ lease, so a failed dispatch heals without operator action.
 
 ## Search execution and caching
 
+`SearchProxy` orchestrates each public call and keeps what they all share:
+validation and saved scope, the readiness gate, the circuit breaker, the MySQL
+cache and the logging. The work is in small classes: `QueryBuilder`
+(parameters), `SearchExecutor` (transport), `FacetRecount` (multi-select
+facets), `BulkPager` (the export and map pulls, which fail closed when a page
+comes back short), `ResponseNormalizer` (the public JSON shapes, highlights and
+the suggestion subtitles each profile configures) and `HealthReport`.
+
 `QueryBuilder` builds every mode from one matching core: the query and its
 fields, the filter (visibility, pending-change exclusions, saved scope, facet
 selections, years), the sort, recall and time bounds, and the stopword and

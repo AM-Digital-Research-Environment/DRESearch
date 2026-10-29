@@ -5,17 +5,25 @@ declare(strict_types=1);
 namespace DRESearch\Search;
 
 use DRESearch\Indexer\AnalyticsSync;
+use DRESearch\Search\Exception\IncompletePullException;
 use DRESearch\Settings\ProfileRegistry;
 use DRESearch\Settings\SearchProfile;
 use DRESearch\Search\Exception\RequestValidationException;
 use Laminas\Log\LoggerInterface;
 
 /**
- * Server-side search: runs the Typesense query for a given search profile with
- * the server-held key and normalises the response into the compact shape the
- * Svelte client expects. Backend outages return a stable "available: false"
- * payload; invalid profile names and request data are rejected at the public
- * boundary with a structured validation error.
+ * Server-side search: runs the Typesense queries for a search profile with the
+ * server-held key and returns the compact shape the Svelte client expects.
+ * Backend outages return a stable "available: false" payload; invalid profile
+ * names and request data are rejected at the public boundary with a structured
+ * validation error.
+ *
+ * The proxy orchestrates; the work lives in small collaborators:
+ * {@see QueryBuilder} (parameters), {@see SearchExecutor} (transport),
+ * {@see FacetRecount} (multi-select facets), {@see BulkPager} (export and map
+ * pulls), {@see ResponseNormalizer} (the JSON shapes) and {@see HealthReport}.
+ * What stays here is what every endpoint shares: request validation and scope,
+ * the readiness gate, the circuit breaker, the MySQL cache and the logging.
  */
 final class SearchProxy
 {
@@ -92,9 +100,9 @@ final class SearchProxy
 
         // Facets stay multi-select: any facet the user has already refined is
         // recounted alongside the main search with its own clause lifted, so its
-        // unselected options keep showing (see QueryBuilder::refinedFacetFields()).
-        // Nothing refined — or the combined call failed — falls through to the
-        // plain single search, which owns the missing-stopword-set retry.
+        // unselected options keep showing (see FacetRecount). Nothing refined —
+        // or the combined call failed — falls through to the plain single
+        // search, which owns the missing-stopword-set retry.
         $refined = $builder->refinedFacetFields($req);
         $result = $refined === []
             ? null
@@ -103,7 +111,7 @@ final class SearchProxy
         if ($result === null) {
             return $this->unavailable($requestId);
         }
-        $normalized = $this->normalize($result, $profile);
+        $normalized = ResponseNormalizer::search($result, $profile);
         $this->logMetric('search', $started, $profile, $requestId, ['found' => $normalized['found']]);
         return $normalized;
     }
@@ -134,9 +142,8 @@ final class SearchProxy
 
     /**
      * The main search plus one facet-only recount per refined field, in a single
-     * `multi_search`. Returns the main Typesense result with those fields' counts
-     * substituted, or null to fall back to a plain single search — a corrected
-     * sidebar is worth a round-trip, never a failed search.
+     * `multi_search` ({@see FacetRecount}). Null to fall back to a plain single
+     * search — a corrected sidebar is worth a round-trip, never a failed search.
      *
      * @param array<string,mixed> $params main search params
      * @param array<string,mixed> $req    validated request
@@ -152,10 +159,7 @@ final class SearchProxy
         SearchProfile $profile,
         ?string $requestId,
     ): ?array {
-        $searches = [$params + ['collection' => $profile->collection()]];
-        foreach ($refined as $field) {
-            $searches[] = $builder->facetCountsFor($req, $field);
-        }
+        $searches = FacetRecount::searches($builder, $params, $req, $refined, $profile->collection());
         try {
             $response = SearchExecutor::multi($client, ['searches' => $searches]);
         } catch (\Throwable $e) {
@@ -163,108 +167,17 @@ final class SearchProxy
             $this->logBackendFailure('facet_recount', $e, $profile, $requestId);
             return null;
         }
-        $results = $response['results'] ?? [];
-        $main = $results[0] ?? null;
-        // multi_search reports per-search failures in the entry itself rather than
-        // throwing, so a missing stopword set surfaces here — fall back and let
-        // runSearch() retry without them.
-        if (!is_array($main) || isset($main['error']) || !isset($main['hits'])) {
-            return null;
-        }
-        /** @var array<string,mixed> $main */
-        $filters = is_array($req['filters'] ?? null) ? $req['filters'] : [];
-        foreach ($refined as $i => $field) {
-            $counts = $this->facetCountsOf($results[$i + 1] ?? null, $field);
-            if ($counts === null) {
-                continue; // that one entry failed; keep the (narrowed) counts
-            }
-            /** @var list<string> $selected */
-            $selected = array_map('strval', $filters[$field] ?? []);
-            $main['facet_counts'] = $this->withFacetCounts(
-                is_array($main['facet_counts'] ?? null) ? array_values($main['facet_counts']) : [],
-                $field,
-                $this->keepSelectedListed($counts, $selected),
-            );
-        }
-        return $main;
-    }
-
-    /**
-     * The counts a facet-only search returned for one field, or null if that
-     * multi_search entry errored / carried no facet payload.
-     *
-     * @return list<array<string,mixed>>|null
-     */
-    private function facetCountsOf(mixed $result, string $field): ?array
-    {
-        if (!is_array($result) || isset($result['error']) || !is_array($result['facet_counts'] ?? null)) {
-            return null;
-        }
-        foreach ($result['facet_counts'] as $facet) {
-            if (is_array($facet) && ($facet['field_name'] ?? null) === $field && is_array($facet['counts'] ?? null)) {
-                return array_values($facet['counts']);
-            }
-        }
-        return null;
-    }
-
-    /**
-     * A selected value that no longer matches under the OTHER filters is absent
-     * from the recount, which would hide its (ticked) checkbox and leave the user
-     * no way back except the active-filter chip. Keep it listed at zero.
-     *
-     * @param list<array<string,mixed>> $counts
-     * @param list<string> $selected
-     * @return list<array<string,mixed>>
-     */
-    private function keepSelectedListed(array $counts, array $selected): array
-    {
-        $present = [];
-        foreach ($counts as $count) {
-            if (is_array($count)) {
-                $present[(string) ($count['value'] ?? '')] = true;
-            }
-        }
-        foreach ($selected as $value) {
-            if (!isset($present[$value])) {
-                // Outside the top values the recount returned: its count is
-                // unknown, not zero (results do exist — it is selected).
-                $counts[] = ['value' => $value, 'count' => null];
-            }
-        }
-        return array_values($counts);
-    }
-
-    /**
-     * Substitute one field's counts in a Typesense `facet_counts` block, appending
-     * the entry when the main search returned none for it (a filter combination
-     * with no matches still needs its facet listed — that list is the way out).
-     *
-     * @param list<mixed> $facetCounts
-     * @param list<array<string,mixed>> $counts
-     * @return list<mixed>
-     */
-    private function withFacetCounts(array $facetCounts, string $field, array $counts): array
-    {
-        foreach ($facetCounts as $i => $facet) {
-            if (is_array($facet) && ($facet['field_name'] ?? null) === $field) {
-                $facet['counts'] = $counts;
-                $facetCounts[$i] = $facet;
-                return array_values($facetCounts);
-            }
-        }
-        $facetCounts[] = ['field_name' => $field, 'counts' => $counts];
-        return array_values($facetCounts);
+        return FacetRecount::merge(is_array($response['results'] ?? null) ? $response['results'] : [], $req, $refined);
     }
 
     /**
      * Bulk citation pull behind the result-export menu: the CURRENT result set
      * (same query / filters / year window / sort as the live search) paged
-     * server-side at {@see QueryBuilder::EXPORT_PER_PAGE} up to
-     * {@see QueryBuilder::EXPORT_MAX_HITS}. Returns the raw documents (citation /
-     * display fields only — no facets, no highlights, no `is_public`); the client
-     * serializes them to txt / json / ris / bibtex. A file is deliverable only
-     * when every expected page was returned; partial exports fail closed.
+     * server-side by {@see BulkPager} up to {@see QueryBuilder::EXPORT_MAX_HITS}.
+     * Returns the raw documents (citation / display fields only — no facets, no
+     * highlights, no `is_public`); the client serializes them to txt / json /
+     * ris / bibtex. A file is deliverable only when every expected page was
+     * returned; partial exports fail closed.
      *
      * @param array<string,mixed> $req
      * @return array<string,mixed>
@@ -280,52 +193,53 @@ final class SearchProxy
         }
         $started = hrtime(true);
         $builder = new QueryBuilder($profile, $serverFilter, $state['exclude']);
-        $maxHits = QueryBuilder::EXPORT_MAX_HITS;
-        $pages = (int) ceil($maxHits / QueryBuilder::EXPORT_PER_PAGE);
-
-        $docs = [];
-        $found = 0;
-        for ($page = 1; $page <= $pages; $page++) {
-            $params = $builder->export($req, $page);
-            try {
-                $result = SearchExecutor::single($client, $profile->collection(), $params);
-            } catch (\Throwable $e) {
-                $this->logBackendFailure('export', $e, $profile, $requestId);
-                return $this->unavailableExport($requestId);
-            }
-            $found = (int) ($result['found'] ?? 0);
-            foreach ($result['hits'] ?? [] as $hit) {
-                $doc = $hit['document'] ?? [];
-                // Keyed by id: if a drain re-ranks between pages, a document can
-                // move across the page boundary; never export it twice.
-                $docs[(string) ($doc['id'] ?? count($docs))] = $doc;
-            }
-            if (count($docs) >= $found || count($docs) >= $maxHits) {
-                break;
-            }
-        }
-
-        $docs = array_slice(array_values($docs), 0, $maxHits);
-        $expected = min($found, $maxHits);
-        if (count($docs) !== $expected) {
-            $error = new \RuntimeException(sprintf(
-                'Typesense returned %d of %d expected export documents.',
-                count($docs),
-                $expected,
-            ));
-            $this->logBackendFailure('export_verification', $error, $profile, $requestId);
+        $pager = new BulkPager(QueryBuilder::EXPORT_MAX_HITS);
+        $pull = $this->pull(
+            'export',
+            $pager,
+            static fn(int $page): array => SearchExecutor::single($client, $profile->collection(), $builder->export($req, $page)),
+            $profile,
+            $requestId,
+        );
+        if ($pull === null) {
             return $this->unavailableExport($requestId);
         }
-        $response = [
+        [$found, $docs] = [$pull['found'], $pull['docs']];
+        $this->logMetric('export', $started, $profile, $requestId, ['found' => $found, 'exported' => count($docs)]);
+        return [
             'available' => true,
             'found'     => $found,
             'exported'  => count($docs),
-            'capped'    => $found > $maxHits,
+            'capped'    => $pager->capped($found),
             'complete'  => true,
             'docs'      => $docs,
         ];
-        $this->logMetric('export', $started, $profile, $requestId, ['found' => $found, 'exported' => count($docs)]);
-        return $response;
+    }
+
+    /**
+     * Run a {@see BulkPager} pull, logging a failed request as `$operation` and
+     * a short pull as `{$operation}_verification`.
+     *
+     * @param callable(int):array<string,mixed> $fetchPage
+     * @return array{found:int, docs:list<array<string,mixed>>}|null null once logged
+     */
+    private function pull(
+        string $operation,
+        BulkPager $pager,
+        callable $fetchPage,
+        SearchProfile $profile,
+        ?string $requestId,
+    ): ?array {
+        try {
+            return $pager->pull($fetchPage);
+        } catch (IncompletePullException $short) {
+            // A file or a map missing records is a failure the visitor sees as
+            // "could not complete", and the cause is server-side.
+            $this->logBackendFailure($operation . '_verification', $short, $profile, $requestId);
+        } catch (\Throwable $error) {
+            $this->logBackendFailure($operation, $error, $profile, $requestId);
+        }
+        return null;
     }
 
     public function suggest(
@@ -335,6 +249,7 @@ final class SearchProxy
         ?string $requestId = null,
         ?int $scopeItem = null,
     ): array {
+        $this->gate->reset();
         $q = SearchRequest::query($q);
         $profile = $this->registry->get($profileName);
         if ($profile === null) {
@@ -356,17 +271,7 @@ final class SearchProxy
             $this->logBackendFailure('suggest', $e, $profile, $requestId);
             return ['available' => false, 'suggestions' => []];
         }
-
-        $suggestions = [];
-        foreach ($result['hits'] ?? [] as $hit) {
-            $doc = $hit['document'] ?? [];
-            $suggestions[] = [
-                'id'       => (string) ($doc['id'] ?? ''),
-                'title'    => (string) ($doc['title'] ?? ''),
-                'subtitle' => $this->subtitle($profile, $doc),
-            ];
-        }
-        return ['available' => true, 'suggestions' => $suggestions];
+        return ['available' => true, 'suggestions' => ResponseNormalizer::suggestions($result, $profile)];
     }
 
     /**
@@ -385,6 +290,7 @@ final class SearchProxy
         ?callable $translate = null,
         ?string $requestId = null,
     ): array {
+        $this->gate->reset();
         $q = SearchRequest::query($q);
         $client = $this->client();
         // A corpus with queued work beyond the exclusion limit drops out of the
@@ -403,10 +309,7 @@ final class SearchProxy
         try {
             $response = SearchExecutor::multi($client, ['searches' => $searches]);
         } catch (\Throwable $e) {
-            $profile = $profiles[0] ?? $this->registry->default();
-            if ($profile !== null) {
-                $this->logBackendFailure('suggest_all', $e, $profile, $requestId);
-            }
+            $this->logBackendFailure('suggest_all', $e, $profiles[0], $requestId);
             return ['available' => false, 'groups' => []];
         }
 
@@ -415,24 +318,15 @@ final class SearchProxy
         $results = $response['results'] ?? [];
         $groups = [];
         foreach ($profiles as $i => $profile) {
-            $hits = $results[$i]['hits'] ?? [];
-            if ($hits === []) {
+            $result = is_array($results[$i] ?? null) ? $results[$i] : [];
+            if (($result['hits'] ?? []) === []) {
                 continue;
-            }
-            $suggestions = [];
-            foreach ($hits as $hit) {
-                $doc = $hit['document'] ?? [];
-                $suggestions[] = [
-                    'id'       => (string) ($doc['id'] ?? ''),
-                    'title'    => (string) ($doc['title'] ?? ''),
-                    'subtitle' => $this->subtitle($profile, $doc),
-                ];
             }
             $groups[] = [
                 'profile'     => $profile->name(),
                 'label'       => $translate($profile->label()),
                 'kind'        => $profile->kind(),
-                'suggestions' => $suggestions,
+                'suggestions' => ResponseNormalizer::suggestions($result, $profile),
             ];
         }
         return ['available' => true, 'groups' => $groups];
@@ -507,7 +401,7 @@ final class SearchProxy
     /**
      * Federated results-page search: a per-corpus match COUNT for every profile
      * (the type tabs) in one `multi_search`, plus the focused corpus's full
-     * faceted response (reusing {@see search()}). Counts use only the shared
+     * faceted response (as {@see search()} gives it). Counts use only the shared
      * free-text + optional year window, NOT per-corpus facet filters, so each tab
      * shows how many records match the query regardless of the active corpus's
      * sidebar selections. Counts are non-fatal — on failure the tabs just lack a
@@ -621,21 +515,23 @@ final class SearchProxy
             return $this->unavailable($requestId);
         }
 
-        $normalized = $this->normalize($result, $profiles[0]);
+        $normalized = ResponseNormalizer::search($result, $profiles[0]);
         $normalized['partial'] = count($profiles) < count($configured);
-        foreach ($normalized['hits'] as &$doc) {
+        // Each merged hit names its corpus (`_profile`, stored on the document);
+        // the client badges it with the translated label.
+        foreach ($normalized['hits'] as $i => $doc) {
             $profile = $this->registry->get((string) ($doc['_profile'] ?? ''));
-            $doc['_profile_label'] = $profile !== null ? $translate($profile->label()) : (string) ($doc['_profile'] ?? '');
+            $normalized['hits'][$i]['_profile_label'] = $profile !== null ? $translate($profile->label()) : (string) ($doc['_profile'] ?? '');
         }
-        unset($doc);
         $this->logMetric('union', $started, $profiles[0], $requestId, ['found' => $normalized['found']]);
         return $normalized;
     }
 
     /**
      * Return up to MAP_MAX_HITS geocoded documents matching one location
-     * profile's current query/filter scope. Paging stays server-side so the map
-     * represents the result set rather than only the visible list page.
+     * profile's current query/filter scope. Paging stays server-side
+     * ({@see BulkPager}) so the map represents the result set rather than only
+     * the visible list page.
      *
      * @param array<string,mixed> $req
      * @return array<string,mixed>
@@ -654,46 +550,25 @@ final class SearchProxy
         }
 
         $builder = new QueryBuilder($profile, $serverFilter, $state['exclude']);
-        $docs = [];
-        $found = 0;
-        $pages = (int) ceil(QueryBuilder::MAP_MAX_HITS / QueryBuilder::EXPORT_PER_PAGE);
+        $pager = new BulkPager(QueryBuilder::MAP_MAX_HITS);
         $started = hrtime(true);
-        for ($page = 1; $page <= $pages; $page++) {
-            try {
-                $result = SearchExecutor::single($client, $profile->collection(), $builder->map($validated, $page));
-            } catch (\Throwable $e) {
-                $this->logBackendFailure('map', $e, $profile, $requestId);
-                return $this->unavailableMap($requestId);
-            }
-            $found = (int) ($result['found'] ?? 0);
-            foreach ($result['hits'] ?? [] as $hit) {
-                if (is_array($hit['document'] ?? null)) {
-                    $docs[(string) ($hit['document']['id'] ?? count($docs))] = $hit['document'];
-                }
-            }
-            if (count($docs) >= $found || count($docs) >= QueryBuilder::MAP_MAX_HITS) {
-                break;
-            }
-        }
-        $docs = array_slice(array_values($docs), 0, QueryBuilder::MAP_MAX_HITS);
-        $expected = min($found, QueryBuilder::MAP_MAX_HITS);
-        if (count($docs) !== $expected) {
-            // Logged like a short export: a map missing points is a failure the
-            // visitor sees as "could not load", and the cause is server-side.
-            $error = new \RuntimeException(sprintf(
-                'Typesense returned %d of %d expected map documents.',
-                count($docs),
-                $expected,
-            ));
-            $this->logBackendFailure('map_verification', $error, $profile, $requestId);
+        $pull = $this->pull(
+            'map',
+            $pager,
+            static fn(int $page): array => SearchExecutor::single($client, $profile->collection(), $builder->map($validated, $page)),
+            $profile,
+            $requestId,
+        );
+        if ($pull === null) {
             return $this->unavailableMap($requestId);
         }
+        [$found, $docs] = [$pull['found'], $pull['docs']];
         $this->logMetric('map', $started, $profile, $requestId, ['found' => $found, 'mapped' => count($docs)]);
         return [
             'available' => true,
             'found' => $found,
             'mapped' => count($docs),
-            'capped' => $found > QueryBuilder::MAP_MAX_HITS,
+            'capped' => $pager->capped($found),
             'docs' => $docs,
         ];
     }
@@ -724,27 +599,10 @@ final class SearchProxy
             $this->noteFailure($e);
             return null;
         }
-
-        $statFields = array_flip($profile->yearStatFields());
-        $min = null;
-        $max = null;
-        foreach ($result['facet_counts'] ?? [] as $facet) {
-            if (!isset($statFields[$facet['field_name'] ?? ''])) {
-                continue;
-            }
-            $stats = $facet['stats'] ?? [];
-            if (isset($stats['min'])) {
-                $min = $min === null ? (int) $stats['min'] : min($min, (int) $stats['min']);
-            }
-            if (isset($stats['max'])) {
-                $max = $max === null ? (int) $stats['max'] : max($max, (int) $stats['max']);
-            }
+        $bounds = ResponseNormalizer::yearBounds($result, $profile);
+        if ($bounds !== null) {
+            $this->cachePut($cacheKey, $bounds, 300);
         }
-        if ($min === null || $max === null || $max < $min) {
-            return null;
-        }
-        $bounds = ['min' => $min, 'max' => $max];
-        $this->cachePut($cacheKey, $bounds, 300);
         return $bounds;
     }
 
@@ -763,11 +621,11 @@ final class SearchProxy
         if ($result === null) {
             return ['available' => false, 'counts' => []];
         }
-        $counts = $this->facetCountsOf($result, $field) ?? [];
+        $counts = FacetRecount::countsOf($result, $field) ?? [];
         // While the visitor types into a facet's search box, list only what
         // matches the text; already-selected values stay in the sidebar list.
         if ($req['facet_query'] === '') {
-            $counts = $this->keepSelectedListed($counts, $req['filters'][$field] ?? []);
+            $counts = FacetRecount::keepSelectedListed($counts, $req['filters'][$field] ?? []);
         }
         return ['available' => true, 'counts' => array_map(
             static fn(array $row): array => [
@@ -779,67 +637,24 @@ final class SearchProxy
     }
 
     /**
-     * Operational status for monitoring: is Typesense configured and
-     * reachable, which corpora are live, hiding pending records or paused, and
-     * is the incremental worker keeping up. No secrets, no record ids.
+     * Operational status for monitoring ({@see HealthReport}): is Typesense
+     * configured and reachable, which corpora are live, hiding pending records
+     * or paused, and is the incremental worker keeping up. No secrets, no
+     * record ids.
      *
      * @return array<string,mixed>
      */
     public function health(): array
     {
         $this->gate->reset();
-        $configured = $this->provider->isConfigured();
-        $reachable = false;
-        $client = $this->provider->getClient();
-        if ($client !== null) {
-            try {
-                $reachable = !empty($client->health->retrieve()['ok']);
-            } catch (\Throwable $error) {
-                $this->noteFailure($error);
-            }
-        }
-        $profiles = [];
-        $pending = [];
-        $oldest = null;
-        try {
-            if ($this->connection !== null) {
-                foreach (
-                    $this->connection->executeQuery(
-                        'SELECT profile, COUNT(*) AS n, MIN(queued_at) AS oldest FROM dre_search_change GROUP BY profile',
-                    )->fetchAllAssociative() as $row
-                ) {
-                    $pending[(string) $row['profile']] = (int) $row['n'];
-                    $oldest = $oldest === null ? (string) $row['oldest'] : min($oldest, (string) $row['oldest']);
-                }
-            }
-        } catch (\Throwable) {
-            $pending = [];
-        }
-        $states = $this->gate->check($this->registry->names());
-        foreach ($this->registry->names() as $name) {
-            $count = $pending[$name] ?? 0;
-            $profiles[$name] = [
-                'public' => !($states[$name]['ready'] ?? false) ? 'paused' : ($count > 0 ? 'hiding' : 'live'),
-                'pending' => $count,
-            ];
-        }
-        $worker = null;
-        try {
-            if ($this->connection !== null) {
-                $status = (new \DRESearch\Indexer\WorkerLease($this->connection))->status();
-                $worker = ['alive' => $status['alive'], 'requested' => $status['requested']];
-            }
-        } catch (\Throwable) {
-            $worker = null;
-        }
-        return [
-            'ok' => $configured && $reachable,
-            'configured' => $configured,
-            'reachable' => $reachable,
-            'oldest_pending_seconds' => $oldest !== null ? max(0, time() - (int) strtotime($oldest . ' UTC')) : null,
-            'worker' => $worker,
-            'profiles' => $profiles,
-        ];
+        $names = $this->registry->names();
+        return (new HealthReport($this->connection))->build(
+            $this->provider->isConfigured(),
+            $this->provider->getClient(),
+            $names,
+            $this->gate->check($names),
+            fn(\Throwable $error) => $this->noteFailure($error),
+        );
     }
 
     /** @return array{ready:bool,exclude:list<int>} */
@@ -890,158 +705,13 @@ final class SearchProxy
         }
     }
 
-    private function normalize(array $result, SearchProfile $profile): array
-    {
-        $hits = [];
-        foreach ($result['hits'] ?? [] as $hit) {
-            $doc = $hit['document'] ?? [];
-            $highlights = $this->extractHighlights($hit['highlight'] ?? []);
-            if ($highlights !== []) {
-                $doc['_highlights'] = $highlights;
-            }
-            $hits[] = $doc;
-        }
-
-        $facets = [];
-        foreach ($result['facet_counts'] ?? [] as $facet) {
-            $field = (string) ($facet['field_name'] ?? '');
-            if ($field === '') {
-                continue;
-            }
-            $counts = [];
-            foreach ($facet['counts'] ?? [] as $count) {
-                $counts[] = [
-                    'value' => (string) ($count['value'] ?? ''),
-                    // null = selected but outside the recounted top values.
-                    'count' => array_key_exists('count', $count) && $count['count'] === null ? null : (int) ($count['count'] ?? 0),
-                ];
-            }
-            $facets[] = [
-                'field'  => $field,
-                'label'  => $profile->facetLabel($field),
-                'counts' => $counts,
-            ];
-        }
-
-        return [
-            'available'      => true,
-            'found'          => (int) ($result['found'] ?? 0),
-            'page'           => (int) ($result['page'] ?? 1),
-            'hits'           => $hits,
-            'facets'         => $facets,
-            'search_time_ms' => (int) ($result['search_time_ms'] ?? 0),
-        ];
-    }
-
-    /**
-     * Flatten a Typesense per-hit `highlight` object into `field => list<snippet>`,
-     * keeping only fields/elements that actually matched (i.e. carry a highlight
-     * sentinel). The full highlighted value (`value`/`values`, present for fields
-     * in highlight_full_fields) is preferred over the windowed `snippet`/`snippets`
-     * so a card can highlight a complete linked value; abstract/description, which
-     * aren't full-highlighted, fall back to their centred snippet. The marks are
-     * the {@see QueryBuilder} private-use sentinels, converted to <mark> client-side.
-     *
-     * @param array<string,mixed> $highlight
-     * @return array<string,list<string>>
-     */
-    private function extractHighlights(array $highlight): array
-    {
-        $out = [];
-        foreach ($highlight as $field => $info) {
-            if (!is_string($field) || !is_array($info)) {
-                continue;
-            }
-            $candidates = [];
-            if (array_is_list($info)) {
-                // A string[] field (creator_ss, subject_ss, …): with the v2
-                // highlight format Typesense returns one {matched_tokens,
-                // snippet[, value]} object per array ELEMENT, unmarked ones
-                // included. Prefer the full value (highlight_full_fields) so the
-                // client can key it back onto the chip it renders.
-                foreach ($info as $element) {
-                    if (!is_array($element)) {
-                        continue;
-                    }
-                    $text = $element['value'] ?? $element['snippet'] ?? null;
-                    if (is_string($text)) {
-                        $candidates[] = $text;
-                    }
-                }
-            } elseif (isset($info['value']) && is_string($info['value'])) {
-                $candidates[] = $info['value'];
-            } elseif (isset($info['snippet']) && is_string($info['snippet'])) {
-                $candidates[] = $info['snippet'];
-            }
-            foreach (['values', 'snippets'] as $key) {
-                if ($candidates === [] && isset($info[$key]) && is_array($info[$key])) {
-                    foreach ($info[$key] as $s) {
-                        if (is_string($s)) {
-                            $candidates[] = $s;
-                        }
-                    }
-                }
-            }
-            // Keep only the ones that were actually marked.
-            $marked = array_values(array_filter(
-                $candidates,
-                static fn(string $s): bool => str_contains($s, QueryBuilder::HL_START)
-            ));
-            if ($marked !== []) {
-                $out[$field] = $marked;
-            }
-        }
-        return $out;
-    }
-
-    /** A short "·"-joined subtitle for an autocomplete row, by profile kind. */
-    private function subtitle(SearchProfile $profile, array $doc): ?string
-    {
-        if ($profile->kind() === 'project') {
-            $section = $doc['section_ss'][0] ?? null;
-            $parts = [$section, $this->yearRange($doc)];
-        } elseif ($profile->kind() === 'publication') {
-            // Edited volumes have no author — fall back to the first editor, then type.
-            $author = $doc['author_ss'][0] ?? ($doc['editor_ss'][0] ?? ($doc['type_s'] ?? null));
-            $parts = [$author, isset($doc['year']) ? (string) $doc['year'] : null];
-        } elseif ($profile->kind() === 'podcast') {
-            // Series + year (episodes have no type_s; the series gives context).
-            $parts = [$doc['series_s'] ?? null, isset($doc['year']) ? (string) $doc['year'] : null];
-        } elseif ($profile->kind() === 'video') {
-            // Playlist + year (videos have no type_s; the playlist gives context).
-            $parts = [$doc['playlist_s'] ?? null, isset($doc['year']) ? (string) $doc['year'] : null];
-        } elseif ($profile->kind() === 'person') {
-            $parts = [$doc['affiliation_ss'][0] ?? null, $doc['roles_ss'][0] ?? null];
-        } elseif ($profile->kind() === 'section') {
-            $leader = $doc['pi_ss'][0] ?? ($doc['spokesperson_ss'][0] ?? null);
-            $parts = [$doc['phase_s'] ?? null, $leader];
-        } elseif ($profile->kind() === 'organisation') {
-            // Type (Institution / Group) + the first role it plays.
-            $parts = [$doc['type_s'] ?? null, $doc['roles_ss'][0] ?? null];
-        } elseif ($profile->kind() === 'term') {
-            // Sub-type, if the corpus has one (Country / Tag / …).
-            $parts = [$doc['type_s'] ?? null];
-        } else {
-            $parts = [$doc['type_s'] ?? null, isset($doc['year']) ? (string) $doc['year'] : null];
-        }
-        $parts = array_filter($parts, static fn($p) => $p !== null && $p !== '');
-        return $parts === [] ? null : implode(' · ', $parts);
-    }
-
-    private function yearRange(array $doc): ?string
-    {
-        $start = isset($doc['year_start']) ? (int) $doc['year_start'] : null;
-        $end = isset($doc['year_end']) ? (int) $doc['year_end'] : null;
-        if ($start === null) {
-            return null;
-        }
-        return ($end !== null && $end !== $start) ? $start . '–' . $end : (string) $start;
-    }
-
     /**
      * Validate public input before resolving trusted server-side scope: a
      * saved block's locked filter (`block_id`) or a project's records
      * (`scope_item`), never both.
+     *
+     * @param array<string,mixed> $req
+     * @return array{0:SearchProfile, 1:array<string,mixed>, 2:?string}
      */
     private function prepare(string $profileName, array $req, string $mode): array
     {

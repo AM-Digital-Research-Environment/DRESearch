@@ -43,10 +43,34 @@ final class SearchProxyTest extends TestCase
         self::assertCount(1, $lookups, 'The active search reuses the scope searchAll() resolved.');
     }
 
-    private function proxy(TypesenseClientProvider $provider, Connection $db): SearchProxy
+    /**
+     * A map whose pages came back short used to be refused without a word in
+     * the log, unlike an export. Both now log a failed request as the
+     * operation and a short pull as `<operation>_verification`.
+     */
+    public function testShortAndFailedBulkPullsAreLogged(): void
+    {
+        $writer = new \Laminas\Log\Writer\Mock();
+        $proxy = $this->proxy(new TypesenseClientProvider('', 0, 'http', ''), $this->blockDatabase(), $writer);
+        $pull = new \ReflectionMethod($proxy, 'pull');
+        $profile = $this->researchItems();
+
+        $short = static fn(int $page): array => ['found' => 3, 'hits' => [['document' => ['id' => '1']]]];
+        self::assertNull($pull->invoke($proxy, 'map', new \DRESearch\Search\BulkPager(1000), $short, $profile, 'req-1'));
+        $down = static fn(int $page): array => throw new \RuntimeException('Typesense is down');
+        self::assertNull($pull->invoke($proxy, 'export', new \DRESearch\Search\BulkPager(1000), $down, $profile, 'req-2'));
+
+        self::assertSame(
+            [['map_verification', 'req-1'], ['export', 'req-2']],
+            array_map(static fn(array $event): array => [$event['extra']['operation'], $event['extra']['request_id']], $writer->events),
+        );
+        self::assertSame('Typesense returned 1 of 3 expected documents.', $writer->events[0]['extra']['message']);
+    }
+
+    private function proxy(TypesenseClientProvider $provider, Connection $db, ?\Laminas\Log\Writer\WriterInterface $writer = null): SearchProxy
     {
         $logger = new \Laminas\Log\Logger();
-        $logger->addWriter(new \Laminas\Log\Writer\Noop());
+        $logger->addWriter($writer ?? new \Laminas\Log\Writer\Noop());
         return new SearchProxy(
             $provider,
             new ProfileRegistry(['research_items' => $this->researchItems()]),

@@ -41,6 +41,32 @@ use DRESearch\Settings\Definition\SourceScope;
  */
 final class SearchProfile
 {
+    /** Subtitle token for a range corpus's years: `year_start`, or `year_start–year_end`. */
+    public const SUBTITLE_YEAR_RANGE = 'year_range';
+
+    /**
+     * The line under an autocomplete suggestion's title, by kind, unless the
+     * profile sets `suggest_subtitle`: a list of parts, each the first of its
+     * fields that has a value ("·"-joined; see
+     * {@see \DRESearch\Search\ResponseNormalizer::subtitle()}). A kind missing
+     * here falls back to `item`'s.
+     */
+    private const SUBTITLE_DEFAULTS = [
+        'item'         => [['type_s'], ['year']],
+        'project'      => [['section_ss'], [self::SUBTITLE_YEAR_RANGE]],
+        // Edited volumes have no author: the first editor, then the type.
+        'publication'  => [['author_ss', 'editor_ss', 'type_s'], ['year']],
+        // Episodes and videos have no type_s; the series / playlist gives context.
+        'podcast'      => [['series_s'], ['year']],
+        'video'        => [['playlist_s'], ['year']],
+        'person'       => [['affiliation_ss'], ['roles_ss']],
+        'section'      => [['phase_s'], ['pi_ss', 'spokesperson_ss']],
+        // Institution / Group, and the first role it plays.
+        'organisation' => [['type_s'], ['roles_ss']],
+        // The sub-type, if the corpus has one (Country / Tag / …).
+        'term'         => [['type_s']],
+    ];
+
     /**
      * @param array<string,array{property:?string,label:string,array:bool,derived:bool}> $facets
      * @param array<string,array{property:?string,type:string,facet:bool,sort:bool,index:bool,search_only:bool}> $displayFields
@@ -51,6 +77,7 @@ final class SearchProfile
      * @param array{from_template:int,property:string,public_only:bool}|null $itemLink
      * @param array{counts?:array<string,array<string,mixed>>,roles?:list<array<string,mixed>>}|null $reverseLinks
      * @param array{properties:list<string>,url_prefix:string}|null $fulltextSource
+     * @param list<list<string>>|null $subtitle suggestion subtitle parts; null = the kind's
      */
     public function __construct(
         private readonly string $name,
@@ -75,13 +102,14 @@ final class SearchProfile
         private readonly array $sortFields,
         private readonly ?string $thumbnailProperty,
         private readonly ?array $fulltextSource = null,
+        private readonly ?array $subtitle = null,
     ) {
         $this->assertValid();
     }
 
     public static function fromArray(string $name, array $c): self
     {
-        foreach (['facets', 'display_fields', 'authority_item_sets', 'type_items', 'read_properties', 'sort_fields'] as $key) {
+        foreach (['facets', 'display_fields', 'authority_item_sets', 'type_items', 'read_properties', 'sort_fields', 'suggest_subtitle'] as $key) {
             if (isset($c[$key]) && !is_array($c[$key])) {
                 throw new \InvalidArgumentException(sprintf('Profile "%s" key "%s" must be an array.', $name, $key));
             }
@@ -183,6 +211,16 @@ final class SearchProfile
                 )),
                 'url_prefix' => (string) ($c['fulltext_source']['url_prefix'] ?? ''),
             ] : null,
+            // The suggestion subtitle: one entry per part, each a field or
+            // "a|b" alternatives (the first with a value wins), e.g.
+            // ['author_ss|editor_ss', 'year']. Unset → the kind's default.
+            isset($c['suggest_subtitle']) ? array_values(array_map(
+                static fn (mixed $part): array => array_values(array_filter(
+                    array_map('trim', is_array($part) ? array_map('strval', $part) : explode('|', (string) $part)),
+                    static fn (string $field): bool => $field !== '',
+                )),
+                $c['suggest_subtitle'],
+            )) : null,
         );
     }
 
@@ -273,6 +311,23 @@ final class SearchProfile
                     $key,
                     $this->name,
                 ));
+            }
+        }
+        // A configured subtitle may name only fields this corpus stores.
+        $stored = array_merge($this->facets, $this->displayFields, $available);
+        unset($stored['is_public']);
+        foreach ($this->subtitle ?? [] as $part) {
+            if ($part === []) {
+                throw new \InvalidArgumentException(sprintf('suggest_subtitle in profile "%s" has an empty part.', $this->name));
+            }
+            foreach ($part as $field) {
+                if ($field !== self::SUBTITLE_YEAR_RANGE && !isset($stored[$field])) {
+                    throw new \InvalidArgumentException(sprintf(
+                        'suggest_subtitle field "%s" is not a field of profile "%s".',
+                        $field,
+                        $this->name,
+                    ));
+                }
             }
         }
     }
@@ -435,6 +490,38 @@ final class SearchProfile
             }
         }
         return $out;
+    }
+
+    /**
+     * The parts of an autocomplete suggestion's subtitle, each a list of
+     * alternative fields (the first with a value wins; a list field gives its
+     * first value; {@see SUBTITLE_YEAR_RANGE} gives the corpus's years). From
+     * `suggest_subtitle`, else this kind's default ({@see SUBTITLE_DEFAULTS}).
+     *
+     * @return list<list<string>>
+     */
+    public function subtitleFields(): array
+    {
+        return $this->subtitle ?? self::SUBTITLE_DEFAULTS[$this->kind] ?? self::SUBTITLE_DEFAULTS['item'];
+    }
+
+    /**
+     * The document fields {@see subtitleFields()} reads, for a suggestion
+     * request's include_fields.
+     *
+     * @return list<string>
+     */
+    public function subtitleDocumentFields(): array
+    {
+        $fields = [];
+        foreach ($this->subtitleFields() as $part) {
+            foreach ($part as $field) {
+                foreach ($field === self::SUBTITLE_YEAR_RANGE ? ['year_start', 'year_end'] : [$field] as $documentField) {
+                    $fields[$documentField] = true;
+                }
+            }
+        }
+        return array_keys($fields);
     }
 
     // ── Dates ─────────────────────────────────────────────────────────────────

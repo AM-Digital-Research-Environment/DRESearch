@@ -34,7 +34,7 @@ final class QueryBuilder
 
     /**
      * Export paging. The result-export menu pulls the CURRENT result set as a
-     * bulk citation dump — {@see SearchProxy::export()} pages at EXPORT_PER_PAGE
+     * bulk citation dump — {@see BulkPager} pages at EXPORT_PER_PAGE
      * (Typesense's per-request maximum) up to EXPORT_MAX_HITS total. Exports
      * follow the live sort, so a truncated export keeps the most relevant / newest
      * rows. Mirror EXPORT_MAX_HITS in the client (lib/export.ts) for the cap hint.
@@ -49,7 +49,7 @@ final class QueryBuilder
      * They are Unicode private-use code points, so they never collide with real
      * content and carry no HTML meaning — the client splits on them and renders
      * <mark> via text nodes (no HTML injection from field values). See
-     * {@see SearchProxy::normalize()} and the Svelte lib/highlight.ts.
+     * {@see ResponseNormalizer::highlights()} and the Svelte lib/highlight.ts.
      */
     public const HL_START = "\u{E000}";
     public const HL_END = "\u{E001}";
@@ -58,7 +58,7 @@ final class QueryBuilder
      * Typesense stopword set applied to every non-browse query, so common English
      * function words ("the", "of", "and", …) don't dilute relevance. Provisioned by
      * {@see \DRESearch\Indexer\StopwordsSync} (data/stopwords.json) on every reindex
-     * and via the Maintenance "Sync stopwords" action. {@see SearchProxy::search()}
+     * and via the Maintenance "Sync stopwords" action. {@see SearchExecutor}
      * retries without it if the set is missing on the server, so a fresh Typesense
      * volume degrades to unfiltered search rather than failing.
      */
@@ -275,26 +275,12 @@ final class QueryBuilder
         return ['highlight_fields' => 'none'];
     }
 
+    /** @return array<string,mixed> */
     public function suggest(string $q): array
     {
-        // Request only fields the suggestion subtitle might use (id/title + the
-        // date field(s) + facets + display fields), so the payload stays small.
-        $dateFields = $this->profile->hasDate()
-            ? ($this->profile->isRangeDate() ? ['year_start', 'year_end'] : ['year'])
-            : [];
-        // Display fields, minus the search-only ones (e.g. a transcript) — a
-        // suggestion row never needs the heavy text.
-        $searchOnly = array_flip($this->profile->searchOnlyFields());
-        $displayFields = array_values(array_filter(
-            array_keys($this->profile->displayFields()),
-            static fn(string $f): bool => !isset($searchOnly[$f])
-        ));
-        $include = array_merge(
-            ['id', 'title'],
-            $dateFields,
-            $this->profile->fieldNames(),
-            $displayFields,
-        );
+        // A suggestion row shows the id, the title and the profile's subtitle
+        // (ResponseNormalizer::subtitle()), so only those fields travel.
+        $include = array_merge(['id', 'title'], $this->profile->subtitleDocumentFields());
         return [
             'enable_analytics' => false,
             'highlight_fields' => 'none',

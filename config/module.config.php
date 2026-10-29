@@ -426,6 +426,14 @@ return [
         // `term` kind (genres, languages, locations, subjects & tags) is the
         // generic authority-term corpus: a name + optional Type facet + reverse-
         // link counts, all driven by config (TermMapper + TermCard).
+        //
+        // The kind also picks the line under an autocomplete suggestion's
+        // title (e.g. a project's section and years). A profile may set its
+        // own with `suggest_subtitle`: a list of parts, each a field or
+        // "a|b" alternatives (the first with a value wins; `year_range` gives
+        // a range corpus's years), e.g.
+        //     'suggest_subtitle' => ['author_ss|editor_ss|type_s', 'year'],
+        // See SearchProfile::SUBTITLE_DEFAULTS for each kind's.
         'profiles' => [
 
             // Research items — resource template 10. Eight facets resolved from
