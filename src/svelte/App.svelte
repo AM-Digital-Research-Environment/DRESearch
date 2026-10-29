@@ -2,14 +2,14 @@
   import type {
     ActiveFilters,
     Bootstrap,
-    MapResponse,
     SearchResponse,
     SortKey,
     SortOption,
     ViewMode,
   } from './lib/types';
-  import { untrack } from 'svelte';
   import { SearchApi } from './lib/api';
+  import { seedAnswersFirstSearch, usableInitialResponse } from './lib/initialState';
+  import { createMapResults, createSearchResults } from './lib/searchResults.svelte';
   import {
     embeddedUrlPrefix,
     onUrlPop,
@@ -20,7 +20,6 @@
   } from './lib/urlState';
   import { formatNumber, t } from './lib/i18n';
   import { buildFilterChips, type FilterChipModel as ChipModel } from './lib/filterChips';
-  import { rememberSearch } from './lib/searchHistory';
   import { provideHeadingLevel, type HeadingLevel } from './lib/headings';
   import { COPY_FEEDBACK_MS, provideAnnouncer } from './lib/announce';
   import SearchBox from './components/SearchBox.svelte';
@@ -165,10 +164,7 @@
   );
 
   // svelte-ignore state_referenced_locally
-  const initialResponse =
-    bootstrap.initial_response && Array.isArray(bootstrap.initial_response.hits)
-      ? bootstrap.initial_response
-      : null;
+  const initialResponse = usableInitialResponse(bootstrap.initial_response);
 
   // Hydrate initial state from the URL on surfaces that sync; otherwise seed from
   // the bootstrap (the federated page passes its shared query via initial_query).
@@ -219,24 +215,9 @@
   let view = $state<ViewMode>(explicitInitialView ?? 'list');
   let viewExplicit = explicitInitialView !== null;
 
-  let response = $state<SearchResponse | null>(initialResponse);
-  let isLoading = $state(false);
-  // Failed requests: the visitor sees a translated message and "Try again",
-  // which bumps the matching attempt counter so its effect runs once more.
-  // The technical detail is logged by api.ts, never shown.
-  let failed = $state(false);
-  let attempt = $state(0);
-  let mapResponse = $state<MapResponse | null>(null);
-  let mapLoading = $state(false);
-  let mapFailed = $state(false);
-  let mapAttempt = $state(0);
-  let correction = $state<string | null>(null);
   // Visually hidden heading the results region is announced by; focus lands
   // here after paging or removing filters, so it never falls back to <body>.
   let resultsHeading = $state<HTMLElement | undefined>(undefined);
-  // The scope (everything but the page) of the response on screen: a page-only
-  // change keeps its facet counts instead of recounting every facet.
-  let shownScope: string | null = null;
 
   // Mobile only: the sidebar is collapsed by default and toggled open. Ignored
   // on wider viewports, where the sidebar is always shown (see styles).
@@ -245,30 +226,59 @@
   // Root element, so paging can scroll back to the top of this block's results.
   let rootEl = $state<HTMLElement | undefined>(undefined);
 
-  // Skip the first reactive fetch only when the seed response already matches the
-  // seeded state. A URL-hydrated non-pristine state (a shared link with facets, a
-  // sort, page 2 or a year) must fetch so the user sees what they asked for, not
-  // the "browse everything" snapshot.
-  const corpusPristine =
-    (urlInitial?.page ?? 1) === 1 &&
-    seedSort === defaultSort &&
-    Object.keys(urlInitial?.filters ?? {}).length === 0 &&
-    (urlInitial?.yearFrom ?? null) === null &&
-    (urlInitial?.yearTo ?? null) === null;
-  // An own-query block's seed response was rendered for initial_query, so the
-  // query must match it too; the federated App's seed is for its shared query
-  // (includeQuery=false), which seedQuery already equals.
+  // The client reads the CURRENT api on every call, so the search effect keeps
+  // depending on it as it did when it called api.search() itself.
+  const client = {
+    search: (...args: Parameters<SearchApi['search']>) => api.search(...args),
+    suggest: (...args: Parameters<SearchApi['suggest']>) => api.suggest(...args),
+    map: (...args: Parameters<SearchApi['map']>) => api.map(...args),
+  };
+
+  // What the search state turns into (lib/searchResults.svelte.ts). A failed
+  // request shows a translated message and "Try again", which re-runs the
+  // effect below; the technical detail is logged by api.ts, never shown.
   // svelte-ignore state_referenced_locally
-  const queryMatchesSeed = !includeQuery || seedQuery === (bootstrap.initial_query ?? '');
-  // The federated page requests the URL's corpus state itself and says so.
-  // svelte-ignore state_referenced_locally
-  const seedAppliesUrl = bootstrap.initial_state_applied === true;
-  let skipNextFetch =
-    initialResponse != null &&
-    initialResponse.available &&
-    (corpusPristine || seedAppliesUrl) &&
-    queryMatchesSeed;
-  let reqId = 0;
+  const results = createSearchResults(client, {
+    facets: bootstrap.facets,
+    perPage: bootstrap.per_page,
+    initialResponse,
+    // Skip the first search only when the seed already answers the seeded
+    // state: a shared link with facets, a sort, page 2 or a year must fetch.
+    adoptInitial: seedAnswersFirstSearch({
+      initialResponse,
+      url: urlInitial,
+      seedSort,
+      defaultSort,
+      seedQuery,
+      initialQuery: bootstrap.initial_query ?? '',
+      includeQuery,
+      stateApplied: bootstrap.initial_state_applied === true,
+    }),
+    onPageOverflow: (lastPage) => (page = lastPage),
+    onSettled: suggestGallery,
+  });
+  const mapResults = createMapResults(client);
+  const response = $derived(results.response);
+  const isLoading = $derived(results.isLoading);
+  const failed = $derived(results.failed);
+
+  /**
+   * A research-item corpus whose first results are mostly pictures opens on the
+   * gallery, once per mount and only while the visitor has not chosen a view.
+   */
+  function suggestGallery(r: SearchResponse): void {
+    if (viewExplicit || view !== 'list' || bootstrap.profile !== 'research_items') return;
+    if (r.hits.length < 4) return;
+    const ratio = r.hits.filter((hit) => Boolean(hit.thumbnail_url)).length / r.hits.length;
+    if (ratio > 0.6) {
+      // The visitor did not ask for this switch: record it as already in the
+      // URL snapshot so the sync REPLACES history instead of adding a Back
+      // step they never took.
+      if (prevUrlState) prevUrlState = { ...prevUrlState, view: 'gallery' };
+      view = 'gallery';
+    }
+    viewExplicit = true; // one suggestion per mount, regardless of outcome
+  }
 
   // Previous URL snapshot, so the sync can choose pushState vs replaceState.
   let prevUrlState: UrlSearchState | null = null;
@@ -340,136 +350,19 @@
     }, urlOptions);
   });
 
-  $effect(() => {
-    const q = query;
-    const p = page;
-    const s = sort;
-    const f = filters;
-    const yf = yearFrom;
-    const yt = yearTo;
-    const hitsWanted = listHits;
-    void attempt;
+  // Every value the search is made from is read here, so any change re-runs
+  // it; the module decides whether to fetch (lib/searchResults.svelte.ts).
+  $effect(() =>
+    results.run({ q: query, page, sort, filters, yearFrom, yearTo, perPage: listHits }),
+  );
 
-    if (skipNextFetch) {
-      skipNextFetch = false;
-      shownScope = JSON.stringify([q, s, f, yf, yt]);
-      return;
-    }
-
-    const scope = JSON.stringify([q, s, f, yf, yt]);
-    const previous = untrack(() => response);
-    // Paging through the same scope: the facet counts cannot change.
-    const keepFacets = scope === shownScope && previous !== null && previous.available;
-    // Card chips may filter display fields that are not sidebar facets.
-    const facetFields = keepFacets ? [] : bootstrap.facets;
-    const myId = ++reqId;
-    const controller = new AbortController();
-    isLoading = true;
-    failed = false;
-
-    api
-      .search(
-        {
-          q,
-          page: p,
-          per_page: hitsWanted,
-          sort: s,
-          filters: f,
-          facets: facetFields,
-          year_from: yf,
-          year_to: yt,
-        },
-        controller.signal,
-      )
-      .then((r) => {
-        if (myId !== reqId) {
-          return; // a newer search has superseded this one
-        }
-        const lastPage = Math.max(1, Math.ceil(r.found / bootstrap.per_page));
-        if (p > lastPage && hitsWanted === bootstrap.per_page) {
-          page = lastPage;
-          return;
-        }
-        response = keepFacets && previous ? { ...r, facets: previous.facets } : r;
-        shownScope = scope;
-        if (q.trim() && r.found > 0) rememberSearch(q);
-        if (
-          !viewExplicit &&
-          view === 'list' &&
-          bootstrap.profile === 'research_items' &&
-          r.hits.length >= 4
-        ) {
-          const ratio = r.hits.filter((hit) => Boolean(hit.thumbnail_url)).length / r.hits.length;
-          if (ratio > 0.6) {
-            // The visitor did not ask for this switch: record it as already in
-            // the URL snapshot so the sync REPLACES history instead of adding
-            // a Back step they never took.
-            if (prevUrlState) prevUrlState = { ...prevUrlState, view: 'gallery' };
-            view = 'gallery';
-          }
-          viewExplicit = true; // one suggestion per mount, regardless of outcome
-        }
-        correction = null;
-        if (r.found === 0 && q.trim().length >= 2) {
-          void api
-            .suggest(q, controller.signal)
-            .then((suggestions) => {
-              if (myId === reqId) correction = suggestions[0]?.title ?? null;
-            })
-            .catch(() => undefined);
-        }
-      })
-      .catch((e: Error) => {
-        if (myId !== reqId) {
-          return;
-        }
-        if (e.name === 'AbortError') return;
-        console.error('[dre-search] search failed', e);
-        failed = true;
-        response = null;
-      })
-      .finally(() => {
-        if (myId === reqId) {
-          isLoading = false;
-        }
-      });
-
-    return () => controller.abort();
-  });
-
+  // The map draws from /map while the Map view is active.
   $effect(() => {
     if (view !== 'map') {
-      mapResponse = null;
-      mapLoading = false;
-      mapFailed = false;
+      mapResults.reset();
       return;
     }
-    const scope = { q: query, sort, filters, year_from: yearFrom, year_to: yearTo };
-    void mapAttempt;
-    const controller = new AbortController();
-    mapLoading = true;
-    mapFailed = false;
-    // Debounced like typing: the map endpoint pulls up to 1,000 documents.
-    const timer = window.setTimeout(() => {
-      api
-        .map(scope, controller.signal)
-        .then((result) => {
-          if (controller.signal.aborted) return;
-          mapResponse = result;
-        })
-        .catch((reason: Error) => {
-          if (reason.name === 'AbortError') return;
-          console.error('[dre-search] map request failed', reason);
-          mapFailed = true;
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) mapLoading = false;
-        });
-    }, 300);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
+    return mapResults.run({ q: query, sort, filters, yearFrom, yearTo });
   });
 
   /** Move focus to the results heading without jumping the page. */
@@ -523,7 +416,7 @@
   );
 
   function retry(): void {
-    attempt++;
+    results.retry();
     // The button that was focused is about to be replaced by the results.
     focusResults();
   }
@@ -750,7 +643,7 @@
             {/if}
           {/snippet}
           <ResultSummary
-            found={view === 'map' ? (mapResponse?.found ?? response.found) : response.found}
+            found={view === 'map' ? (mapResults.response?.found ?? response.found) : response.found}
             chips={scopeChips}
             onRemove={handleRemoveChip}
             tools={summaryTools}
@@ -773,32 +666,32 @@
                 {t('clear_all_filters')}
               </button>
             {:else if query.trim() !== ''}
-              {#if correction}
+              {#if results.correction}
                 <button
                   type="button"
                   class="dre-search__clear-link dre-button-secondary"
-                  onclick={() => handleQueryChange(correction ?? '')}
+                  onclick={() => handleQueryChange(results.correction ?? '')}
                 >
-                  {t('did_you_mean', { q: correction })}
+                  {t('did_you_mean', { q: results.correction })}
                 </button>
               {:else}<p>{t('try_broader_query')}</p>{/if}
             {/if}
           </div>
         {:else if response && view === 'map'}
-          {#if mapFailed}
+          {#if mapResults.failed}
             <div class="dre-search__error">
               <strong>{t('map_error')}</strong>
-              <button type="button" class="dre-button-secondary" onclick={() => mapAttempt++}
+              <button type="button" class="dre-button-secondary" onclick={() => mapResults.retry()}
                 >{t('try_again')}</button
               >
             </div>
           {/if}
           <MapView
-            docs={mapResponse?.docs ?? []}
-            loading={mapLoading}
-            capped={mapResponse?.capped ?? false}
-            found={mapResponse?.found ?? 0}
-            mapped={mapResponse?.mapped ?? 0}
+            docs={mapResults.response?.docs ?? []}
+            loading={mapResults.loading}
+            capped={mapResults.response?.capped ?? false}
+            found={mapResults.response?.found ?? 0}
+            mapped={mapResults.response?.mapped ?? 0}
             itemUrlBase={bootstrap.item_url_base}
           />
         {:else if response}

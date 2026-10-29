@@ -1,7 +1,8 @@
 <script lang="ts">
-  import type { Bootstrap, FederatedBootstrap, ProfileMeta, SearchResponse } from '../lib/types';
+  import type { Bootstrap, FederatedBootstrap, ProfileMeta } from '../lib/types';
   import { untrack } from 'svelte';
   import { searchAll, searchUnion } from '../lib/api';
+  import { createFederatedResults, type CorpusRequest } from '../lib/federatedResults.svelte';
   import {
     MAX_PAGE,
     readFederatedShell,
@@ -13,7 +14,6 @@
   } from '../lib/urlState';
   import { formatNumber, t } from '../lib/i18n';
   import { installSlashFocus } from '../lib/keyboard';
-  import { rememberSearch } from '../lib/searchHistory';
   import App from '../App.svelte';
   import MixedResultCard from './MixedResultCard.svelte';
   import Pagination from './Pagination.svelte';
@@ -43,23 +43,11 @@
   let inputValue = $state(seedQuery);
   // svelte-ignore state_referenced_locally
   let activeProfile = $state(pinned || bootstrap.default_profile || profiles[0]?.name || ALL);
-  let counts = $state<Record<string, number>>({});
-  let countsQuery = $state<string | null>(null);
-  let activeResponse = $state<SearchResponse | null>(null);
-  let unionResponse = $state<SearchResponse | null>(null);
   // A shared link to page 3 of "All results" opens on page 3.
   // svelte-ignore state_referenced_locally
   let unionPage = $state(activeProfile === ALL ? readUnionPage() : 1);
-  let isLoading = $state(false);
-  // A failed request shows a translated message and "Try again"; the detail
-  // is logged (api.ts), never shown.
-  let failed = $state(false);
   let inputTimer: number | null = null;
-  let controller: AbortController | null = null;
   let inputEl = $state<HTMLInputElement>();
-  let cache: Record<string, SearchResponse> = {};
-  let cacheQuery: string | null = null;
-  let requestId = 0;
   // A widget's brief message ("Copied") without the theme: spoken by this
   // surface's status node. An embedded corpus App provides its own.
   let notice = $state('');
@@ -102,109 +90,59 @@
     commitQuery(inputValue.trim());
   }
 
-  async function load(profile: string, q: string, page = 1): Promise<void> {
-    if (q !== cacheQuery) {
-      cache = {};
-      cacheQuery = q;
-      countsQuery = null;
-    }
-    const id = ++requestId;
-    controller?.abort();
-    isLoading = false;
-    failed = false;
-    const cacheKey = `${profile}:${page}`;
-    if (cache[cacheKey]) {
-      if (profile === ALL) unionResponse = cache[cacheKey];
-      else activeResponse = cache[cacheKey];
-      return;
-    }
-    controller = new AbortController();
-    isLoading = true;
-    try {
-      if (profile === ALL) {
-        unionResponse = null;
-        const unionPromise = searchUnion(
-          bootstrap.endpoints.union,
-          { q, page, per_page: UNION_PER_PAGE },
-          controller.signal,
-        );
-        const countsPromise =
-          countsQuery === q
-            ? Promise.resolve(null)
-            : searchAll(
-                bootstrap.endpoints.search_all,
-                {
-                  profile: bootstrap.default_profile || profiles[0]?.name || '',
-                  q,
-                  per_page: 1,
-                  include_counts: true,
-                  record_query: false,
-                },
-                controller.signal,
-              );
-        const [merged, countResult] = await Promise.all([unionPromise, countsPromise]);
-        if (id !== requestId) return;
+  /**
+   * A corpus tab asks for the corpus state already in the URL (a deep link, or
+   * a card chip's hand-off): the embedded App then starts from this response
+   * instead of discarding it and searching again with the filters.
+   */
+  function corpusRequest(profile: string): CorpusRequest {
+    const meta = metaFor(profile);
+    const corpus = readUrlState(window.location.href, {
+      includeQuery: false,
+      defaultSort: meta?.default_sort ?? 'relevance',
+    });
+    const validSort = meta?.sort_options?.some((o) => o.value === corpus.sort)
+      ? corpus.sort
+      : meta?.default_sort;
+    return {
+      sort: validSort,
+      page: corpus.page,
+      per_page: meta?.per_page,
+      facets: meta?.facets,
+      filters: corpus.filters,
+      year_from: corpus.yearFrom,
+      year_to: corpus.yearTo,
+    };
+  }
+
+  // What the shell state turns into (lib/federatedResults.svelte.ts). A failed
+  // request shows a translated message and "Try again"; the detail is logged
+  // (api.ts), never shown.
+  // svelte-ignore state_referenced_locally
+  const results = createFederatedResults(
+    {
+      searchAll: (req, signal) => searchAll(bootstrap.endpoints.search_all, req, signal),
+      searchUnion: (req, signal) => searchUnion(bootstrap.endpoints.union, req, signal),
+    },
+    {
+      all: ALL,
+      unionPerPage: UNION_PER_PAGE,
+      maxPage: MAX_PAGE,
+      countsProfile: bootstrap.default_profile || profiles[0]?.name || '',
+      corpusRequest,
+      onUnionOverflow: (lastPage) => {
         // A stale link past the last page lands on the last one instead of an
         // empty list under a non-zero count.
-        const lastPage = Math.min(MAX_PAGE, Math.max(1, Math.ceil(merged.found / UNION_PER_PAGE)));
-        if (page > lastPage) {
-          syncUnionPage(lastPage);
-          unionPage = lastPage;
-          return;
-        }
-        unionResponse = merged;
-        cache[cacheKey] = merged;
-        if (q.trim() && merged.found > 0) rememberSearch(q);
-        if (countResult) {
-          counts = countResult.counts;
-          countsQuery = q;
-        }
-      } else {
-        activeResponse = null;
-        const meta = metaFor(profile);
-        // Ask for the corpus state already in the URL (a deep link, or a card
-        // chip's hand-off): the embedded App then starts from this response
-        // instead of discarding it and searching again with the filters.
-        const corpus = readUrlState(window.location.href, {
-          includeQuery: false,
-          defaultSort: meta?.default_sort ?? 'relevance',
-        });
-        const validSort = meta?.sort_options?.some((o) => o.value === corpus.sort)
-          ? corpus.sort
-          : meta?.default_sort;
-        const result = await searchAll(
-          bootstrap.endpoints.search_all,
-          {
-            profile,
-            q,
-            sort: validSort,
-            page: corpus.page,
-            per_page: meta?.per_page,
-            facets: meta?.facets,
-            filters: corpus.filters,
-            year_from: corpus.yearFrom,
-            year_to: corpus.yearTo,
-            include_counts: countsQuery !== q,
-          },
-          controller.signal,
-        );
-        if (id !== requestId) return;
-        activeResponse = result.active;
-        cache[cacheKey] = result.active;
-        if (Object.keys(result.counts).length) {
-          counts = result.counts;
-          countsQuery = q;
-        }
-      }
-    } catch (reason) {
-      if (id === requestId && (reason as Error).name !== 'AbortError') {
-        console.error('[dre-search] federated search failed', reason);
-        failed = true;
-      }
-    } finally {
-      if (id === requestId) isLoading = false;
-    }
-  }
+        syncUnionPage(lastPage);
+        unionPage = lastPage;
+      },
+    },
+  );
+  const counts = $derived(results.counts);
+  const unionResponse = $derived(results.unionResponse);
+  const activeResponse = $derived(results.activeResponse);
+  const isLoading = $derived(results.isLoading);
+  const failed = $derived(results.failed);
 
   // Track only what selects the request. load() reads countsQuery (and writes
   // state) before its first await; tracking that re-ran this effect when the
@@ -213,13 +151,13 @@
     const profile = activeProfile;
     const q = query;
     const page = activeProfile === ALL ? unionPage : 1;
-    if (bootstrap.available) untrack(() => void load(profile, q, page));
+    if (bootstrap.available) untrack(() => void results.load(profile, q, page));
   });
   $effect(() => {
     const remove = installSlashFocus(() => inputEl);
     return () => {
       remove();
-      controller?.abort();
+      results.abort();
       if (inputTimer !== null) clearTimeout(inputTimer);
       window.clearTimeout(noticeTimer);
     };
@@ -317,7 +255,7 @@
   }
   const activeMeta = $derived(metaFor(activeProfile));
   function retry(): void {
-    void load(activeProfile, query, activeProfile === ALL ? unionPage : 1);
+    void results.load(activeProfile, query, activeProfile === ALL ? unionPage : 1);
   }
   // This surface's one persistent status node: it speaks while the shell owns
   // the panel (loading, the merged list, a failure). Once a corpus's App is
@@ -338,7 +276,7 @@
             : '',
   );
   const count = (name: string): string =>
-    countsQuery === null ? '' : formatNumber(counts[name] ?? 0);
+    results.countsKnown ? formatNumber(counts[name] ?? 0) : '';
 </script>
 
 <div class="dre-fed">
