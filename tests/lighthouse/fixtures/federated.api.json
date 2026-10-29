@@ -1,0 +1,2242 @@
+{
+  "POST /dre-search/api/search-all": {
+    "available": true,
+    "counts": {
+      "research_items": 1179,
+      "research_projects": 9,
+      "research_publications": 36,
+      "research_podcasts": 43,
+      "research_videos": 65,
+      "research_people": 60,
+      "research_sections": 2,
+      "research_organisations": 10,
+      "research_genres": 5,
+      "research_languages": 0,
+      "research_locations": 3,
+      "research_subjects": 142
+    },
+    "active": {
+      "available": true,
+      "found": 1179,
+      "page": 1,
+      "hits": [
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "Review of Necessary Noise: Music, Film, and Charitable Imperialism in the East of Congo. Chérie Rivers Ndaliko, 2016. New York, NY: Oxford University Press. 30 b/w illustrations, bibliography, index, filmography, companion site, 285 pages.",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "Swanson, Carlehr"
+          ],
+          "date": 1677456000,
+          "description": "pages: 114-117",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "32260",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "East Africa",
+            "Music",
+            "Imperialism",
+            "Democratic Republic of the Congo"
+          ],
+          "tag_ss": [
+            "Charitable Imperialism",
+            "Film",
+            "African Music"
+          ],
+          "thumbnail_url": "/files/medium/0abb5b76088f79f3543147a3599eb587a73ee1a6.jpg",
+          "title": "Necessary Noise: Music, Film, and Charitable Imperialism in the East of Congo",
+          "type_s": "Text",
+          "year": 2023,
+          "_highlights": {
+            "abstract": [
+              "Review of Necessary Noise: Music, Film, and Charitable Imperialism in the East of"
+            ],
+            "subject_ss": [
+              "Music"
+            ],
+            "tag_ss": [
+              "African Music"
+            ],
+            "title": [
+              "Necessary Noise: Music, Film, and Charitable Imperialism in the East of Congo"
+            ]
+          }
+        },
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "Malian music is ubiquitous in world music. Indeed, Malian artists consistently appear more often and rank higher in world music record charts than artists of any other nationality. While the concept and industry of world music and the histories and workings of Malian music have been examined at length in the past, scholarship on the intersection of the two has been sparse. This article investigates how various marketing techniques and narrative tropes have been used to secure Mali’s on-going presence within world music. Tuareg essouf band Tinariwen is introduced as a specific case study to allow exploration into themes of audience familiarity and unfamiliarity; the use of wider narratives to promote music; and the role of cultural brokers in this process. Malian music can be considered ideal for the world music markets, with musical, narrative and political forces aligning in an optimal manner to facilitate the most effective strategies of marketing towards world music audiences. By studying the dominance of Malian music in world music, we can examine more clearly the mechanics of the industry, but also the attitudes and behaviours of the world music audience and the artistic, industrial and even institutional practices and processes that define world music as a whole.",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "Hickson, Jim"
+          ],
+          "date": 1646006400,
+          "description": "pages: 55-70",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "32245",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "Tuaregs",
+            "Audiences",
+            "World music",
+            "Marketing",
+            "Music",
+            "Mali"
+          ],
+          "tag_ss": [
+            "Music Industry",
+            "African Music"
+          ],
+          "thumbnail_url": "/files/medium/225ab22d5f432c2379ff8110f9bd9c459a9dd2a8.jpg",
+          "title": "Examining the success of Malian music as world music",
+          "type_s": "Text",
+          "year": 2022,
+          "_highlights": {
+            "abstract": [
+              "music can be considered ideal for the world music markets, with musical, narrative and political forces aligning in an optimal"
+            ],
+            "subject_ss": [
+              "World music",
+              "Music"
+            ],
+            "tag_ss": [
+              "Music Industry",
+              "African Music"
+            ],
+            "title": [
+              "Examining the success of Malian music as world music"
+            ]
+          }
+        },
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "Afrikaans protest music influenced by rock has received a substantial degree of academic attention in recent years. While significant, the emphasis on Afrikaans protest music has left Afrikaans pop music largely unexamined. As this genre enjoys wide popularity amongst Afrikaners, this article considers this lacuna in academic inquiry. Afrikaans pop music is widely consumed in South Africa and is a major part of its music industry. In this article, I bring into focus how a strand of music, that might seem to avoid meaningful dialogue through superficial lyrics, forms part of an Afrikaner subculture and a strategy to preserve identity, norms, and values. In particular, I argue for a wider contextual understanding of music and the limitations of lyrical analysis to produce meaningful insight into music’s role in enabling participants to negotiate identity and place. Drawing on fieldwork conducted at Presley’s, a night club in Pretoria, I elucidate this process through the dialogue between Afrikaans music and sokkie dance.",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "Holtzhausen, Cornelius A."
+          ],
+          "date": 1606780800,
+          "description": "pages: 25-40",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "32135",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "Music",
+            "Dance",
+            "South Africa",
+            "Ethnomusicology",
+            "Pretoria",
+            "Popular music",
+            "Protest songs"
+          ],
+          "tag_ss": [
+            "Afrikaans",
+            "Sokkie Dance",
+            "Identity",
+            "African Music"
+          ],
+          "thumbnail_url": "/files/medium/9feef0d82720bba150ed3ef71b6558ae8b414768.jpg",
+          "title": "SOKKIE DANCING IN PRETORIA: POPULAR AFRIKAANS MUSIC, DANCE, AND IDENTITY",
+          "type_s": "Text",
+          "year": 2020,
+          "_highlights": {
+            "abstract": [
+              "Afrikaans protest music influenced by rock has received a substantial degree"
+            ],
+            "subject_ss": [
+              "Music",
+              "Popular music"
+            ],
+            "tag_ss": [
+              "African Music"
+            ],
+            "title": [
+              "SOKKIE DANCING IN PRETORIA: POPULAR AFRIKAANS MUSIC, DANCE, AND IDENTITY"
+            ]
+          }
+        },
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "Drawing from ethnographic fieldwork done mainly in the Saharawi refugee camps and the development of \"Portraits of Saharawi Music” (2013—2014), a collaborative music archiving and research project in partnership with the British Library and the Saharawi Ministry of Culture, this article analyses issues in the political realities for Saharawi refugees from the perspective of the musicians and the cultural authorities in the refugee camps. In addition, it explores methodological and ethical issues derived from the uses of political and cultural activism as an ethnomusicological research method. It examines the interactions of the ideologies, motivations and personal relationships of the researcher, the musicians and the institutions involved in this recording project, focusing on the selection of repertoire as an activist act and the impact of doing advocacy research on an extremely vulnerable social group as the Saharawi refugee community. In agreement with basic principles of social responsibility of academia, it supports the role of \"activist researcher”; but it cautions that it is essential for researchers to understand how relations of knowledge and power are produced, perpetuated, and challenged in specific situations of conflict, in order to turn their research into a true collaborative action.",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "Posada, Violeta Ruano"
+          ],
+          "date": 1477958400,
+          "description": "pages: 109-125",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "31863",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "Sahrawi (African people)",
+            "Music",
+            "Ethnomusicology",
+            "Refugees"
+          ],
+          "tag_ss": [
+            "Sahrawi Refugee Camps",
+            "Sahrawi Ministry of Culture",
+            "African Music",
+            "Sahrawi Music",
+            "Western Sahara",
+            "British Library"
+          ],
+          "thumbnail_url": "/files/medium/b930c558ca5f1c476153406df157b26b2fa97fdc.jpg",
+          "title": "PORTRAITS OF SAHARAWI MUSIC: WHEN CULTURAL PRESERVATION MEETS POLITICAL ACTIVISM",
+          "type_s": "Text",
+          "year": 2016,
+          "_highlights": {
+            "abstract": [
+              "camps and the development of \"Portraits of Saharawi Music” (2013—2014), a collaborative music archiving and research project"
+            ],
+            "subject_ss": [
+              "Music"
+            ],
+            "tag_ss": [
+              "African Music",
+              "Sahrawi Music"
+            ],
+            "title": [
+              "PORTRAITS OF SAHARAWI MUSIC: WHEN CULTURAL PRESERVATION MEETS POLITICAL ACTIVISM"
+            ]
+          }
+        },
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "This article explores the ways in which musical practices have become a site for the\nenactment of particular notions of 'productive' citizenship in the humanitarian work of two non-governmental organizations (NGOs) in Uganda - Watoto Child Care Ministries and Uganda Heritage Roots. It also highlights how the global connections forged by the two NGOs have impacted the music-making practices that are central to the organizations' aid-provision mandates. Ultimately, as it will be argued here, these global connections inform the conceptions held by the two organizations of how a 'productive' citizen of Uganda should carry him/herself.",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "Mugishagwe, Allan"
+          ],
+          "date": 1414800000,
+          "description": "pages: 72-90",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "31699",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "Music",
+            "Uganda"
+          ],
+          "tag_ss": [
+            "African Music",
+            "Humanitarian Work"
+          ],
+          "thumbnail_url": "/files/medium/fb11a7d91d9b2372246331eb255fc9d2316c3d69.jpg",
+          "title": "Music and notions of citizenship in the humanitarian work of two NGOs in Uganda",
+          "type_s": "Text",
+          "year": 2014,
+          "_highlights": {
+            "abstract": [
+              "This article explores the ways in which musical practices have become a site for the\nenactment"
+            ],
+            "subject_ss": [
+              "Music"
+            ],
+            "tag_ss": [
+              "African Music"
+            ],
+            "title": [
+              "Music and notions of citizenship in the humanitarian work of two NGOs in Uganda"
+            ]
+          }
+        },
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "The goal of this article is to provide a mediated experience of Dagbamba women's music and dance and to share some of the most rewarding aspects of fieldwork where music, dance, friendship, chance, and circumstance have all converged to illuminate particular moments of advocacy among women. While many Dagbamba women (and men) are Muslim, ancestral worship, herbalism, and spirit possession all coexist along with 'modern' medicine, Christianity, the internet, satellite TV, and cell phones. This article aims to highlight how women's music and dance interact within this complex cultural milieu by examining issues found in and around the music itself. This article argues that women's involvement with singing and dancing can create a transformative space where advocacy, agency, catharsis, and social critique can all take place. Several questions are of particular interest, including: What are the female roles in music and dance around Tamale? What kind of knowledge or critique is passed on or expressed through song? How does music create a transformative space for women in Tamale?",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "Stuffelbeam, Katharine"
+          ],
+          "date": 1354233600,
+          "description": "pages: 154-169",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "31489",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "Dance",
+            "Music",
+            "Women",
+            "Ghana"
+          ],
+          "tag_ss": [
+            "African Music",
+            "Dagbon"
+          ],
+          "thumbnail_url": "/files/medium/86139c8b3e7b1078a11faf8e52c1d57babfed9a3.jpg",
+          "title": "Performing advocacy: women's music and dance in Dagbon, northern Ghana",
+          "type_s": "Text",
+          "year": 2012,
+          "_highlights": {
+            "abstract": [
+              "provide a mediated experience of Dagbamba women's music and dance and to share some of the"
+            ],
+            "subject_ss": [
+              "Music"
+            ],
+            "tag_ss": [
+              "African Music"
+            ],
+            "title": [
+              "Performing advocacy: women's music and dance in Dagbon, northern Ghana"
+            ]
+          }
+        },
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "Elsewhere, I argue that the implementation of the quota system in higher education in the 1960s was one of the catalysts for the rise of a large new generation of musicians and musical ensembles in Zaire during the first decade of the Second Republic. In the same source I assert that the musical style of the younger generation of musicians was laden with borrowings of phrasing referents (time-line patterns) and melodic formulae from ethnic music. Unlike the first, the last two decades of the Second Republic, stigmatized by the sagging economy and die decadence of the political structure, sent a series of negative impacts to all facets of the national life, culminating in the closing of the chapter on President Mobutu's thirty-two year regime (May 20, 1965 through May 17, 1997). The failed attempt by the government to eradicate tribalism reinforced instead ethnic consciousness, whose lasting effect continues to be felt well after the May 17 liberation. While becoming indifferent to the political regime and its leadership, musicians remained faithful to their respective ethnic traditions, and reflected this ethnic awareness in the newly established style. These two realities prevailed during the last two decades of the Second Republic as sources of inspiration as the situation compounded.",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "wa Mukuna, Kazadi"
+          ],
+          "date": 943920000,
+          "description": "pages: 73-87",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "30982",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "Music",
+            "Democratic Republic of the Congo"
+          ],
+          "tag_ss": [
+            "African Music",
+            "Urban Music",
+            "Zaire"
+          ],
+          "thumbnail_url": "/files/medium/0962dbdf869ea0abae7ed44d361c58b63d790a84.jpg",
+          "title": "The evolution of urban music in Democratic Republic of the Congo during the 2nd and 3rd decades (1975-1995) of the Second Republic-Zaire",
+          "type_s": "Text",
+          "year": 1999,
+          "_highlights": {
+            "abstract": [
+              "the rise of a large new generation of musicians and musical ensembles in Zaire during the first decade of"
+            ],
+            "subject_ss": [
+              "Music"
+            ],
+            "tag_ss": [
+              "African Music",
+              "Urban Music"
+            ],
+            "title": [
+              "The evolution of urban music in Democratic Republic of the Congo during the 2nd and 3rd decades (1975-1995) of the Second Republic-Zaire"
+            ]
+          }
+        },
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "Three salient characteristics observed in recorded music in Botswana have been of particular interest to me during four years of music research in this country — carried out in the Kgatleng, Kweneng and Kgalagadi Districts. These are (1) the use of metaphor in the initiation song, (2) the appearance of the five-tone scale in Tswana traditional songs and (3) the presence of the four-tone scale in Basarwa (Bushman) songs and some of their instrumental music.",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "Wood, Elizabeth N."
+          ],
+          "date": 426816000,
+          "description": "pages: 107-114",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "29754",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "Metaphor",
+            "Music",
+            "Botswana"
+          ],
+          "tag_ss": [
+            "African Music",
+            "Traditional Music"
+          ],
+          "thumbnail_url": "/files/medium/59b6655cb8faf3b54ad900da5900289f711bc9c6.jpg",
+          "title": "The use of metaphor and certain scale patterns in traditional music of Botswana",
+          "type_s": "Text",
+          "year": 1983,
+          "_highlights": {
+            "abstract": [
+              "Three salient characteristics observed in recorded music in Botswana have been of particular interest to"
+            ],
+            "subject_ss": [
+              "Music"
+            ],
+            "tag_ss": [
+              "African Music",
+              "Traditional Music"
+            ],
+            "title": [
+              "The use of metaphor and certain scale patterns in traditional music of Botswana"
+            ]
+          }
+        },
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "Between November 1979 and April 1980, as part of a trip including several other African countries, I spent 5 months in Kenya. One of the musical projects that I planned to carry out during my stay was to study the guitar finger-styles that were common during the ’50s and ’60s. I did this by contacting Kenyan guitarists who used to play in this style, and by learning to play and sing their songs, as well as by making tape-recordings. In the course of this work I talked a lot with these artists and learned a great deal about their lives and the development of guitar music in Kenya. Although it had not been my original plan to do so, I eventually collected enough information to form the basis of an article on this subject. This information was provided by Joshua Ombima; William Umbima; William Osale; Johnson Ouko; David Jairo; George Agade; Jim Lasco Mugodo; Henry Viduyu; Tobias Oyugi; Daudi Kabaka; David Amunga; Ben Obolla; Fundi Konde; Peter Colmore; Silas Muiruri and Mtonga Wanganangu, without whose generous help this article could never have been written. I should add that, with the exception of the last four named, all my informants belong to either the Luhya or Luo people of Western Kenya. The article therefore has a definite bias towards Western Kenya, the home of so much fine Kenyan guitar music.",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "Low, John"
+          ],
+          "date": 394848000,
+          "description": "pages: 17-36",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "29690",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "Music",
+            "Kenya"
+          ],
+          "tag_ss": [
+            "African Music",
+            "Guitar Music"
+          ],
+          "thumbnail_url": "/files/medium/e853269ee4760fcf196746f883564a45e619593b.jpg",
+          "title": "A history of Kenyan guitar music: 1945-1980",
+          "type_s": "Text",
+          "year": 1982,
+          "_highlights": {
+            "abstract": [
+              "spent 5 months in Kenya. One of the musical projects that I planned to carry out during"
+            ],
+            "subject_ss": [
+              "Music"
+            ],
+            "tag_ss": [
+              "African Music",
+              "Guitar Music"
+            ],
+            "title": [
+              "A history of Kenyan guitar music: 1945-1980"
+            ]
+          }
+        },
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "Among the Ewe-speaking people of southeastern Ghana, southern Togoland and southern Dahomey, there are different kinds of music. We have narrative songs, war songs, cradle songs, dirges, play songs, and even chorales (which are foreign to our culture). Along with these one can find different types of cult music belonging to the local rites of worship of the gods, and court music. In African societies, music incorporates dance; therefore music in this paper refers to the drumming, singing, and dancing of the dance clubs",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "Ladzekpo, Kobla"
+          ],
+          "date": 47692800,
+          "description": "pages: 6-22",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "29286",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "Music",
+            "Ethnomusicology",
+            "Anlo (African people)",
+            "Societies",
+            "Dance",
+            "Ghana"
+          ],
+          "tag_ss": [
+            "Social Life",
+            "Social Customs",
+            "African Music"
+          ],
+          "thumbnail_url": "/files/medium/ea53f0db9bf85acb9cb8a58ac7e521535bb80e98.jpg",
+          "title": "The social mechanics of good music: a description of dance clubs among the Anlo Ewe-speaking people of Ghana",
+          "type_s": "Text",
+          "year": 1971,
+          "_highlights": {
+            "abstract": [
+              "and southern Dahomey, there are different kinds of music. We have narrative songs, war songs, cradle songs,"
+            ],
+            "subject_ss": [
+              "Music"
+            ],
+            "tag_ss": [
+              "African Music"
+            ],
+            "title": [
+              "The social mechanics of good music: a description of dance clubs among the Anlo Ewe-speaking people of Ghana"
+            ]
+          }
+        },
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "Over a period of many years musicologists have interested themselves in the Akadinda and Amadinda techniques of the Ganda people and a growing number of published articles give mention of, or are devoted to these two instruments. In a sense, the aims of this paper are similar to those stated by Kubik, namely \"to show by what factors the individual parts of Kiganda xylophone music are predetermined and to what extent they are interdependent”. My approach, however, will be to compare the internal structure of the xylophone parts with known song texts which are related to them. I hope to demonstrate that the instrumental structures are closely related to the musico-phonological structures of the songs. I believe that such a relationship will be found inherent to all tuned instrument styles in Ganda culture and hope that this paper will contribute further to our understanding of this rich field of musical activity.",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "Cooke, Peter"
+          ],
+          "date": 18662400,
+          "description": "pages: 62-80",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "29213",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "Music",
+            "Ganda (African people)",
+            "Ethnomusicology",
+            "Musical instruments",
+            "Xylophone",
+            "Xylophone music"
+          ],
+          "tag_ss": [
+            "African Music"
+          ],
+          "thumbnail_url": "/files/medium/b419d47abd0fc6838247904f6286169a0143cb70.jpg",
+          "title": "Ganda xylophone music: another approach",
+          "type_s": "Text",
+          "year": 1970,
+          "_highlights": {
+            "abstract": [
+              "Over a period of many years musicologists have interested themselves in the Akadinda and Amadinda"
+            ],
+            "subject_ss": [
+              "Music",
+              "Musical instruments",
+              "Xylophone music"
+            ],
+            "tag_ss": [
+              "African Music"
+            ],
+            "title": [
+              "Ganda xylophone music: another approach"
+            ]
+          }
+        },
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "The somewhat scanty literature on Tuareg music sometimes adopts contrary attitudes in regard to the problem of foreign influences. Holiday1 makes a rough division of the Ahaggar Tuareg songs into those showing negro influence and those with Moorish characteristics, without offering a closer definition of the term Moorish. However, it probably stands for the Maghreb blend of Berber-Arabian culture. Zoehrer, on the other hand, states that the Tuareg songs and airs must be clearly distinguished from those of the Arabs in North Africa and those of the Haussa in the South, that the Tuareg are still singing today (1935) almost exclusively their own original songs and that with very few exceptions they have made no musical borrowings of any kind from their Islamic neighbours to the north and south. Nikiprowetzky lists some characteristics of the Tuareg music of the Air, which are of Middle Eastern origin, but he, too, emphasizes the strict independence of the Tuareg music and its Berber origins. Lhote on the other hand notes the similarity between the Tuareg music and that of certain Berber tribes in the Atlas mountains and evidently relying on Hornbostel-Lachmann he considers certain analogies between this Berber music and South-Arabian music.",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "Foedermayr, Franz"
+          ],
+          "date": -97459200,
+          "description": "pages: 25-37",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "28897",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "Music",
+            "Tuaregs",
+            "Ethnomusicology"
+          ],
+          "tag_ss": [
+            "African Music",
+            "Arab Influences"
+          ],
+          "thumbnail_url": "/files/medium/fd9455ff3094d10013ca3e72a63fa3484254c176.jpg",
+          "title": "The Arabian influence in the Taureg music",
+          "type_s": "Text",
+          "year": 1966,
+          "_highlights": {
+            "abstract": [
+              "The somewhat scanty literature on Tuareg music sometimes adopts contrary attitudes in regard to the"
+            ],
+            "subject_ss": [
+              "Music"
+            ],
+            "tag_ss": [
+              "African Music"
+            ],
+            "title": [
+              "The Arabian influence in the Taureg music"
+            ]
+          }
+        },
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "Ennatiga (harp) music, Amadinda (xylophone) music, and the music of the royal twelve- drum instrument Entenga form one complex within the musical traditions of the kingdom of Buganda. The same songs are performed on these three instruments, but while harp playing is always basis and accompaniment of a voice part, Amadinda and Entenga are purely instrumental representations of the same songs. The tune (= the voice part, as sung in the harp version) can, however, be recognized in the instrumental settings.\r\nMost authors and musicians in Buganda (Kyagambiddwa, Muyinda, Sempebwa, etc.) agree that music of the type heard on the Amadinda and Entenga was originally composed as harp music, and later transferred to these instruments. The harpists pattern was . . . . broken up into two parts and each part is allocated to one of the (two) players of the madinda. The madinda players then produce the same song as played on the bow harp, and the idea is that that should be recognizable as the song which was produced in the first instance by the voice. . . . The primary instrument is the voice. (Sempebwa in the discussion part of G. Kubik: Xylophone Playing in Southern Uganda).",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "Kubik, Gerhard"
+          ],
+          "date": -97459200,
+          "description": "pages: 21-24",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "28893",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "Ethnomusicology",
+            "Music",
+            "Harp music",
+            "Ganda (African people)",
+            "Uganda"
+          ],
+          "tag_ss": [
+            "African Music"
+          ],
+          "thumbnail_url": "/files/medium/f323f68e67a33db251c6e1ff46e909a7d188b4c8.jpg",
+          "title": "Ennanga music",
+          "type_s": "Text",
+          "year": 1966,
+          "_highlights": {
+            "abstract": [
+              "recognized in the instrumental settings.\r\nMost authors and musicians in Buganda (Kyagambiddwa, Muyinda, Sempebwa, etc.) agree that music of the type heard on the Amadinda and"
+            ],
+            "subject_ss": [
+              "Music",
+              "Harp music"
+            ],
+            "tag_ss": [
+              "African Music"
+            ],
+            "title": [
+              "Ennanga music"
+            ]
+          }
+        },
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "The population of Ankole is mainly composed of three ethnic groups: the Hima, the owners of the long-horned cattle; the Iru, whose rural economy is that of peasant cultivation; and a minority of Kiga farmers who, because of over-population, emigrated from Kigezi and have made their homes in Ankole. Each group has its own traditional music, and despite considerable variation, there are several common characteristics. Only instrumental music is to be discussed in this paper, and so I shall confine myself to the most important instrumental music of the three ethnic groups living in Ankole: the Hima, the Iru and the Kiga.",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "Van Thiel, Paul"
+          ],
+          "date": -97459200,
+          "description": "pages: 6-20",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "28890",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "Music",
+            "Musical instruments",
+            "Hima (African people)",
+            "Ethnomusicology",
+            "Chiga (African people)",
+            "Uganda"
+          ],
+          "tag_ss": [
+            "Ankole",
+            "Iru (African people)",
+            "African Music"
+          ],
+          "thumbnail_url": "/files/medium/41032a4161740f0db697f30c7fd9a5c92c396315.jpg",
+          "title": "The music of Ankole: the Sheegu pipeband, and the regalia of the royal drum \"Bagyendanwa\"",
+          "type_s": "Text",
+          "year": 1966,
+          "_highlights": {
+            "abstract": [
+              "in Ankole. Each group has its own traditional music, and despite considerable variation, there are several common"
+            ],
+            "subject_ss": [
+              "Music",
+              "Musical instruments"
+            ],
+            "tag_ss": [
+              "African Music"
+            ],
+            "title": [
+              "The music of Ankole: the Sheegu pipeband, and the regalia of the royal drum \"Bagyendanwa\""
+            ]
+          }
+        },
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "For many years it has been felt that one of the more important advances in African cultural affairs would be to codify the logic which lies behind the creation of indigenous styles of music and thus to bring it naturally, without prejudice, into the realm of African education.",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "Tracey, Hugh"
+          ],
+          "date": -97459200,
+          "description": "pages: 64-65",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "28868",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "Ethnomusicology",
+            "Music",
+            "Textbooks",
+            "Africa"
+          ],
+          "tag_ss": [
+            "African Music"
+          ],
+          "thumbnail_url": "/files/medium/85206ca66b167adf47c532b522df853772abd71a.jpg",
+          "title": "The Text Book Project for African Music",
+          "type_s": "Text",
+          "year": 1966,
+          "_highlights": {
+            "abstract": [
+              "lies behind the creation of indigenous styles of music and thus to bring it naturally, without prejudice,"
+            ],
+            "subject_ss": [
+              "Music"
+            ],
+            "tag_ss": [
+              "African Music"
+            ],
+            "title": [
+              "The Text Book Project for African Music"
+            ]
+          }
+        },
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "Last year I showed the sections in the music of Babemba according to the different classes of life, and how I could adapt each section into the church. This year I shall only talk about music performances in Bembaland and a little theory of how a song runs. Bemba music is not a melodious one. I mean we do not exercise melody always very much. But it is there. Bemba music is exercised mainly for two things teaching and rhythm.",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "Lunsonga, Cajetan"
+          ],
+          "date": -142992000,
+          "description": "pages: 26-28",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "28820",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "Church music",
+            "Music",
+            "Bemba (African people)",
+            "Ethnomusicology",
+            "Zambia"
+          ],
+          "tag_ss": [
+            "Social Life",
+            "Social Customs",
+            "African Music"
+          ],
+          "thumbnail_url": "/files/medium/259d336a46a258a3bed9de281422c809df92f936.jpg",
+          "title": "Bemba music. Extract from a lecture by Cajetan Lunsonga (Given at the Mindolo, All-African Music Conference 1965)",
+          "type_s": "Text",
+          "year": 1965,
+          "_highlights": {
+            "abstract": [
+              "Last year I showed the sections in the music of Babemba according to the different classes of"
+            ],
+            "subject_ss": [
+              "Church music",
+              "Music"
+            ],
+            "tag_ss": [
+              "African Music"
+            ],
+            "title": [
+              "Bemba music. Extract from a lecture by Cajetan Lunsonga (Given at the Mindolo, All-African Music Conference 1965)"
+            ]
+          }
+        },
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "The kalumbu or musical bow is probably found more often than any other indigenous instrument in Zambia. I have been able to make a careful study of several of these instruments and there are many points of interest both in the tuning and general layout of the music. Two of my players used a large bow which they said was peculiar to the Ila people. The calabash resonator is from some kind of pumpkin which they call kankuli. The instrument can be tuned by moving the calabash, which is attached to a piece of wire acting as bridge, up or down the stick.",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "Davidson, Marjory"
+          ],
+          "date": -142992000,
+          "description": "pages: 18-25",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "28816",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "Ethnomusicology",
+            "Mbira",
+            "Music",
+            "Musical instruments",
+            "Mbira music",
+            "Zambia"
+          ],
+          "tag_ss": [
+            "African Music"
+          ],
+          "thumbnail_url": "/files/medium/74e782d2774f57fc2ffd36c4664dab4b46aca762.jpg",
+          "title": "Some music for the Kalumbu",
+          "type_s": "Text",
+          "year": 1965,
+          "_highlights": {
+            "abstract": [
+              "The kalumbu or musical bow is probably found more often than any"
+            ],
+            "subject_ss": [
+              "Music",
+              "Musical instruments",
+              "Mbira music"
+            ],
+            "tag_ss": [
+              "African Music"
+            ],
+            "title": [
+              "Some music for the Kalumbu"
+            ]
+          }
+        },
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "I visited many parts of Uganda, with the exception of West Nile, and almost everywhere I was struck by the vitality of musical traditions. Even the music played on Western instruments was usually African in idiom. There is, however, an urgent need to co-ordinate research into Ugandan music; to ensure that efficient methods and high standards of scholarship are maintained; to centralize research materials, so that they are readily available to students; and above all to utilize to the full the talents and enthusiasm of the many Ugandans who have already begun to investigate their own music.",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "Blacking, John"
+          ],
+          "date": -142992000,
+          "description": "pages: 14-17",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "28812",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "Ethnomusicology",
+            "Research",
+            "Music",
+            "Musicology",
+            "Uganda"
+          ],
+          "tag_ss": [
+            "African Music"
+          ],
+          "thumbnail_url": "/files/medium/12d7d8122d6f7edfee95269aa73f2d5a3c272a8f.jpg",
+          "title": "Music in Uganda",
+          "type_s": "Text",
+          "year": 1965,
+          "_highlights": {
+            "abstract": [
+              "everywhere I was struck by the vitality of musical traditions. Even the music played on Western instruments was usually African in"
+            ],
+            "subject_ss": [
+              "Music",
+              "Musicology"
+            ],
+            "tag_ss": [
+              "African Music"
+            ],
+            "title": [
+              "Music in Uganda"
+            ]
+          }
+        },
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "The musical scene in Nigeria today is a study in contrast. The venue may be the concert hall or the village square. The performer may be musically illiterate, semi-illiterate or a graduate from a conservatory or university. The duration of the performance may vary from the three or five minutes spot on NBC or ENTV to the one-week Igue festival of the Benin people. Unity through diversity: This is music in Nigeria today.",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "Edet, Edna M."
+          ],
+          "date": -142992000,
+          "description": "pages: 77-79",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "28797",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "Music",
+            "Ethnomusicology",
+            "Education",
+            "Nigeria"
+          ],
+          "tag_ss": [
+            "Nsukka",
+            "African Music"
+          ],
+          "thumbnail_url": "/files/medium/d97f1aced63ee8898cff9b21d141d034899d40e1.jpg",
+          "title": "University of Nigeria, Nsukka, Department of Music. Bulletin 1961-1965",
+          "type_s": "Text",
+          "year": 1965,
+          "_highlights": {
+            "abstract": [
+              "The musical scene in Nigeria today is a study in"
+            ],
+            "subject_ss": [
+              "Music"
+            ],
+            "tag_ss": [
+              "African Music"
+            ],
+            "title": [
+              "University of Nigeria, Nsukka, Department of Music. Bulletin 1961-1965"
+            ]
+          }
+        },
+        {
+          "_kind": "item",
+          "_profile": "research_items",
+          "abstract": "In the last five years there has been a growing interest in Kiganda music and particularly in Kiganda xylophone playing. When the first Akadinda and Amadinda scores were published by the African Music Society in 1960,1 did not expect to find that within so such a short period so many people would take up the art of the Kiganda xylophone as a subject c f serious musical practice. Many of these young musicians have never been to Uganda and some of them have never even heard this music on a recording.",
+          "country_ss": [
+            "South Africa"
+          ],
+          "creator_ss": [
+            "Kubik, Gerhard"
+          ],
+          "date": -142992000,
+          "description": "pages: 71-72",
+          "digitisation_ss": [
+            "Digital",
+            "born digital"
+          ],
+          "id": "28785",
+          "language_ss": [
+            "English"
+          ],
+          "origin_ss": [
+            "South Africa"
+          ],
+          "project_s": "International Library of African Music",
+          "provenance_ss": [
+            "Rhodes University"
+          ],
+          "subject_ss": [
+            "Ethnomusicology",
+            "Music",
+            "Xylophone music",
+            "Ganda (African people)",
+            "Musical instruments",
+            "Xylophone",
+            "Uganda"
+          ],
+          "tag_ss": [
+            "African Music"
+          ],
+          "thumbnail_url": "/files/medium/fffa14f83ef1b4418d9d3e61f55ade00ce5760fd.jpg",
+          "title": "Towards a text book of Kiganda music",
+          "type_s": "Text",
+          "year": 1965,
+          "_highlights": {
+            "abstract": [
+              "Kiganda xylophone as a subject c f serious musical practice. Many of these young musicians have never been to Uganda and some of"
+            ],
+            "subject_ss": [
+              "Music",
+              "Xylophone music",
+              "Musical instruments"
+            ],
+            "tag_ss": [
+              "African Music"
+            ],
+            "title": [
+              "Towards a text book of Kiganda music"
+            ]
+          }
+        }
+      ],
+      "facets": [
+        {
+          "field": "type_s",
+          "label": "Type",
+          "counts": [
+            {
+              "value": "Text",
+              "count": 981
+            },
+            {
+              "value": "Audio",
+              "count": 154
+            },
+            {
+              "value": "Moving image",
+              "count": 39
+            },
+            {
+              "value": "Image",
+              "count": 4
+            },
+            {
+              "value": "Digital",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "field": "project_s",
+          "label": "Project",
+          "counts": [
+            {
+              "value": "International Library of African Music",
+              "count": 1029
+            },
+            {
+              "value": "Beyond the \"Digital Return\": \"New Heritage/s,\" Sustainability, and the Decolonisation of Music Archives in South Africa, Kenya, and Ghana",
+              "count": 96
+            },
+            {
+              "value": "African Knowledges and the History Publication since the 1970s",
+              "count": 39
+            },
+            {
+              "value": "Rethinking the \"Informal\" and Mainstreaming African Popular Arts and Entertainment",
+              "count": 10
+            },
+            {
+              "value": "Bayreuth Global/Bayreuth Postkolonial",
+              "count": 3
+            },
+            {
+              "value": "The Pre-Death Bequest of Gerd Spittler",
+              "count": 2
+            }
+          ]
+        },
+        {
+          "field": "origin_ss",
+          "label": "Place of origin",
+          "counts": [
+            {
+              "value": "South Africa",
+              "count": 1029
+            },
+            {
+              "value": "Ghana",
+              "count": 68
+            },
+            {
+              "value": "Monrovia",
+              "count": 39
+            },
+            {
+              "value": "Nigeria",
+              "count": 28
+            },
+            {
+              "value": "Lagos",
+              "count": 10
+            },
+            {
+              "value": "Timia",
+              "count": 2
+            },
+            {
+              "value": "Germany",
+              "count": 2
+            },
+            {
+              "value": "Bavaria",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "field": "country_ss",
+          "label": "Country",
+          "counts": [
+            {
+              "value": "South Africa",
+              "count": 1029
+            },
+            {
+              "value": "Ghana",
+              "count": 68
+            },
+            {
+              "value": "Liberia",
+              "count": 39
+            },
+            {
+              "value": "Nigeria",
+              "count": 38
+            },
+            {
+              "value": "Germany",
+              "count": 3
+            },
+            {
+              "value": "Niger",
+              "count": 2
+            }
+          ]
+        },
+        {
+          "field": "provenance_ss",
+          "label": "Current location",
+          "counts": [
+            {
+              "value": "Rhodes University",
+              "count": 1029
+            },
+            {
+              "value": "Ghana Broadcasting Corporation Gramophone Library",
+              "count": 96
+            },
+            {
+              "value": "University of Bayreuth",
+              "count": 43
+            },
+            {
+              "value": "Institute of African and Diaspora Studies (IADS)",
+              "count": 10
+            }
+          ]
+        },
+        {
+          "field": "language_ss",
+          "label": "Language",
+          "counts": [
+            {
+              "value": "English",
+              "count": 1007
+            },
+            {
+              "value": "Yoruba",
+              "count": 24
+            },
+            {
+              "value": "Twi",
+              "count": 22
+            },
+            {
+              "value": "Ewe",
+              "count": 19
+            },
+            {
+              "value": "Fanti",
+              "count": 18
+            },
+            {
+              "value": "French",
+              "count": 15
+            },
+            {
+              "value": "Ga",
+              "count": 10
+            },
+            {
+              "value": "German",
+              "count": 5
+            },
+            {
+              "value": "Igbo",
+              "count": 3
+            },
+            {
+              "value": "Nigerian Pidgin",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "field": "subject_ss",
+          "label": "Subject",
+          "counts": [
+            {
+              "value": "Ethnomusicology",
+              "count": 249
+            },
+            {
+              "value": "Music",
+              "count": 161
+            },
+            {
+              "value": "Musical instruments",
+              "count": 96
+            },
+            {
+              "value": "Africa",
+              "count": 63
+            },
+            {
+              "value": "Highlife (Music)",
+              "count": 55
+            },
+            {
+              "value": "South Africa",
+              "count": 50
+            },
+            {
+              "value": "Nigeria",
+              "count": 41
+            },
+            {
+              "value": "Yoruba (African people)",
+              "count": 35
+            },
+            {
+              "value": "Zimbabwe",
+              "count": 34
+            },
+            {
+              "value": "Ghana",
+              "count": 33
+            },
+            {
+              "value": "Dance",
+              "count": 28
+            },
+            {
+              "value": "Uganda",
+              "count": 26
+            },
+            {
+              "value": "Ewe (African people)",
+              "count": 25
+            },
+            {
+              "value": "Yoruba language",
+              "count": 24
+            },
+            {
+              "value": "Akan (African people)",
+              "count": 24
+            },
+            {
+              "value": "Twi language",
+              "count": 22
+            },
+            {
+              "value": "Blues (Music)",
+              "count": 20
+            },
+            {
+              "value": "Education",
+              "count": 19
+            },
+            {
+              "value": "Ewe language",
+              "count": 19
+            },
+            {
+              "value": "Fanti (African people)",
+              "count": 19
+            },
+            {
+              "value": "Mbira",
+              "count": 18
+            },
+            {
+              "value": "Mbira music",
+              "count": 18
+            },
+            {
+              "value": "Fanti language",
+              "count": 18
+            },
+            {
+              "value": "Drum",
+              "count": 16
+            },
+            {
+              "value": "Singing",
+              "count": 16
+            },
+            {
+              "value": "Xylophone",
+              "count": 16
+            },
+            {
+              "value": "Zambia",
+              "count": 15
+            },
+            {
+              "value": "History",
+              "count": 15
+            },
+            {
+              "value": "Religion",
+              "count": 15
+            },
+            {
+              "value": "Kenya",
+              "count": 14
+            },
+            {
+              "value": "Malawi",
+              "count": 14
+            },
+            {
+              "value": "Songs",
+              "count": 13
+            },
+            {
+              "value": "Angola",
+              "count": 13
+            },
+            {
+              "value": "Folk music",
+              "count": 13
+            },
+            {
+              "value": "Christianity",
+              "count": 13
+            },
+            {
+              "value": "Book reviews",
+              "count": 13
+            },
+            {
+              "value": "Popular music",
+              "count": 13
+            },
+            {
+              "value": "Arts",
+              "count": 12
+            },
+            {
+              "value": "Drum music",
+              "count": 12
+            },
+            {
+              "value": "Central Africa",
+              "count": 12
+            },
+            {
+              "value": "Xylophone music",
+              "count": 12
+            },
+            {
+              "value": "Mozambique",
+              "count": 11
+            },
+            {
+              "value": "Aesthetics",
+              "count": 11
+            },
+            {
+              "value": "Performance",
+              "count": 11
+            },
+            {
+              "value": "Gospel music",
+              "count": 11
+            },
+            {
+              "value": "Choirs (Music)",
+              "count": 11
+            },
+            {
+              "value": "Ga (African people)",
+              "count": 11
+            },
+            {
+              "value": "Shona (African people)",
+              "count": 11
+            },
+            {
+              "value": "Scholars",
+              "count": 10
+            },
+            {
+              "value": "Criticism",
+              "count": 10
+            },
+            {
+              "value": "West Africa",
+              "count": 10
+            },
+            {
+              "value": "Ga language",
+              "count": 10
+            },
+            {
+              "value": "Ritual",
+              "count": 8
+            },
+            {
+              "value": "Tanzania",
+              "count": 8
+            },
+            {
+              "value": "Musicians",
+              "count": 8
+            },
+            {
+              "value": "Jazz",
+              "count": 7
+            },
+            {
+              "value": "Lesotho",
+              "count": 7
+            },
+            {
+              "value": "Talking drum",
+              "count": 7
+            },
+            {
+              "value": "Colonisation",
+              "count": 7
+            },
+            {
+              "value": "Church music",
+              "count": 7
+            },
+            {
+              "value": "Decolonisation",
+              "count": 7
+            },
+            {
+              "value": "Field recordings",
+              "count": 7
+            },
+            {
+              "value": "Percussion instruments",
+              "count": 7
+            },
+            {
+              "value": "Democratic Republic of the Congo",
+              "count": 7
+            },
+            {
+              "value": "Flute",
+              "count": 6
+            },
+            {
+              "value": "Culture",
+              "count": 6
+            },
+            {
+              "value": "Colonies",
+              "count": 6
+            },
+            {
+              "value": "Cameroon",
+              "count": 6
+            },
+            {
+              "value": "Festivals",
+              "count": 6
+            },
+            {
+              "value": "Ethnology",
+              "count": 6
+            },
+            {
+              "value": "Igbo (African people)",
+              "count": 6
+            },
+            {
+              "value": "Women",
+              "count": 5
+            },
+            {
+              "value": "Rwanda",
+              "count": 5
+            },
+            {
+              "value": "Research",
+              "count": 5
+            },
+            {
+              "value": "Musical bow",
+              "count": 5
+            },
+            {
+              "value": "Drum language",
+              "count": 5
+            },
+            {
+              "value": "Anlo (African people)",
+              "count": 5
+            },
+            {
+              "value": "Ganda (African people)",
+              "count": 5
+            },
+            {
+              "value": "Tsonga (African people)",
+              "count": 5
+            },
+            {
+              "value": "Hymns",
+              "count": 4
+            },
+            {
+              "value": "Botswana",
+              "count": 4
+            },
+            {
+              "value": "Polyrhythm",
+              "count": 4
+            },
+            {
+              "value": "Musicology",
+              "count": 4
+            },
+            {
+              "value": "East Africa",
+              "count": 4
+            },
+            {
+              "value": "Storytelling",
+              "count": 4
+            },
+            {
+              "value": "Sacred music",
+              "count": 4
+            },
+            {
+              "value": "Publications",
+              "count": 4
+            },
+            {
+              "value": "Choral music",
+              "count": 4
+            },
+            {
+              "value": "Women musicians",
+              "count": 4
+            },
+            {
+              "value": "African diaspora",
+              "count": 4
+            },
+            {
+              "value": "Stringed instruments",
+              "count": 4
+            },
+            {
+              "value": "Zulu (African people)",
+              "count": 4
+            },
+            {
+              "value": "Hip-hop",
+              "count": 3
+            },
+            {
+              "value": "Authors",
+              "count": 3
+            },
+            {
+              "value": "Brass bands",
+              "count": 3
+            },
+            {
+              "value": "Ecomusicology",
+              "count": 3
+            },
+            {
+              "value": "Electronic music",
+              "count": 3
+            },
+            {
+              "value": "Rites and ceremonies",
+              "count": 3
+            },
+            {
+              "value": "Luba (African people)",
+              "count": 3
+            },
+            {
+              "value": "Sotho (African people)",
+              "count": 3
+            }
+          ]
+        },
+        {
+          "field": "tag_ss",
+          "label": "Tag",
+          "counts": [
+            {
+              "value": "African Music",
+              "count": 1038
+            },
+            {
+              "value": "Live Music",
+              "count": 17
+            },
+            {
+              "value": "Apala (Music)",
+              "count": 14
+            },
+            {
+              "value": "Yoruba Art",
+              "count": 13
+            },
+            {
+              "value": "Belgian Congo",
+              "count": 12
+            },
+            {
+              "value": "African Studies",
+              "count": 10
+            },
+            {
+              "value": "Cultural Economy",
+              "count": 10
+            },
+            {
+              "value": "Popular Music Studies",
+              "count": 10
+            },
+            {
+              "value": "Musical Meter",
+              "count": 8
+            },
+            {
+              "value": "Identity",
+              "count": 7
+            },
+            {
+              "value": "Social Life",
+              "count": 7
+            },
+            {
+              "value": "Entertainment",
+              "count": 7
+            },
+            {
+              "value": "Social Customs",
+              "count": 7
+            },
+            {
+              "value": "Musical Rhythm",
+              "count": 7
+            },
+            {
+              "value": "Traditional Music",
+              "count": 7
+            },
+            {
+              "value": "Rhodesia",
+              "count": 6
+            },
+            {
+              "value": "Social Aspects",
+              "count": 6
+            },
+            {
+              "value": "Instrument Construction",
+              "count": 6
+            },
+            {
+              "value": "Gender",
+              "count": 5
+            },
+            {
+              "value": "Zaire",
+              "count": 4
+            },
+            {
+              "value": "Politics",
+              "count": 4
+            },
+            {
+              "value": "Waka (Music)",
+              "count": 4
+            },
+            {
+              "value": "Black People",
+              "count": 4
+            },
+            {
+              "value": "Sakara (Music)",
+              "count": 4
+            },
+            {
+              "value": "Music Education",
+              "count": 4
+            },
+            {
+              "value": "Religious Aspects",
+              "count": 4
+            },
+            {
+              "value": "Foreign Influences",
+              "count": 4
+            },
+            {
+              "value": "Republic of the Congo (Léopoldville)",
+              "count": 4
+            },
+            {
+              "value": "Accra",
+              "count": 3
+            },
+            {
+              "value": "Pedagogy",
+              "count": 3
+            },
+            {
+              "value": "Drumming",
+              "count": 3
+            },
+            {
+              "value": "Idiophones",
+              "count": 3
+            },
+            {
+              "value": "Great Britain",
+              "count": 3
+            },
+            {
+              "value": "Tonga (Zambia)",
+              "count": 3
+            },
+            {
+              "value": "Interpretation",
+              "count": 3
+            },
+            {
+              "value": "Indigenous Music",
+              "count": 3
+            },
+            {
+              "value": "Southern Rhodesia",
+              "count": 3
+            },
+            {
+              "value": "Northern Rhodesia",
+              "count": 3
+            },
+            {
+              "value": "Musical Performance",
+              "count": 3
+            },
+            {
+              "value": "Postcolonial Studies",
+              "count": 3
+            },
+            {
+              "value": "Shangana (African people)",
+              "count": 3
+            },
+            {
+              "value": "Ankole",
+              "count": 2
+            },
+            {
+              "value": "Mau Mau",
+              "count": 2
+            },
+            {
+              "value": "Buganda",
+              "count": 2
+            },
+            {
+              "value": "Morality",
+              "count": 2
+            },
+            {
+              "value": "Artistry",
+              "count": 2
+            },
+            {
+              "value": "Orchestra",
+              "count": 2
+            },
+            {
+              "value": "Modernity",
+              "count": 2
+            },
+            {
+              "value": "CD Review",
+              "count": 2
+            },
+            {
+              "value": "Kwanongoma",
+              "count": 2
+            },
+            {
+              "value": "Urban Music",
+              "count": 2
+            },
+            {
+              "value": "Race Theory",
+              "count": 2
+            },
+            {
+              "value": "Public Life",
+              "count": 2
+            },
+            {
+              "value": "Hausa Music",
+              "count": 2
+            },
+            {
+              "value": "Contributor",
+              "count": 2
+            },
+            {
+              "value": "Muslim Women",
+              "count": 2
+            },
+            {
+              "value": "Music Trends",
+              "count": 2
+            },
+            {
+              "value": "Gender Roles",
+              "count": 2
+            },
+            {
+              "value": "Urban Culture",
+              "count": 2
+            },
+            {
+              "value": "Western Sahara",
+              "count": 2
+            },
+            {
+              "value": "Social History",
+              "count": 2
+            },
+            {
+              "value": "Richard Wagner",
+              "count": 2
+            },
+            {
+              "value": "Political News",
+              "count": 2
+            },
+            {
+              "value": "Musical Tuning",
+              "count": 2
+            },
+            {
+              "value": "Music of Congo",
+              "count": 2
+            },
+            {
+              "value": "Music Research",
+              "count": 2
+            },
+            {
+              "value": "Kwaito (Music)",
+              "count": 2
+            },
+            {
+              "value": "Diaspora Studies",
+              "count": 2
+            },
+            {
+              "value": "Sound Reproducing",
+              "count": 2
+            },
+            {
+              "value": "Cultural Heritage",
+              "count": 2
+            },
+            {
+              "value": "Colonial Zimbabwe",
+              "count": 2
+            },
+            {
+              "value": "Matepe (Instrument)",
+              "count": 2
+            },
+            {
+              "value": "Transnational Culture",
+              "count": 2
+            },
+            {
+              "value": "Sammlung Gerd Spittler",
+              "count": 2
+            },
+            {
+              "value": "Rock Gong (Instrument)",
+              "count": 2
+            },
+            {
+              "value": "Talking-gongs (Instrument)",
+              "count": 2
+            },
+            {
+              "value": "Mbira dzaVaNdau (Instrument)",
+              "count": 2
+            },
+            {
+              "value": "Barotseland (Northern Rhodesia)",
+              "count": 2
+            },
+            {
+              "value": "Liveness",
+              "count": 1
+            },
+            {
+              "value": "Catholicism",
+              "count": 1
+            },
+            {
+              "value": "Royal Funeral",
+              "count": 1
+            },
+            {
+              "value": "Multifocality",
+              "count": 1
+            },
+            {
+              "value": "Eavesdropping",
+              "count": 1
+            },
+            {
+              "value": "Military Bands",
+              "count": 1
+            },
+            {
+              "value": "Indigenisation",
+              "count": 1
+            },
+            {
+              "value": "Black Fiddling",
+              "count": 1
+            },
+            {
+              "value": "Hillbilly Music",
+              "count": 1
+            },
+            {
+              "value": "Cultural Memory",
+              "count": 1
+            },
+            {
+              "value": "Kpledjoo Festival",
+              "count": 1
+            },
+            {
+              "value": "Cultural Analysis",
+              "count": 1
+            },
+            {
+              "value": "West African Dance",
+              "count": 1
+            },
+            {
+              "value": "Sekuru’s Stories",
+              "count": 1
+            },
+            {
+              "value": "Gyile (Instrument)",
+              "count": 1
+            },
+            {
+              "value": "Experimental Music",
+              "count": 1
+            },
+            {
+              "value": "Afro-Esmeraldenian",
+              "count": 1
+            },
+            {
+              "value": "Fiddle (Instrument)",
+              "count": 1
+            },
+            {
+              "value": "Communication Theory",
+              "count": 1
+            },
+            {
+              "value": "Electroacoustic Music",
+              "count": 1
+            },
+            {
+              "value": "European Military Music",
+              "count": 1
+            },
+            {
+              "value": "Afro-Esmeraldenian Music",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "field": "audience_ss",
+          "label": "Target audience",
+          "counts": [
+            {
+              "value": "General Public",
+              "count": 41
+            },
+            {
+              "value": "Researchers",
+              "count": 13
+            },
+            {
+              "value": "Musicians",
+              "count": 10
+            },
+            {
+              "value": "Music Lovers",
+              "count": 10
+            },
+            {
+              "value": "Historians",
+              "count": 3
+            },
+            {
+              "value": "Anthropologists",
+              "count": 3
+            },
+            {
+              "value": "Children",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "field": "digitisation_ss",
+          "label": "Digitisation method",
+          "counts": [
+            {
+              "value": "Digital",
+              "count": 1044
+            },
+            {
+              "value": "born digital",
+              "count": 1043
+            },
+            {
+              "value": "Analog",
+              "count": 135
+            },
+            {
+              "value": "digitized other analog",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "search_time_ms": 242
+    }
+  }
+}

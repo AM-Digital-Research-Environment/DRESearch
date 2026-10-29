@@ -23,12 +23,13 @@ composer analyse
 `asset/dist/` is a build product and is not tracked: the release workflow builds
 it into DRESearch.zip together with `vendor/` (from the committed `composer.lock`,
 resolved for PHP 8.4 by `config.platform`). Run `npm run build` before copying the
-module into a dev container. The build ends with `npm run check:size`, which holds
-the entry, its shared runtime and the App and FederatedApp chunks to gzipped
-budgets (`scripts/check-bundle-size.mjs`) and fails if either page chunk stops
-loading lazily; raise a budget deliberately, in the commit that needs it. PHP 8.4 is the minimum; CI runs 8.4–8.5 and
-production runs 8.5. After changing user-visible strings run `npm run i18n`. Omeka supplies Laminas and PSR interfaces
-at runtime, so the module must never bundle them in Composer.
+module into a dev container. The build ends with `npm run check:size`, which
+holds the entry, its shared runtime and the App and FederatedApp chunks to
+gzipped budgets (`scripts/check-bundle-size.mjs`) and fails if either page chunk
+stops loading lazily; raise a budget deliberately, in the commit that needs it.
+PHP 8.4 is the minimum; CI runs 8.4–8.5 and production runs 8.5. After changing
+user-visible strings run `npm run i18n`. Omeka supplies Laminas and PSR
+interfaces at runtime, so the module must never bundle them in Composer.
 
 For profile changes, ensure every `query_by` field is indexed, every custom sort
 targets a sortable field, and collection aliases stay unique. Test the affected
@@ -42,6 +43,36 @@ reason (why no release fixes it, why the code is unreachable), and on a listed
 one that npm can now fix in range or no longer reports. Do not weaken it with
 `--omit=dev`: every npm dependency is a dev dependency, so that turns it off.
 Composer's side is `composer audit --locked`.
+
+## Lighthouse budgets
+
+`.github/workflows/lighthouse.yml` builds the client and runs
+`npm run check:lighthouse` on every PR and push to main: three mobile Lighthouse
+runs of each fixture page in `tests/lighthouse/fixtures/` (a Research items
+block and the federated results page, captured from AMIRA), with the median held
+against `tests/lighthouse/baseline.json`. Transfer bytes and requests may grow by
+10 %, the `/dre-search/api/*` round trips on load not at all, the accessibility
+and best-practices scores may not fall, and performance may fall by the margin
+the script states. A page that improves fails too until the baseline is
+rewritten, so the gain is kept.
+
+The baseline comes from the CI runner, never a laptop (its CPU times the
+performance score and its fonts change the accessibility audits):
+
+1. **Bootstrap.** While `tests/lighthouse/baseline.json` does not exist, the job
+   measures, uploads the measured `baseline.json` in its `lighthouse` artifact
+   and passes. Download it, check it against two or three more runs of the job
+   (each run's scores are in the artifact's `details.json`; take the median for
+   performance), and commit it as `tests/lighthouse/baseline.json`.
+2. **After a deliberate change** (heavier bundle, a new request on load, a new
+   capture): `npm run build && npm run check:lighthouse -- --update` rewrites
+   the byte, request and API counts and keeps the committed scores; to move a
+   score, take it from the CI artifact as in step 1.
+3. **Re-capture** with `npm run capture:lighthouse` (it loads the live pages in
+   Playwright's Chromium) only when the live markup changed, then re-baseline.
+
+Locally the gate needs a Chrome: `CHROME_PATH` names one, or chrome-launcher
+finds an installed Chrome. Reports land in `test-results/lighthouse/`.
 
 ## Versions
 
