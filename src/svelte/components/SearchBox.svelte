@@ -4,6 +4,7 @@
   import { t } from '../lib/i18n';
   import { recentSearches } from '../lib/searchHistory';
   import { installSlashFocus } from '../lib/keyboard';
+  import { createTypeahead, type Typeahead } from '../lib/typeahead.svelte';
 
   /**
    * Search input with a debounced query and an autocomplete dropdown.
@@ -14,6 +15,9 @@
    *   (with no suggestion highlighted) commits the typed text as a free-text
    *   search right away and closes the dropdown — picking a suggestion is never
    *   required.
+   *
+   * The combobox itself (text, request races, keys, blur) is shared with the
+   * header's SearchBar: lib/typeahead.svelte.ts.
    */
 
   interface Props {
@@ -29,14 +33,6 @@
   const safeId = $derived(instanceId.replace(/[^A-Za-z0-9_-]/g, '-'));
   const listboxId = $derived(`dre-suggest-${safeId}`);
 
-  // svelte-ignore state_referenced_locally
-  let local = $state(value);
-  let suggestions = $state<Suggestion[]>([]);
-  let open = $state(false);
-  let focused = $state(false);
-  let activeIndex = $state(-1);
-  let timer: number | null = null;
-  let controller: AbortController | null = null;
   let inputEl = $state<HTMLInputElement>();
   let recent = $state<string[]>([]);
   let popular = $state<string[]>([]);
@@ -46,62 +42,35 @@
   // svelte-ignore state_referenced_locally
   let emitted = value;
 
+  // svelte-ignore state_referenced_locally
+  const box: Typeahead<Suggestion> = createTypeahead<Suggestion>({
+    initial: value,
+    fetch: (q, signal) => api.suggest(q, signal),
+    optionCount: () => optionCount,
+    // Typing commits the query once the box is still; the suggestions follow.
+    onSettle: emit,
+    onEnter: (index) => {
+      const starter = index >= 0 && showingStarters ? starters[index] : undefined;
+      const suggestion = index >= 0 && !showingStarters ? box.items[index] : undefined;
+      if (starter !== undefined) reuseRecent(starter);
+      else if (suggestion)
+        go(suggestion); // jump to the highlighted item's page
+      else submitQuery(); // search the typed text
+    },
+  });
+
   function itemUrl(id: string): string {
     return `${itemUrlBase}/${encodeURIComponent(id)}`;
   }
 
-  /** Commit a query upward, remembering it so the echo can't clobber `local`. */
+  /** Commit a query upward, remembering it so the echo can't clobber the box. */
   function emit(next: string): void {
     emitted = next;
     onQueryChange(next);
   }
 
-  function scheduleQuery(next: string): void {
-    if (timer !== null) {
-      clearTimeout(timer);
-    }
-    timer = window.setTimeout(() => {
-      timer = null;
-      emit(next);
-      void fetchSuggestions(next);
-    }, 250);
-  }
-
-  function cancelSuggestions(): void {
-    controller?.abort();
-    controller = null;
-    if (timer !== null) clearTimeout(timer);
-    timer = null;
-    suggestions = [];
-    open = false;
-    activeIndex = -1;
-  }
-
-  async function fetchSuggestions(q: string): Promise<void> {
-    if (q.trim().length < 2) {
-      suggestions = [];
-      open = false;
-      return;
-    }
-    controller?.abort();
-    const request = new AbortController();
-    controller = request;
-    const results = await api.suggest(q, request.signal);
-    if (request.signal.aborted || controller !== request || local !== q) return;
-    suggestions = results;
-    activeIndex = -1;
-    open = focused && results.length > 0;
-  }
-
-  function handleInput(e: Event): void {
-    cancelSuggestions();
-    local = (e.target as HTMLInputElement).value;
-    scheduleQuery(local);
-  }
-
   function handleClear(): void {
-    cancelSuggestions();
-    local = '';
+    box.clear();
     emit('');
     // The clear button removes itself; keep the visitor in the field.
     inputEl?.focus();
@@ -121,29 +90,20 @@
       { kind: 'popular', label: t('popular_searches'), items: popularOnly, offset: recent.length },
     ].filter((group) => group.items.length > 0),
   );
-  const showingStarters = $derived(
-    suggestions.length === 0 && local.trim() === '' && starters.length > 0,
+  const showingStarters: boolean = $derived(
+    box.items.length === 0 && box.text.trim() === '' && starters.length > 0,
   );
-  const optionCount = $derived(showingStarters ? starters.length : suggestions.length);
+  const optionCount: number = $derived(showingStarters ? starters.length : box.items.length);
 
   function handleFocus(): void {
-    focused = true;
     recent = recentSearches();
-    open = suggestions.length > 0 || (local.trim() === '' && starters.length > 0);
+    box.focus();
     const firstLoad = popular.length === 0;
     void api.popular().then((queries) => {
       popular = queries;
       // The first fetch resolves after focus: show the list it just filled.
-      if (firstLoad && focused && local.trim() === '' && starters.length > 0) open = true;
+      if (firstLoad) box.refresh();
     });
-  }
-
-  function handleBlur(): void {
-    focused = false;
-    // Defer so a click on a suggestion lands before the list unmounts.
-    window.setTimeout(() => {
-      open = false;
-    }, 150);
   }
 
   function go(suggestion: Suggestion): void {
@@ -156,79 +116,37 @@
    * suggestion to be selected.
    */
   function submitQuery(): void {
-    cancelSuggestions();
-    emit(local);
+    box.cancel();
+    emit(box.text);
   }
 
   function reuseRecent(query: string): void {
-    cancelSuggestions();
-    local = query;
-    open = false;
+    box.setText(query);
     emit(query);
-  }
-
-  function handleKeydown(e: KeyboardEvent): void {
-    // An IME (Japanese, Chinese, Korean input) uses Enter to confirm the
-    // composed characters; that keystroke is not a search.
-    if (e.isComposing || e.keyCode === 229) return;
-    const hasOptions = open && optionCount > 0;
-    switch (e.key) {
-      case 'ArrowDown':
-        if (hasOptions) {
-          e.preventDefault();
-          activeIndex = (activeIndex + 1) % optionCount;
-        }
-        break;
-      case 'ArrowUp':
-        if (hasOptions) {
-          e.preventDefault();
-          activeIndex = (activeIndex - 1 + optionCount) % optionCount;
-        }
-        break;
-      case 'Enter':
-        e.preventDefault();
-        if (hasOptions && activeIndex >= 0 && activeIndex < optionCount) {
-          const starter = starters[activeIndex];
-          const suggestion = suggestions[activeIndex];
-          if (showingStarters && starter !== undefined) {
-            reuseRecent(starter);
-          } else if (!showingStarters && suggestion) {
-            go(suggestion); // jump to the highlighted item's page
-          }
-        } else {
-          submitQuery(); // search the typed text
-        }
-        break;
-      case 'Escape':
-        open = false;
-        activeIndex = -1;
-        break;
-    }
   }
 
   /*
    * Accept a query pushed from OUTSIDE the box — a removed query chip, a "did
    * you mean" correction, a back/forward navigation.
    *
-   * This must depend on `value` ALONE. Reading `local` here would re-run the
-   * effect on every keystroke and reset the field to the parent's copy, which is
-   * a debounce behind — characters vanish as they are typed. Comparing against
-   * `emitted` (a plain let, so not a dependency) also ignores the parent echoing
-   * back our own committed query, which would otherwise rewind whatever was
-   * typed during that round trip.
+   * This must depend on `value` ALONE. Reading the box's text here would re-run
+   * the effect on every keystroke and reset the field to the parent's copy,
+   * which is a debounce behind — characters vanish as they are typed.
+   * Comparing against `emitted` (a plain let, so not a dependency) also ignores
+   * the parent echoing back our own committed query, which would otherwise
+   * rewind whatever was typed during that round trip.
    */
   $effect(() => {
     if (value === emitted) return;
-    cancelSuggestions();
     emitted = value;
-    local = value;
+    box.setText(value);
   });
 
   // Keep the highlighted option visible: the list scrolls (max-height).
   $effect(() => {
-    if (activeIndex < 0) return;
+    if (box.activeIndex < 0) return;
     document
-      .getElementById(`${listboxId}-option-${activeIndex}`)
+      .getElementById(`${listboxId}-option-${box.activeIndex}`)
       ?.scrollIntoView?.({ block: 'nearest' });
   });
 
@@ -236,8 +154,7 @@
     const removeShortcut = installSlashFocus(() => inputEl);
     return () => {
       removeShortcut();
-      controller?.abort();
-      if (timer !== null) clearTimeout(timer);
+      box.destroy();
     };
   });
 </script>
@@ -256,17 +173,19 @@
       role="combobox"
       aria-label={placeholder || t('search_placeholder')}
       aria-autocomplete="list"
-      aria-expanded={open}
+      aria-expanded={box.open}
       aria-controls={listboxId}
-      aria-activedescendant={activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
+      aria-activedescendant={box.activeIndex >= 0
+        ? `${listboxId}-option-${box.activeIndex}`
+        : undefined}
       {placeholder}
-      value={local}
-      oninput={handleInput}
+      value={box.text}
+      oninput={(e) => box.input(e.currentTarget.value)}
       onfocus={handleFocus}
-      onblur={handleBlur}
-      onkeydown={handleKeydown}
+      onblur={() => box.blur()}
+      onkeydown={(e) => box.keydown(e)}
     />
-    {#if local !== ''}
+    {#if box.text !== ''}
       <button
         type="button"
         class="dre-search-box__clear"
@@ -276,7 +195,7 @@
     {/if}
   </div>
 
-  {#if open && (suggestions.length > 0 || showingStarters)}
+  {#if box.open && (box.items.length > 0 || showingStarters)}
     <ul
       class="dre-search-box__suggest"
       id={listboxId}
@@ -305,9 +224,9 @@
                 <li
                   id="{listboxId}-option-{group.offset + j}"
                   class="dre-search-box__recent"
-                  class:dre-search-box__suggestion--active={group.offset + j === activeIndex}
+                  class:dre-search-box__suggestion--active={group.offset + j === box.activeIndex}
                   role="option"
-                  aria-selected={group.offset + j === activeIndex}
+                  aria-selected={group.offset + j === box.activeIndex}
                   onmousedown={(e) => e.preventDefault()}
                   onclick={() => reuseRecent(query)}
                 >
@@ -318,15 +237,15 @@
           </li>
         {/each}
       {/if}
-      {#each suggestions as s, i (s.id)}
+      {#each box.items as s, i (s.id)}
         <li role="presentation">
           <a
             id="{listboxId}-option-{i}"
             class="dre-search-box__suggestion"
-            class:dre-search-box__suggestion--active={i === activeIndex}
+            class:dre-search-box__suggestion--active={i === box.activeIndex}
             href={itemUrl(s.id)}
             role="option"
-            aria-selected={i === activeIndex}
+            aria-selected={i === box.activeIndex}
             onmousedown={(e) => e.preventDefault()}
             onclick={(e) => {
               e.preventDefault();

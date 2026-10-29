@@ -11,9 +11,10 @@
 </script>
 
 <script lang="ts">
-  import type { SearchBarBootstrap, SuggestGroup } from '../lib/types';
+  import type { SearchBarBootstrap, SuggestGroup, Suggestion } from '../lib/types';
   import { suggestAll } from '../lib/api';
   import { t } from '../lib/i18n';
+  import { createTypeahead, type Typeahead } from '../lib/typeahead.svelte';
 
   /**
    * The theme header's federated search box.
@@ -25,6 +26,9 @@
    *   the federated results page with the typed query.
    * - `collapsible` (mobile): renders a magnifier button that expands the input
    *   as an overlay, so the box doesn't crowd a narrow header.
+   *
+   * The combobox itself (text, request races, keys, blur) is shared with the
+   * block's SearchBox: lib/typeahead.svelte.ts.
    */
 
   interface Props {
@@ -33,30 +37,44 @@
 
   const { bootstrap }: Props = $props();
 
-  let local = $state('');
-  let groups = $state<SuggestGroup[]>([]);
-  let open = $state(false);
-  let focused = $state(false);
   // svelte-ignore state_referenced_locally
   let expanded = $state(!bootstrap.collapsible);
-  let activeIndex = $state(-1);
-  let timer: number | null = null;
-  let controller: AbortController | null = null;
   let inputEl = $state<HTMLInputElement | undefined>(undefined);
   let toggleEl = $state<HTMLButtonElement | undefined>(undefined);
 
+  const box: Typeahead<SuggestGroup> = createTypeahead<SuggestGroup>({
+    fetch: (q, signal) => suggestAll(bootstrap.endpoints.suggest_all, q, signal),
+    optionCount: () => optionCount,
+    // The list opens for suggestions; "See all results" alone is not worth it.
+    hasOptions: () => flat.length > 0,
+    onEnter: (index) => {
+      const hit = index >= seeAll ? flat[index - seeAll] : undefined;
+      if (hit) goItem(hit.id);
+      else submit(); // nothing highlighted, or "See all results"
+    },
+    onEscape: () => {
+      if (!bootstrap.collapsible) return;
+      expanded = false;
+      // The input unmounts; hand focus back to the toggle that opened it.
+      requestAnimationFrame(() => toggleEl?.focus());
+    },
+    onBlurClose: () => {
+      if (bootstrap.collapsible && box.text.trim() === '') expanded = false;
+    },
+  });
+
   // Flat view of all suggestions, for keyboard nav across groups.
-  const flat = $derived(groups.flatMap((g) => g.suggestions));
+  const flat: Suggestion[] = $derived(box.items.flatMap((g) => g.suggestions));
   // "See all results" is the first option of the keyboard model (index 0)
   // whenever there is text; suggestions follow it. It used to be a bare link
   // the arrow keys could not reach.
-  const seeAll = $derived(local.trim() !== '' ? 1 : 0);
-  const optionCount = $derived(flat.length + seeAll);
+  const seeAll: number = $derived(box.text.trim() !== '' ? 1 : 0);
+  const optionCount: number = $derived(flat.length + seeAll);
   // Running index of each group's first suggestion in the option list.
   const offsets = $derived.by(() => {
     const acc: number[] = [];
     let n = seeAll;
-    for (const g of groups) {
+    for (const g of box.items) {
       acc.push(n);
       n += g.suggestions.length;
     }
@@ -78,42 +96,6 @@
   const suggestId = `${uid}-suggest`;
   const optionId = (i: number): string => `${uid}-opt-${i}`;
 
-  function cancelSuggestions(): void {
-    controller?.abort();
-    controller = null;
-    if (timer !== null) clearTimeout(timer);
-    timer = null;
-    groups = [];
-    open = false;
-    activeIndex = -1;
-  }
-
-  async function fetchSuggestions(q: string): Promise<void> {
-    if (q.trim().length < 2) {
-      groups = [];
-      open = false;
-      return;
-    }
-    controller?.abort();
-    const request = new AbortController();
-    controller = request;
-    const res = await suggestAll(bootstrap.endpoints.suggest_all, q, request.signal);
-    if (request.signal.aborted || controller !== request || local !== q) return;
-    groups = res;
-    activeIndex = -1;
-    open = focused && res.length > 0;
-  }
-
-  function schedule(q: string): void {
-    if (timer !== null) {
-      clearTimeout(timer);
-    }
-    timer = window.setTimeout(() => {
-      timer = null;
-      void fetchSuggestions(q);
-    }, 250);
-  }
-
   // The desktop bar lives inside the theme's position:sticky header. Browsers
   // scroll a focused / typed-in field "into view" using its in-flow position
   // (near the top of the document), which yanks the page upward on focus and on
@@ -133,15 +115,12 @@
   }
 
   function handleInput(e: Event): void {
-    cancelSuggestions();
     pinScroll();
-    local = (e.target as HTMLInputElement).value;
-    schedule(local);
+    box.input((e.target as HTMLInputElement).value);
   }
 
   function handleClear(): void {
-    cancelSuggestions();
-    local = '';
+    box.clear();
     inputEl?.focus();
   }
 
@@ -150,55 +129,17 @@
   }
 
   function submit(): void {
-    const q = local.trim();
+    const q = box.text.trim();
     if (q === '') {
       return;
     }
     window.location.href = resultsUrl(q);
   }
 
-  function handleKeydown(e: KeyboardEvent): void {
-    // Enter that confirms an IME composition is not a search.
-    if (e.isComposing || e.keyCode === 229) return;
-    const has = open && flat.length > 0;
-    switch (e.key) {
-      case 'ArrowDown':
-        if (has) {
-          e.preventDefault();
-          activeIndex = (activeIndex + 1) % optionCount;
-        }
-        break;
-      case 'ArrowUp':
-        if (has) {
-          e.preventDefault();
-          activeIndex = (activeIndex - 1 + optionCount) % optionCount;
-        }
-        break;
-      case 'Enter':
-        e.preventDefault();
-        if (has && activeIndex >= seeAll && activeIndex < optionCount) {
-          const hit = flat[activeIndex - seeAll];
-          if (hit) goItem(hit.id);
-        } else {
-          submit(); // nothing highlighted, or "See all results"
-        }
-        break;
-      case 'Escape':
-        open = false;
-        activeIndex = -1;
-        if (bootstrap.collapsible) {
-          expanded = false;
-          // The input unmounts; hand focus back to the toggle that opened it.
-          requestAnimationFrame(() => toggleEl?.focus());
-        }
-        break;
-    }
-  }
-
   // Keep the highlighted option visible: the list scrolls (max-height).
   $effect(() => {
-    if (!open || activeIndex < 0) return;
-    document.getElementById(optionId(activeIndex))?.scrollIntoView?.({ block: 'nearest' });
+    if (!box.open || box.activeIndex < 0) return;
+    document.getElementById(optionId(box.activeIndex))?.scrollIntoView?.({ block: 'nearest' });
   });
 
   // A native click on the in-flow desktop field both focuses it and scrolls it
@@ -213,21 +154,7 @@
 
   function handleFocus(): void {
     pinScroll();
-    focused = true;
-    if (flat.length > 0) {
-      open = true;
-    }
-  }
-
-  function handleBlur(): void {
-    focused = false;
-    // Defer so a click on a suggestion lands before the list unmounts.
-    window.setTimeout(() => {
-      open = false;
-      if (bootstrap.collapsible && local.trim() === '') {
-        expanded = false;
-      }
-    }, 150);
+    box.focus();
   }
 
   function expand(): void {
@@ -240,10 +167,7 @@
       inputEl?.focus();
     }
   });
-  $effect(() => () => {
-    controller?.abort();
-    if (timer !== null) clearTimeout(timer);
-  });
+  $effect(() => () => box.destroy());
 </script>
 
 <div
@@ -310,18 +234,20 @@
         role="combobox"
         aria-label={bootstrap.placeholder || t('search_all_placeholder')}
         aria-autocomplete="list"
-        aria-expanded={open}
+        aria-expanded={box.open}
         aria-controls={suggestId}
-        aria-activedescendant={open && activeIndex >= 0 ? optionId(activeIndex) : undefined}
+        aria-activedescendant={box.open && box.activeIndex >= 0
+          ? optionId(box.activeIndex)
+          : undefined}
         placeholder={bootstrap.placeholder || t('search_all_placeholder')}
-        value={local}
+        value={box.text}
         oninput={handleInput}
         onpointerdown={handlePointerDown}
         onfocus={handleFocus}
-        onblur={handleBlur}
-        onkeydown={handleKeydown}
+        onblur={() => box.blur()}
+        onkeydown={(e) => box.keydown(e)}
       />
-      {#if local !== ''}
+      {#if box.text !== ''}
         <button
           type="button"
           class="dre-search-bar__clear"
@@ -332,39 +258,39 @@
       {/if}
     </div>
 
-    {#if open && groups.length > 0}
+    {#if box.open && box.items.length > 0}
       <div
         class="dre-search-bar__suggest"
         id={suggestId}
         role="listbox"
         aria-label={t('suggestions')}
       >
-        {#if local.trim() !== ''}
+        {#if box.text.trim() !== ''}
           <a
             class="dre-search-bar__see-all"
-            class:dre-search-bar__option--active={activeIndex === 0}
+            class:dre-search-bar__option--active={box.activeIndex === 0}
             id={optionId(0)}
             role="option"
-            aria-selected={activeIndex === 0}
-            href={resultsUrl(local.trim())}
+            aria-selected={box.activeIndex === 0}
+            href={resultsUrl(box.text.trim())}
             onmousedown={(e) => e.preventDefault()}
           >
-            {t('see_all_results', { q: local.trim() })}
+            {t('see_all_results', { q: box.text.trim() })}
           </a>
         {/if}
 
-        {#each groups as g, gi (g.profile)}
+        {#each box.items as g, gi (g.profile)}
           <div class="dre-search-bar__group" role="group" aria-label={g.label}>
             <div class="dre-search-bar__group-label" aria-hidden="true">{g.label}</div>
             {#each g.suggestions as s, si (s.id)}
               {@const idx = (offsets[gi] ?? 0) + si}
               <a
                 class="dre-search-bar__option"
-                class:dre-search-bar__option--active={idx === activeIndex}
+                class:dre-search-bar__option--active={idx === box.activeIndex}
                 id={optionId(idx)}
                 href={itemUrl(s.id)}
                 role="option"
-                aria-selected={idx === activeIndex}
+                aria-selected={idx === box.activeIndex}
                 onmousedown={(e) => e.preventDefault()}
                 onclick={(e) => {
                   e.preventDefault();
