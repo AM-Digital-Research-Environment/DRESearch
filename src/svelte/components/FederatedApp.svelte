@@ -12,7 +12,7 @@
     syncUnionPage,
     writeUrlState,
   } from '../lib/urlState';
-  import { formatNumber, t } from '../lib/i18n';
+  import { formatNumber, resultCount, resultWord, t } from '../lib/i18n';
   import { installSlashFocus } from '../lib/keyboard';
   import App from '../App.svelte';
   import MixedResultCard from './MixedResultCard.svelte';
@@ -272,7 +272,7 @@
               ? query
                 ? t('no_results_title')
                 : t('corpus_empty')
-              : `${formatNumber(unionResponse.found)} ${unionResponse.found === 1 ? t('result_one') : t('result_other')}`
+              : resultCount(unionResponse.found)
             : '',
   );
   const count = (name: string): string =>
@@ -362,7 +362,7 @@
         <header class="dre-fed__all-summary">
           <span
             ><strong>{formatNumber(unionResponse.found)}</strong>
-            {unionResponse.found === 1 ? t('result_one') : t('result_other')}</span
+            {resultWord(unionResponse.found)}</span
           ><span>{t('all_no_facets')}</span><CopyLinkButton />
         </header>
         {#if unionResponse.found === 0}<div class="dre-fed__empty">

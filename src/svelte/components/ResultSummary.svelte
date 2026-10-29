@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import type { FilterChipModel } from '../lib/filterChips';
-  import { formatNumber, t } from '../lib/i18n';
+  import { formatNumber, resultWord, t } from '../lib/i18n';
   import FilterChip from './FilterChip.svelte';
   interface Props {
     found: number;
@@ -23,7 +23,7 @@
     <div class="dre-summary__scope">
       <span class="dre-summary__count"
         ><strong>{formatNumber(found)}</strong>
-        {found === 1 ? t('result_one') : t('result_other')}</span
+        {resultWord(found)}</span
       >
       {#if chips.length > 0}<ul>
           {#each chips as chip (chip.id)}<li><FilterChip {chip} {onRemove} /></li>{/each}

@@ -309,35 +309,47 @@ export function t(key: string, vars?: Record<string, string | number>): string {
   return str;
 }
 
+/**
+ * `${base}_one` or `${base}_other`, chosen by the PAGE locale's plural rules,
+ * never by `n === 1`: French says "0 résultat" and "1,5 heure", English
+ * "0 results". Languages with more categories (Arabic, Polish…) fall back to
+ * `_other` for every count that is not `one`, as the server's translations do.
+ */
+function plural(base: string, n: number, vars?: Record<string, string | number>): string {
+  return t(`${base}_${pluralRules.select(n) === 'one' ? 'one' : 'other'}`, vars);
+}
+
+/** "result" or "results" for `n`, without the number (the summary bolds it apart). */
+export function resultWord(n: number): string {
+  return plural('result', n);
+}
+
+/** "{n} results", the count the live region reads. */
+export function resultCount(n: number): string {
+  return `${formatNumber(n)} ${resultWord(n)}`;
+}
+
 /** Pluralised "{n} research items". */
 export function researchItemsLabel(n: number): string {
-  return t(pluralRules.select(n) === 'one' ? 'research_items_one' : 'research_items_other', {
-    n: formatNumber(n),
-  });
+  return plural('research_items', n, { n: formatNumber(n) });
 }
 
 /** Pluralised "{n} publications". */
 export function publicationsLabel(n: number): string {
-  return t(pluralRules.select(n) === 'one' ? 'publications_one' : 'publications_other', {
-    n: formatNumber(n),
-  });
+  return plural('publications', n, { n: formatNumber(n) });
 }
 
 /** Pluralised "{n} members". */
 export function membersLabel(n: number): string {
-  return t(pluralRules.select(n) === 'one' ? 'members_one' : 'members_other', {
-    n: formatNumber(n),
-  });
+  return plural('members', n, { n: formatNumber(n) });
 }
 
 /** Pluralised "{n} projects". */
 export function projectsLabel(n: number): string {
-  return t(pluralRules.select(n) === 'one' ? 'projects_one' : 'projects_other', {
-    n: formatNumber(n),
-  });
+  return plural('projects', n, { n: formatNumber(n) });
 }
 
 /** Pluralised "{n} people". */
 export function peopleLabel(n: number): string {
-  return t(pluralRules.select(n) === 'one' ? 'people_one' : 'people_other', { n: formatNumber(n) });
+  return plural('people', n, { n: formatNumber(n) });
 }

@@ -18,7 +18,7 @@
     type UrlSearchState,
     type UrlSyncOptions,
   } from './lib/urlState';
-  import { formatNumber, t } from './lib/i18n';
+  import { resultCount, t } from './lib/i18n';
   import { buildFilterChips, type FilterChipModel as ChipModel } from './lib/filterChips';
   import { provideHeadingLevel, type HeadingLevel } from './lib/headings';
   import { COPY_FEEDBACK_MS, provideAnnouncer } from './lib/announce';
@@ -411,7 +411,7 @@
           : response && response.available
             ? response.found === 0
               ? emptyTitle
-              : `${formatNumber(response.found)} ${response.found === 1 ? t('result_one') : t('result_other')}`
+              : resultCount(response.found)
             : '',
   );
 
