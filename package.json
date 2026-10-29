@@ -13,6 +13,7 @@
     "test:browser": "vite build && playwright test",
     "lint:tokens": "node scripts/check-design-tokens.mjs",
     "lint:version": "node scripts/check-version-consistency.mjs",
+    "bump": "node scripts/bump-version.mjs",
     "lint:schema": "php scripts/check-profile-schema.php",
     "lint:i18n": "php scripts/build-translations.php --check",
     "i18n": "php scripts/build-translations.php",

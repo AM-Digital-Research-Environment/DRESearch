@@ -31,6 +31,22 @@ For profile changes, ensure every `query_by` field is indexed, every custom sort
 targets a sortable field, and collection aliases stay unique. Test the affected
 corpus against a disposable Typesense instance before requesting review.
 
+## Versions
+
+The release number lives in `config/module.ini`, `package.json`,
+`package-lock.json` (twice) and `CITATION.cff` (with its `date-released`), and
+the release notes come from its `CHANGELOG.md` section. Never edit it by hand:
+
+```sh
+npm run bump -- <patch|minor|major|X.Y.Z> [--date YYYY-MM-DD]
+```
+
+writes every site, dates the release, and turns the `## [Unreleased]` notes into
+`## [x.y.z] - YYYY-MM-DD` under a fresh, empty Unreleased. It refuses an empty
+Unreleased section, and checks everything before it writes anything. The list of
+sites is `scripts/shared/versions.mjs`, shared with `npm run lint:version`, which
+`npm run lint`, CI and the release workflow run.
+
 ## Integration tests
 
 PHP analysis and the Omeka integration suite load core dependencies before the
