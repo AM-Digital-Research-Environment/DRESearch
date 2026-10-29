@@ -110,18 +110,13 @@ final class ResearchItemMapper implements MapperInterface, PreparesBatch
         }
 
         // language_ss, audience_ss — direct linked titles.
-        $this->addMulti($doc, $values, $pLanguage, 'language_ss');
-        $this->addMulti($doc, $values, $pAudience, 'audience_ss');
+        $this->addLabels($doc, $bag, $pLanguage, 'language_ss');
+        $this->addLabels($doc, $bag, $pAudience, 'audience_ss');
 
         // creator_ss — union across role properties.
         $creators = [];
         foreach (self::CREATOR_TERMS as $term) {
-            foreach ($values[$term] ?? [] as $v) {
-                $name = ($v['title'] ?? '') !== '' ? $v['title'] : ($v['value'] ?? '');
-                if ($name !== '' && $name !== null) {
-                    $creators[] = $name;
-                }
-            }
+            array_push($creators, ...$bag->labels($term));
         }
         if ($creators) {
             $doc['creator_ss'] = array_values(array_unique($creators));
@@ -150,7 +145,7 @@ final class ResearchItemMapper implements MapperInterface, PreparesBatch
         // specific city / region / country, e.g. "Bayreuth"); the card's "Place of
         // origin" and its facet. country_ss below rolls the same value up to its
         // parent country for broad browsing.
-        $this->addMulti($doc, $values, $pOrigin, 'origin_ss');
+        $this->addLabels($doc, $bag, $pOrigin, 'origin_ss');
 
         // country_ss — spatial that is a country directly, else the city/region's
         // parent country via dcterms:isPartOf.
@@ -181,7 +176,7 @@ final class ResearchItemMapper implements MapperInterface, PreparesBatch
         // direct linked place OR repository institution. No country roll-up (unlike
         // country_ss), so a specific repository like "University of Bayreuth" is
         // filterable. The current-location counterpart to country_ss (origin).
-        $this->addMulti($doc, $values, $pProvenance, 'provenance_ss');
+        $this->addLabels($doc, $bag, $pProvenance, 'provenance_ss');
 
         // digitisation_ss — dcterms:format targets in the digital/technical set
         // only (genres, also on dcterms:format, are excluded).
@@ -215,21 +210,12 @@ final class ResearchItemMapper implements MapperInterface, PreparesBatch
         return $doc;
     }
 
-    /** @param array<string, list<array{vrid:?int, value:?string, uri:?string, title:?string}>> $values */
-    private function addMulti(array &$doc, array $values, string $term, string $field): void
+    /** A multi-valued field of a property's linked titles (literal fallback), when it has any. */
+    private function addLabels(array &$doc, ValueBag $bag, string $term, string $field): void
     {
-        if ($term === '') {
-            return;
-        }
-        $out = [];
-        foreach ($values[$term] ?? [] as $v) {
-            $label = ($v['title'] ?? '') !== '' ? $v['title'] : ($v['value'] ?? '');
-            if ($label !== null && $label !== '') {
-                $out[] = $label;
-            }
-        }
-        if ($out) {
-            $doc[$field] = array_values(array_unique($out));
+        $labels = $bag->labels($term);
+        if ($labels !== []) {
+            $doc[$field] = $labels;
         }
     }
 

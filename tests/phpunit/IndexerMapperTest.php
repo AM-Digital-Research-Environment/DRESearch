@@ -71,6 +71,19 @@ final class IndexerMapperTest extends TestCase
         self::assertArrayNotHasKey('date', $none);
     }
 
+    public function testResearchItemLiteralLabelsAreTrimmedAndCreatorsMergedOnce(): void
+    {
+        $doc = $this->researchItem([
+            'dcterms:creator' => [$this->link(9, 'Doe, Jane'), $this->literal(' Roe, Rick ')],
+            'marcrel:aut' => [$this->literal('Roe, Rick'), $this->literal('  ')],
+            'dcterms:language' => [$this->literal(' Swahili'), $this->literal('Swahili')],
+            'dcterms:spatial' => [$this->literal("\t")],
+        ]);
+        self::assertSame(['Doe, Jane', 'Roe, Rick'], $doc['creator_ss']);
+        self::assertSame(['Swahili'], $doc['language_ss']);
+        self::assertArrayNotHasKey('origin_ss', $doc, 'A whitespace-only place is no place.');
+    }
+
     public function testSectionPhaseFollowsItsLeadershipProperty(): void
     {
         $mapper = new SectionMapper($this->configProfile('research_sections'));

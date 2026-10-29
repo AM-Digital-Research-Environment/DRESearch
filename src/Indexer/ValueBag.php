@@ -32,17 +32,24 @@ final class ValueBag
         return null;
     }
 
-    /** Linked titles with literal fallback, deduplicated in source order. @return list<string> */
+    /**
+     * Linked titles with literal fallback, trimmed and deduplicated in source
+     * order; a label that is only whitespace is no label.
+     *
+     * @return list<string>
+     */
     public function labels(?string $term): array
     {
         $labels = [];
         foreach ($this->rows($term) as $row) {
             $label = trim((string) (($row['title'] ?? '') !== '' ? $row['title'] : ($row['value'] ?? '')));
             if ($label !== '') {
-                $labels[$label] = true;
+                // Keyed for deduplication only: PHP turns a key such as "1990"
+                // into an integer, so the label itself is the value.
+                $labels[$label] ??= $label;
             }
         }
-        return array_keys($labels);
+        return array_values($labels);
     }
 
     /** @return array{0:list<string>,1:list<string>} Parallel names and resource ids. */

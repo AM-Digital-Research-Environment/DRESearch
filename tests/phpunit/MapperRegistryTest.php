@@ -8,12 +8,11 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use DRESearch\Indexer\MapperInterface;
 use DRESearch\Indexer\MapperRegistry;
-use DRESearch\Indexer\OrganisationMapper;
-use DRESearch\Indexer\PersonMapper;
 use DRESearch\Indexer\PodcastMapper;
 use DRESearch\Indexer\ProjectMapper;
 use DRESearch\Indexer\PublicationMapper;
 use DRESearch\Indexer\ResearchItemMapper;
+use DRESearch\Indexer\ReverseLinkMapper;
 use DRESearch\Indexer\SectionMapper;
 use DRESearch\Indexer\TermMapper;
 use DRESearch\Indexer\VideoMapper;
@@ -34,8 +33,8 @@ final class MapperRegistryTest extends TestCase
             'podcast' => PodcastMapper::class,
             'video' => VideoMapper::class,
             'section' => SectionMapper::class,
-            'person' => PersonMapper::class,
-            'organisation' => OrganisationMapper::class,
+            'person' => ReverseLinkMapper::class,
+            'organisation' => ReverseLinkMapper::class,
             'term' => TermMapper::class,
         ];
         self::assertSame(array_keys($expected), MapperRegistry::default()->kinds());

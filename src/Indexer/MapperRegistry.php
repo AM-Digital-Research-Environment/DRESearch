@@ -78,8 +78,11 @@ final class MapperRegistry
             ['podcast', static fn(SearchProfile $profile): MapperInterface => new PodcastMapper($profile)],
             ['video', static fn(SearchProfile $profile): MapperInterface => new VideoMapper($profile)],
             ['section', static fn(SearchProfile $profile): MapperInterface => new SectionMapper($profile)],
-            ['person', static fn(SearchProfile $profile): MapperInterface => new PersonMapper($profile)],
-            ['organisation', static fn(SearchProfile $profile): MapperInterface => new OrganisationMapper($profile)],
+            // People and organisations are the same reverse-link entity mapping
+            // under two kinds (each picks its own card); authority terms add the
+            // optional geopoint of the location corpora on top of it.
+            ['person', static fn(SearchProfile $profile): MapperInterface => new ReverseLinkMapper($profile)],
+            ['organisation', static fn(SearchProfile $profile): MapperInterface => new ReverseLinkMapper($profile)],
             ['term', static fn(SearchProfile $profile): MapperInterface => new TermMapper($profile)],
         ]);
     }

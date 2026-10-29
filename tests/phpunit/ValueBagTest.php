@@ -21,6 +21,23 @@ final class ValueBagTest extends TestCase
         self::assertSame([['Jane Doe', 'Jane Doe', 'John Smith'], ['7', '8', '']], $bag->people('p'));
     }
 
+    public function testLabelsAreTrimmedStringsAndWhitespaceIsNoLabel(): void
+    {
+        $literal = static fn(string $value): array => ['vrid' => null, 'value' => $value, 'uri' => null, 'title' => null];
+        $bag = new ValueBag(['p' => [
+            $literal('  Lagos '),
+            $literal('Lagos'),
+            $literal("\t \n"),
+            $literal('1990'),
+            $literal('1990'),
+        ]]);
+
+        // "1990" would come back as an integer from an array key, and Typesense
+        // stores a string[] field.
+        self::assertSame(['Lagos', '1990'], $bag->labels('p'));
+        self::assertSame([], $bag->labels(null));
+    }
+
     public function testAllowsOnlyHttpLinksAndNormalizesDoi(): void
     {
         $bag = new ValueBag([

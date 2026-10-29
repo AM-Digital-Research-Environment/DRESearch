@@ -16,62 +16,32 @@ use DRESearch\Settings\SearchProfile;
  * corpora, a dcterms:type that distinguishes sub-kinds (a location is a Country or
  * a geographic location; a subject is an LCSH heading or a tag). Everything else a
  * useful card wants is the count of public records that reference the term, which
- * the {@see Reindexer} computes from `reverse_links` config and hands in via
+ * {@see DocumentAssembler} computes from `reverse_links` config and hands in via
  * $item['counts'] (and $item['roles'] for any corpus that derives roles).
  *
- * Which property feeds which facet comes from {@see SearchProfile} (config-driven);
- * the stable field names (type_s, item_count, publication_count, …) are the
- * interface. The logic is deliberately the same as {@see PersonMapper} and
- * {@see OrganisationMapper} — they are all reverse-link entity corpora.
+ * That part is the people and organisations mapping, so it is delegated to
+ * {@see ReverseLinkMapper}; a term adds only the optional geopoint of the
+ * location corpora. Which property feeds which facet comes from
+ * {@see SearchProfile} (config-driven); the stable field names (type_s,
+ * item_count, publication_count, …) are the interface.
  */
 final class TermMapper implements MapperInterface
 {
+    private readonly ReverseLinkMapper $entity;
+
     public function __construct(private readonly SearchProfile $profile)
     {
+        $this->entity = new ReverseLinkMapper($profile);
     }
 
     public function map(array $item, array $values, ?string $thumbnailUrl): array
     {
-        $bag = new ValueBag($values);
-        $doc = [
-            'id'        => (string) $item['id'],
-            'is_public' => $item['is_public'],
-            'title'     => $item['title'] !== '' ? $item['title'] : sprintf('[Unnamed #%d]', $item['id']),
-        ];
-
-        // Property-backed facets (e.g. type_s ← dcterms:type). Derived facets such
-        // as roles_ss carry no property and are filled below.
-        foreach ($this->profile->all() as $field => $def) {
-            if (empty($def['property'])) {
-                continue;
-            }
-            $titles = $this->linkedTitles($values, $def['property']);
-            if ($titles === []) {
-                continue;
-            }
-            $doc[$field] = $this->profile->isMultivalued($field) ? $titles : $titles[0];
-        }
-
-        // Roles — present only if the corpus derives any (see Reindexer reverse_links).
-        if ($this->profile->hasFacet('roles_ss')) {
-            $roles = array_values(array_unique(array_map('strval', $item['roles'] ?? [])));
-            if ($roles) {
-                $doc['roles_ss'] = $roles;
-            }
-        }
-
-        // Association counts (research items, publications, …). Always emitted so
-        // the card can show "0" and the field can be sorted on.
-        $counts = $item['counts'] ?? [];
-        foreach ($this->profile->displayFields() as $field => $def) {
-            if (($def['type'] ?? '') === 'int32') {
-                $doc[$field] = (int) ($counts[$field] ?? 0);
-            }
-        }
+        $doc = $this->entity->map($item, $values, $thumbnailUrl);
 
         // Location profiles opt into a geopoint field. Typesense's coordinate
         // order is [latitude, longitude]; MapLibre swaps it at presentation time.
         if (isset($this->profile->displayFields()['geo'])) {
+            $bag = new ValueBag($values);
             $lat = $bag->firstFloat('geo:lat');
             $lng = $bag->firstFloat('geo:long');
             $valid = $lat !== null && $lng !== null
@@ -83,32 +53,6 @@ final class TermMapper implements MapperInterface
             }
         }
 
-        if ($thumbnailUrl !== null) {
-            $doc['thumbnail_url'] = $thumbnailUrl;
-        }
-
         return $doc;
-    }
-
-    /**
-     * Linked-resource titles (literal fallback) for a property, deduped, order
-     * preserved.
-     *
-     * @param array<string, list<array{vrid:?int, value:?string, uri:?string, title:?string}>> $values
-     * @return list<string>
-     */
-    private function linkedTitles(array $values, ?string $term): array
-    {
-        if ($term === null || $term === '') {
-            return [];
-        }
-        $out = [];
-        foreach ($values[$term] ?? [] as $v) {
-            $label = ($v['title'] ?? '') !== '' ? $v['title'] : ($v['value'] ?? '');
-            if ($label !== null && $label !== '') {
-                $out[] = $label;
-            }
-        }
-        return array_values(array_unique($out));
     }
 }
