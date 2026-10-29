@@ -21,7 +21,8 @@ mapping, validation, and UI bootstrap.
 and public media. It resolves property IDs before loading values. Cached Omeka
 resource titles can originate from private values, so title reads choose the
 first public value of the template title property (or dcterms:title).
-`MapperFactory` and `DocumentAssembler` share mapping and batch loading between
+`MapperRegistry` (the one kind → mapper map, which profile validation also reads)
+and `DocumentAssembler` share mapping and batch loading between
 full rebuilds and incremental work. Authority lookups are reused within a batch.
 
 ## Rebuild lifecycle

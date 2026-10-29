@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DRESearch\Settings;
 
+use DRESearch\Indexer\MapperRegistry;
 use DRESearch\Settings\Definition\DateDefinition;
 use DRESearch\Settings\Definition\FieldDefinition;
 use DRESearch\Settings\Definition\SortDefinition;
@@ -21,7 +22,8 @@ use DRESearch\Settings\Definition\SourceScope;
  * year_start, …) are the stable interface; their Omeka-side backing is what's
  * configurable.
  *
- * `kind` selects the indexer mapper and the result card:
+ * `kind` selects the indexer mapper ({@see MapperRegistry}, which also decides
+ * which kinds are valid) and the result card:
  *   - 'item'         : research items (shared-property facets via AuthorityResolver)
  *   - 'project'      : research projects (linked-title facets, a date range, and a
  *                      reverse count of associated research items)
@@ -192,9 +194,16 @@ final class SearchProfile
         if (!preg_match('/^[A-Za-z0-9_-]+$/', $this->collection)) {
             throw new \InvalidArgumentException(sprintf('Invalid collection alias "%s" in profile "%s".', $this->collection, $this->name));
         }
-        $kinds = ['item', 'project', 'publication', 'podcast', 'video', 'person', 'section', 'organisation', 'term'];
-        if (!in_array($this->kind, $kinds, true)) {
-            throw new \InvalidArgumentException(sprintf('Unsupported mapper kind "%s" in profile "%s".', $this->kind, $this->name));
+        // The kinds the indexer can map, from the same registry that builds the
+        // mapper, so config can never accept a kind the reindex cannot honour.
+        $kinds = MapperRegistry::default();
+        if (!$kinds->has($this->kind)) {
+            throw new \InvalidArgumentException(sprintf(
+                'Unsupported mapper kind "%s" in profile "%s" (known: %s).',
+                $this->kind,
+                $this->name,
+                implode(', ', $kinds->kinds()),
+            ));
         }
         if ($this->label === '' || $this->queryBy === '') {
             throw new \InvalidArgumentException(sprintf('Profile "%s" must define a label and query_by.', $this->name));

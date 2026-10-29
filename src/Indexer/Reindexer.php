@@ -94,7 +94,7 @@ final class Reindexer
             $token = bin2hex(random_bytes(16));
             $this->throwIfCancelled();
             $source = new OmekaSourceRepository($this->connection, $this->profile);
-            $assembler = new DocumentAssembler($source, (new MapperFactory($this->connection, $this->profile))->create(), $this->profile);
+            $assembler = new DocumentAssembler($source, MapperRegistry::default()->create($this->profile, $this->connection), $this->profile);
             $this->stateStore?->markBuilding(
                 $this->profile->name(),
                 $this->alias,
@@ -337,7 +337,7 @@ final class Reindexer
     {
         $source = new OmekaSourceRepository($this->connection, $this->profile);
         // Targeted: resolve only the authorities this batch links to.
-        $assembler = new DocumentAssembler($source, (new MapperFactory($this->connection, $this->profile))->create(true), $this->profile);
+        $assembler = new DocumentAssembler($source, MapperRegistry::default()->create($this->profile, $this->connection, true), $this->profile);
         $rejected = [];
         foreach (array_chunk(array_unique(array_map('intval', $ids)), self::BATCH) as $chunk) {
             $rows = $source->rows($chunk);

@@ -60,5 +60,6 @@ Adding a corpus of an existing kind takes:
 5. raising the profile count asserted in `tests/phpunit/SearchProfileTest.php`;
 6. **Reindex** of the new corpus.
 
-A new mapper kind additionally needs a mapper (`Indexer\MapperFactory`) and a
-result card (`src/svelte/components`).
+A new mapper kind additionally needs a mapper (one entry in
+`Indexer\MapperRegistry::default()`, which also makes the kind valid in config)
+and a result card (`src/svelte/components`).
