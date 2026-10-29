@@ -72,6 +72,19 @@ final class ChangeQueue
         )->fetchAllAssociative();
     }
 
+    /**
+     * Every id with a change queued for a profile, whatever its revision.
+     *
+     * @return list<int>
+     */
+    public function pendingIds(string $profile): array
+    {
+        return array_values(array_map('intval', $this->connection->executeQuery(
+            'SELECT item_id FROM dre_search_change WHERE profile = :profile ORDER BY item_id',
+            ['profile' => $profile],
+        )->fetchFirstColumn()));
+    }
+
     public function acknowledge(string $profile, array $rows): void
     {
         usort($rows, static fn(array $a, array $b): int => (int) $a['item_id'] <=> (int) $b['item_id']);

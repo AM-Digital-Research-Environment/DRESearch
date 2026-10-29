@@ -51,6 +51,30 @@ final class CollectionOps
     }
 
     /**
+     * How many of these ids a collection holds, one counting search per 250.
+     *
+     * @param array<int|string> $ids
+     */
+    public function countDocuments(string $collection, array $ids): int
+    {
+        $found = 0;
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        foreach (array_chunk($ids, self::ID_FILTER_CHUNK) as $chunk) {
+            $result = $this->client->collections[$collection]->documents->search([
+                'q' => '*',
+                'filter_by' => 'id:=[' . implode(',', $chunk) . ']',
+                'per_page' => 0,
+                'enable_analytics' => false,
+            ]);
+            if (!isset($result['found'])) {
+                throw new \RuntimeException(sprintf('Typesense did not report a count for collection "%s".', $collection));
+            }
+            $found += (int) $result['found'];
+        }
+        return $found;
+    }
+
+    /**
      * Delete a collection unless an alias — any alias, not only this profile's —
      * points at it. Checking every alias also protects a collection another
      * alias shares; when they cannot be read the collection is retained.

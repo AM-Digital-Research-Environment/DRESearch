@@ -47,6 +47,25 @@ final class OmekaSourceRepository
         return $rows;
     }
 
+    /**
+     * How many records the scan reads: public items in the profile's source
+     * scope, by the same predicate as {@see rows()}, leaving out $excluding
+     * (ids with a change still queued). One statement, so one consistent read.
+     *
+     * @param list<int> $excluding
+     */
+    public function count(array $excluding = []): int
+    {
+        $scope = SourcePredicate::compile($this->profile, fn(string $term): ?int => $this->propertyId($term));
+        $excluding = array_values(array_unique(array_map('intval', $excluding)));
+        return (int) $this->connection->executeQuery(
+            'SELECT COUNT(*) FROM resource WHERE resource_type = :rt AND is_public = 1'
+            . ($scope !== '' ? ' AND ' . $scope : '')
+            . ($excluding !== [] ? ' AND id NOT IN (' . implode(',', $excluding) . ')' : ''),
+            ['rt' => Item::class],
+        )->fetchOne();
+    }
+
     /** Omeka's cached resource.title can be derived from a private title value. */
     public function publicTitles(array $ids): array
     {

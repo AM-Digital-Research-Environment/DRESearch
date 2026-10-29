@@ -87,6 +87,11 @@ you decide on them, the next ones appear.
   the mapper/schema mismatch, then rebuild.
 - `document_count_mismatch`: compare the source query with import responses; the
   previous alias is still live.
+- `source_count_mismatch`: the staging collection does not hold one document per
+  public record in the profile's scope (records with a queued change aside), so
+  a record was written without a queued change (an import behind Omeka's API, a
+  lost event). The previous alias is still live; rebuild again, and check the
+  profile scope if it persists.
 - `rebuild_locked`: find the active job in Admin → Jobs before retrying.
 - **Records hidden from public search**: their changes are queued and the worker
   applies them within seconds. If the oldest pending change keeps ageing, check

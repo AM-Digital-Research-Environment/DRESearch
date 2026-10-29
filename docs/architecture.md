@@ -32,6 +32,11 @@ serialize rebuilds and queue workers per collection alias. Every run owns a
 unique staging collection recorded in `dre_search_generation`. Rejected imports
 or a count mismatch prevent promotion. The queue is replayed into staging before
 cutover, without acknowledging work; the new live generation then drains it.
+After the replay the staging collection is reconciled with the source: the
+profile's scope is counted in SQL by the scan's own `SourcePredicate` and must
+equal the documents stored, both sides leaving out the ids still queued (as
+IwacSearch reconciles its per-type counts). A mismatch is checked once more after
+another replay, then refuses promotion as `source_count_mismatch`.
 Changes arriving during either pass remain queued until their exact revision is
 successfully applied. A dirty marker raised after the build started is retained.
 

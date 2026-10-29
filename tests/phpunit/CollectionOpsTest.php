@@ -113,6 +113,17 @@ final class CollectionOpsTest extends TestCase
         self::assertCount(3, $this->server->filterDeletes, 'Nothing to delete sends nothing.');
     }
 
+    public function testCountingDocumentsByIdUsesBoundedFilters(): void
+    {
+        $this->server->seed('records_g1', range(1, 300));
+        self::assertSame(250, $this->ops->countDocuments('records_g1', range(51, 400)), '350 ids asked, 250 held.');
+        self::assertCount(2, $this->server->searches);
+        self::assertSame(0, $this->server->searches[0][1]['per_page'], 'A count, not a page of hits.');
+        self::assertFalse($this->server->searches[0][1]['enable_analytics']);
+        self::assertSame(0, $this->ops->countDocuments('records_g1', []));
+        self::assertCount(2, $this->server->searches);
+    }
+
     public function testDocumentCountOfAMissingCollectionThrows(): void
     {
         $this->expectException(\Typesense\Exceptions\ObjectNotFound::class);

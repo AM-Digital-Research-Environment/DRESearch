@@ -8,6 +8,7 @@ use Closure;
 use Doctrine\DBAL\Connection;
 use DRESearch\Indexer\Exception\BatchImportException;
 use DRESearch\Indexer\Exception\ReindexCancelledException;
+use DRESearch\Indexer\Exception\SourceCountMismatchException;
 use DRESearch\Indexer\Exception\VerificationException;
 use DRESearch\Settings\SearchProfile;
 use Laminas\Log\LoggerInterface;
@@ -36,6 +37,8 @@ final class Reindexer
     private const BATCH = 100;
     /** Seconds a rebuild waits for an incremental drain to release the profile. */
     private const LOCK_WAIT_SECONDS = 60;
+    /** Source-count reconciliations before a mismatch refuses promotion. */
+    private const RECONCILE_ATTEMPTS = 2;
 
     private readonly string $alias;
 
@@ -174,10 +177,10 @@ final class Reindexer
             $this->throwIfCancelled();
             if ($queue !== null) {
                 $this->replayQueue($queue, $applier, $collection);
-                // Replay can add or remove resources after the initial SQL scan.
-                $verified = $this->ops->documentCount($collection);
             }
             $this->throwIfCancelled();
+            // Replay can add or remove resources after the initial SQL scan.
+            $verified = $this->reconcileWithSource($source, $queue, $applier, $collection);
             $this->guardAgainstShrink($previous, $verified);
             $this->ops->promote($this->alias, $collection);
             $promoted = true;
@@ -245,6 +248,7 @@ final class Reindexer
             $status = $e instanceof ReindexCancelledException ? 'cancelled' : 'failed';
             $code = match (true) {
                 $e instanceof BatchImportException => 'batch_import_failed',
+                $e instanceof SourceCountMismatchException => 'source_count_mismatch',
                 $e instanceof VerificationException => 'document_count_mismatch',
                 $e instanceof ReindexCancelledException => 'cancelled',
                 default => 'rebuild_failed',
@@ -299,6 +303,54 @@ final class Reindexer
             // never promoted.
             $applier->apply($ids, $collection);
             $after = max($ids);
+        }
+    }
+
+    /**
+     * The staging collection must hold exactly one document per record of the
+     * source scope, as IwacSearch reconciles its per-type counts before cutover.
+     * The scan's own check (attempted = imported = stored) cannot see a record
+     * it never read: one written behind Omeka's API, or one that entered the
+     * scope with no event to queue it. The count uses the scan's own predicate
+     * ({@see OmekaSourceRepository::count()}). Ids with a change still queued are
+     * left out of both sides — the drain after promotion applies them — so a
+     * busy editor never blocks a rebuild.
+     *
+     * A record committed an instant before its change is queued looks missing,
+     * so a mismatch is looked at once more, after replaying what arrived.
+     *
+     * @return int documents the staging collection holds
+     * @throws SourceCountMismatchException
+     */
+    private function reconcileWithSource(
+        OmekaSourceRepository $source,
+        ?ChangeQueue $queue,
+        ChangeApplier $applier,
+        string $collection,
+    ): int {
+        for ($attempt = 1;; $attempt++) {
+            $pending = $queue?->pendingIds($this->profile->name()) ?? [];
+            $expected = $source->count($pending);
+            $stored = $this->ops->documentCount($collection);
+            $storedPending = $pending !== [] ? $this->ops->countDocuments($collection, $pending) : 0;
+            if ($stored - $storedPending === $expected) {
+                return $stored;
+            }
+            if ($queue === null || $attempt >= self::RECONCILE_ATTEMPTS) {
+                $this->logger->err(
+                    sprintf(
+                        'DRESearch: source count mismatch; %d records in scope, %d indexed (%d queued changes left out)',
+                        $expected,
+                        $stored - $storedPending,
+                        count($pending),
+                    ),
+                    $this->context(['collection' => $collection, 'expected' => $expected, 'stored' => $stored, 'pending' => count($pending)]),
+                );
+                throw new SourceCountMismatchException($expected, $stored - $storedPending, count($pending));
+            }
+            sleep(1);
+            $this->throwIfCancelled();
+            $this->replayQueue($queue, $applier, $collection);
         }
     }
 

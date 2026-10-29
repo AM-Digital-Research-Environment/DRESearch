@@ -721,6 +721,49 @@ final class OmekaIntegrationTest extends TestCase
         self::assertSame([], $this->queue->page($this->profile->name()));
     }
 
+    public function testARecordTheScanMissedAndNoChangeQueuedRefusesPromotion(): void
+    {
+        $live = $this->build()->run()['collection'];
+        $checkpoint = 0;
+        $cancel = function () use (&$checkpoint): bool {
+            // After the scan: a public record appears in scope with no queued
+            // change (a write that bypassed Omeka's events).
+            if (++$checkpoint === 4) {
+                $this->item(9, 'Imported behind the API');
+                $this->member(9, 29918);
+            }
+            return false;
+        };
+        try {
+            $this->build($cancel)->run();
+            self::fail('A generation missing a source record was promoted.');
+        } catch (\DRESearch\Indexer\Exception\SourceCountMismatchException $error) {
+            self::assertStringContainsString('2 public record(s)', $error->getMessage());
+            self::assertSame($live, (new CollectionOps($this->client))->aliasTarget($this->profile->collection()));
+            self::assertSame('source_count_mismatch', $this->state->all()[$this->profile->name()]['last_error_code']);
+        }
+        // Once the record is indexed or queued, the rebuild goes through.
+        self::assertSame(2, $this->build()->run()['documents']);
+    }
+
+    public function testRecordsStillQueuedAreLeftOutOfTheSourceCount(): void
+    {
+        $checkpoint = 0;
+        $cancel = function () use (&$checkpoint): bool {
+            // After the replay, before the count: queued, so not yet expected.
+            if (++$checkpoint === 6) {
+                $this->item(9, 'Created during the rebuild');
+                $this->member(9, 29918);
+                $this->queue->enqueue($this->registry->names(), [9]);
+            }
+            return false;
+        };
+        $result = $this->build($cancel)->run();
+        self::assertSame(1, $result['documents'], 'Promoted without it…');
+        self::assertSame(2, $this->client->collections[$result['collection']]->retrieve()['num_documents'], '…and added by the drain that follows.');
+        self::assertSame([], $this->queued());
+    }
+
     public function testQueuePagesBeyondOneBatchAndPreservesNewRevision(): void
     {
         $this->queue->enqueue($this->registry->names(), range(1, 205));
