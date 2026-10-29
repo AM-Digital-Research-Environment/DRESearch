@@ -31,7 +31,10 @@ jobs:
           php-version: '8.4'
           coverage: none
       - run: npm ci
-      - run: npm audit --audit-level=high
+      # npm audit at high+, minus the exceptions written down (with reasons)
+      # in scripts/shared/audit-exceptions.mjs; an exception no longer needed
+      # fails too.
+      - run: npm run check:audit
       - run: npm run lint
       - run: npm run check
       # asset/dist is a build product, not tracked; build it like the release.

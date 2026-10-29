@@ -34,6 +34,15 @@ For profile changes, ensure every `query_by` field is indexed, every custom sort
 targets a sortable field, and collection aliases stay unique. Test the affected
 corpus against a disposable Typesense instance before requesting review.
 
+## Dependency audit
+
+CI runs `npm run check:audit`: `npm audit` fails on any high or critical
+advisory that `scripts/shared/audit-exceptions.mjs` does not list with its
+reason (why no release fixes it, why the code is unreachable), and on a listed
+one that npm can now fix in range or no longer reports. Do not weaken it with
+`--omit=dev`: every npm dependency is a dev dependency, so that turns it off.
+Composer's side is `composer audit --locked`.
+
 ## Versions
 
 The release number lives in `config/module.ini`, `package.json`,

@@ -8,6 +8,7 @@
     "dev": "vite build --watch",
     "build": "vite build && npm run check:size",
     "check:size": "node scripts/check-bundle-size.mjs",
+    "check:audit": "node scripts/check-audit.mjs",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
