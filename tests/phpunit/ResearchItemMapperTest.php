@@ -6,16 +6,16 @@ namespace DRESearch\Test;
 
 use Doctrine\DBAL\DriverManager;
 use DRESearch\Indexer\AuthorityResolver;
-use DRESearch\Indexer\PodcastMapper;
 use DRESearch\Indexer\ResearchItemMapper;
-use DRESearch\Indexer\SectionMapper;
-use DRESearch\Settings\SearchProfile;
+use DRESearch\Test\Support\MapperFixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-/** Field derivations the mappers compute rather than copy. */
-final class IndexerMapperTest extends TestCase
+/** Research items: the origin date, and the labels a research item carries. */
+final class ResearchItemMapperTest extends TestCase
 {
+    use MapperFixtures;
+
     private string $timezone;
 
     protected function setUp(): void
@@ -84,51 +84,12 @@ final class IndexerMapperTest extends TestCase
         self::assertArrayNotHasKey('origin_ss', $doc, 'A whitespace-only place is no place.');
     }
 
-    public function testSectionPhaseFollowsItsLeadershipProperty(): void
-    {
-        $mapper = new SectionMapper($this->configProfile('research_sections'));
-        $item = ['id' => 3, 'is_public' => true, 'title' => 'Section', 'item_count' => 4];
-        $member = ['foaf:member' => [$this->link(9, 'Member'), $this->link(10, 'Lead')]];
-
-        $phase1 = $mapper->map($item, ['dcterms:creator' => [$this->link(10, 'Lead')]] + $member, null);
-        self::assertSame('Phase 1', $phase1['phase_s']);
-        self::assertSame(['Lead'], $phase1['pi_ss']);
-        self::assertSame(['Lead', 'Member'], $phase1['people_ss']);
-        self::assertSame(2, $phase1['member_count']);
-        self::assertSame(4, $phase1['project_count']);
-
-        $phase2 = $mapper->map($item, ['marcrel:spk' => [$this->link(11, 'Speaker')]] + $member, null);
-        self::assertSame('Phase 2', $phase2['phase_s']);
-        self::assertSame(['Speaker'], $phase2['spokesperson_ss']);
-
-        $both = $mapper->map($item, ['dcterms:creator' => [$this->link(10, 'Lead')], 'marcrel:spk' => [$this->link(11, 'Speaker')]], null);
-        self::assertSame('Phase 1', $both['phase_s'], 'PIs mark a Phase 1 section.');
-
-        $external = $mapper->map(['id' => 4, 'is_public' => true, 'title' => 'External'], $member, null);
-        self::assertArrayNotHasKey('phase_s', $external);
-        self::assertSame(0, $external['project_count']);
-    }
-
-    public function testPodcastEpisodeNumberStaysWithinInt32(): void
-    {
-        $mapper = new PodcastMapper($this->configProfile('research_podcasts'));
-        $episode = fn(string ...$raw): array => $mapper->map(
-            ['id' => 5, 'is_public' => true, 'title' => 'Episode'],
-            ['bibo:number' => array_values(array_map($this->literal(...), $raw))],
-            null,
-        );
-        self::assertSame(12, $episode('Episode 0012')['episode']);
-        self::assertSame(2147483647, $episode('2147483647')['episode']);
-        self::assertArrayNotHasKey('episode', $episode('2147483648'), 'Typesense would reject the whole document.');
-        self::assertSame(7, $episode('99999999999999999999', '7')['episode'], 'An out-of-range value falls through to the next.');
-        self::assertArrayNotHasKey('episode', $episode('no number'));
-    }
-
     /** @param array<string,list<array{vrid:?int,value:?string,uri:?string,title:?string}>> $values */
     private function researchItem(array $values): array
     {
         $profile = $this->configProfile('research_items');
-        // Date values link nothing, so the resolver is never queried.
+        // Nothing here needs an authority: the resolver is never primed, so it
+        // never queries the (empty) database.
         $auth = new AuthorityResolver(DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]), $profile);
         return (new ResearchItemMapper($auth, $profile))->map(['id' => 1, 'is_public' => true, 'title' => 'Item'], $values, null);
     }
@@ -136,23 +97,5 @@ final class IndexerMapperTest extends TestCase
     private static function utc(string $time): int
     {
         return (new \DateTimeImmutable($time, new \DateTimeZone('UTC')))->getTimestamp();
-    }
-
-    private function configProfile(string $name): SearchProfile
-    {
-        $config = require dirname(__DIR__, 2) . '/config/module.config.php';
-        return SearchProfile::fromArray($name, $config['dre_search']['profiles'][$name]);
-    }
-
-    /** @return array{vrid:?int,value:?string,uri:?string,title:?string} */
-    private function literal(string $value): array
-    {
-        return ['vrid' => null, 'value' => $value, 'uri' => null, 'title' => null];
-    }
-
-    /** @return array{vrid:?int,value:?string,uri:?string,title:?string} */
-    private function link(int $id, string $title): array
-    {
-        return ['vrid' => $id, 'value' => null, 'uri' => null, 'title' => $title];
     }
 }

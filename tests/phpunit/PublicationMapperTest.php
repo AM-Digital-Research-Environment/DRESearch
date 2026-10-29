@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace DRESearch\Test;
 
 use DRESearch\Indexer\PublicationMapper;
-use DRESearch\Indexer\TermMapper;
 use PHPUnit\Framework\TestCase;
 
-final class ImprovementMapperTest extends TestCase
+/** Publications: full text, where it lives, and the flag that says it is available. */
+final class PublicationMapperTest extends TestCase
 {
     use ProfileFixture;
 
@@ -122,32 +122,5 @@ final class ImprovementMapperTest extends TestCase
             'kind' => 'publication',
             'fulltext_source' => ['property' => 'bibo:uri', 'url_prefix' => 'epub'],
         ]);
-    }
-
-    public function testLocationMapperEmitsOnlyValidGeopoints(): void
-    {
-        $profile = $this->profile([
-            'kind' => 'term',
-            'query_by' => 'title',
-            'display_fields' => [
-                'geo' => ['property' => null, 'type' => 'geopoint', 'facet' => false, 'index' => true],
-                'has_coords' => ['property' => null, 'type' => 'bool', 'facet' => true, 'index' => true],
-            ],
-        ]);
-        $mapper = new TermMapper($profile);
-        $base = ['id' => 8, 'is_public' => true, 'title' => 'Lagos'];
-        $valid = $mapper->map($base, [
-            'geo:lat' => [['vrid' => null, 'value' => '6.455', 'uri' => null, 'title' => null]],
-            'geo:long' => [['vrid' => null, 'value' => '3.384', 'uri' => null, 'title' => null]],
-        ], null);
-        self::assertSame([6.455, 3.384], $valid['geo']);
-        self::assertTrue($valid['has_coords']);
-
-        $invalid = $mapper->map($base, [
-            'geo:lat' => [['vrid' => null, 'value' => '100', 'uri' => null, 'title' => null]],
-            'geo:long' => [['vrid' => null, 'value' => '3.384', 'uri' => null, 'title' => null]],
-        ], null);
-        self::assertArrayNotHasKey('geo', $invalid);
-        self::assertFalse($invalid['has_coords']);
     }
 }
