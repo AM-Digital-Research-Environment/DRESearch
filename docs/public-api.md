@@ -35,7 +35,10 @@ search-all active corpus read it from the JSON body; `suggest` from the query
 string or form.
 
 - `block_id`: a saved page block. The server resolves its locked filter and
-  checks that the block's layout matches the profile.
+  checks that the block's layout matches the profile. A locked filter whose
+  parentheses or backticks do not balance, that names `is_public`, or that
+  contains a backslash anywhere is refused when the page is saved, and again
+  at search time for a block stored before a rule existed.
 - `scope_item`: a research project's item id, sent by the item-page **Project
   records** block. Valid only with `profile: "research_items"`. The server reads
   the item through the Omeka API as the current user (a private or absent item

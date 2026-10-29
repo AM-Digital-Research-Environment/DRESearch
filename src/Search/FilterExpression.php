@@ -14,6 +14,11 @@ namespace DRESearch\Search;
  * other clause — including `is_public:=true`. Parentheses must therefore
  * balance outside backtick-quoted values, backticks must pair, and the
  * fragment must not mention the visibility field at all.
+ *
+ * A backslash is refused anywhere (IwacSearch's rule, ported back): inside a
+ * backtick-quoted value Typesense may read it as escaping the closing
+ * backtick, which would move where a value ends between this scan and the
+ * server — and with it which parentheses count. No DRE filter needs one.
  */
 final class FilterExpression
 {
@@ -27,6 +32,9 @@ final class FilterExpression
         }
         if (!mb_check_encoding($filter, 'UTF-8')) {
             return 'The locked filter is not valid UTF-8.';
+        }
+        if (str_contains($filter, '\\')) {
+            return 'The locked filter may not contain a backslash.';
         }
         $depth = 0;
         $quoted = false;
