@@ -114,14 +114,11 @@ final class ReindexOrchestrator
         Closure $cancel,
         bool $allowShrink = false,
     ): array {
-        $log = function (string $message): void {
-            $this->logger->info('DRESearch: ' . $message);
-        };
         return (new Reindexer(
             $this->connection,
-            $client,
+            new CollectionOps($client),
             $profile,
-            $log,
+            $this->logger,
             $this->stateStore,
             $this->retentionDays,
             $jobId,

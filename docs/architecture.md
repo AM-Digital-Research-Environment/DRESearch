@@ -40,11 +40,14 @@ to two minutes for a starting Typesense to finish loading. Promotion is refused
 when the new generation holds less than `min_retained_ratio` (half) of the live
 one, unless the operator allows a smaller corpus.
 
-`GenerationPublisher` verifies the target after an ambiguous alias PUT. Cleanup
-checks every alias before deleting an owned collection and preserves collections
-when that check fails. The previous generation is retained for rollback; older, unaliased,
-module-owned generations are deleted at the next promotion (or after
-`retention_days`).
+Every Typesense call of the indexer goes through one injectable class,
+`CollectionOps` (create and count collections, import and delete documents,
+read and promote an alias), which the unit tests drive against an in-memory
+Typesense (`tests/phpunit/Support/Typesense`). It verifies the target after an
+ambiguous alias PUT. Cleanup checks every alias before deleting an owned
+collection and preserves collections when that check fails. The previous
+generation is retained for rollback; older, unaliased, module-owned generations
+are deleted at the next promotion (or after `retention_days`).
 
 ## Incremental lifecycle
 
@@ -71,8 +74,11 @@ for one stale window (2 minutes) before another attempt, so an outage costs one
 retry per window rather than one job per save. Workers import at most 100
 documents per batch, remove out-of-scope/deleted/private records and acknowledge
 only the revision they read. A document Typesense rejects is removed from the
-live index (fail closed), acknowledged and listed on the admin page, so it cannot
-hold the queue. Incremental batches resolve only the authorities they link to.
+live index (fail closed), acknowledged, logged with Typesense's reason and listed
+on the admin page, so it cannot hold the queue. Incremental batches resolve only
+the authorities they link to. `ChangeApplier` is that apply step, and the same
+code serves a rebuild's replay (where a rejection stops the promotion instead)
+and its drain after promotion.
 
 ## Public availability
 

@@ -7,8 +7,9 @@ namespace DRESearch\Test;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use DRESearch\Indexer\AnalyticsSync;
+use DRESearch\Indexer\ChangeApplier;
 use DRESearch\Indexer\ChangeQueue;
-use DRESearch\Indexer\GenerationPublisher;
+use DRESearch\Indexer\CollectionOps;
 use DRESearch\Indexer\IncrementalIndexer;
 use DRESearch\Indexer\ItemEventListener;
 use DRESearch\Indexer\OmekaSourceRepository;
@@ -143,7 +144,7 @@ final class OmekaIntegrationTest extends TestCase
             $this->build($cancel)->run();
             self::fail('Cancelled rebuild completed.');
         } catch (\DRESearch\Indexer\Exception\ReindexCancelledException) {
-            self::assertSame($old, (new GenerationPublisher($this->client, $this->profile->collection()))->target());
+            self::assertSame($old, (new CollectionOps($this->client))->aliasTarget($this->profile->collection()));
             self::assertNotEmpty($this->queue->page($this->profile->name()));
         }
     }
@@ -341,10 +342,9 @@ final class OmekaIntegrationTest extends TestCase
             'api_key' => getenv('TYPESENSE_API_KEY'), 'num_retries' => 0, 'client' => $transport,
             'nodes' => [['host' => getenv('TYPESENSE_HOST'), 'port' => (string) (getenv('TYPESENSE_PORT') ?: 8108), 'protocol' => 'http']],
         ]);
-        $result = (new Reindexer($this->db, $client, $this->profile, static function (): void {
-        }, $this->state))->run();
-        self::assertSame($result['collection'], (new GenerationPublisher($this->client, $this->profile->collection()))->target());
-        self::assertFalse((new GenerationPublisher($this->client, $this->profile->collection()))->deleteUnaliased($result['collection']));
+        $result = (new Reindexer($this->db, new CollectionOps($client), $this->profile, $this->logger, $this->state))->run();
+        self::assertSame($result['collection'], (new CollectionOps($this->client))->aliasTarget($this->profile->collection()));
+        self::assertFalse((new CollectionOps($this->client))->deleteUnaliased($result['collection']));
         self::assertSame(1, $this->client->collections[$result['collection']]->retrieve()['num_documents']);
     }
 
@@ -487,8 +487,7 @@ final class OmekaIntegrationTest extends TestCase
             'api_key' => getenv('TYPESENSE_API_KEY'), 'num_retries' => 0, 'client' => $transport,
             'nodes' => [['host' => getenv('TYPESENSE_HOST'), 'port' => (string) (getenv('TYPESENSE_PORT') ?: 8108), 'protocol' => 'http']],
         ]);
-        $rejected = (new Reindexer($this->db, $client, $this->profile, static function (): void {
-        }))->drainQueue($this->queue, $live);
+        $rejected = (new ChangeApplier($this->db, new CollectionOps($client), $this->profile, $this->logger))->drain($this->queue, $live);
         self::assertSame([1], $rejected);
         self::assertSame([], $this->queued(), 'One bad record must not hold the corpus paused.');
         $ids = array_column(array_column($this->client->collections[$live]->documents->search(['q' => '*', 'query_by' => 'title'])['hits'], 'document'), 'id');
@@ -507,10 +506,9 @@ final class OmekaIntegrationTest extends TestCase
             $this->build()->run();
             self::fail('A 3 → 1 document rebuild was promoted.');
         } catch (\DRESearch\Indexer\Exception\VerificationException) {
-            self::assertSame($live, (new GenerationPublisher($this->client, $this->profile->collection()))->target());
+            self::assertSame($live, (new CollectionOps($this->client))->aliasTarget($this->profile->collection()));
         }
-        $forced = new Reindexer($this->db, $this->client, $this->profile, static function (): void {
-        }, $this->state, 0, 'test', null, 0.5, true);
+        $forced = new Reindexer($this->db, new CollectionOps($this->client), $this->profile, $this->logger, $this->state, 0, 'test', null, 0.5, true);
         self::assertSame(1, $forced->run()['documents']);
     }
 
@@ -757,11 +755,10 @@ final class OmekaIntegrationTest extends TestCase
             'nodes' => [['host' => getenv('TYPESENSE_HOST'), 'port' => (string) (getenv('TYPESENSE_PORT') ?: 8108), 'protocol' => 'http']],
         ]);
         try {
-            (new Reindexer($this->db, $client, $this->profile, static function (): void {
-            }, $this->state))->run();
+            (new Reindexer($this->db, new CollectionOps($client), $this->profile, $this->logger, $this->state))->run();
             self::fail('Failed import was promoted.');
         } catch (\DRESearch\Indexer\Exception\BatchImportException) {
-            self::assertSame($old, (new GenerationPublisher($this->client, $this->profile->collection()))->target());
+            self::assertSame($old, (new CollectionOps($this->client))->aliasTarget($this->profile->collection()));
             self::assertCount(1, $this->queue->page($this->profile->name()));
             self::assertSame('batch_import_failed', $this->state->all()[$this->profile->name()]['last_error_code']);
             $owned = array_filter($this->client->collections->retrieve(), fn(array $row): bool => str_starts_with($row['name'], $this->prefix));
@@ -771,8 +768,7 @@ final class OmekaIntegrationTest extends TestCase
 
     private function build(?\Closure $cancel = null): Reindexer
     {
-        return new Reindexer($this->db, $this->client, $this->profile, static function (): void {
-        }, $this->state, 30, 'test', $cancel);
+        return new Reindexer($this->db, new CollectionOps($this->client), $this->profile, $this->logger, $this->state, 30, 'test', $cancel);
     }
 
     private function incremental(): IncrementalIndexer

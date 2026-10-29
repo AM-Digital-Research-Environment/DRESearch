@@ -235,6 +235,7 @@ final class IncrementalIndexer
         if ($client === null) {
             return $pass;
         }
+        $ops = new CollectionOps($client);
         foreach ($this->registry->all() as $profile) {
             if ($cancel !== null && $cancel()) {
                 return $pass;
@@ -250,24 +251,17 @@ final class IncrementalIndexer
                 continue;
             }
             try {
-                $target = (new GenerationPublisher($client, $profile->collection()))->target();
+                $target = $ops->aliasTarget($profile->collection());
                 if ($target === null) {
                     // Never built: its first rebuild reads current SQL state.
                     $this->queue->clear($profile->name());
                     continue;
                 }
-                $indexer = new Reindexer($this->connection, $client, $profile, static function (string $message): void {
-                });
-                $rejected = $indexer->drainQueue($this->queue, $target, $cancel, $beat);
+                // Rejected documents are removed, logged and recorded by the applier.
+                $applier = new ChangeApplier($this->connection, $ops, $profile, $this->logger, $this->stateStore);
+                $rejected = $applier->drain($this->queue, $target, $cancel, $beat);
                 if ($rejected !== []) {
                     $pass['rejected'][$profile->name()] = $rejected;
-                    $this->logger->err(sprintf(
-                        'DRESearch: Typesense rejected %d "%s" document(s); they were removed from search until fixed: %s',
-                        count($rejected),
-                        $profile->name(),
-                        implode(', ', array_slice($rejected, 0, 50)),
-                    ));
-                    $this->stateStore?->recordRejected($profile->name(), $rejected);
                 }
             } catch (\Throwable $error) {
                 $pass['failures'][] = $profile->name() . ': ' . $error->getMessage();

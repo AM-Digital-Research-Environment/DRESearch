@@ -10,7 +10,7 @@ use DRESearch\Indexer\Exception\BatchImportException;
 use DRESearch\Indexer\Exception\ReindexCancelledException;
 use DRESearch\Indexer\Exception\VerificationException;
 use DRESearch\Settings\SearchProfile;
-use Typesense\Client;
+use Laminas\Log\LoggerInterface;
 
 /**
  * Rebuilds the Typesense index for one {@see SearchProfile} from the Omeka
@@ -24,7 +24,9 @@ use Typesense\Client;
  *
  * Everything corpus-specific — the resource template + item set to read, the
  * property terms, the mapper, and the optional reverse item-count — comes from
- * the profile, so the reindex follows the same config a reuser overrides.
+ * the profile, so the reindex follows the same config a reuser overrides. Every
+ * Typesense call goes through {@see CollectionOps}; queued changes are applied
+ * by {@see ChangeApplier}, the same code the incremental worker runs.
  */
 final class Reindexer
 {
@@ -37,12 +39,11 @@ final class Reindexer
 
     private readonly string $alias;
 
-    /** @param Closure(string):void $log */
     public function __construct(
         private readonly Connection $connection,
-        private readonly Client $client,
+        private readonly CollectionOps $ops,
         private readonly SearchProfile $profile,
-        private readonly Closure $log,
+        private readonly LoggerInterface $logger,
         private readonly ?RebuildStateStore $stateStore = null,
         private readonly int $retentionDays = 0,
         private readonly string $jobId = 'manual',
@@ -65,7 +66,7 @@ final class Reindexer
     public function run(): array
     {
         $started = hrtime(true);
-        ($this->log)(sprintf("Starting reindex of '%s'…", $this->profile->name()));
+        $this->info(sprintf("Starting reindex of '%s'…", $this->profile->name()));
         $lock = new RebuildLock(
             $this->connection,
             $this->profile->name(),
@@ -83,10 +84,11 @@ final class Reindexer
         $imported = 0;
         $failed = 0;
         $queue = $this->stateStore !== null ? new ChangeQueue($this->connection) : null;
+        $applier = new ChangeApplier($this->connection, $this->ops, $this->profile, $this->logger, $this->stateStore);
         $dirtyRevision = $this->stateStore?->dirtyRevision($this->profile->name());
 
         try {
-            $previous = $this->aliasTarget();
+            $previous = $this->ops->aliasTarget($this->alias);
             $this->recoverOrphanedCollections($previous);
             $base = $this->collectionBase();
             $collection = $base . 'g' . (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('YmdHisv')
@@ -94,7 +96,11 @@ final class Reindexer
             $token = bin2hex(random_bytes(16));
             $this->throwIfCancelled();
             $source = new OmekaSourceRepository($this->connection, $this->profile);
-            $assembler = new DocumentAssembler($source, MapperRegistry::default()->create($this->profile, $this->connection), $this->profile);
+            $assembler = new DocumentAssembler(
+                $source,
+                MapperRegistry::default()->create($this->profile, $this->connection),
+                $this->profile,
+            );
             $this->stateStore?->markBuilding(
                 $this->profile->name(),
                 $this->alias,
@@ -105,8 +111,8 @@ final class Reindexer
             // From this point the name is owned by this session. Attempt cleanup
             // even if the create response is lost after Typesense accepted it.
             $created = true;
-            $this->client->collections->create((new SchemaProvider())->collection($collection, $this->profile));
-            ($this->log)(sprintf('Created staging collection %s', $collection));
+            $this->ops->create((new SchemaProvider())->collection($collection, $this->profile));
+            $this->info(sprintf('Created staging collection %s', $collection), ['collection' => $collection]);
 
             $lastId = 0;
             $batch = [];
@@ -125,14 +131,14 @@ final class Reindexer
                     if (count($batch) >= self::BATCH) {
                         $attempted += count($batch);
                         try {
-                            $imported += $this->flush($collection, $batch);
+                            $imported += $this->ops->import($collection, $batch);
                         } catch (BatchImportException $e) {
                             $imported += $e->successful();
                             $failed += count($e->failedIds());
                             throw $e;
                         }
                         $batch = [];
-                        ($this->log)(sprintf('Imported %d documents…', $imported));
+                        $this->info(sprintf('Imported %d documents…', $imported), ['collection' => $collection, 'imported' => $imported]);
                         $this->throwIfCancelled();
                     }
                 }
@@ -141,7 +147,7 @@ final class Reindexer
             if ($batch) {
                 $attempted += count($batch);
                 try {
-                    $imported += $this->flush($collection, $batch);
+                    $imported += $this->ops->import($collection, $batch);
                 } catch (BatchImportException $e) {
                     $imported += $e->successful();
                     $failed += count($e->failedIds());
@@ -153,10 +159,9 @@ final class Reindexer
             try {
                 $this->stateStore?->markVerifying($this->profile->name(), $attempted, $imported, $failed);
             } catch (\Throwable $stateError) {
-                ($this->log)(sprintf('Could not persist verifying state: %s', $stateError->getMessage()));
+                $this->logger->warn(sprintf('DRESearch: could not persist verifying state: %s', $stateError->getMessage()), $this->context());
             }
-            $info = $this->client->collections[$collection]->retrieve();
-            $verified = (int) ($info['num_documents'] ?? -1);
+            $verified = $this->ops->documentCount($collection);
             if ($verified !== $imported || $imported !== $attempted) {
                 throw new VerificationException(sprintf(
                     'Staging verification failed: attempted=%d imported=%d stored=%d.',
@@ -168,21 +173,20 @@ final class Reindexer
 
             $this->throwIfCancelled();
             if ($queue !== null) {
-                $this->replayQueue($queue, $collection);
+                $this->replayQueue($queue, $applier, $collection);
                 // Replay can add or remove resources after the initial SQL scan.
-                $info = $this->client->collections[$collection]->retrieve();
-                $verified = (int) $info['num_documents'];
+                $verified = $this->ops->documentCount($collection);
             }
             $this->throwIfCancelled();
             $this->guardAgainstShrink($previous, $verified);
-            (new GenerationPublisher($this->client, $this->alias))->promote($collection);
+            $this->ops->promote($this->alias, $collection);
             $promoted = true;
             try {
                 if ($this->stateStore !== null) {
                     (new \DRESearch\Search\SearchCache($this->connection))->invalidate();
                 }
             } catch (\Throwable $error) {
-                ($this->log)('Could not invalidate search cache: ' . $error->getMessage());
+                $this->logger->warn('DRESearch: could not invalidate search cache: ' . $error->getMessage(), $this->context());
             }
             $durationMs = $this->durationMs($started);
             try {
@@ -200,27 +204,30 @@ final class Reindexer
             } catch (\Throwable $stateError) {
                 // The verified alias is already live. Do not report the rebuild as
                 // failed or attempt to delete it because operational metadata lagged.
-                ($this->log)(sprintf('Alias promoted, but rebuild state could not be persisted: %s', $stateError->getMessage()));
+                $this->logger->err(
+                    sprintf('DRESearch: alias promoted, but rebuild state could not be persisted: %s', $stateError->getMessage()),
+                    $this->context(['collection' => $collection]),
+                );
             }
-            ($this->log)(sprintf("Promoted alias '%s' → '%s' (rollback: %s)", $this->alias, $collection, $previous ?? 'none'));
+            $this->info(
+                sprintf("Promoted alias '%s' → '%s' (rollback: %s)", $this->alias, $collection, $previous ?? 'none'),
+                ['collection' => $collection, 'previous' => $previous, 'documents' => $verified],
+            );
 
             if ($queue !== null) {
                 try {
-                    $rejected = $this->drainQueue($queue, $collection, $this->cancel);
-                    if ($rejected !== []) {
-                        ($this->log)(sprintf('Typesense rejected %d queued document(s), removed until fixed: %s', count($rejected), implode(', ', array_slice($rejected, 0, 50))));
-                        $this->stateStore?->recordRejected($this->profile->name(), $rejected);
-                    }
+                    // Rejections are removed, logged and recorded by the applier.
+                    $applier->drain($queue, $collection, $this->cancel);
                 } catch (\Throwable $error) {
-                    ($this->log)('Live generation has pending changes; retry the queue: ' . $error->getMessage());
+                    $this->logger->warn('DRESearch: live generation has pending changes; retry the queue: ' . $error->getMessage(), $this->context());
                 }
             }
             try {
                 $this->cleanupRetiredCollections($collection, $previous);
             } catch (\Throwable $error) {
-                ($this->log)('Alias promoted; retired collection cleanup deferred: ' . $error->getMessage());
+                $this->logger->warn('DRESearch: alias promoted; retired collection cleanup deferred: ' . $error->getMessage(), $this->context());
             }
-            ($this->log)(sprintf('Done — %d documents at promotion.', $verified));
+            $this->info(sprintf('Done — %d documents at promotion.', $verified), ['collection' => $collection, 'documents' => $verified]);
 
             return [
                 'documents' => $verified,
@@ -260,7 +267,7 @@ final class Reindexer
                     $failed,
                 );
             } catch (\Throwable $stateError) {
-                ($this->log)(sprintf('Could not persist failed rebuild state: %s', $stateError->getMessage()));
+                $this->logger->err(sprintf('DRESearch: could not persist failed rebuild state: %s', $stateError->getMessage()), $this->context());
             }
             throw $e;
         } finally {
@@ -282,93 +289,16 @@ final class Reindexer
     }
 
     /** Replay without acknowledging: a failed/cancelled promotion must retain all work. */
-    private function replayQueue(ChangeQueue $queue, string $collection): void
+    private function replayQueue(ChangeQueue $queue, ChangeApplier $applier, string $collection): void
     {
         $after = 0;
         while ($rows = $queue->page($this->profile->name(), $after)) {
             $this->throwIfCancelled();
             $ids = array_map('intval', array_column($rows, 'item_id'));
-            $this->syncBatch($ids, $collection);
+            // Not tolerated: a staging generation with a rejected document is
+            // never promoted.
+            $applier->apply($ids, $collection);
             $after = max($ids);
-        }
-    }
-
-    /**
-     * Apply and acknowledge queued work on a live generation. Caller holds the
-     * profile lock so an older batch cannot overwrite a newer one.
-     *
-     * A document Typesense rejects (a schema violation in the source data) is
-     * removed from the live generation — fail closed: its old copy may carry
-     * metadata that has since changed — and its queue row is acknowledged, so
-     * one bad record cannot hold the whole corpus paused behind it.
-     *
-     * @param Closure():bool|null $cancel
-     * @param Closure():void|null $beat called after every batch
-     * @return list<int> ids rejected and removed
-     */
-    public function drainQueue(ChangeQueue $queue, string $collection, ?Closure $cancel = null, ?Closure $beat = null): array
-    {
-        $rejected = [];
-        while ($rows = $queue->page($this->profile->name())) {
-            if ($cancel !== null && $cancel()) {
-                return $rejected;
-            }
-            $failed = $this->syncBatch(array_map('intval', array_column($rows, 'item_id')), $collection, true);
-            if ($failed !== []) {
-                $this->deleteDocuments($collection, $failed);
-                array_push($rejected, ...$failed);
-            }
-            (new \DRESearch\Search\SearchCache($this->connection))->invalidate();
-            $queue->acknowledge($this->profile->name(), $rows);
-            if ($beat !== null) {
-                $beat();
-            }
-        }
-        return array_values(array_unique($rejected));
-    }
-
-    /**
-     * Reconcile a bounded batch against current SQL state, including deletions.
-     *
-     * @param bool $tolerateRejected return Typesense-rejected ids instead of throwing
-     * @return list<int> rejected ids (only when tolerated)
-     */
-    public function syncBatch(array $ids, string $collection, bool $tolerateRejected = false): array
-    {
-        $source = new OmekaSourceRepository($this->connection, $this->profile);
-        // Targeted: resolve only the authorities this batch links to.
-        $assembler = new DocumentAssembler($source, MapperRegistry::default()->create($this->profile, $this->connection, true), $this->profile);
-        $rejected = [];
-        foreach (array_chunk(array_unique(array_map('intval', $ids)), self::BATCH) as $chunk) {
-            $rows = $source->rows($chunk);
-            $docs = $assembler->documents($rows);
-            if ($docs !== []) {
-                try {
-                    $this->flush($collection, array_values($docs));
-                } catch (BatchImportException $e) {
-                    if (!$tolerateRejected) {
-                        throw $e;
-                    }
-                    array_push($rejected, ...array_map('intval', $e->failedIds()));
-                }
-            }
-            $present = array_map(static fn(array $row): int => (int) $row['id'], $rows);
-            $removed = array_diff($chunk, $present);
-            if ($removed !== []) {
-                $this->deleteDocuments($collection, $removed);
-            }
-        }
-        return $rejected;
-    }
-
-    /** @param array<int> $ids */
-    private function deleteDocuments(string $collection, array $ids): void
-    {
-        $ids = array_values(array_unique(array_map('intval', $ids)));
-        foreach (array_chunk($ids, 250) as $chunk) {
-            $this->client->collections[$collection]->documents->delete([
-                'filter_by' => 'id:=[' . implode(',', $chunk) . ']',
-            ]);
         }
     }
 
@@ -382,7 +312,7 @@ final class Reindexer
             return;
         }
         try {
-            $live = (int) ($this->client->collections[$previous]->retrieve()['num_documents'] ?? 0);
+            $live = $this->ops->documentCount($previous);
         } catch (\Typesense\Exceptions\ObjectNotFound) {
             return;
         }
@@ -397,42 +327,22 @@ final class Reindexer
         }
     }
 
-    /** @param list<array<string,mixed>> $docs */
-    private function flush(string $collection, array $docs): int
-    {
-        $result = ImportResult::fromResponse(
-            $this->client->collections[$collection]->documents->import($docs, ['action' => 'upsert']),
-            $docs,
-        );
-        if (!$result->isComplete()) {
-            throw new BatchImportException(
-                $collection,
-                $result->successful(),
-                $result->failedIds(),
-                $result->errors(),
-            );
-        }
-        return $result->successful();
-    }
-
-    private function aliasTarget(): ?string
-    {
-        return (new GenerationPublisher($this->client, $this->alias))->target();
-    }
-
     private function deleteOwnedStaging(string $collection): bool
     {
         try {
-            if (!(new GenerationPublisher($this->client, $this->alias))->deleteUnaliased($collection)) {
+            if (!$this->ops->deleteUnaliased($collection)) {
                 return false;
             }
-            ($this->log)(sprintf('Deleted session staging collection %s', $collection));
+            $this->info(sprintf('Deleted session staging collection %s', $collection), ['collection' => $collection]);
             return true;
         } catch (\Throwable $e) {
             if ($this->isNotFound($e)) {
                 return true;
             }
-            ($this->log)(sprintf('Could not delete session staging collection %s: %s', $collection, $e->getMessage()));
+            $this->logger->warn(
+                sprintf('DRESearch: could not delete session staging collection %s: %s', $collection, $e->getMessage()),
+                $this->context(['collection' => $collection]),
+            );
             return false;
         }
     }
@@ -445,13 +355,16 @@ final class Reindexer
         $keep = array_values(array_filter([$live, $rollback], 'is_string'));
         foreach ($this->stateStore->cleanupCandidates($this->profile->name(), $keep, $this->retentionDays) as $name) {
             try {
-                if (!(new GenerationPublisher($this->client, $this->alias))->deleteUnaliased($name)) {
+                if (!$this->ops->deleteUnaliased($name)) {
                     continue;
                 }
                 $this->stateStore->forgetGeneration($name);
-                ($this->log)(sprintf('Deleted retired owned collection %s', $name));
+                $this->info(sprintf('Deleted retired owned collection %s', $name), ['collection' => $name]);
             } catch (\Throwable $e) {
-                ($this->log)(sprintf('Could not delete retired collection %s: %s', $name, $e->getMessage()));
+                $this->logger->warn(
+                    sprintf('DRESearch: could not delete retired collection %s: %s', $name, $e->getMessage()),
+                    $this->context(['collection' => $name]),
+                );
             }
         }
     }
@@ -472,18 +385,21 @@ final class Reindexer
                 continue;
             }
             try {
-                if (!(new GenerationPublisher($this->client, $this->alias))->deleteUnaliased($name)) {
+                if (!$this->ops->deleteUnaliased($name)) {
                     continue;
                 }
                 $this->stateStore->forgetGeneration($name);
-                ($this->log)(sprintf('Removed orphaned staging collection %s', $name));
+                $this->info(sprintf('Removed orphaned staging collection %s', $name), ['collection' => $name]);
             } catch (\Throwable $e) {
                 if ($this->isNotFound($e)) {
                     $this->stateStore->forgetGeneration($name);
                     continue;
                 }
                 $this->stateStore->markGeneration($name, 'failed');
-                ($this->log)(sprintf('Could not remove orphaned staging collection %s: %s', $name, $e->getMessage()));
+                $this->logger->warn(
+                    sprintf('DRESearch: could not remove orphaned staging collection %s: %s', $name, $e->getMessage()),
+                    $this->context(['collection' => $name]),
+                );
             }
         }
     }
@@ -498,6 +414,24 @@ final class Reindexer
     private function durationMs(int $started): int
     {
         return (int) round((hrtime(true) - $started) / 1_000_000);
+    }
+
+    /** @param array<string,mixed> $context */
+    private function info(string $message, array $context = []): void
+    {
+        $this->logger->info('DRESearch: ' . $message, $this->context($context));
+    }
+
+    /**
+     * Every rebuild log entry names its profile and job, so one run's lines
+     * can be told apart when several profiles rebuild in a row.
+     *
+     * @param array<string,mixed> $extra
+     * @return array<string,mixed>
+     */
+    private function context(array $extra = []): array
+    {
+        return ['profile' => $this->profile->name(), 'job' => $this->jobId] + $extra;
     }
 
     /**
