@@ -23,7 +23,10 @@ composer analyse
 `asset/dist/` is a build product and is not tracked: the release workflow builds
 it into DRESearch.zip together with `vendor/` (from the committed `composer.lock`,
 resolved for PHP 8.4 by `config.platform`). Run `npm run build` before copying the
-module into a dev container. PHP 8.4 is the minimum; CI runs 8.4–8.5 and
+module into a dev container. The build ends with `npm run check:size`, which holds
+the entry, its shared runtime and the App and FederatedApp chunks to gzipped
+budgets (`scripts/check-bundle-size.mjs`) and fails if either page chunk stops
+loading lazily; raise a budget deliberately, in the commit that needs it. PHP 8.4 is the minimum; CI runs 8.4–8.5 and
 production runs 8.5. After changing user-visible strings run `npm run i18n`. Omeka supplies Laminas and PSR interfaces
 at runtime, so the module must never bundle them in Composer.
 
