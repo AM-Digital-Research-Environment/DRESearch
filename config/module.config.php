@@ -128,8 +128,8 @@ return [
                     ],
                 ],
             ],
-            // Bulk citation export of the current result set (txt/json/ris/bibtex
-            // are serialized client-side from the returned documents).
+            // One sidebar facet's values matching the text typed into its
+            // search box, under the current query and the other filters.
             'dre-search-api-facet' => [
                 'type' => \Laminas\Router\Http\Literal::class,
                 'options' => [
@@ -137,6 +137,8 @@ return [
                     'defaults' => ['controller' => Controller\SearchController::class, 'action' => 'apiFacet'],
                 ],
             ],
+            // Bulk citation export of the current result set (txt/json/ris/bibtex
+            // are serialized client-side from the returned documents).
             'dre-search-api-export' => [
                 'type'    => \Laminas\Router\Http\Literal::class,
                 'options' => [
@@ -205,9 +207,8 @@ return [
                     ],
                 ],
             ],
-
-            // Monitoring probe (no secrets): Typesense reachability, corpus
-            // states, queue age and worker liveness.
+            // A corpus's editor-approved popular searches, offered in the empty
+            // search box (empty unless popular_searches.enabled).
             'dre-search-api-popular' => [
                 'type'    => \Laminas\Router\Http\Literal::class,
                 'options' => [
@@ -218,6 +219,9 @@ return [
                     ],
                 ],
             ],
+
+            // Monitoring probe (no secrets): Typesense reachability, corpus
+            // states, queue age and worker liveness.
             'dre-search-api-health' => [
                 'type'    => \Laminas\Router\Http\Literal::class,
                 'options' => [

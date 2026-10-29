@@ -68,6 +68,19 @@ final class SearchProxy
     {
         $this->gate->reset();
         [$profile, $req, $serverFilter] = $this->prepare($profileName, $req, 'search');
+        return $this->searchPrepared($profile, $req, $serverFilter, $requestId);
+    }
+
+    /**
+     * {@see search()} for a request {@see prepare()} has already validated and
+     * scoped, so a caller that needs the profile first (the federated search)
+     * neither validates it twice nor resolves its scope twice.
+     *
+     * @param array<string,mixed> $req validated request
+     * @return array<string,mixed>
+     */
+    private function searchPrepared(SearchProfile $profile, array $req, ?string $serverFilter, ?string $requestId): array
+    {
         $client = $this->client();
         $state = $this->state($profile);
         if ($client === null || !$state['ready']) {
@@ -506,10 +519,9 @@ final class SearchProxy
     public function searchAll(string $activeProfile, array $req, ?string $requestId = null): array
     {
         $this->gate->reset();
-        $this->gate->reset();
-        $this->gate->reset();
-        [$profile, $req] = $this->prepare($activeProfile, $req, 'search');
-        $activeProfile = $profile->name();
+        // Validated and scoped once; the active search below reuses both, and
+        // the gate's answers for this call.
+        [$profile, $req, $serverFilter] = $this->prepare($activeProfile, $req, 'search');
         $client = $this->client();
         if ($client === null) {
             return ['available' => false, 'counts' => [], 'active' => $this->unavailable($requestId)];
@@ -549,7 +561,7 @@ final class SearchProxy
             }
         }
 
-        $active = $this->search($activeProfile, $req, $requestId);
+        $active = $this->searchPrepared($profile, $req, $serverFilter, $requestId);
         return [
             'available' => (bool) ($active['available'] ?? false),
             'counts'    => $counts,
@@ -664,7 +676,16 @@ final class SearchProxy
             }
         }
         $docs = array_slice(array_values($docs), 0, QueryBuilder::MAP_MAX_HITS);
-        if (count($docs) !== min($found, QueryBuilder::MAP_MAX_HITS)) {
+        $expected = min($found, QueryBuilder::MAP_MAX_HITS);
+        if (count($docs) !== $expected) {
+            // Logged like a short export: a map missing points is a failure the
+            // visitor sees as "could not load", and the cause is server-side.
+            $error = new \RuntimeException(sprintf(
+                'Typesense returned %d of %d expected map documents.',
+                count($docs),
+                $expected,
+            ));
+            $this->logBackendFailure('map_verification', $error, $profile, $requestId);
             return $this->unavailableMap($requestId);
         }
         $this->logMetric('map', $started, $profile, $requestId, ['found' => $found, 'mapped' => count($docs)]);
