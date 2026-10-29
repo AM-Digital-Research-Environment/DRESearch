@@ -100,6 +100,13 @@ lease, so a failed dispatch heals without operator action.
 
 ## Search execution and caching
 
+`QueryBuilder` builds every mode from one matching core: the query and its
+fields, the filter (visibility, pending-change exclusions, saved scope, facet
+selections, years), the sort, recall and time bounds, and the stopword and
+synonym sets. Counts, exports, maps, facet recounts and union entries add only
+what they render, so they match exactly what the live search matches and a
+parameter added to the results page cannot reach them by accident.
+
 `SearchExecutor` applies the same missing-stopword fallback to normal, facet,
 count, map, export and union searches. Full-text snippets use explicit
 `highlight_fields` even when full document bodies are excluded. Facet search is

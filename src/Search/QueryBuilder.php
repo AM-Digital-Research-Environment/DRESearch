@@ -116,48 +116,69 @@ final class QueryBuilder
     ) {
     }
 
-    /** @param array<string,mixed> $req */
+    /**
+     * The live search: the {@see matching()} core plus everything a results
+     * page shows — one page of hits, the sidebar's facet counts, the documents
+     * without their search-only fields, match highlights, and analytics when
+     * the client asked for this query to count.
+     *
+     * Every other mode starts from the same core and adds only what it uses,
+     * rather than copying these params and unsetting the rest: a parameter
+     * added here can no longer reach counts, exports, maps or recounts by
+     * accident, and one added to the core reaches all of them by design.
+     *
+     * @param array<string,mixed> $req
+     * @return array<string,mixed>
+     */
     public function search(array $req): array
     {
-        $q = trim((string) ($req['q'] ?? ''));
-        $isBrowse = $q === '';
+        $params = array_merge(
+            $this->matching($req),
+            [
+                'page'     => max(1, min(self::MAX_PAGE, (int) ($req['page'] ?? 1))),
+                'per_page' => max(1, min(self::PER_PAGE_MAX, (int) ($req['per_page'] ?? self::PER_PAGE_DEFAULT))),
+            ],
+            $this->facetCounting($this->buildFacetBy($req)),
+            $this->hiddenFields(),
+            $this->highlighting($req),
+        );
+        if (!self::isBrowse($req) && !empty($req['record_query']) && !empty($req['analytics_id'])) {
+            $params['enable_analytics'] = true;
+            $params['x-typesense-user-id'] = $req['analytics_id'];
+        }
+        return $params;
+    }
 
-        $perPage = (int) ($req['per_page'] ?? self::PER_PAGE_DEFAULT);
-        $perPage = max(1, min(self::PER_PAGE_MAX, $perPage));
-
+    /**
+     * What decides WHICH documents match and in what order, shared by every
+     * mode built from a visitor's request: the query and its fields, the
+     * filter (visibility guard, pending-change exclusions, block scope, facet
+     * selections, year window), the sort, recall and time bounds, and the
+     * stopword and synonym sets. Counts, exports, maps and facet recounts are
+     * honest only while they match exactly what the live search matches.
+     * Analytics are off; only {@see search()} may turn them on.
+     *
+     * @param array<string,mixed> $req
+     * @param string|null $except facet field whose own selections are lifted
+     *                            ({@see facetCountsFor()})
+     * @return array<string,mixed>
+     */
+    private function matching(array $req, ?string $except = null): array
+    {
+        $isBrowse = self::isBrowse($req);
         $params = [
             'enable_analytics' => false,
-            'q'         => $isBrowse ? '*' : $q,
+            'q'         => $isBrowse ? '*' : trim((string) $req['q']),
             'query_by'  => $this->profile->queryBy(),
-            'filter_by' => $this->buildFilter($req),
-            'page'      => max(1, min(self::MAX_PAGE, (int) ($req['page'] ?? 1))),
-            'per_page'  => $perPage,
+            'filter_by' => $this->buildFilter($req, $except),
             'sort_by'   => $this->buildSort((string) ($req['sort'] ?? 'relevance'), $isBrowse),
-            // Every derived query (counts, export, map, union, facet recounts)
-            // builds on these params, so they all inherit the same recall.
+            // Every mode built on this core inherits the same recall.
             'max_candidates' => self::MAX_CANDIDATES,
             // A pathological query (hundreds of tokens, typo and drop-token
             // passes) returns its best partial answer instead of holding a
             // PHP worker for the full transport timeout.
             'search_cutoff_ms' => self::SEARCH_CUTOFF_MS,
         ];
-        // Facets are optional — a corpus may have none (e.g. genres, languages),
-        // in which case we omit facet_by entirely rather than send an empty one.
-        $facetBy = $this->buildFacetBy($req);
-        if ($facetBy !== '') {
-            $params['facet_by'] = $facetBy;
-            $params['max_facet_values'] = 100;
-        }
-        // Search-only fields (e.g. a podcast transcript) are indexed for query_by but
-        // dropped from the returned documents so a large value never bloats every hit.
-        // Typesense still returns their highlighted snippet, so a transcript match
-        // still surfaces in the card's "Matched in" line.
-        // is_public is the visibility guard, always true in a public result;
-        // shipping it with every hit is noise.
-        $params['exclude_fields'] = implode(',', array_values(array_unique(array_merge(
-            $this->profile->searchOnlyFields(),
-            ['is_public'],
-        ))));
         if (!$isBrowse) {
             // Strip common English function words (data/stopwords.json) so "the",
             // "of", "and" don't dilute relevance. Only on a real query — browse
@@ -165,35 +186,93 @@ final class QueryBuilder
             // set isn't on the server yet.
             $params['stopwords'] = self::STOPWORDS_SET;
             $params['synonym_sets'] = self::SYNONYM_SET;
-            // Mark matched terms so each card can show *where* a result matched.
-            // Short fields (title, linked-value facets, names) are highlighted in
-            // full — so a card can highlight a whole chip/byline value — while the
-            // long free-text fields (abstract, description, transcript) return a
-            // windowed snippet centred on the match (the full text would scroll the
-            // match out of the clamped card, or dump a whole transcript into a line).
-            $longTextFields = ['abstract', 'description', 'transcript', 'fulltext'];
-            $queryFields = array_values(array_filter(array_map(
-                'trim',
-                explode(',', $this->profile->queryBy())
-            )));
-            $fullFields = array_values(array_filter(
-                $queryFields,
-                static fn(string $f): bool => !in_array($f, $longTextFields, true)
-            ));
-            $params['highlight_fields'] = implode(',', $queryFields);
-            $params['enable_highlight_v1'] = false;
-            $params['highlight_start_tag'] = self::HL_START;
-            $params['highlight_end_tag'] = self::HL_END;
-            $params['highlight_affix_num_tokens'] = 8;
-            if ($fullFields !== []) {
-                $params['highlight_full_fields'] = implode(',', $fullFields);
-            }
-        }
-        if (!$isBrowse && !empty($req['record_query']) && !empty($req['analytics_id'])) {
-            $params['enable_analytics'] = true;
-            $params['x-typesense-user-id'] = $req['analytics_id'];
         }
         return $params;
+    }
+
+    /** @param array<string,mixed> $req */
+    private static function isBrowse(array $req): bool
+    {
+        return trim((string) ($req['q'] ?? '')) === '';
+    }
+
+    /**
+     * Facet counts for a comma-separated field list. Facets are optional — a
+     * corpus may have none (e.g. genres, languages), in which case facet_by is
+     * omitted entirely rather than sent empty.
+     *
+     * @return array<string,mixed>
+     */
+    private function facetCounting(string $facetBy): array
+    {
+        return $facetBy === '' ? [] : ['facet_by' => $facetBy, 'max_facet_values' => 100];
+    }
+
+    /**
+     * Fields never shipped with a returned document. Search-only fields (e.g. a
+     * podcast transcript) are indexed for query_by but dropped from the returned
+     * documents so a large value never bloats every hit; Typesense still returns
+     * their highlighted snippet, so a transcript match still surfaces in the
+     * card's "Matched in" line. is_public is the visibility guard, always true in
+     * a public result; shipping it with every hit is noise.
+     *
+     * @return array{exclude_fields:string}
+     */
+    private function hiddenFields(): array
+    {
+        return ['exclude_fields' => implode(',', array_values(array_unique(array_merge(
+            $this->profile->searchOnlyFields(),
+            ['is_public'],
+        ))))];
+    }
+
+    /**
+     * Match marks, so each card can show *where* a result matched. Short fields
+     * (title, linked-value facets, names) are highlighted in full — so a card can
+     * highlight a whole chip/byline value — while the long free-text fields
+     * (abstract, description, transcript) return a windowed snippet centred on
+     * the match (the full text would scroll the match out of the clamped card, or
+     * dump a whole transcript into a line). Nothing to mark on a browse.
+     *
+     * @param array<string,mixed> $req
+     * @return array<string,mixed>
+     */
+    private function highlighting(array $req): array
+    {
+        if (self::isBrowse($req)) {
+            return [];
+        }
+        $longTextFields = ['abstract', 'description', 'transcript', 'fulltext'];
+        $queryFields = array_values(array_filter(array_map(
+            'trim',
+            explode(',', $this->profile->queryBy())
+        )));
+        $fullFields = array_values(array_filter(
+            $queryFields,
+            static fn(string $f): bool => !in_array($f, $longTextFields, true)
+        ));
+        $params = [
+            'highlight_fields' => implode(',', $queryFields),
+            'enable_highlight_v1' => false,
+            'highlight_start_tag' => self::HL_START,
+            'highlight_end_tag' => self::HL_END,
+            'highlight_affix_num_tokens' => 8,
+        ];
+        if ($fullFields !== []) {
+            $params['highlight_full_fields'] = implode(',', $fullFields);
+        }
+        return $params;
+    }
+
+    /**
+     * For a mode that renders no hit text (counts, recounts, exports, maps):
+     * Typesense would otherwise highlight the query fields by default.
+     *
+     * @return array{highlight_fields:string}
+     */
+    private static function noHighlights(): array
+    {
+        return ['highlight_fields' => 'none'];
     }
 
     public function suggest(string $q): array
@@ -251,123 +330,93 @@ final class QueryBuilder
 
     /**
      * One entry of a federated `multi_search` whose only job is the match COUNT
-     * for a corpus (the type tabs on the federated results page): the normal
-     * {@see search()} filter/sort/year logic, scoped to this profile's
-     * `collection`, but returning no facets/highlights and a single hit (we read
-     * `found`, not the documents — `include_fields:id` keeps the payload tiny).
+     * for a corpus (the type tabs on the federated results page): the
+     * {@see matching()} core, scoped to this profile's `collection`, with no
+     * facets, highlights or documents — `found` is the total regardless of
+     * per_page, and Typesense 30 accepts 0, so nothing is ranked or shipped just
+     * to read a count.
      *
      * @param array<string,mixed> $req shared query bits: q, year_from, year_to
      * @return array<string,mixed>
      */
     public function countOnly(array $req): array
     {
-        $params = $this->search($req);
-        $params['collection'] = $this->profile->collection();
-        // `found` is the total regardless of per_page; Typesense 30 accepts 0,
-        // so no document is ranked or shipped just to read a count.
-        $params['per_page'] = 0;
-        $params['include_fields'] = 'id';
-        // Keep matching semantics identical while dropping presentation work.
-        unset(
-            $params['facet_by'],
-            $params['max_facet_values'],
-            $params['exclude_fields'],
-            $params['highlight_full_fields'],
-            $params['highlight_start_tag'],
-            $params['highlight_end_tag'],
-            $params['highlight_affix_num_tokens'],
+        return array_merge(
+            $this->matching($req),
+            ['collection' => $this->profile->collection(), 'per_page' => 0, 'include_fields' => 'id'],
+            self::noHighlights(),
         );
-        $params['highlight_fields'] = 'none';
-        $params['enable_analytics'] = false;
-        return $params;
     }
 
     /**
      * One sub-search for a Typesense v30 union request. Pagination is supplied
-     * globally to /multi_search, while every collection uses the same sortable
-     * string field on browse and the same relevance field on a real query.
-     * Facets are intentionally omitted: union responses do not expose them.
+     * globally to /multi_search, so the entry carries none; every collection
+     * sorts by the same sortable string field on browse and the same relevance
+     * field on a real query, which the corpus's own sort could not guarantee.
+     * Facets are intentionally omitted: union responses do not expose them. Its
+     * hits are rendered as cards, so it keeps the hidden fields and highlights.
      *
      * @return array<string,mixed>
      */
     public function union(string $q): array
     {
-        $isBrowse = trim($q) === '';
-        $params = $this->search([
-            'q' => $q,
-            'page' => 1,
-            'per_page' => 1,
-            'sort' => $isBrowse ? 'title' : 'relevance',
-            'facets' => [],
-        ]);
-        $params['collection'] = $this->profile->collection();
-        $params['sort_by'] = $isBrowse ? 'title:asc' : '_text_match:desc,title:asc';
-        unset($params['page'], $params['per_page']);
+        $req = ['q' => $q];
+        $params = array_merge(
+            $this->matching($req),
+            ['collection' => $this->profile->collection()],
+            $this->hiddenFields(),
+            $this->highlighting($req),
+        );
+        $params['sort_by'] = self::isBrowse($req) ? 'title:asc' : '_text_match:desc,title:asc';
         return $params;
     }
 
     /**
-     * One page of a location-map pull. It preserves the validated text, facet,
-     * locked-filter and year scope, then requires a valid mapper-produced
-     * geopoint and trims the payload to popup fields.
+     * One page of a location-map pull: the {@see matching()} core (text, facet,
+     * locked-filter and year scope) narrowed to documents carrying a valid
+     * mapper-produced geopoint, with the payload trimmed to popup fields.
      *
      * @param array<string,mixed> $req
      * @return array<string,mixed>
      */
     public function map(array $req, int $page): array
     {
-        $params = $this->search($req);
-        $params['page'] = max(1, $page);
-        $params['per_page'] = self::EXPORT_PER_PAGE;
-        $params['filter_by'] .= ' && has_coords:=true';
-        $params['include_fields'] = 'id,title,type_s,roles_ss,item_count,geo,_profile,_kind';
-        unset(
-            $params['facet_by'],
-            $params['max_facet_values'],
-            $params['highlight_full_fields'],
-            $params['highlight_start_tag'],
-            $params['highlight_end_tag'],
-            $params['highlight_affix_num_tokens'],
+        $params = array_merge(
+            $this->matching($req),
+            $this->bulkPage($page),
+            ['include_fields' => 'id,title,type_s,roles_ss,item_count,geo,_profile,_kind'],
+            $this->hiddenFields(),
+            self::noHighlights(),
         );
-        $params['highlight_fields'] = 'none';
-        $params['enable_analytics'] = false;
+        $params['filter_by'] .= ' && has_coords:=true';
         return $params;
     }
 
     /**
-     * Params for one page of a result-export pull: the same query / filter /
-     * sort / year window as a live {@see search()}, but tuned for a bulk citation
-     * dump — a big page size, no facet counts, no highlight markup, and the
-     * internal `is_public` flag dropped from the returned documents (alongside any
-     * search-only fields such as transcripts). Stopwords are kept so the export
-     * matches what the user sees; {@see SearchProxy::export()} drops them and
-     * retries if the set isn't provisioned. Paged up to {@see EXPORT_MAX_HITS}.
+     * Params for one page of a result-export pull: the {@see matching()} core —
+     * the same query, filters, sort, year window and stopwords as the live
+     * search, so the file holds what the visitor sees — tuned for a bulk citation
+     * dump: a big page size, no facet counts, no highlight markup, and the hidden
+     * fields (`is_public`, search-only texts such as transcripts) dropped. Paged
+     * up to {@see EXPORT_MAX_HITS}.
      *
      * @param array<string,mixed> $req
      * @return array<string,mixed>
      */
     public function export(array $req, int $page): array
     {
-        $params = $this->search($req);
-        $params['page'] = max(1, $page);
-        $params['per_page'] = self::EXPORT_PER_PAGE;
-        // Citation/display fields only — no facet counts, no highlight noise.
-        unset(
-            $params['facet_by'],
-            $params['max_facet_values'],
-            $params['highlight_full_fields'],
-            $params['highlight_start_tag'],
-            $params['highlight_end_tag'],
-            $params['highlight_affix_num_tokens'],
+        return array_merge(
+            $this->matching($req),
+            $this->bulkPage($page),
+            $this->hiddenFields(),
+            self::noHighlights(),
         );
-        $exclude = array_values(array_unique(array_merge(
-            $this->profile->searchOnlyFields(),
-            ['is_public'],
-        )));
-        $params['exclude_fields'] = implode(',', $exclude);
-        $params['highlight_fields'] = 'none';
-        $params['enable_analytics'] = false;
-        return $params;
+    }
+
+    /** @return array{page:int,per_page:int} one page of a bulk (export or map) pull */
+    private function bulkPage(int $page): array
+    {
+        return ['page' => max(1, $page), 'per_page' => self::EXPORT_PER_PAGE];
     }
 
     /**
@@ -407,34 +456,22 @@ final class QueryBuilder
     /**
      * One `multi_search` entry that recounts a single facet field with its own
      * selections lifted from `filter_by` — see {@see refinedFacetFields()}. It
-     * inherits the live query / sort / stopwords so the counts describe the same
-     * result set the user is looking at; only the facet payload is wanted, so it
-     * asks for one hit and just the id.
+     * shares the {@see matching()} core (query, sort, stopwords, every other
+     * filter) so the counts describe the same result set the user is looking at;
+     * only the facet payload is wanted, so it ships no document and no
+     * highlight.
      *
      * @param array<string,mixed> $req
      * @return array<string,mixed>
      */
     public function facetCountsFor(array $req, string $field): array
     {
-        $params = $this->search($req);
-        $params['collection'] = $this->profile->collection();
-        $params['filter_by'] = $this->buildFilter($req, $field);
-        $params['facet_by'] = $field;
-        $params['max_facet_values'] = 100;
-        $params['page'] = 1;
-        $params['per_page'] = 0;
-        $params['include_fields'] = 'id';
-        // No hit is rendered from this pass — highlighting would just cost time.
-        unset(
-            $params['exclude_fields'],
-            $params['highlight_full_fields'],
-            $params['highlight_start_tag'],
-            $params['highlight_end_tag'],
-            $params['highlight_affix_num_tokens'],
+        return array_merge(
+            $this->matching($req, $field),
+            ['collection' => $this->profile->collection(), 'page' => 1, 'per_page' => 0, 'include_fields' => 'id'],
+            $this->facetCounting($field),
+            self::noHighlights(),
         );
-        $params['highlight_fields'] = 'none';
-        $params['enable_analytics'] = false;
-        return $params;
     }
 
     public function facetSearch(array $req, string $field, string $query): array

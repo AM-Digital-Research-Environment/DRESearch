@@ -164,6 +164,102 @@ final class QueryBuilderTest extends TestCase
         self::assertContains('is_public', explode(',', $params['exclude_fields']));
     }
 
+    /**
+     * Every mode built from a visitor's request matches exactly what the live
+     * search matches: same text, fields, filter, sort, recall, time budget and
+     * stopword/synonym sets. A tab count or an export that matched differently
+     * would contradict the list it sits beside.
+     */
+    public function testEveryModeMatchesWhatTheLiveSearchMatches(): void
+    {
+        $builder = new QueryBuilder($this->geoProfile(), 'tenant_s:=`A`', [3]);
+        $req = [
+            'q' => 'river', 'sort' => 'title', 'year_from' => 1990, 'year_to' => 2000,
+            // A chip filter, so the recount below lifts nothing it shares.
+            'filters' => ['creator_ss' => ['Achebe']],
+        ];
+        $search = $builder->search($req);
+        $core = ['q', 'query_by', 'filter_by', 'sort_by', 'max_candidates', 'search_cutoff_ms', 'stopwords', 'synonym_sets'];
+        foreach (
+            [
+                'count' => $builder->countOnly($req),
+                'export' => $builder->export($req, 2),
+                'recount' => $builder->facetCountsFor($req, 'type_s'),
+                'facet search' => $builder->facetSearch($req, 'type_s', 'Bo'),
+            ] as $mode => $params
+        ) {
+            foreach ($core as $key) {
+                self::assertSame($search[$key], $params[$key] ?? null, sprintf('%s: %s', $mode, $key));
+            }
+        }
+        $map = $builder->map($req, 1);
+        self::assertSame($search['filter_by'] . ' && has_coords:=true', $map['filter_by']);
+        foreach (array_diff($core, ['filter_by']) as $key) {
+            self::assertSame($search[$key], $map[$key] ?? null, 'map: ' . $key);
+        }
+        // The merged stream takes the query alone, but matches it the same way.
+        $union = $builder->union('river');
+        foreach (['q', 'query_by', 'max_candidates', 'search_cutoff_ms', 'stopwords', 'synonym_sets'] as $key) {
+            self::assertSame($search[$key], $union[$key] ?? null, 'union: ' . $key);
+        }
+    }
+
+    /**
+     * What a derived mode sends is exactly its core plus what it uses, so a
+     * parameter added to the live search's presentation (facets, highlights,
+     * analytics, paging) cannot slip into a count, export, map or recount. A
+     * new key here is a decision: add it to the core or to the one mode.
+     */
+    public function testDerivedModesSendOnlyTheCorePlusWhatTheyUse(): void
+    {
+        $builder = new QueryBuilder($this->geoProfile(), null, [3]);
+        $req = [
+            'q' => 'river', 'page' => 4, 'per_page' => 7, 'facets' => ['type_s'],
+            'filters' => ['type_s' => ['Book']], 'record_query' => true, 'analytics_id' => str_repeat('a', 32),
+        ];
+        $core = ['enable_analytics', 'q', 'query_by', 'filter_by', 'sort_by', 'max_candidates', 'search_cutoff_ms', 'stopwords', 'synonym_sets'];
+        $highlights = ['highlight_fields', 'enable_highlight_v1', 'highlight_start_tag', 'highlight_end_tag', 'highlight_affix_num_tokens', 'highlight_full_fields'];
+        $expected = [
+            'count' => [$builder->countOnly($req), ['collection', 'per_page', 'include_fields', 'highlight_fields']],
+            'recount' => [$builder->facetCountsFor($req, 'type_s'), ['collection', 'page', 'per_page', 'include_fields', 'facet_by', 'max_facet_values', 'highlight_fields']],
+            'export' => [$builder->export($req, 1), ['page', 'per_page', 'exclude_fields', 'highlight_fields']],
+            'map' => [$builder->map($req, 1), ['page', 'per_page', 'include_fields', 'exclude_fields', 'highlight_fields']],
+            'union' => [$builder->union('river'), ['collection', 'exclude_fields', ...$highlights]],
+        ];
+        foreach ($expected as $mode => [$params, $extra]) {
+            $keys = array_keys($params);
+            sort($keys);
+            $want = array_values(array_unique([...$core, ...$extra]));
+            sort($want);
+            self::assertSame($want, $keys, $mode);
+            self::assertFalse($params['enable_analytics'], $mode . ' never counts as a visitor query');
+        }
+        // Only the live search shows a page of the visitor's choosing.
+        self::assertSame([4, 7], [$builder->search($req)['page'], $builder->search($req)['per_page']]);
+        self::assertSame([1, QueryBuilder::EXPORT_PER_PAGE], [$builder->export($req, 1)['page'], $builder->export($req, 1)['per_page']]);
+        self::assertSame(0, $builder->countOnly($req)['per_page']);
+        self::assertSame('none', $builder->export($req, 1)['highlight_fields']);
+    }
+
+    public function testABrowseCarriesNoStopwordsOrHighlights(): void
+    {
+        $builder = new QueryBuilder($this->profile());
+        foreach ([$builder->search([]), $builder->countOnly([]), $builder->export([], 1), $builder->union('')] as $params) {
+            self::assertSame('*', $params['q']);
+            self::assertArrayNotHasKey('stopwords', $params);
+            self::assertArrayNotHasKey('highlight_start_tag', $params);
+        }
+        self::assertSame('title:asc', $builder->union('')['sort_by']);
+    }
+
+    private function geoProfile(): \DRESearch\Settings\SearchProfile
+    {
+        return $this->profile(['display_fields' => [
+            'geo' => ['property' => null, 'type' => 'geopoint', 'facet' => false, 'index' => true],
+            'has_coords' => ['property' => null, 'type' => 'bool', 'facet' => true, 'index' => true],
+        ]]);
+    }
+
     /** Two sidebar facets + a filterable-but-not-faceted display field. */
     private function multiFacetProfile(): \DRESearch\Settings\SearchProfile
     {
