@@ -20,6 +20,7 @@ import type {
   Suggestion,
   UnionSearchRequest,
 } from './types';
+import { BULK_REQUEST_TIMEOUT_MS, withDeadline } from './transport';
 
 // Ephemeral per-page identity: no IP address, cookie, account ID, or persistent storage.
 let analyticsId: string | undefined;
@@ -59,6 +60,7 @@ export class SearchApi {
     if (!endpoint) return Promise.resolve([]);
     this.popularRequest ??= fetch(`${endpoint}?profile=${encodeURIComponent(this.profile)}`, {
       headers: { Accept: 'application/json' },
+      signal: withDeadline(undefined),
     })
       .then(async (res) =>
         res.ok ? (((await res.json()) as { queries?: string[] }).queries ?? []) : [],
@@ -72,7 +74,7 @@ export class SearchApi {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ ...this.withScope(req), ...analytics(req.q, this.profile) }),
-      signal,
+      signal: withDeadline(signal),
     });
     await requireOk(res, 'Search request failed');
     return (await res.json()) as SearchResponse;
@@ -90,7 +92,7 @@ export class SearchApi {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ ...this.withScope(req), facet_field: field, facet_query: query }),
-      signal,
+      signal: withDeadline(signal),
     });
     await requireOk(res, 'Facet search failed');
     return ((await res.json()) as { counts: FacetCount[] }).counts;
@@ -102,6 +104,7 @@ export class SearchApi {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify(this.withScope(req)),
+      signal: withDeadline(undefined, BULK_REQUEST_TIMEOUT_MS),
     });
     await requireOk(res, 'Export request failed');
     return (await res.json()) as ExportResponse;
@@ -114,7 +117,10 @@ export class SearchApi {
       (this.blockId !== null ? `&block_id=${encodeURIComponent(this.blockId)}` : '') +
       (this.scopeItem !== null ? `&scope_item=${encodeURIComponent(this.scopeItem)}` : '');
     try {
-      const res = await fetch(url, { headers: { Accept: 'application/json' }, signal });
+      const res = await fetch(url, {
+        headers: { Accept: 'application/json' },
+        signal: withDeadline(signal),
+      });
       if (!res.ok) {
         return [];
       }
@@ -131,7 +137,7 @@ export class SearchApi {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify(this.withScope(req)),
-      signal,
+      signal: withDeadline(signal, BULK_REQUEST_TIMEOUT_MS),
     });
     await requireOk(res, 'Map request failed');
     return (await res.json()) as MapResponse;
@@ -185,7 +191,10 @@ export async function suggestAll(
 ): Promise<SuggestGroup[]> {
   const url = `${endpoint}?q=${encodeURIComponent(q)}`;
   try {
-    const res = await fetch(url, { headers: { Accept: 'application/json' }, signal });
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: withDeadline(signal),
+    });
     if (!res.ok) {
       return [];
     }
@@ -212,7 +221,7 @@ export async function searchAll(
       ...req,
       ...(req.record_query === false ? {} : analytics(req.q, req.profile)),
     }),
-    signal,
+    signal: withDeadline(signal),
   });
   await requireOk(res, 'Federated search failed');
   return (await res.json()) as SearchAllResponse;
@@ -228,7 +237,7 @@ export async function searchUnion(
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(req),
-    signal,
+    signal: withDeadline(signal),
   });
   await requireOk(res, 'Merged search failed');
   return (await res.json()) as SearchResponse;

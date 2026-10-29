@@ -39,3 +39,55 @@ export function isAbortError(e: unknown): boolean {
     (e as { name: unknown }).name === 'AbortError'
   );
 }
+
+/**
+ * How long one request may take before the surface gives up on it. The proxy
+ * answers a search in well under a second and bounds each Typesense call at
+ * five (config `search_timeout`), so a request still open after fifteen means
+ * a hung proxy or network; without a deadline the surface said "Loading…"
+ * for good.
+ */
+export const REQUEST_TIMEOUT_MS = 15_000;
+
+/**
+ * The bulk pagers (export, map) make up to four Typesense calls of their own
+ * server-side, each bounded at five seconds, so they get twice as long.
+ */
+export const BULK_REQUEST_TIMEOUT_MS = 30_000;
+
+/**
+ * `signal` (the caller's "superseded" abort), plus a deadline. A request that
+ * runs out of time rejects with a `TimeoutError`, NOT an `AbortError`, so the
+ * surfaces show their normal translated failure and "Try again" for it, while
+ * a superseded request stays silent ({@link isAbortError}).
+ *
+ * `AbortSignal.any` is recent (Safari 17.4, Firefox 124); without it the two
+ * are joined by hand.
+ */
+export function withDeadline(
+  signal: AbortSignal | undefined,
+  ms: number = REQUEST_TIMEOUT_MS,
+): AbortSignal {
+  const deadline = timeoutSignal(ms);
+  if (!signal) return deadline;
+  if (typeof AbortSignal.any === 'function') return AbortSignal.any([signal, deadline]);
+  const joined = new AbortController();
+  for (const source of [signal, deadline]) {
+    if (source.aborted) {
+      joined.abort(source.reason);
+      break;
+    }
+    source.addEventListener('abort', () => joined.abort(source.reason), { once: true });
+  }
+  return joined.signal;
+}
+
+function timeoutSignal(ms: number): AbortSignal {
+  if (typeof AbortSignal.timeout === 'function') return AbortSignal.timeout(ms);
+  const controller = new AbortController();
+  setTimeout(
+    () => controller.abort(new DOMException('The request timed out.', 'TimeoutError')),
+    ms,
+  );
+  return controller.signal;
+}
