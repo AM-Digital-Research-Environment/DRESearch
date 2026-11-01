@@ -215,14 +215,20 @@ export function writeUrlState(
 /**
  * Push or replace history depending on what changed:
  *   - sort / filter / year / view changed → pushState (a back-button-able step)
- *   - only the query text or the page     → replaceState (don't spam history)
+ *   - the query changed                   → pushState, unless it continues a
+ *                                            typing burst (`continuesBurst`)
+ *   - only the page                       → replaceState (paging is not a step)
  *
- * Typing is a refinement of one search, not a sequence of navigations: the box
- * commits every 250 ms, so a hesitant typist would otherwise bury the page they
- * came from under an entry per pause and have to hit Back a dozen times to
- * escape. The federated shell already replaces on a typed query
- * ({@link syncFederatedShell}); this keeps embedded blocks consistent with it.
- * The URL still carries the query, so the link stays shareable either way.
+ * A burst of typing is ONE step ({@link createTypingBurst}). The box commits
+ * 250 ms after each pause, and replacing on every typed query (as this once
+ * did) left no step at all: Back skipped past the search the visitor typed to
+ * whatever came before it. Pushing on every commit would instead
+ * bury the page under an entry per pause. So the burst's first commit pushes
+ * — Back returns to where the visitor was before they started typing — and
+ * the commits after it replace that entry, which ends up holding the query
+ * they settled on. A query that is not typed (a picked recent search, a "did
+ * you mean", a removed query chip) is a step of its own. The URL carries the
+ * query either way, so the link stays shareable.
  *
  * The first call after mount (`prev === null`) is always replaceState — we're
  * synchronising URL ↔ memory, not navigating. Reads the LIVE
@@ -234,14 +240,15 @@ export function syncToUrl(
   prev: UrlSearchState | null,
   options: UrlSyncOptions = {},
   pathname: string = window.location.pathname,
+  continuesBurst = false,
 ): void {
   const qs = writeUrlState(next, options, window.location.search);
   const newUrl = `${pathname}${qs}`;
   if (newUrl === window.location.pathname + window.location.search) {
     return;
   }
-  // Scoping the results a different way is a step worth going back to; typing
-  // or paging through the same scope is not.
+  // Scoping the results a different way is a step worth going back to; paging
+  // through the same scope is not.
   const scopeChanged =
     prev !== null &&
     (prev.sort !== next.sort ||
@@ -249,12 +256,43 @@ export function syncToUrl(
       prev.yearTo !== next.yearTo ||
       (prev.view ?? null) !== (next.view ?? null) ||
       !sameFilters(prev.filters, next.filters));
+  const queryChanged =
+    prev !== null && resolve(options).includeQuery && prev.q !== next.q && !continuesBurst;
 
-  if (!scopeChanged) {
-    window.history.replaceState(window.history.state, '', newUrl);
-  } else {
+  if (scopeChanged || queryChanged) {
     window.history.pushState(window.history.state, '', newUrl);
+  } else {
+    window.history.replaceState(window.history.state, '', newUrl);
   }
+}
+
+/**
+ * One history entry per typing burst (IwacSearch's lib/urlState.ts).
+ *
+ * `typed()` is called for each debounced commit of typed text: false for the
+ * first of a burst (push a step), true for the commits after it (replace that
+ * step). A burst ends on Enter, on leaving the box, on a pick or any other
+ * control (the caller says so with `end()`), or after `idleMs` without a
+ * commit — a query the visitor stopped to read is a step worth going Back to.
+ */
+export function createTypingBurst(idleMs = 1500): {
+  /** A typing commit happened: true when it continues the burst (replace the entry). */
+  typed(now?: number): boolean;
+  end(): void;
+} {
+  let open = false;
+  let last = 0;
+  return {
+    typed(now = Date.now()): boolean {
+      const continues = open && now - last < idleMs;
+      open = true;
+      last = now;
+      return continues;
+    },
+    end(): void {
+      open = false;
+    },
+  };
 }
 
 /**
@@ -292,7 +330,8 @@ export function readFederatedShell(href: string = window.location.href): Federat
  * let the App re-seed from a pristine URL on remount.
  *
  *   - tab switch  → push  (a back-button-able step between corpora)
- *   - query typed → replace (don't spam history while typing)
+ *   - query       → push for a new step, replace while a typing burst goes on
+ *                   (the caller decides, with {@link createTypingBurst})
  */
 export function syncFederatedShell(
   state: FederatedShellState,

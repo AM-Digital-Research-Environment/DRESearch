@@ -8,6 +8,7 @@
     readFederatedShell,
     readUnionPage,
     readUrlState,
+    createTypingBurst,
     syncFederatedShell,
     syncUnionPage,
     writeUrlState,
@@ -67,9 +68,16 @@
     ...profiles.map((p) => ({ name: p.name, label: p.label })),
   ]);
 
-  function commitQuery(next: string): void {
+  // A typing burst is one history step, not one per debounced commit
+  // (lib/urlState.ts createTypingBurst): its first commit pushes, the rest
+  // replace. Enter, the clear button, leaving the box or a tab ends it.
+  const typingBurst = createTypingBurst();
+
+  function commitQuery(next: string, typed = false): void {
     if (next === query) return;
-    syncFederatedShell({ q: next, profile: activeProfile }, false);
+    const continuesBurst = typed ? typingBurst.typed() : false;
+    if (!typed) typingBurst.end();
+    syncFederatedShell({ q: next, profile: activeProfile }, !continuesBurst);
     query = next;
     unionPage = 1;
   }
@@ -78,7 +86,7 @@
     if (inputTimer !== null) clearTimeout(inputTimer);
     inputTimer = window.setTimeout(() => {
       inputTimer = null;
-      commitQuery(inputValue.trim());
+      commitQuery(inputValue.trim(), true);
     }, 300);
   }
   function clearQuery(): void {
@@ -92,6 +100,7 @@
     event.preventDefault();
     if (inputTimer !== null) clearTimeout(inputTimer);
     inputTimer = null;
+    typingBurst.end();
     commitQuery(inputValue.trim());
   }
 
@@ -184,6 +193,7 @@
 
   function selectTab(name: string): void {
     if (name === activeProfile) return;
+    typingBurst.end();
     syncFederatedShell({ q: query, profile: name }, true);
     activeProfile = name;
     unionPage = 1;
@@ -211,6 +221,7 @@
   function handoff(profile: string, field?: string, value?: string): void {
     const meta = metaFor(profile);
     if (!meta) return;
+    typingBurst.end();
     syncFederatedShell({ q: query, profile }, true);
     if (field && value) {
       const search = writeUrlState(
@@ -300,6 +311,7 @@
       value={inputValue}
       oninput={onInput}
       onkeydown={keySearch}
+      onblur={() => typingBurst.end()}
     />{#if inputValue}<button type="button" aria-label={t('clear_search')} onclick={clearQuery}
         >×</button
       >{/if}

@@ -63,7 +63,8 @@ describe('popular searches in the search box', () => {
     await screen.findByRole('option', { name: 'ivory coast' });
     await fireEvent.keyDown(input, { key: 'ArrowDown' });
     await fireEvent.keyDown(input, { key: 'Enter' });
-    expect(onQueryChange).toHaveBeenCalledWith('ivory coast');
+    // A pick, not typing: its own history step.
+    expect(onQueryChange).toHaveBeenCalledWith('ivory coast', false);
     expect(input.value).toBe('ivory coast');
   });
 

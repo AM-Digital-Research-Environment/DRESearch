@@ -10,6 +10,9 @@
    * Search input with a debounced query and an autocomplete dropdown.
    *
    * - Typing (250 ms still) calls onQueryChange → the parent runs a search.
+   *   Those commits are flagged `typed`, and the box says when the typing is
+   *   over (onTypingEnd: Enter, leaving the box), so the parent can make the
+   *   burst one history step (lib/urlState.ts createTypingBurst).
    * - In parallel it fetches title suggestions from /suggest (abortable).
    * - A suggestion is a shortcut straight to that item's page. Pressing Enter
    *   (with no suggestion highlighted) commits the typed text as a free-text
@@ -26,10 +29,21 @@
     api: SearchApi;
     itemUrlBase: string;
     instanceId: string;
-    onQueryChange: (next: string) => void;
+    /** `typed`: a debounced commit of typed text, not Enter, a pick or a clear. */
+    onQueryChange: (next: string, typed: boolean) => void;
+    /** The visitor stopped typing: Enter, or focus left the box. */
+    onTypingEnd?: () => void;
   }
 
-  const { value, placeholder = '', api, itemUrlBase, instanceId, onQueryChange }: Props = $props();
+  const {
+    value,
+    placeholder = '',
+    api,
+    itemUrlBase,
+    instanceId,
+    onQueryChange,
+    onTypingEnd,
+  }: Props = $props();
   const safeId = $derived(instanceId.replace(/[^A-Za-z0-9_-]/g, '-'));
   const listboxId = $derived(`dre-suggest-${safeId}`);
 
@@ -48,7 +62,7 @@
     fetch: (q, signal) => api.suggest(q, signal),
     optionCount: () => optionCount,
     // Typing commits the query once the box is still; the suggestions follow.
-    onSettle: emit,
+    onSettle: (text) => emit(text, true),
     onEnter: (index) => {
       const starter = index >= 0 && showingStarters ? starters[index] : undefined;
       const suggestion = index >= 0 && !showingStarters ? box.items[index] : undefined;
@@ -64,9 +78,9 @@
   }
 
   /** Commit a query upward, remembering it so the echo can't clobber the box. */
-  function emit(next: string): void {
+  function emit(next: string, typed = false): void {
     emitted = next;
-    onQueryChange(next);
+    onQueryChange(next, typed);
   }
 
   function handleClear(): void {
@@ -117,6 +131,7 @@
    */
   function submitQuery(): void {
     box.cancel();
+    onTypingEnd?.();
     emit(box.text);
   }
 
@@ -182,7 +197,10 @@
       value={box.text}
       oninput={(e) => box.input(e.currentTarget.value)}
       onfocus={handleFocus}
-      onblur={() => box.blur()}
+      onblur={() => {
+        box.blur();
+        onTypingEnd?.();
+      }}
       onkeydown={(e) => box.keydown(e)}
     />
     {#if box.text !== ''}

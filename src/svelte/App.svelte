@@ -15,6 +15,7 @@
     embeddedUrlPrefix,
     onUrlPop,
     readUrlState,
+    createTypingBurst,
     syncToUrl,
     type UrlSearchState,
     type UrlSyncOptions,
@@ -316,13 +317,26 @@
   // between list and gallery (same value) does not refetch.
   const listHits = $derived(view === 'map' ? 1 : bootstrap.per_page);
 
+  // Typing writes ONE history step per burst (lib/urlState.ts createTypingBurst):
+  // the box flags its debounced commits, and the effect below turns the
+  // burst's later commits into replaceState. Plain variables — the effect must
+  // not depend on them.
+  const typingBurst = createTypingBurst();
+  let typingCommit = false;
+
   // Mirror state → URL whenever anything observable changes. The first run is a
   // no-op (the URL already reflects the seeded state); pagination-only changes
-  // replace history, everything else pushes a back-button-able step.
+  // and a continuing typing burst replace history, everything else pushes a
+  // back-button-able step.
   $effect(() => {
     if (!syncUrl) return;
     const next: UrlSearchState = { q: query, page, sort, filters, yearFrom, yearTo, view };
-    syncToUrl(next, prevUrlState, urlOptions);
+    let continuesBurst = false;
+    if (typingCommit) continuesBurst = typingBurst.typed();
+    // Any other change — a facet, a sort, a page, a pick — ends the burst.
+    else typingBurst.end();
+    typingCommit = false;
+    syncToUrl(next, prevUrlState, urlOptions, window.location.pathname, continuesBurst);
     // Plain, proxy-free deep copy for the next diff (filters is a Svelte proxy).
     prevUrlState = {
       q: next.q,
@@ -440,7 +454,10 @@
     focusResults();
   }
 
-  function handleQueryChange(next: string): void {
+  function handleQueryChange(next: string, typed = false): void {
+    // Flag only a commit that changes the query: an unchanged one never runs
+    // the URL effect, and a stale flag would mistake the next facet for typing.
+    if (next !== query) typingCommit = typed;
     query = next;
     page = 1;
   }
@@ -556,6 +573,7 @@
       itemUrlBase={bootstrap.item_url_base}
       instanceId={instanceKey}
       onQueryChange={handleQueryChange}
+      onTypingEnd={() => typingBurst.end()}
     />
   {/if}
 

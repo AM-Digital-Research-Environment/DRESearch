@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   readUrlState,
+  createTypingBurst,
   syncToUrl,
   writeUrlState,
   type UrlSearchState,
@@ -41,25 +42,46 @@ describe('URL search state', () => {
   });
 
   /*
-   * The search box commits every 250 ms, so pushing on each query change buried
-   * the page the visitor came from under one history entry per typing pause.
+   * The search box commits every 250 ms. Pushing on each query change buried
+   * the page the visitor came from under one entry per typing pause; replacing
+   * on each left no step at all. A typing burst is one step.
    */
   describe('history steps', () => {
-    function record(prev: UrlSearchState | null, next: UrlSearchState) {
+    function record(prev: UrlSearchState | null, next: UrlSearchState, continuesBurst = false) {
       const push = vi.spyOn(window.history, 'pushState').mockImplementation(() => undefined);
       const replace = vi.spyOn(window.history, 'replaceState').mockImplementation(() => undefined);
-      syncToUrl(next, prev, {}, '/search');
+      syncToUrl(next, prev, {}, '/search', continuesBurst);
       const calls = { push: push.mock.calls.length, replace: replace.mock.calls.length };
       push.mockRestore();
       replace.mockRestore();
       return calls;
     }
 
-    it('replaces history while the query is being typed', () => {
-      const typed = record({ ...pristine, q: 'isla' }, { ...pristine, q: 'islam' });
+    it('pushes the first typed query of a burst and replaces the rest', () => {
+      const first = record({ ...pristine }, { ...pristine, q: 'isla' });
+      expect(first).toEqual({ push: 1, replace: 0 });
+      const typed = record({ ...pristine, q: 'isla' }, { ...pristine, q: 'islam' }, true);
       expect(typed).toEqual({ push: 0, replace: 1 });
-      const first = record({ ...pristine }, { ...pristine, q: 'islam' });
-      expect(first).toEqual({ push: 0, replace: 1 });
+    });
+
+    it('pushes a query that was not typed', () => {
+      const picked = record({ ...pristine, q: 'islam' }, { ...pristine, q: 'kenya' });
+      expect(picked).toEqual({ push: 1, replace: 0 });
+    });
+
+    it('leaves the query to the federated shell when it does not own it', () => {
+      const shared = vi.spyOn(window.history, 'pushState').mockImplementation(() => undefined);
+      const replace = vi.spyOn(window.history, 'replaceState').mockImplementation(() => undefined);
+      syncToUrl(
+        { ...pristine, q: 'kenya', page: 2 },
+        { ...pristine, q: 'islam' },
+        { includeQuery: false },
+        '/search',
+      );
+      expect(shared).not.toHaveBeenCalled();
+      expect(replace).toHaveBeenCalledOnce();
+      shared.mockRestore();
+      replace.mockRestore();
     });
 
     it('replaces history when only the page changed', () => {
@@ -85,5 +107,23 @@ describe('URL search state', () => {
         replace: 1,
       });
     });
+  });
+});
+
+describe('typing bursts', () => {
+  it('opens a burst on the first commit and continues it while commits keep coming', () => {
+    const burst = createTypingBurst(1500);
+    expect(burst.typed(0)).toBe(false);
+    expect(burst.typed(800)).toBe(true);
+    expect(burst.typed(2000)).toBe(true);
+  });
+
+  it('starts a new burst after an idle pause or an explicit end', () => {
+    const burst = createTypingBurst(1500);
+    burst.typed(0);
+    expect(burst.typed(1500)).toBe(false);
+    expect(burst.typed(1600)).toBe(true);
+    burst.end();
+    expect(burst.typed(1700)).toBe(false);
   });
 });
