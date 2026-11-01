@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  readUnionPage,
   readUrlState,
   createTypingBurst,
   syncToUrl,
+  syncUnionPage,
   writeUrlState,
   type UrlSearchState,
 } from '../../src/svelte/lib/urlState';
@@ -125,5 +127,35 @@ describe('typing bursts', () => {
     expect(burst.typed(1600)).toBe(true);
     burst.end();
     expect(burst.typed(1700)).toBe(false);
+  });
+});
+
+describe('view and the All tab in the URL', () => {
+  it('round-trips prefixed gallery state', () => {
+    const search = writeUrlState(
+      {
+        q: '',
+        page: 1,
+        sort: 'relevance',
+        filters: {},
+        yearFrom: null,
+        yearTo: null,
+        view: 'gallery',
+      },
+      { prefix: 'b42.' },
+    );
+    expect(search).toBe('?b42.view=gallery');
+    expect(readUrlState(`https://example.test/${search}`, { prefix: 'b42.' }).view).toBe('gallery');
+  });
+
+  it('round-trips through the bare page key and clamps junk', () => {
+    window.history.replaceState({}, '', '/s/amira/search?q=x&profile=all');
+    syncUnionPage(3);
+    expect(window.location.search).toBe('?q=x&profile=all&page=3');
+    expect(readUnionPage()).toBe(3);
+    syncUnionPage(1);
+    expect(window.location.search).toBe('?q=x&profile=all');
+    expect(readUnionPage('https://x.test/?page=-4')).toBe(1);
+    expect(readUnionPage('https://x.test/?page=99999')).toBe(250);
   });
 });

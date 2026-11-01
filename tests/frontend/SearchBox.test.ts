@@ -1,9 +1,10 @@
-import { fireEvent, render } from '@testing-library/svelte';
+import { fireEvent, render, screen } from '@testing-library/svelte';
 import axe from 'axe-core';
 import { tick } from 'svelte';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import SearchBox from '../../src/svelte/components/SearchBox.svelte';
 import type { SearchApi } from '../../src/svelte/lib/api';
+import { rememberSearch } from '../../src/svelte/lib/searchHistory';
 
 const api = {
   suggest: vi.fn().mockResolvedValue([]),
@@ -65,5 +66,61 @@ describe('SearchBox', () => {
     await rerender({ value: '' });
     await tick();
     expect(input.value).toBe('');
+  });
+});
+
+afterEach(() => {
+  window.localStorage.clear();
+});
+
+describe('popular searches in the search box', () => {
+  const box = (popular: string[]) => {
+    const onQueryChange = vi.fn();
+    const api = {
+      suggest: vi.fn().mockResolvedValue([]),
+      popular: vi.fn().mockResolvedValue(popular),
+    } as unknown as SearchApi;
+    render(SearchBox, {
+      value: '',
+      placeholder: 'Search',
+      api,
+      itemUrlBase: '/s/site/item',
+      instanceId: 'popular',
+      onQueryChange,
+    });
+    return { input: screen.getByRole('combobox') as HTMLInputElement, onQueryChange };
+  };
+
+  it('lists recent then popular searches in labelled groups, without repeats', async () => {
+    rememberSearch('Islam');
+    const { input } = box(['islam', 'ivory coast']);
+    await fireEvent.focus(input);
+    const popular = await screen.findByRole('group', { name: 'Popular searches' });
+    expect(screen.getByRole('group', { name: 'Recent searches' })).toBeTruthy();
+    expect(popular.querySelectorAll('[role="option"]')).toHaveLength(1);
+    expect(screen.getAllByRole('option').map((o) => o.textContent?.trim())).toEqual([
+      'Islam',
+      'ivory coast',
+    ]);
+    const result = await axe.run(document.body, { rules: { region: { enabled: false } } });
+    expect(result.violations).toEqual([]);
+  });
+
+  it('runs a popular search from the keyboard', async () => {
+    const { input, onQueryChange } = box(['ivory coast']);
+    await fireEvent.focus(input);
+    await screen.findByRole('option', { name: 'ivory coast' });
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    // A pick, not typing: its own history step.
+    expect(onQueryChange).toHaveBeenCalledWith('ivory coast', false);
+    expect(input.value).toBe('ivory coast');
+  });
+
+  it('shows nothing when the instance has no popular searches', async () => {
+    const { input } = box([]);
+    await fireEvent.focus(input);
+    await tick();
+    expect(screen.queryByRole('listbox')).toBeNull();
   });
 });
