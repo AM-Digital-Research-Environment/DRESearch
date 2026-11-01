@@ -11,6 +11,8 @@ foreach (['DateDefinition', 'FieldDefinition', 'SortDefinition', 'SourceScope'] 
     require_once $root . '/src/Settings/Definition/' . $class . '.php';
 }
 require_once $root . '/src/Settings/SearchProfile.php';
+// Profile validation reads the valid kinds from the mapper registry.
+require_once $root . '/src/Indexer/MapperRegistry.php';
 require_once $root . '/src/Indexer/SchemaProvider.php';
 require_once $root . '/src/Indexer/StopwordsSync.php';
 require_once $root . '/src/Indexer/SynonymsSync.php';
