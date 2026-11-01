@@ -390,6 +390,21 @@
     requestAnimationFrame(() => resultsHeading?.focus({ preventScroll: true }));
   }
 
+  // Per instance: several blocks can share a page, and a skip link that jumped
+  // to another block's results would be worse than none.
+  const resultsHeadingId = $derived(`dre-results-${instanceKey}`);
+
+  /**
+   * The skip link moves focus itself rather than following its #fragment: a
+   * fragment would land in the address bar, and from there in every link the
+   * visitor copies.
+   */
+  function skipToResults(event: MouseEvent): void {
+    event.preventDefault();
+    resultsHeading?.focus();
+    resultsHeading?.scrollIntoView?.({ block: 'start' });
+  }
+
   const facets = $derived(response?.facets ?? []);
 
   // Sort choices come from the server (they vary by corpus). Fall back to a
@@ -612,6 +627,12 @@
 
     <div class="dre-search__layout" class:dre-search__layout--no-facets={!hasSidebar}>
       {#if hasSidebar}
+        <!-- In-block bypass: the first stop after the search box, ahead of every
+             facet. The theme's own skip link lands above the block, from where
+             the first result was a facet column of Tab presses away. -->
+        <a class="dre-search__skip" href="#{resultsHeadingId}" onclick={skipToResults}
+          >{t('skip_to_results')}</a
+        >
         <aside
           id="dre-facets-{instanceKey}"
           class="dre-search__facets"
@@ -637,6 +658,7 @@
       <div class="dre-search__results" aria-busy={isLoading}>
         <svelte:element
           this={`h${headingLevel}`}
+          id={resultsHeadingId}
           class="dre-search__sr-only"
           tabindex="-1"
           bind:this={resultsHeading}
@@ -833,6 +855,39 @@
     white-space: nowrap;
     border: 0;
   }
+  /* Skip link: visually hidden until focused (the sr-only clip, not an
+     off-screen offset), then a control at the top of the layout, spanning both
+     columns but only as wide as its label. Once static it is a grid item; out
+     of the flow it takes no cell. */
+  .dre-search__skip {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .dre-search__skip:focus,
+  .dre-search__skip:focus-visible {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    grid-column: 1 / -1;
+    justify-self: start;
+    padding: var(--space-1, 0.25rem) var(--space-4, 1rem);
+    border: 1px solid var(--border, #dbd7d1);
+    border-radius: var(--radius-md, 0.5rem);
+    background: var(--surface, #fdfcf9);
+    /* The theme paints links (and visited ones) in its link green. */
+    color: var(--ink-strong, #261d15);
+    font-size: var(--text-sm, 0.9375rem);
+    font-weight: 600;
+    text-decoration: none;
+    outline: 2px solid var(--focus-color, #007a50);
+    outline-offset: 2px;
+  }
   .dre-search__stale {
     transition: opacity 0.15s ease;
   }
@@ -903,6 +958,7 @@
      theme's global print rule that hides every button (DRE-theme integration
      contract, "Print"). */
   @media print {
+    .dre-search__skip,
     .dre-search__facets,
     .dre-search__facets-toggle,
     .dre-search__error,

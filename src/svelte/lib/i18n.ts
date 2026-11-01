@@ -37,6 +37,7 @@ const ENGLISH_STRINGS: Record<string, string> = {
   try_again: 'Try again',
   copied: 'Copied',
   search_results: 'Search results',
+  skip_to_results: 'Skip to results',
   open_record: 'Open {name}',
   cite: 'Cite',
   copy_bibtex: 'Copy BibTeX',

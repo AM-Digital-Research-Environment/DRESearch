@@ -950,6 +950,10 @@ msgstr ""
 msgid "Signal"
 msgstr ""
 
+#: src/svelte/lib/i18n.ts (skip_to_results)
+msgid "Skip to results"
+msgstr ""
+
 #: src/svelte/lib/i18n.ts (sort_label)
 msgid "Sort"
 msgstr ""

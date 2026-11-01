@@ -113,6 +113,30 @@ test.describe('search block', () => {
     await expect(page.getByRole('article').first()).toBeVisible();
   });
 
+  test('a skip link after the search box jumps past the facets to the results', async ({
+    page,
+  }) => {
+    await serve(page);
+    await page.goto('/');
+    const skip = page.getByRole('link', { name: 'Skip to results' });
+    // Hidden until focused: a clipped 1px box, not a control in the layout.
+    expect((await skip.boundingBox())?.width).toBeLessThanOrEqual(1);
+
+    await page.getByRole('combobox', { name: 'Search research items…' }).focus();
+    await page.keyboard.press('Tab');
+    await expect(skip).toBeFocused();
+    const box = await skip.boundingBox();
+    expect(box?.width).toBeGreaterThan(40);
+    // Above the facet column, not inside it.
+    const facets = await page.getByRole('complementary', { name: 'Filters' }).boundingBox();
+    expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual((facets?.y ?? 0) + 1);
+
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('heading', { name: 'Search results' })).toBeFocused();
+    // Focus moved; the address did not pick up a #fragment.
+    expect(new URL(page.url()).hash).toBe('');
+  });
+
   test('a titled block nests its headings under the block title', async ({ page }) => {
     await serve(page, 'titled-block');
     await page.goto('/');
