@@ -3,6 +3,18 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve } from 'node:path';
 
 /**
+ * The test suite runs WEST OF GREENWICH, on purpose (as IwacSearch's does).
+ * Dates are indexed as midnight UTC, and a formatter that forgets
+ * `timeZone: 'UTC'` prints the day before for every reader in the Americas —
+ * a bug the suite could not see while it ran in UTC (CI) or Central Europe
+ * (the maintainer's machine), where midnight UTC is still the same day. Set
+ * here, before any worker starts, because a worker takes its zone from the
+ * environment it inherits; tests/frontend/timezone.test.ts fails if a
+ * platform ignores it. The build does not read the zone.
+ */
+process.env.TZ = 'America/New_York';
+
+/**
  * ESM entry with page-specific chunks. asset/dist is not tracked: the release
  * archive carries the complete tree (entry + every hashed chunk + manifest).
  */
@@ -14,6 +26,7 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    env: { TZ: 'America/New_York' },
     setupFiles: ['./tests/frontend/setup.ts'],
     include: ['tests/frontend/**/*.test.ts'],
     clearMocks: true,
