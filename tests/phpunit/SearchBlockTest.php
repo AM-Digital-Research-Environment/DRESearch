@@ -21,6 +21,8 @@ use PHPUnit\Framework\TestCase;
 /** The page-block layouts: one class, one entry per stored layout name. */
 final class SearchBlockTest extends TestCase
 {
+    use SiteViewFixture;
+
     protected function setUp(): void
     {
         if (!class_exists(SitePageBlockRepresentation::class)) {
@@ -98,6 +100,22 @@ final class SearchBlockTest extends TestCase
         self::assertSame($profile->kind(), $bootstrap['card_kind']);
         self::assertSame(42, $bootstrap['block_id']);
         self::assertFalse($bootstrap['initial_response']['available'], 'Typesense is unconfigured here.');
+    }
+
+    /** Without JavaScript the block points to Omeka's own item browse. */
+    public function testTheNoscriptFallbackLinksToTheItemBrowse(): void
+    {
+        $layout = $this->factory($this->registry())('dreSearch');
+        // As a browser reads it: attribute values are entity-encoded.
+        $html = html_entity_decode((string) $layout->render($this->view(), $this->block(42, [])), ENT_QUOTES | ENT_HTML5);
+        self::assertMatchesRegularExpression(
+            '#<noscript>\s*<p>\s*Search requires JavaScript to be enabled.\s*<a href="/omeka/s/amira/item/browse">Browse the items instead.</a>#',
+            $html,
+        );
+
+        $html = (string) $layout->render($this->view(null), $this->block(42, []));
+        self::assertStringContainsString('Search requires JavaScript to be enabled.', $html);
+        self::assertStringNotContainsString('item/browse', $html, 'Off a site there is no browse to point to.');
     }
 
     /** A saved block lends its locked filter only to the profile its layout searches. */
@@ -234,7 +252,8 @@ final class SearchBlockTest extends TestCase
         };
     }
 
-    private function view(): PhpRenderer
+    /** @param string|null $site the current site's slug; null off a site */
+    private function view(?string $site = 'amira'): PhpRenderer
     {
         $view = new PhpRenderer();
         $view->setResolver(new \Laminas\View\Resolver\TemplatePathStack([
@@ -251,6 +270,7 @@ final class SearchBlockTest extends TestCase
         $basePath = $helpers->get('basePath');
         self::assertInstanceOf(\Laminas\View\Helper\BasePath::class, $basePath);
         $basePath->setBasePath('/omeka');
+        $this->stubSiteHelpers($view, $site);
         return $view;
     }
 }

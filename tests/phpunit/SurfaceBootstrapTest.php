@@ -22,6 +22,8 @@ use PHPUnit\Framework\TestCase;
 /** One bootstrap builder for the blocks, the project records and the federated tabs. */
 final class SurfaceBootstrapTest extends TestCase
 {
+    use SiteViewFixture;
+
     protected function tearDown(): void
     {
         BundleManifest::reset();
@@ -116,21 +118,35 @@ final class SurfaceBootstrapTest extends TestCase
         self::assertSame('Search genres…', $genres['placeholder']);
     }
 
+    /** Without JavaScript, the results page hands its query to Omeka's item browse. */
+    public function testTheFederatedPageCarriesItsQueryToTheNoscriptBrowse(): void
+    {
+        $view = $this->view();
+        $view->setResolver(new \Laminas\View\Resolver\TemplatePathStack([
+            'script_paths' => [dirname(__DIR__, 2) . '/view'],
+        ]));
+        $view->getHelperPluginManager()->setService('dreFederatedSearch', new class {
+            public function __invoke(string $query): string
+            {
+                return '<div data-dre-federated-root></div>';
+            }
+        });
+        $html = html_entity_decode((string) $view->render('dre-search/federated', ['query' => "Côte d'Ivoire"]), ENT_QUOTES | ENT_HTML5);
+        self::assertStringContainsString(
+            '<a href="/omeka/s/amira/item/browse?fulltext_search=C%C3%B4te+d%27Ivoire">Browse the items instead.</a>',
+            $html,
+        );
+        $html = html_entity_decode((string) $view->render('dre-search/federated', ['query' => '']), ENT_QUOTES | ENT_HTML5);
+        self::assertStringContainsString('<a href="/omeka/s/amira/item/browse">', $html);
+    }
+
     /** The header bar renders on every page; it needs only the connection settings. */
     public function testTheHeaderBarIsBuiltWithoutTheSearchProxy(): void
     {
         $services = new ServiceManager();
         $services->setService(TypesenseClientProvider::class, new TypesenseClientProvider('typesense', 8108, 'http', 'k'));
         $bar = (new SearchBarFactory())($services, 'dreSearchBar');
-        $view = $this->view();
-        $view->getHelperPluginManager()->setService('url', new class {
-            /** @param array<string,string> $params */
-            public function __invoke(string $route, array $params = []): string
-            {
-                return '/omeka/s/' . $params['site-slug'] . '/dre-search';
-            }
-        });
-        $bar->setView($view);
+        $bar->setView($this->view());
 
         $html = $bar('desktop');
         preg_match('#<script type="application/json" id="dre-search-bar-state-desktop">(.*?)</script>#s', $html, $match);
@@ -164,17 +180,7 @@ final class SurfaceBootstrapTest extends TestCase
                 return '/modules/' . $module . '/asset/' . $file;
             }
         });
-        $helpers->setService('currentSite', new class {
-            public function __invoke(): object
-            {
-                return new class {
-                    public function slug(): string
-                    {
-                        return 'amira';
-                    }
-                };
-            }
-        });
+        $this->stubSiteHelpers($view);
         $helpers->setService('dreBootstrapJson', new DreBootstrapJson());
         $basePath = $helpers->get('basePath');
         self::assertInstanceOf(\Laminas\View\Helper\BasePath::class, $basePath);

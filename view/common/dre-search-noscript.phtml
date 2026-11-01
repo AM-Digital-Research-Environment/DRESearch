@@ -1,0 +1,24 @@
+<?php
+/**
+ * The no-JavaScript fallback every DRE Search surface shows: the search needs
+ * the Svelte client, so point to Omeka's own server-rendered item browse for
+ * the current site instead (as IwacSearch's blocks do).
+ *
+ * @var \Laminas\View\Renderer\PhpRenderer $this
+ * @var string|null $query a search to carry over (Omeka's `fulltext_search`), or none
+ */
+$noScriptSite = $this->currentSite();
+$browseQuery = isset($query) && trim((string) $query) !== '' ? ['fulltext_search' => (string) $query] : [];
+?>
+<noscript>
+    <p>
+        <?= $this->escapeHtml($this->translate('Search requires JavaScript to be enabled.')) ?>
+        <?php if ($noScriptSite !== null): ?>
+            <a href="<?= $this->escapeHtmlAttr($this->url(
+                'site/resource',
+                ['site-slug' => $noScriptSite->slug(), 'controller' => 'item', 'action' => 'browse'],
+                $browseQuery !== [] ? ['query' => $browseQuery] : [],
+            )) ?>"><?= $this->escapeHtml($this->translate('Browse the items instead.')) ?></a>
+        <?php endif; ?>
+    </p>
+</noscript>

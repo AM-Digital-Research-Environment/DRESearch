@@ -19,9 +19,8 @@ $this->headTitle($this->translate('Search'));
 <section class="dre-federated-page">
     <h1 class="dre-federated-page__title"><?= $this->escapeHtml($this->translate('Search')) ?></h1>
 
-    <noscript>
-        <p><?= $this->translate('Search requires JavaScript to be enabled.') ?></p>
-    </noscript>
+    <?php // Without JavaScript, Omeka's item browse runs the same query. ?>
+    <?= $this->partial('common/dre-search-noscript', ['query' => $query]) ?>
 
     <?= $this->dreFederatedSearch($query) ?>
 </section>

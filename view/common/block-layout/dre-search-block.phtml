@@ -29,9 +29,7 @@ $id = (string) (int) $block->id();
         <div class="dre-search-block__intro"><?= $intro_html ?></div>
     <?php endif; ?>
 
-    <noscript>
-        <p><?= $this->translate('Search requires JavaScript to be enabled.') ?></p>
-    </noscript>
+    <?= $this->partial('common/dre-search-noscript') ?>
 
     <div
         data-dre-search-root

@@ -29,9 +29,7 @@ $id = 'r' . (int) $itemId;
     </summary>
 
     <div class="dre-search-project-records__panel">
-        <noscript>
-            <p><?= $this->escapeHtml($this->translate('Search requires JavaScript to be enabled.')) ?></p>
-        </noscript>
+        <?= $this->partial('common/dre-search-noscript') ?>
 
         <div
             data-dre-search-root

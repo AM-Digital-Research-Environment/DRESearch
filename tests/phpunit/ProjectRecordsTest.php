@@ -18,6 +18,8 @@ use PHPUnit\Framework\TestCase;
 /** The item-page "Project records (DRE Search)" block: when it renders, and what it mounts. */
 final class ProjectRecordsTest extends TestCase
 {
+    use SiteViewFixture;
+
     protected function setUp(): void
     {
         if (!interface_exists(\Omeka\Site\ResourcePageBlockLayout\ResourcePageBlockLayoutInterface::class)) {
@@ -121,6 +123,11 @@ final class ProjectRecordsTest extends TestCase
         self::assertStringNotContainsString('</script><b>', $html, 'The bootstrap cannot close its script.');
         preg_match('#<script type="application/json" id="dre-search-state-r1797">(.*?)</script>#s', $html, $match);
         self::assertSame(1797, json_decode($match[1] ?? '', true)['scope_item'] ?? null);
+        self::assertStringContainsString(
+            '<a href="/omeka/s/amira/item/browse">Browse the items instead.</a>',
+            html_entity_decode($html, ENT_QUOTES | ENT_HTML5),
+            'Without JavaScript, the page points to the item browse.',
+        );
     }
 
     private function registry(): ProfileRegistry
@@ -153,17 +160,7 @@ final class ProjectRecordsTest extends TestCase
                 return $s;
             }
         });
-        $helpers->setService('currentSite', new class {
-            public function __invoke(): object
-            {
-                return new class {
-                    public function slug(): string
-                    {
-                        return 'amira';
-                    }
-                };
-            }
-        });
+        $this->stubSiteHelpers($view);
         $helpers->setService('dreBootstrapJson', new DreBootstrapJson());
         $basePath = $helpers->get('basePath');
         self::assertInstanceOf(\Laminas\View\Helper\BasePath::class, $basePath);

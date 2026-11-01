@@ -111,6 +111,10 @@ msgstr ""
 msgid "Browse (no query)"
 msgstr ""
 
+#: view/common/dre-search-noscript.phtml:21
+msgid "Browse the items instead."
+msgstr ""
+
 #: view/dre-search/admin/maintenance/index.phtml:111
 msgid "Changes are waiting for a worker. One starts with the next edit or search; use \"Retry pending changes\" to start it now."
 msgstr ""
@@ -212,7 +216,7 @@ msgstr ""
 msgid "Decision"
 msgstr ""
 
-#: src/Site/BlockLayout/SearchBlock.php:165
+#: src/Site/BlockLayout/SearchBlock.php:180
 msgid "Default sort"
 msgstr ""
 
@@ -276,7 +280,7 @@ msgstr ""
 msgid "Filters"
 msgstr ""
 
-#: src/Site/BlockLayout/SearchBlock.php:136
+#: src/Site/BlockLayout/SearchBlock.php:151
 msgid "Filters to show"
 msgstr ""
 
@@ -378,7 +382,7 @@ msgstr ""
 msgid "Institution"
 msgstr ""
 
-#: src/Site/BlockLayout/SearchBlock.php:125
+#: src/Site/BlockLayout/SearchBlock.php:140
 msgid "Intro HTML (optional)"
 msgstr ""
 
@@ -442,7 +446,7 @@ msgstr ""
 msgid "Locations search"
 msgstr ""
 
-#: src/Site/BlockLayout/SearchBlock.php:190
+#: src/Site/BlockLayout/SearchBlock.php:205
 msgid "Locked filter (optional)"
 msgstr ""
 
@@ -470,7 +474,7 @@ msgstr ""
 msgid "Most results"
 msgstr ""
 
-#: src/Settings/SortOptions.php:21 src/svelte/lib/i18n.ts (sort_newest)
+#: src/Settings/SortOptions.php:20 src/svelte/lib/i18n.ts (sort_newest)
 msgid "Newest first"
 msgstr ""
 
@@ -530,7 +534,7 @@ msgstr ""
 msgid "Nothing to show yet."
 msgstr ""
 
-#: src/Settings/SortOptions.php:22 src/svelte/lib/i18n.ts (sort_oldest)
+#: src/Settings/SortOptions.php:21 src/svelte/lib/i18n.ts (sort_oldest)
 msgid "Oldest first"
 msgstr ""
 
@@ -583,7 +587,7 @@ msgstr ""
 msgid "Phase"
 msgstr ""
 
-#: src/Site/BlockLayout/SearchBlock.php:192
+#: src/Site/BlockLayout/SearchBlock.php:207
 msgid "Pins this block to a subset, Typesense filter_by syntax. Example: section_ss:=`Mobilities`"
 msgstr ""
 
@@ -591,7 +595,7 @@ msgstr ""
 msgid "Place of origin"
 msgstr ""
 
-#: src/Site/BlockLayout/SearchBlock.php:126
+#: src/Site/BlockLayout/SearchBlock.php:141
 msgid "Plain HTML rendered above the search."
 msgstr ""
 
@@ -717,7 +721,7 @@ msgstr ""
 msgid "Relationship"
 msgstr ""
 
-#: src/Settings/SortOptions.php:20 src/svelte/lib/i18n.ts (sort_relevance)
+#: src/Settings/SortOptions.php:19 src/svelte/lib/i18n.ts (sort_relevance)
 msgid "Relevance"
 msgstr ""
 
@@ -769,7 +773,7 @@ msgstr ""
 msgid "Results for “{q}”"
 msgstr ""
 
-#: src/Site/BlockLayout/SearchBlock.php:180
+#: src/Site/BlockLayout/SearchBlock.php:195
 msgid "Results per page"
 msgstr ""
 
@@ -790,7 +794,7 @@ msgstr ""
 msgid "Role"
 msgstr ""
 
-#: src/View/Helper/SearchBar.php:64 view/common/navigation-link-form/dre-search-results.phtml:12 view/dre-search/admin/maintenance/index.phtml:31 view/dre-search/admin/maintenance/index.phtml:124
+#: src/View/Helper/SearchBar.php:67 view/common/navigation-link-form/dre-search-results.phtml:12 view/dre-search/admin/maintenance/index.phtml:31 view/dre-search/admin/maintenance/index.phtml:124
 msgid "Search"
 msgstr ""
 
@@ -848,7 +852,7 @@ msgstr ""
 msgid "Search publications…"
 msgstr ""
 
-#: view/common/block-layout/dre-search-block.phtml:33 view/common/resource-page-block-layout/dre-search-project-records.phtml:33 view/dre-search/federated.phtml:23
+#: view/common/dre-search-noscript.phtml:15
 msgid "Search requires JavaScript to be enabled."
 msgstr ""
 
@@ -880,7 +884,7 @@ msgstr ""
 msgid "Search {label}…"
 msgstr ""
 
-#: src/View/Helper/SearchBar.php:53
+#: src/View/Helper/SearchBar.php:58
 msgid "Search…"
 msgstr ""
 
@@ -1010,11 +1014,11 @@ msgstr ""
 msgid "Title"
 msgstr ""
 
-#: src/Settings/SortOptions.php:23 src/svelte/lib/i18n.ts (sort_title)
+#: src/Settings/SortOptions.php:22 src/svelte/lib/i18n.ts (sort_title)
 msgid "Title (A–Z)"
 msgstr ""
 
-#: src/Site/BlockLayout/SearchBlock.php:115
+#: src/Site/BlockLayout/SearchBlock.php:130
 msgid "Title (optional)"
 msgstr ""
 
@@ -1104,7 +1108,7 @@ msgstr ""
 msgid "Watch"
 msgstr ""
 
-#: src/Site/BlockLayout/SearchBlock.php:137
+#: src/Site/BlockLayout/SearchBlock.php:152
 msgid "Which facets appear in the sidebar."
 msgstr ""
 
@@ -1158,7 +1162,7 @@ msgstr ""
 msgid "not set"
 msgstr ""
 
-#: src/Site/BlockLayout/SearchBlock.php:147
+#: src/Site/BlockLayout/SearchBlock.php:162
 msgid "range slider"
 msgstr ""
 
