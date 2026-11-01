@@ -48,8 +48,8 @@ borrow from each other, but the boundaries below are this module's own.
 - **A rebuild never serves a half-built index.** Each run builds a fresh,
   timestamped collection, verifies it, reconciles it with the profile's public
   records in SQL (`source_count_mismatch` otherwise) and swaps the alias; every
-  Typesense call of the indexer goes through `Indexer\CollectionOps`, which
-  reads an ambiguous alias write back. A generation holding less than
+  collection, document and alias call of the indexer goes through
+  `Indexer\CollectionOps`, which reads an ambiguous alias write back. A generation holding less than
   `min_retained_ratio` (half) of the live one is refused unless the operator
   allows the shrink; the previous generation is kept for rollback.
 - **Saves never wait on Typesense.** Omeka write events queue SQL work for the

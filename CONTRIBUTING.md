@@ -148,8 +148,8 @@ linked-resource/media/title visibility, revision-safe queue acknowledgements,
 rebuild cutover races, cancellation, advisory locks, ambiguous alias writes,
 the source-count reconciliation before promotion, what the search-only key may
 and may not reach, cache invalidation, long-tail facets and excluded-field
-highlights. The indexer's Typesense calls are also unit-tested against an
-in-memory Typesense (`tests/phpunit/Support/Typesense`). Frontend tests
+highlights. The indexer's collection, document and alias calls are also
+unit-tested against an in-memory Typesense (`tests/phpunit/Support/Typesense`). Frontend tests
 exercise out-of-order tab and facet responses, and run with
 `TZ=America/New_York` (`vite.config.ts`): dates are indexed as midnight UTC,
 so a formatter that forgets `timeZone: 'UTC'` shows the day before there, as it

@@ -50,10 +50,11 @@ to two minutes for a starting Typesense to finish loading. Promotion is refused
 when the new generation holds less than `min_retained_ratio` (half) of the live
 one, unless the operator allows a smaller corpus.
 
-Every Typesense call of the indexer goes through one injectable class,
-`CollectionOps` (create and count collections, import and delete documents,
-read and promote an alias), which the unit tests drive against an in-memory
-Typesense (`tests/phpunit/Support/Typesense`). It verifies the target after an
+Every collection, document and alias call of the indexer goes through one
+injectable class, `CollectionOps` (create and count collections, import and
+delete documents, read and promote an alias; the stopword, synonym and
+analytics syncs keep their own calls), which the unit tests drive against an
+in-memory Typesense (`tests/phpunit/Support/Typesense`). It verifies the target after an
 ambiguous alias PUT. Cleanup checks every alias before deleting an owned
 collection and preserves collections when that check fails. The previous
 generation is retained for rollback; older, unaliased, module-owned generations

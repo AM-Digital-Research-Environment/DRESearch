@@ -63,9 +63,9 @@ DRESearch/
 │   │   │                            #   TermMapper builds on it (+ a location's geopoint)
 │   │   ├── DocumentAssembler.php    #   batch mapping shared by full and incremental runs
 │   │   ├── SchemaProvider.php       #   a profile's Typesense schema
-│   │   ├── CollectionOps.php        #   every Typesense call of the indexer: create, count, import,
-│   │   │                            #   delete, read and promote an alias (verified), cleanup that
-│   │   │                            #   never deletes an aliased collection
+│   │   ├── CollectionOps.php        #   every collection, document and alias call of the indexer:
+│   │   │                            #   create, count, import, delete, read and promote an alias
+│   │   │                            #   (verified), cleanup that never deletes an aliased collection
 │   │   ├── Reindexer.php            #   one profile's full rebuild: fresh collection, paged import,
 │   │   │                            #   replay, reconcile with the source, verify, promote
 │   │   ├── ChangeApplier.php        #   applies queued changes: the worker's drain, a rebuild's
