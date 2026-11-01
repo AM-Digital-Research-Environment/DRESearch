@@ -74,6 +74,15 @@ performance score and its fonts change the accessibility audits):
 Locally the gate needs a Chrome: `CHROME_PATH` names one, or chrome-launcher
 finds an installed Chrome. Reports land in `test-results/lighthouse/`.
 
+## MapLibre pin
+
+The map's CDN fallback (`src/svelte/lib/maplibreLoader.ts`) pins the MapLibre
+version DRE Visualizations vendors, with sha384 hashes. `npm run check:maplibre`
+(weekly in `maplibre-pins.yml`, and on a PR that touches the pin) compares it
+with DRE Visualizations `main`: the version in its `asset/vendor/versions.json`,
+and the hash of each file it vendors. It fails when this module falls behind;
+upgrade both modules together.
+
 ## Versions
 
 The release number lives in `config/module.ini`, `package.json`,

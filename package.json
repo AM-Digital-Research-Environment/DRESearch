@@ -10,6 +10,7 @@
     "check:size": "node scripts/check-bundle-size.mjs",
     "check:audit": "node scripts/check-audit.mjs",
     "check:lighthouse": "node scripts/check-lighthouse.mjs",
+    "check:maplibre": "node scripts/check-maplibre-pins.mjs",
     "capture:lighthouse": "node scripts/lighthouse/capture.mjs",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",

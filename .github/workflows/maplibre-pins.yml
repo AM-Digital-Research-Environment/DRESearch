@@ -1,0 +1,48 @@
+name: MapLibre lockstep
+
+# The Locations map loads MapLibre GL from the page or from DRE
+# Visualizations' vendored copy first, and only then from jsDelivr, pinned to
+# the version DRE Visualizations vendors with sha384 hashes
+# (src/svelte/lib/maplibreLoader.ts), so a site running both modules has one
+# MapLibre, not two. Nothing in this repository's own CI can see the other
+# repository, so an upgrade there used to leave this fallback silently on the
+# old version.
+#
+# Once a week (and on demand, and on a PR that touches the pin) compare the pin
+# with DRE Visualizations main: its asset/vendor/versions.json names the
+# version and the dist files it vendors, and the vendored bytes must hash to
+# the pinned values. A pin AHEAD of main — waiting on an unmerged upgrade there
+# — is reported and passes; a pin BEHIND, or the same version with different
+# hashes, fails with the values to copy. Modelled on IwacSearch's
+# maplibre-pins.yml. It never upgrades MapLibre: that stays a deliberate change
+# made in both modules together.
+
+on:
+  schedule:
+    - cron: '47 6 * * 1'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/svelte/lib/maplibreLoader.ts'
+      - 'scripts/check-maplibre-pins.mjs'
+      - '.github/workflows/maplibre-pins.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    name: MapLibre pin matches DRE Visualizations main
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      # No `npm ci`: the checker has no dependencies (global fetch, fs, crypto).
+      - run: node scripts/check-maplibre-pins.mjs
