@@ -5,6 +5,8 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+## [1.34.0] - 2026-11-01
+
 **Upgrade:** reindex Research items once, so its collection gains the `restricted_text` field before anyone enables the policy below; until then the policy must stay off, or that corpus's searches fail. Nothing changes for visitors while it is off.
 
 ### Added
