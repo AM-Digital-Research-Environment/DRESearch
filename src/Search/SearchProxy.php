@@ -13,7 +13,9 @@ use Laminas\Log\LoggerInterface;
 
 /**
  * Server-side search: runs the Typesense queries for a search profile with the
- * server-held key and returns the compact shape the Svelte client expects.
+ * server-held search-only key ({@see TypesenseClientProvider::getSearchClient()};
+ * the admin key only for the analytics and health) and returns the compact
+ * shape the Svelte client expects.
  * Backend outages return a stable "available: false" payload; invalid profile
  * names and request data are rejected at the public boundary with a structured
  * validation error.

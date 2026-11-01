@@ -6,10 +6,10 @@ namespace DRESearch\Search;
 
 /**
  * Whether a request URL carries a search surface's own state — in which case
- * a server-rendered first page is wasted work: the client (App.svelte) adopts
- * the server's page only for the pristine state (no query, the default sort,
- * page 1, no filters, no year window) and otherwise fetches what the URL asks
- * for. The keys are those of src/svelte/lib/urlState.ts; `view` (list,
+ * a server-rendered first page is wasted work: the client adopts the server's
+ * page only for the pristine state (no query, the default sort, page 1, no
+ * filters, no year window; src/svelte/lib/initialState.ts) and otherwise
+ * fetches what the URL asks for. The keys are those of src/svelte/lib/urlState.ts; `view` (list,
  * gallery, map) is left out on purpose, because the client keeps the page for
  * any view. Ported from IwacSearch's SearchStateQuery.
  *

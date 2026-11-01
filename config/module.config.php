@@ -4,8 +4,8 @@ declare(strict_types=1);
 /**
  * DRESearch module configuration.
  *
- * Wires the public search proxy, the admin maintenance page, the dreSearch
- * page block, services, view templates, and the api.*.post listeners that drive
+ * Wires the public search proxy, the admin maintenance page, the search page
+ * blocks, services, view templates, and the api.*.post listeners that drive
  * incremental indexing. Lean — no browse tables, no scoped-key endpoints.
  */
 
@@ -427,10 +427,14 @@ return [
         // ── Search profiles (corpora) ───────────────────────────────────────
         // Each profile is an independent Typesense collection + facet/index
         // mapping. The first profile is the default (used when a request/block
-        // omits a profile name). Add a third corpus (e.g. publications) by
-        // adding a profile here + a mapper — no rewrite. Each profile's `kind`
-        // selects its indexer mapper and its result card ('item' | 'project' |
-        // 'publication' | 'person' | 'section' | 'organisation' | 'term'). The
+        // omits a profile name). Add a corpus of an existing kind by adding a
+        // profile here and a block layout (a Settings\BlockProfiles::LAYOUTS
+        // row + its name under block_layouts above); a new kind also needs a
+        // mapper (Indexer\MapperRegistry) and a card — no rewrite (see
+        // docs/profile-configuration.md). Each profile's `kind` selects its
+        // indexer mapper and its result card ('item' | 'project' |
+        // 'publication' | 'podcast' | 'video' | 'person' | 'section' |
+        // 'organisation' | 'term'). The
         // `term` kind (genres, languages, locations, subjects & tags) is the
         // generic authority-term corpus: a name + optional Type facet + reverse-
         // link counts, all driven by config (TermMapper + TermCard).
@@ -670,7 +674,7 @@ return [
 
                 // Series logo as the episode thumbnail: hop dcterms:isPartOf → the
                 // series item and use ITS first thumbnailed media (the episode's own
-                // media is the audio file). See Reindexer::loadThumbnailsVia().
+                // media is the audio file). See OmekaSourceRepository::loadThumbnailsVia().
                 'thumbnail_property' => 'dcterms:isPartOf',
 
                 // Default to episode order (newest episode first); a date sort is also

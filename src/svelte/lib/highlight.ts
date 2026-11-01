@@ -6,7 +6,7 @@
  * The client splits a marked string into plain/marked segments and renders the
  * marked ones as <mark> via Svelte text nodes — so a field value containing,
  * say, "<script>" is shown verbatim, never executed (no {@html}). See
- * QueryBuilder::HL_START / SearchProxy::extractHighlights on the server.
+ * QueryBuilder::HL_START / ResponseNormalizer::highlights() on the server.
  */
 
 import type { Doc } from './types';
