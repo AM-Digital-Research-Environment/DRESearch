@@ -5,6 +5,8 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+## [1.33.0] - 2026-11-01
+
 **Upgrade:** no schema change, no new table. Reindex the people, organisations, research items and the four term corpora when convenient: labels are now trimmed, so blank facet values already indexed disappear. The first public search after the upgrade mints a search-only Typesense key with the admin key; to supply your own instead, set it in the module's configuration or in `TYPESENSE_SEARCH_API_KEY`.
 
 ### Security
