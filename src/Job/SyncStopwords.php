@@ -44,7 +44,7 @@ class SyncStopwords extends AbstractJob
             $stats = StopwordsSync::create($client)->sync();
             $synonyms = \DRESearch\Indexer\SynonymsSync::create($client)->sync();
         } catch (\Throwable $e) {
-            $logger->err('DRESearch: stopwords/synonyms sync failed — ' . $e->getMessage());
+            $logger->err('DRESearch: stopwords/synonyms sync failed — ' . $e->getMessage(), ['error' => $e->getMessage()]);
             throw $e; // mark the job ERROR in the admin Jobs list
         }
 

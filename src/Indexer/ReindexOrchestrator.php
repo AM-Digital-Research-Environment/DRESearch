@@ -88,7 +88,7 @@ final class ReindexOrchestrator
                     'DRESearch: reindex of "%s" failed — %s',
                     $profile->label(),
                     $e->getMessage(),
-                ));
+                ), ['profile' => $profile->name(), 'job' => $jobId, 'error' => $e->getMessage()]);
             }
         }
         $analytics = (new AnalyticsSync($client, $this->registry, $this->logger))->sync();
@@ -164,13 +164,13 @@ final class ReindexOrchestrator
             $stats = StopwordsSync::create($client)->sync();
             $this->logger->info('DRESearch: stopwords synced', $stats);
         } catch (\Throwable $e) {
-            $this->logger->warn('DRESearch: stopwords sync failed; search will retry without them — ' . $e->getMessage());
+            $this->logger->warn('DRESearch: stopwords sync failed; search will retry without them — ' . $e->getMessage(), ['error' => $e->getMessage()]);
         }
         try {
             $stats = SynonymsSync::create($client)->sync();
             $this->logger->info('DRESearch: synonyms synced', $stats);
         } catch (\Throwable $e) {
-            $this->logger->warn('DRESearch: synonyms sync failed; search will retry without them — ' . $e->getMessage());
+            $this->logger->warn('DRESearch: synonyms sync failed; search will retry without them — ' . $e->getMessage(), ['error' => $e->getMessage()]);
         }
     }
 }

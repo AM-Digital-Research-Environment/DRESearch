@@ -48,10 +48,6 @@ final class IncrementalIndexer
         $this->lease = new WorkerLease($connection);
     }
 
-    public function syncItemWithDependencies(int $itemId): void
-    {
-        $this->syncItems(array_merge([$itemId], $this->dependencies($itemId)));
-    }
 
     /** @return list<int> */
     public function dependencies(int $itemId): array
@@ -118,7 +114,10 @@ final class IncrementalIndexer
         try {
             return $this->scope->match($itemIds);
         } catch (\Throwable $error) {
-            $this->logger->warn('DRESearch: scope lookup failed; queueing for every corpus: ' . $error->getMessage());
+            $this->logger->warn(
+                'DRESearch: scope lookup failed; queueing for every corpus: ' . $error->getMessage(),
+                ['items' => count($itemIds), 'error' => $error->getMessage()],
+            );
             return array_fill_keys($this->registry->names(), $itemIds);
         }
     }
@@ -165,7 +164,7 @@ final class IncrementalIndexer
                 return false;
             }
         } catch (\Throwable $error) {
-            $this->logger->warn('DRESearch: could not reach the drain lease: ' . $error->getMessage());
+            $this->logger->warn('DRESearch: could not reach the drain lease: ' . $error->getMessage(), ['error' => $error->getMessage()]);
             return false;
         }
         try {
@@ -176,7 +175,7 @@ final class IncrementalIndexer
                 $this->lease->release();
             } catch (\Throwable) {
             }
-            $this->logger->warn('DRESearch: queued changes await retry: ' . $error->getMessage());
+            $this->logger->warn('DRESearch: queued changes await retry: ' . $error->getMessage(), ['error' => $error->getMessage()]);
             return false;
         }
     }
@@ -281,14 +280,13 @@ final class IncrementalIndexer
         try {
             $this->stateStore?->markDirty($profiles ?? $this->registry->names(), $reason);
         } catch (\Throwable $error) {
-            $this->logger->err('DRESearch: could not record stale index state: ' . $error->getMessage());
+            $this->logger->err(
+                'DRESearch: could not record stale index state: ' . $error->getMessage(),
+                ['profiles' => $profiles ?? $this->registry->names(), 'reason' => $reason, 'error' => $error->getMessage()],
+            );
         }
     }
 
-    public function lease(): WorkerLease
-    {
-        return $this->lease;
-    }
 
     private function scheduleDrain(): void
     {

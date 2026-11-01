@@ -16,18 +16,19 @@ class IndexSearchProfile extends AbstractJob
         $logger = $this->getServiceLocator()->get('Omeka\Logger');
         /** @var ReindexOrchestrator $orchestrator */
         $orchestrator = $this->getServiceLocator()->get(ReindexOrchestrator::class);
+        $context = ['profile' => (string) $this->getArg('profile', ''), 'job' => (string) $this->job->getId()];
         try {
             $stats = $orchestrator->runOne(
-                (string) $this->getArg('profile', ''),
-                (string) $this->job->getId(),
+                $context['profile'],
+                $context['job'],
                 fn(): bool => $this->shouldStop(),
                 (bool) $this->getArg('allow_shrink', false),
             );
-            $logger->info('DRESearch: reindex complete', $stats);
+            $logger->info('DRESearch: reindex complete', $context + $stats);
         } catch (ReindexCancelledException $e) {
-            $logger->warn('DRESearch: ' . $e->getMessage());
+            $logger->warn('DRESearch: ' . $e->getMessage(), $context);
         } catch (\Throwable $e) {
-            $logger->err('DRESearch: reindex failed — ' . $e->getMessage());
+            $logger->err('DRESearch: reindex failed — ' . $e->getMessage(), $context + ['error' => $e->getMessage()]);
             throw $e;
         }
     }
