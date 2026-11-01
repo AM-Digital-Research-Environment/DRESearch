@@ -2,7 +2,8 @@
   import type { Doc, ViewMode } from '../lib/types';
   import { cardTitleTag } from '../lib/headings';
   import { t } from '../lib/i18n';
-  import { firstMarked, markedLookup } from '../lib/highlight';
+  import { markedLookup } from '../lib/highlight';
+  import { cardSnippet, cardTitle, recordUrl, titleMarkup } from '../lib/resultCard';
   import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
   import MatchedIn from './MatchedIn.svelte';
@@ -41,9 +42,9 @@
   const { doc, itemUrlBase, onAddFilter, view = 'list', eager = false }: Props = $props();
   const titleTag = cardTitleTag();
 
-  const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
-  const title = $derived(doc.title || t('untitled'));
-  const titleHl = $derived(doc._highlights?.title?.[0] ?? null);
+  const url = $derived(recordUrl(itemUrlBase, doc.id));
+  const title = $derived(cardTitle(doc));
+  const titleHl = $derived(titleMarkup(doc));
 
   // Authors / contributors — clickable (filters creator_ss) and highlighted.
   const creators = $derived(doc.creator_ss ?? []);
@@ -51,9 +52,7 @@
 
   // Snippet: whichever of abstract/description matched (centred on the match),
   // else the abstract (or description) shown plainly.
-  const snippet = $derived(
-    firstMarked(doc, ['abstract', 'description']) ?? (doc.abstract ?? doc.description ?? '').trim(),
-  );
+  const snippet = $derived(cardSnippet(doc, ['abstract', 'description']));
 
   const project = $derived(doc.project_s ?? '');
   // Geographic provenance: where the item is from (the specific place as recorded,

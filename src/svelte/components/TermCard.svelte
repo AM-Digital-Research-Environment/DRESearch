@@ -1,7 +1,14 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
   import { cardTitleTag } from '../lib/headings';
-  import { t, researchItemsLabel, publicationsLabel } from '../lib/i18n';
+  import { t } from '../lib/i18n';
+  import {
+    associationCounts,
+    cardTitle,
+    cardType,
+    recordUrl,
+    titleMarkup,
+  } from '../lib/resultCard';
   import Highlight from './Highlight.svelte';
   import Sparkline from './Sparkline.svelte';
   import IdentifierLinks from './IdentifierLinks.svelte';
@@ -36,23 +43,14 @@
   const { doc, itemUrlBase, onAddFilter, profile }: Props = $props();
   const titleTag = cardTitleTag();
 
-  const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
-  const name = $derived(doc.title || t('untitled'));
-  const nameHl = $derived(doc._highlights?.title?.[0] ?? null);
-  const type = $derived((doc.type_s ?? '').trim());
+  const url = $derived(recordUrl(itemUrlBase, doc.id));
+  const name = $derived(cardTitle(doc));
+  const nameHl = $derived(titleMarkup(doc));
+  const type = $derived(cardType(doc));
   const roles = $derived(doc.roles_ss ?? []);
 
   // Association counts — show only the non-zero ones, joined with "·".
-  const counts = $derived.by(() => {
-    const out: string[] = [];
-    if ((doc.item_count ?? 0) > 0) {
-      out.push(researchItemsLabel(doc.item_count ?? 0));
-    }
-    if ((doc.publication_count ?? 0) > 0) {
-      out.push(publicationsLabel(doc.publication_count ?? 0));
-    }
-    return out;
-  });
+  const counts = $derived(associationCounts(doc, ['items', 'publications']));
   const series = $derived(associationSeries(doc.item_count, doc.publication_count));
   // A subject's LCSH heading and Wikidata item; a place's or language's QID.
   const ids = $derived(externalIds(doc.same_as_ss ?? []));

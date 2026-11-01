@@ -1,7 +1,13 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
   import { cardTitleTag } from '../lib/headings';
-  import { t, researchItemsLabel, projectsLabel, peopleLabel } from '../lib/i18n';
+  import {
+    associationCounts,
+    cardTitle,
+    cardType,
+    recordUrl,
+    titleMarkup,
+  } from '../lib/resultCard';
   import Highlight from './Highlight.svelte';
   import CardThumb from './CardThumb.svelte';
   import IdentifierLinks from './IdentifierLinks.svelte';
@@ -30,29 +36,17 @@
   const { doc, itemUrlBase, onAddFilter }: Props = $props();
   const titleTag = cardTitleTag();
 
-  const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
-  const name = $derived(doc.title || t('untitled'));
-  const nameHl = $derived(doc._highlights?.title?.[0] ?? null);
-  const type = $derived((doc.type_s ?? '').trim());
+  const url = $derived(recordUrl(itemUrlBase, doc.id));
+  const name = $derived(cardTitle(doc));
+  const nameHl = $derived(titleMarkup(doc));
+  const type = $derived(cardType(doc));
   const roles = $derived(doc.roles_ss ?? []);
   // The institution's Wikidata item, when it has been reconciled.
   const ids = $derived(externalIds(doc.same_as_ss ?? []));
 
   // Association counts — show only the non-zero ones, joined with "·". A group
   // typically shows just "N research items"; an institution shows projects/people.
-  const counts = $derived.by(() => {
-    const out: string[] = [];
-    if ((doc.project_count ?? 0) > 0) {
-      out.push(projectsLabel(doc.project_count ?? 0));
-    }
-    if ((doc.item_count ?? 0) > 0) {
-      out.push(researchItemsLabel(doc.item_count ?? 0));
-    }
-    if ((doc.people_count ?? 0) > 0) {
-      out.push(peopleLabel(doc.people_count ?? 0));
-    }
-    return out;
-  });
+  const counts = $derived(associationCounts(doc, ['projects', 'items', 'people']));
 </script>
 
 <article class="dre-shell dre-shell--media dre-org" class:dre-shell--no-thumb={!doc.thumbnail_url}>

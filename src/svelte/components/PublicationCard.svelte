@@ -2,7 +2,15 @@
   import type { Doc } from '../lib/types';
   import { cardTitleTag } from '../lib/headings';
   import { t } from '../lib/i18n';
-  import { firstMarked, markedLookup } from '../lib/highlight';
+  import { markedLookup } from '../lib/highlight';
+  import {
+    cardSnippet,
+    cardTitle,
+    publicationIds,
+    publicationReference,
+    recordUrl,
+    titleMarkup,
+  } from '../lib/resultCard';
   import { safeExternalUrl } from '../lib/text';
   import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
@@ -10,7 +18,6 @@
   import CiteMenu from './CiteMenu.svelte';
   import IdentifierLinks from './IdentifierLinks.svelte';
   import RegisterMark from './RegisterMark.svelte';
-  import { externalIds } from '../lib/identifiers';
   import '../styles/card.css';
 
   /**
@@ -44,20 +51,20 @@
   const { doc, itemUrlBase, onAddFilter }: Props = $props();
   const titleTag = cardTitleTag();
 
-  const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
-  const title = $derived(doc.title || t('untitled'));
-  const titleHl = $derived(doc._highlights?.title?.[0] ?? null);
+  const url = $derived(recordUrl(itemUrlBase, doc.id));
+  const title = $derived(cardTitle(doc));
+  const titleHl = $derived(titleMarkup(doc));
   const type = $derived(doc.type_s ?? '');
   const year = $derived(doc.year);
   // Abstract: the matched window when it matched, else the plain abstract.
-  const snippet = $derived(firstMarked(doc, ['abstract']) ?? (doc.abstract ?? '').trim());
+  const snippet = $derived(cardSnippet(doc, ['abstract']));
   // Cap chips so a heavily-tagged publication doesn't blow out the card; the
   // Keyword facet still exposes the full list.
   const keywords = $derived((doc.keyword_ss ?? []).slice(0, 8));
   const keywordHl = $derived(markedLookup(doc, 'keyword_ss'));
   const doi = $derived(safeExternalUrl(doc.doi_s));
   // The work's Wikidata item. The DOI keeps its own action pill below.
-  const ids = $derived(externalIds(doc.same_as_ss ?? []).filter((ext) => ext.key !== 'doi'));
+  const ids = $derived(publicationIds(doc));
   // The open-access copy's landing page (EPub Bayreuth on AMIRA).
   const fulltext = $derived(safeExternalUrl(doc.fulltext_url_s));
   const languages = $derived(doc.language_ss ?? []);
@@ -69,56 +76,24 @@
 
   const editors = $derived(doc.editor_ss ?? []);
   const editorHl = $derived(markedLookup(doc, 'editor_ss'));
-  const edsLabel = $derived(editors.length > 1 ? t('eds_short') : t('ed_short'));
 
-  const container = $derived(doc.container_ss?.[0] ?? '');
+  // The reference line — venue · metrics · publisher, with the editors either
+  // as their own byline (an edited volume) or inside "In: … (eds.), <venue>" (a
+  // chapter) — and its separators: lib/resultCard.ts publicationReference().
+  // The venue and publisher are clickable filter values, so they stay separate
+  // pieces of the template.
+  const ref = $derived(publicationReference(doc));
+  const edsLabel = $derived(ref.editorsLabel);
+  const container = $derived(ref.container);
   const containerHl = $derived(markedLookup(doc, 'container_ss'));
-  const publisher = $derived(doc.publisher_ss?.[0] ?? '');
+  const publisher = $derived(ref.publisher);
   const publisherHl = $derived(markedLookup(doc, 'publisher_ss'));
-
-  // Where the editors render: as their own byline for an edited volume/book
-  // (editors but no container), or inside the "In: … (eds.), <venue>" reference
-  // line for a chapter (container present). Never both.
-  const editorsAsByline = $derived(editors.length > 0 && !container);
-  const editorsInRef = $derived(editors.length > 0 && container !== '');
-
-  // The reference line is three pieces — venue · metrics · publisher — of which
-  // the venue and publisher are clickable filter buttons, so only the middle
-  // (volume/issue/pages, e.g. "vol. 4(2), pp. 141–165") is a plain string here.
-  const metrics = $derived.by(() => {
-    const bits: string[] = [];
-    const vol = doc.volume_s ?? '';
-    const issue = doc.issue_s ?? '';
-    if (vol && issue) {
-      bits.push(`${t('vol_short')} ${vol}(${issue})`);
-    } else if (vol) {
-      bits.push(`${t('vol_short')} ${vol}`);
-    } else if (issue) {
-      bits.push(`${t('no_short')} ${issue}`);
-    }
-    // A range takes the "pp." prefix; a monograph's page count already reads
-    // "370 pp." (PublicationMapper), and prefixing it gave "pp. 370 pp.".
-    const pages = doc.pages_s ?? '';
-    if (pages) {
-      bits.push(/\spp\.$/.test(pages) ? pages : `${t('pp_short')} ${pages}`);
-    }
-    return bits.join(', ');
-  });
-
-  // Separators rendered *after* each piece (trailing, ending in a space), so any
-  // whitespace the template introduces between the buttons collapses into the
-  // separator's own space instead of surfacing as a stray space before a comma.
-  const sepAfterVenue = $derived.by(() => {
-    if (!container) return '';
-    if (metrics) return ', ';
-    return publisher ? '. ' : '';
-  });
-  // No second full stop after a metric that already ends in one ("370 pp.").
-  const sepAfterMetrics = $derived(
-    metrics && publisher ? (metrics.endsWith('.') ? ' ' : '. ') : '',
-  );
-
-  const hasReference = $derived(Boolean(container || metrics || publisher));
+  const editorsAsByline = $derived(ref.editorsAsByline);
+  const editorsInRef = $derived(ref.editorsInRef);
+  const metrics = $derived(ref.metrics);
+  const sepAfterVenue = $derived(ref.sepAfterVenue);
+  const sepAfterMetrics = $derived(ref.sepAfterMetrics);
+  const hasReference = $derived(ref.hasReference);
 </script>
 
 <article class="dre-shell dre-bcard">

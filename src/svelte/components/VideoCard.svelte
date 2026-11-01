@@ -2,7 +2,8 @@
   import type { Doc } from '../lib/types';
   import { cardTitleTag } from '../lib/headings';
   import { formatDate, t } from '../lib/i18n';
-  import { firstMarked, markedLookup } from '../lib/highlight';
+  import { markedLookup } from '../lib/highlight';
+  import { cardSnippet, cardTitle, linkedPeople, recordUrl, titleMarkup } from '../lib/resultCard';
   import { safeExternalUrl } from '../lib/text';
   import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
@@ -39,31 +40,22 @@
   const { doc, itemUrlBase, onAddFilter }: Props = $props();
   const titleTag = cardTitleTag();
 
-  function people(names: string[] | undefined, ids: string[] | undefined) {
-    const list = names ?? [];
-    const idList = ids ?? [];
-    return list.map((name, i) => {
-      const id = idList[i] ?? '';
-      return { name, href: id ? `${itemUrlBase}/${encodeURIComponent(id)}` : null };
-    });
-  }
-
-  const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
-  const title = $derived(doc.title || t('untitled'));
-  const titleHl = $derived(doc._highlights?.title?.[0] ?? null);
+  const url = $derived(recordUrl(itemUrlBase, doc.id));
+  const title = $derived(cardTitle(doc));
+  const titleHl = $derived(titleMarkup(doc));
 
   const dateLabel = $derived(formatDate(doc.date_s));
 
   const playlist = $derived(doc.playlist_s ?? '');
 
-  const speakers = $derived(people(doc.speaker_ss, doc.speaker_ids));
+  const speakers = $derived(linkedPeople(itemUrlBase, doc.speaker_ss, doc.speaker_ids));
   const speakerHl = $derived(markedLookup(doc, 'speaker_ss'));
 
   const languages = $derived(doc.language_ss ?? []);
   const hasTranscript = $derived(doc.has_transcript === true);
 
   // Abstract: the matched window when it matched, else the plain abstract.
-  const snippet = $derived(firstMarked(doc, ['abstract']) ?? (doc.abstract ?? '').trim());
+  const snippet = $derived(cardSnippet(doc, ['abstract']));
 
   const watch = $derived(safeExternalUrl(doc.url_s));
 </script>

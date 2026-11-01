@@ -1,8 +1,15 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
   import { cardTitleTag } from '../lib/headings';
-  import { t, projectsLabel, membersLabel } from '../lib/i18n';
-  import { firstMarked, markedLookup } from '../lib/highlight';
+  import { projectsLabel, membersLabel } from '../lib/i18n';
+  import { markedLookup } from '../lib/highlight';
+  import {
+    cardSnippet,
+    cardTitle,
+    recordUrl,
+    sectionLeaders,
+    titleMarkup,
+  } from '../lib/resultCard';
   import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
   import MatchedIn from './MatchedIn.svelte';
@@ -33,14 +40,14 @@
   const { doc, itemUrlBase, onAddFilter }: Props = $props();
   const titleTag = cardTitleTag();
 
-  const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
-  const title = $derived(doc.title || t('untitled'));
-  const titleHl = $derived(doc._highlights?.title?.[0] ?? null);
+  const url = $derived(recordUrl(itemUrlBase, doc.id));
+  const title = $derived(cardTitle(doc));
+  const titleHl = $derived(titleMarkup(doc));
   const phase = $derived(doc.phase_s ?? '');
   const projectCount = $derived(doc.project_count ?? 0);
   const memberCount = $derived(doc.member_count ?? 0);
   // Abstract: the matched window when it matched, else the plain abstract.
-  const snippet = $derived(firstMarked(doc, ['abstract']) ?? (doc.abstract ?? '').trim());
+  const snippet = $derived(cardSnippet(doc, ['abstract']));
   // Leaders come from either pi_ss or spokesperson_ss — merge both highlight maps.
   const leaderHl = $derived(
     new Map([...markedLookup(doc, 'pi_ss'), ...markedLookup(doc, 'spokesperson_ss')]),
@@ -48,17 +55,7 @@
 
   // Leaders — PIs for a Phase 1 section, a spokesperson for Phase 2 (the two are
   // mutually exclusive in the source data; External has neither).
-  const leaders = $derived.by(() => {
-    const pis = doc.pi_ss ?? [];
-    if (pis.length > 0) {
-      return { label: t('pis_label'), names: pis };
-    }
-    const spk = doc.spokesperson_ss ?? [];
-    if (spk.length > 0) {
-      return { label: t('spokesperson_label'), names: spk };
-    }
-    return null;
-  });
+  const leaders = $derived(sectionLeaders(doc));
 </script>
 
 <article class="dre-shell dre-scard">

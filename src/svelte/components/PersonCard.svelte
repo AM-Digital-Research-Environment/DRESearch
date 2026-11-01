@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
   import { cardTitleTag } from '../lib/headings';
-  import { t, researchItemsLabel, publicationsLabel } from '../lib/i18n';
+  import { associationCounts, cardTitle, recordUrl, titleMarkup } from '../lib/resultCard';
   import { markedLookup } from '../lib/highlight';
   import Highlight from './Highlight.svelte';
   import FilterLink from './FilterLink.svelte';
@@ -36,9 +36,9 @@
   const { doc, itemUrlBase, onAddFilter }: Props = $props();
   const titleTag = cardTitleTag();
 
-  const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
-  const name = $derived(doc.title || t('untitled'));
-  const nameHl = $derived(doc._highlights?.title?.[0] ?? null);
+  const url = $derived(recordUrl(itemUrlBase, doc.id));
+  const name = $derived(cardTitle(doc));
+  const nameHl = $derived(titleMarkup(doc));
   const affiliations = $derived(doc.affiliation_ss ?? []);
   const roles = $derived(doc.roles_ss ?? []);
   const affilHl = $derived(markedLookup(doc, 'affiliation_ss'));
@@ -46,17 +46,8 @@
   // ORCID, Wikidata, GND — the person as other registers know them.
   const ids = $derived(externalIds(doc.same_as_ss ?? []));
 
-  // Association counts — show only the non-zero ones, joined with "·".
-  const counts = $derived.by(() => {
-    const out: string[] = [];
-    if ((doc.item_count ?? 0) > 0) {
-      out.push(researchItemsLabel(doc.item_count ?? 0));
-    }
-    if ((doc.publication_count ?? 0) > 0) {
-      out.push(publicationsLabel(doc.publication_count ?? 0));
-    }
-    return out;
-  });
+  // Association counts — only the non-zero ones, joined with "·".
+  const counts = $derived(associationCounts(doc, ['items', 'publications']));
 </script>
 
 <article

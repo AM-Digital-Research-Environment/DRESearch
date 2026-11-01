@@ -1,8 +1,15 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
   import { cardTitleTag } from '../lib/headings';
-  import { t, researchItemsLabel } from '../lib/i18n';
-  import { firstMarked, markedLookup } from '../lib/highlight';
+  import { researchItemsLabel, t } from '../lib/i18n';
+  import { markedLookup } from '../lib/highlight';
+  import {
+    cardSnippet,
+    cardTitle,
+    recordUrl,
+    titleMarkup,
+    yearRange as runOf,
+  } from '../lib/resultCard';
   import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
   import MatchedIn from './MatchedIn.svelte';
@@ -34,15 +41,15 @@
   const { doc, itemUrlBase, onAddFilter }: Props = $props();
   const titleTag = cardTitleTag();
 
-  const url = $derived(`${itemUrlBase}/${encodeURIComponent(doc.id)}`);
-  const title = $derived(doc.title || t('untitled'));
-  const titleHl = $derived(doc._highlights?.title?.[0] ?? null);
+  const url = $derived(recordUrl(itemUrlBase, doc.id));
+  const title = $derived(cardTitle(doc));
+  const titleHl = $derived(titleMarkup(doc));
   const sections = $derived(doc.section_ss ?? []);
   const institutions = $derived(doc.institution_ss ?? []);
   const sectionHl = $derived(markedLookup(doc, 'section_ss'));
   const instHl = $derived(markedLookup(doc, 'institution_ss'));
   // Abstract: the matched window when it matched, else the plain abstract.
-  const snippet = $derived(firstMarked(doc, ['abstract']) ?? (doc.abstract ?? '').trim());
+  const snippet = $derived(cardSnippet(doc, ['abstract']));
   const itemCount = $derived(doc.item_count ?? 0);
 
   // PI names. Clicking one adds it as an "Associated people" (people_ss) filter,
@@ -50,14 +57,7 @@
   const pis = $derived(doc.pi_ss ?? []);
   const piHl = $derived(markedLookup(doc, 'pi_ss'));
 
-  const yearRange = $derived.by(() => {
-    const s = doc.year_start;
-    const e = doc.year_end;
-    if (s == null) {
-      return '';
-    }
-    return e != null && e !== s ? `${s} – ${e}` : String(s);
-  });
+  const yearRange = $derived(runOf(doc.year_start, doc.year_end));
 </script>
 
 <article class="dre-shell dre-pcard">
