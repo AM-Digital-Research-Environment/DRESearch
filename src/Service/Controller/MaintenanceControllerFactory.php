@@ -10,6 +10,7 @@ use DRESearch\Indexer\RebuildStateStore;
 use DRESearch\Indexer\WorkerLease;
 use DRESearch\Search\PopularModeration;
 use DRESearch\Search\TypesenseClientProvider;
+use DRESearch\Search\TypesenseSearchKeyProvider;
 use DRESearch\Settings\ProfileRegistry;
 use Laminas\ServiceManager\Factory\FactoryInterface;
 use Psr\Container\ContainerInterface;
@@ -29,6 +30,7 @@ final class MaintenanceControllerFactory implements FactoryInterface
             max(0, (int) ($config['operations']['pending_exclusion_limit'] ?? 250)),
             new PopularModeration($connection),
             (array) ($config['popular_searches'] ?? []),
+            $container->get(TypesenseSearchKeyProvider::class),
         );
     }
 }

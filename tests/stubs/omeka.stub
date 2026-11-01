@@ -95,3 +95,32 @@ interface LinkInterface
      */
     public function getLabel(array $data, \Omeka\Api\Representation\SiteRepresentation $site);
 }
+
+namespace Omeka\Settings;
+
+/**
+ * Omeka 4.2.1 documents set()'s value as a string, but settings hold any
+ * JSON value (core stores arrays, booleans and integers in them).
+ */
+interface SettingsInterface
+{
+    /**
+     * @param string $id
+     * @param mixed $value
+     * @return void
+     */
+    public function set($id, $value);
+
+    /**
+     * @param string $id
+     * @param mixed $default
+     * @return mixed
+     */
+    public function get($id, $default = null);
+
+    /**
+     * @param string $id
+     * @return void
+     */
+    public function delete($id);
+}

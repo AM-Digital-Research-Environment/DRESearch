@@ -18,6 +18,7 @@ use DRESearch\Search\PopularAnalytics;
 use DRESearch\Search\PopularModeration;
 use DRESearch\Search\PopularSearches;
 use DRESearch\Search\TypesenseClientProvider;
+use DRESearch\Search\TypesenseSearchKeyProvider;
 use DRESearch\Settings\ProfileRegistry;
 use Laminas\Mvc\Controller\AbstractActionController;
 use Laminas\View\Model\ViewModel;
@@ -47,6 +48,7 @@ class MaintenanceController extends AbstractActionController
         private readonly ?PopularModeration $moderation = null,
         /** @var array{enabled?:bool,min_count?:int,limit?:int} the `popular_searches` config */
         private readonly array $popularSearches = [],
+        private readonly ?TypesenseSearchKeyProvider $searchKeys = null,
     ) {
     }
 
@@ -67,6 +69,7 @@ class MaintenanceController extends AbstractActionController
             'worker'     => $this->workerStatus(),
             'analytics'  => $this->collectAnalytics(),
             'popular'    => $this->collectPopular(),
+            'search_key' => $this->searchKeyStatus(),
             'form'       => $this->getForm(MaintenanceForm::class),
         ]);
         $view->setTemplate('dre-search/admin/maintenance/index');
@@ -417,6 +420,26 @@ class MaintenanceController extends AbstractActionController
             'limit' => $limit,
             'profiles' => $profiles,
         ];
+    }
+
+    /**
+     * Which key public search runs with ({@see TypesenseSearchKeyProvider::status()}),
+     * or null while Typesense is unconfigured or unreachable: there is then no
+     * key to show, and nothing should be minted.
+     *
+     * @return array<string,mixed>|null
+     */
+    private function searchKeyStatus(): ?array
+    {
+        if ($this->searchKeys === null || !$this->provider->isConfigured() || !$this->probeHealth()) {
+            return null;
+        }
+        try {
+            return $this->searchKeys->status();
+        } catch (\Throwable $error) {
+            return ['source' => 'admin', 'scope' => [], 'actions' => null, 'collections' => null,
+                'problem' => 'lookup_failed', 'detail' => $error->getMessage(), 'failure' => null];
+        }
     }
 
     private function probeHealth(): bool

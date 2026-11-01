@@ -73,6 +73,16 @@ class Module extends AbstractModule
         'dre_search_typesense_port',
         'dre_search_typesense_protocol',
         'dre_search_typesense_api_key',
+        Search\TypesenseSearchKeyProvider::SETTING,
+    ];
+
+    /**
+     * Secret settings: never placed back into the form, kept when the field is
+     * left blank, cleared by their checkbox.
+     */
+    private const SECRETS = [
+        'dre_search_typesense_api_key' => 'dre_search_clear_api_key',
+        Search\TypesenseSearchKeyProvider::SETTING => 'dre_search_clear_search_key',
     ];
 
     /**
@@ -324,8 +334,8 @@ class Module extends AbstractModule
 
         $data = [];
         foreach (self::SETTINGS as $key) {
-            // Never place the stored secret back into the rendered admin DOM.
-            $data[$key] = $key === 'dre_search_typesense_api_key' ? '' : $settings->get($key, '');
+            // Never place a stored secret back into the rendered admin DOM.
+            $data[$key] = isset(self::SECRETS[$key]) ? '' : $settings->get($key, '');
         }
         $form->setData($data);
 
@@ -347,6 +357,8 @@ class Module extends AbstractModule
                 'Port' => ['dre_search_typesense_port', 'TYPESENSE_PORT', $defaults['port'] ?? ''],
                 'Protocol' => ['dre_search_typesense_protocol', 'TYPESENSE_PROTOCOL', $defaults['protocol'] ?? ''],
                 'API key' => ['dre_search_typesense_api_key', 'TYPESENSE_API_KEY', ''],
+                // Unset, the module mints one: the maintenance page shows which.
+                'Search-only key' => [Search\TypesenseSearchKeyProvider::SETTING, Service\Search\TypesenseSearchKeyProviderFactory::ENV, ''],
             ] as $label => [$setting, $env, $default]
         ) {
             if ((string) $settings->get($setting, '') !== '') {
@@ -382,8 +394,8 @@ class Module extends AbstractModule
 
         $data = $form->getData();
         foreach (self::SETTINGS as $key) {
-            if ($key === 'dre_search_typesense_api_key') {
-                if (!empty($data['dre_search_clear_api_key'])) {
+            if (isset(self::SECRETS[$key])) {
+                if (!empty($data[self::SECRETS[$key]])) {
                     $settings->set($key, '');
                 } elseif ((string) ($data[$key] ?? '') !== '') {
                     $settings->set($key, (string) $data[$key]);
@@ -397,11 +409,30 @@ class Module extends AbstractModule
 
     public function uninstall(\Laminas\ServiceManager\ServiceLocatorInterface $services): void
     {
+        $connection = $services->get('Omeka\Connection');
+        // The search-only keys this install minted are its own credentials,
+        // unlike the collections (which may be shared): revoke them, then drop
+        // their settings slots.
+        try {
+            $provider = (new Service\TypesenseClientProviderFactory())($services, Search\TypesenseClientProvider::class);
+            $revoked = Search\TypesenseSearchKeyProvider::revokeMinted(
+                $connection,
+                static fn(): ?object => $provider->getClient(),
+                $services->has('Omeka\Logger') ? $services->get('Omeka\Logger') : null,
+            );
+            if ($revoked > 0 && $services->has('Omeka\Logger')) {
+                $services->get('Omeka\Logger')->notice(sprintf('DRESearch uninstalled: revoked %d search-only Typesense key(s) it had minted.', $revoked));
+            }
+        } catch (\Throwable $error) {
+            // Typesense unreachable or unconfigured: the key stays, the slots go.
+            if ($services->has('Omeka\Logger')) {
+                $services->get('Omeka\Logger')->warn('DRESearch: could not revoke its search-only key on uninstall: ' . $error->getMessage());
+            }
+        }
         $settings = $services->get('Omeka\Settings');
         foreach (self::SETTINGS as $key) {
             $settings->delete($key);
         }
-        $connection = $services->get('Omeka\Connection');
         // The generation table is the only record of which Typesense
         // collections this module created. Typesense data is deliberately left
         // in place (it may be shared); record the names so they can be removed

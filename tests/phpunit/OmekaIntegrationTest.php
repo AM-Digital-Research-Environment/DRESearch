@@ -477,6 +477,35 @@ final class OmekaIntegrationTest extends TestCase
         self::assertSame(['min' => 2001, 'max' => 2001], $proxy->yearBounds($this->profile->name()));
     }
 
+    /**
+     * Two first searches must not mint two keys. Omeka's settings service
+     * caches every value for its request, so the second request cannot see the
+     * key the first just stored; under the mint lock it reads the slot afresh
+     * and uses that key. Uninstall then revokes it and drops its slot.
+     */
+    public function testConcurrentFirstSearchesShareOneMintedKeyAndUninstallRevokesIt(): void
+    {
+        $fresh = $this->settings();
+        $first = $this->searchKeys($fresh);
+        $value = $first->key();
+        self::assertIsString($value);
+        self::assertSame(json_encode($value), $this->db->fetchOne('SELECT value FROM setting WHERE id = ?', [$first->slot()]));
+
+        $stale = $this->settings(true);
+        self::assertSame($value, $this->searchKeys($stale)->key(), 'The second request found the first one\'s key.');
+        self::assertCount(1, $this->mintedKeys(), 'One key in Typesense.');
+
+        require_once dirname(__DIR__, 2) . '/Module.php';
+        $services = new ServiceManager();
+        $services->setService('Omeka\Connection', $this->db);
+        $services->setService('Omeka\Settings', $fresh);
+        $services->setService('Omeka\Logger', $this->logger);
+        $services->setService('Config', ['dre_search' => ['typesense' => ['port' => (int) (getenv('TYPESENSE_PORT') ?: 8108)]]]);
+        (new \DRESearch\Module())->uninstall($services);
+        self::assertSame([], $this->mintedKeys(), 'Uninstall revoked the key it minted.');
+        self::assertFalse($this->db->fetchOne('SELECT value FROM setting WHERE id = ?', [$first->slot()]));
+    }
+
     public function testHealthReportsCorpusStatesWithoutRecordIds(): void
     {
         $this->item(8, 'Second publication');
@@ -919,5 +948,58 @@ final class OmekaIntegrationTest extends TestCase
         $item = new Item();
         (new \ReflectionProperty(\Omeka\Entity\Resource::class, 'id'))->setValue($item, $id);
         return $item;
+    }
+
+    private function searchKeys(\Omeka\Settings\SettingsInterface $settings): \DRESearch\Search\TypesenseSearchKeyProvider
+    {
+        return new \DRESearch\Search\TypesenseSearchKeyProvider(
+            fn(): ?object => $this->provider->getClient(),
+            $settings,
+            $this->logger,
+            [$this->profile->collection()],
+            '',
+            $this->db,
+        );
+    }
+
+    /** @return list<array<string,mixed>> Typesense's keys minted for this test's alias */
+    private function mintedKeys(): array
+    {
+        return array_values(array_filter(
+            $this->client->keys->retrieve()['keys'] ?? [],
+            fn(array $key): bool => ($key['description'] ?? '') === \DRESearch\Search\TypesenseSearchKeyProvider::DESCRIPTION
+                && ($key['collections'] ?? []) === ['^' . $this->profile->collection() . '$'],
+        ));
+    }
+
+    /**
+     * Omeka's settings table, as its settings service reads and writes it
+     * (JSON values). `$stale` answers every read from an empty cache, as the
+     * service does for a value another request stored after it loaded.
+     */
+    private function settings(bool $stale = false): \Omeka\Settings\SettingsInterface
+    {
+        return new class ($this->db, $stale) implements \Omeka\Settings\SettingsInterface {
+            public function __construct(private readonly Connection $db, private readonly bool $stale)
+            {
+            }
+
+            public function set($id, $value): void
+            {
+                $this->db->executeStatement('DELETE FROM setting WHERE id = ?', [$id]);
+                $this->db->insert('setting', ['id' => $id, 'value' => json_encode($value)]);
+            }
+
+            public function get($id, $default = null): mixed
+            {
+                $raw = $this->stale ? false : $this->db->fetchOne('SELECT value FROM setting WHERE id = ?', [$id]);
+                return is_string($raw) ? json_decode($raw, true) : $default;
+            }
+
+            public function delete($id): void
+            {
+                $this->db->executeStatement('DELETE FROM setting WHERE id = ?', [$id]);
+            }
+        };
     }
 }

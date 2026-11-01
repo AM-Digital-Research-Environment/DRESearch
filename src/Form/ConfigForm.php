@@ -62,6 +62,27 @@ class ConfigForm extends Form
             ],
         ]);
 
+        // Least privilege for public search: the API key above stays for
+        // indexing and maintenance (Search\TypesenseSearchKeyProvider).
+        $this->add([
+            'name'    => 'dre_search_typesense_search_key',
+            'type'    => Element\Password::class,
+            'options' => [
+                'label' => 'Typesense search-only key (optional)', // @translate
+                'info'  => 'The key public searches use: create it in Typesense with only the documents:search action, on the module’s collection aliases. Leave blank to keep the saved key. With none saved and no TYPESENSE_SEARCH_API_KEY environment variable, the module creates one with the API key above.', // @translate
+            ],
+            'attributes' => ['autocomplete' => 'new-password', 'placeholder' => '••••••••••••'],
+        ]);
+
+        $this->add([
+            'name' => 'dre_search_clear_search_key',
+            'type' => Element\Checkbox::class,
+            'options' => [
+                'label' => 'Clear the saved search-only key', // @translate
+                'use_hidden_element' => true,
+            ],
+        ]);
+
         // Everything optional — a blank host simply disables search. Collection
         // aliases are per-profile config (dre_search.profiles), not set here.
         $inputFilter = $this->getInputFilter();
@@ -72,6 +93,8 @@ class ConfigForm extends Form
             'dre_search_typesense_protocol',
             'dre_search_typesense_api_key',
             'dre_search_clear_api_key',
+            'dre_search_typesense_search_key',
+            'dre_search_clear_search_key',
             ] as $name
         ) {
             $inputFilter->add(['name' => $name, 'required' => false]);

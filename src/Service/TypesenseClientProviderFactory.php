@@ -6,7 +6,7 @@ namespace DRESearch\Service;
 
 use DRESearch\Search\TypesenseClientProvider;
 use Laminas\ServiceManager\Factory\FactoryInterface;
-use Omeka\Settings\Settings;
+use Omeka\Settings\SettingsInterface;
 use Psr\Container\ContainerInterface;
 
 /**
@@ -22,7 +22,7 @@ final class TypesenseClientProviderFactory implements FactoryInterface
 {
     public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null): TypesenseClientProvider
     {
-        /** @var Settings $settings */
+        /** @var SettingsInterface $settings */
         $settings = $container->get('Omeka\Settings');
         $defaults = $container->get('Config')['dre_search']['typesense'] ?? [];
 
@@ -39,11 +39,16 @@ final class TypesenseClientProviderFactory implements FactoryInterface
             (float) ($defaults['search_timeout'] ?? 5.0),
             (float) ($defaults['index_timeout'] ?? 60.0),
             (float) ($defaults['connect_timeout'] ?? 2.0),
+            // Looked up on the first public search only: the header bar and
+            // other pages that never search do not build the profiles or mint.
+            static fn(): ?\DRESearch\Search\TypesenseSearchKeyProvider => $container->has(\DRESearch\Search\TypesenseSearchKeyProvider::class)
+                ? $container->get(\DRESearch\Search\TypesenseSearchKeyProvider::class)
+                : null,
         );
     }
 
     /** Non-empty setting wins, then a non-empty env var, then the default. */
-    private static function resolve(Settings $settings, string $settingKey, string $envKey, string $default): string
+    private static function resolve(SettingsInterface $settings, string $settingKey, string $envKey, string $default): string
     {
         $value = (string) $settings->get($settingKey, '');
         if ($value !== '') {

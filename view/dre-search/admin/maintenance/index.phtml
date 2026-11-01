@@ -6,6 +6,7 @@
  * @var \DRESearch\Form\MaintenanceForm $form
  * @var array{enabled:bool,rows:list<array{profile:string,kind:string,q:string,count:int}>} $analytics
  * @var array{requested:bool,heartbeat:?string,alive:bool}|null $worker
+ * @var array{source:string, scope:list<string>, actions:?list<string>, collections:?list<string>, problem:?string, detail:?string, failure:?array{at:string,message:string}}|null $search_key
  * @var array{enabled:bool, store:bool, analytics:bool, min_count:int, limit:int, profiles:list<array{name:string, label:string, more:int, rows:list<array{q:string, count:?int, status:string, shown:bool, decided_at:?string}>, hidden:list<array{q:string, count:?int, status:string, shown:bool, decided_at:?string}>}>} $popular
  */
 $this->headTitle($this->translate('DRE Search'));
@@ -100,6 +101,46 @@ $form->prepare();
         <?php endforeach; ?>
     </tbody>
 </table>
+
+<?php $searchKey = $search_key ?? null; ?>
+<?php if ($searchKey !== null): ?>
+<h2><?= $this->translate('Public search key') ?></h2>
+<p>
+    <?php if ($searchKey['source'] === 'configured'): ?>
+        <?= $this->translate('Public searches use the search-only key configured for the module.') ?>
+    <?php elseif ($searchKey['source'] === 'minted'): ?>
+        <?= $this->translate('Public searches use a search-only key the module created with the API key.') ?>
+    <?php else: ?>
+        <strong class="error"><?= $this->translate('Public searches use the API key: no search-only key could be found or created.') ?></strong>
+        <?= $this->translate('Search works, but with more privileges than it needs. Configure a search-only key under Modules → DRE Search → Configure, or let the API key create keys.') ?>
+    <?php endif; ?>
+</p>
+<?php if ($searchKey['actions'] !== null): ?>
+    <p>
+        <?= $this->escapeHtml(sprintf($this->translate('Typesense lets it: %s, on %s.'), implode(', ', $searchKey['actions']), implode(', ', $searchKey['collections'] ?? []))) ?>
+    </p>
+<?php endif; ?>
+<?php
+$keyProblems = [
+    'lookup_failed' => $this->translate('Typesense could not be asked about the key:'),
+    'gone' => $this->translate('Typesense no longer has the key the module created; a new one is created with the next search.'),
+    'unmatched' => $this->translate('Typesense has no single key matching the configured one.'),
+    'too_broad' => $this->translate('The key may do more than search documents. Give public search a key with only the documents:search action.'),
+];
+?>
+<?php if ($searchKey['problem'] !== null): ?>
+    <div class="error">
+        <?= $this->escapeHtml($keyProblems[$searchKey['problem']] ?? $searchKey['problem']) ?>
+        <?php if ($searchKey['detail'] !== null): ?><?= $this->escapeHtml($searchKey['detail']) ?><?php endif; ?>
+    </div>
+<?php endif; ?>
+<?php if ($searchKey['failure'] !== null): ?>
+    <div class="error">
+        <?= $this->escapeHtml(sprintf($this->translate('Last attempt to create it (%1$s UTC): %2$s'), $searchKey['failure']['at'], $searchKey['failure']['message'])) ?>
+    </div>
+<?php endif; ?>
+<p><small><?= $this->escapeHtml(sprintf($this->translate('Scope it needs: documents:search on %s.'), implode(', ', $searchKey['scope']))) ?></small></p>
+<?php endif; ?>
 
 <h2><?= $this->translate('Incremental worker') ?></h2>
 <p>

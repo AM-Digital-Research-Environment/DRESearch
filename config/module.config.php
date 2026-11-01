@@ -19,6 +19,10 @@ return [
             // defaults. Reports isConfigured(); getClient() returns null when
             // Typesense is not set up, so every consumer degrades gracefully.
             Search\TypesenseClientProvider::class => Service\TypesenseClientProviderFactory::class,
+            // The key public searches run with: limited to documents:search on
+            // the profiles' aliases (an operator's, or one minted once with the
+            // admin key); the admin key stays for indexing and maintenance.
+            Search\TypesenseSearchKeyProvider::class => Service\Search\TypesenseSearchKeyProviderFactory::class,
             // Server-side search: forwards queries to Typesense, forcing
             // is_public:=true, and normalises the response for the client.
             Search\SearchProxy::class => Service\SearchProxyFactory::class,

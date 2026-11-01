@@ -6,8 +6,8 @@ DRE Search is an Omeka S module with three boundaries:
    Typesense documents, and publishes only a verified complete generation.
 2. The PHP proxy validates anonymous requests, injects visibility and the
    server-side scope (a saved block's locked filter, or a research project's
-   records for the item-page Project records block), calls Typesense with the
-   server-held key, and normalizes output.
+   records for the item-page Project records block), calls Typesense with a
+   server-held search-only key, and normalizes output.
 3. The compiled Svelte client consumes only the module API. It never talks to
    Typesense directly.
 
@@ -140,6 +140,23 @@ renders no first page when the URL already carries its own state
 fetches that state instead. The federated page reads every corpus's year span
 in one request with one gate and one cache read, and the header search bar is
 built from the connection settings alone, without the search proxy.
+
+## Keys
+
+The admin key (`TYPESENSE_API_KEY` or the config form) serves indexing,
+rebuilds, health, analytics provisioning and reading, and the maintenance page.
+Public collection searches run with a key Typesense lets do only
+`documents:search` on the profiles' aliases, anchored (`^dre_research_current$`
+…), so retained generations and analytics collections stay out of its reach.
+An operator can configure one (`TYPESENSE_SEARCH_API_KEY` or the config form);
+otherwise `TypesenseSearchKeyProvider` mints one with the admin key on the first
+public search, under a MySQL advisory lock with a fresh read of its settings
+slot, and keeps it in a slot named after its scope, so a changed alias list
+mints a new key. If minting fails it is logged, the admin key serves, and the
+next attempt waits five minutes. A minted key Typesense refuses (401) is
+forgotten and replaced on the next request. The maintenance page shows which
+key is in use and what Typesense lets it do; uninstall revokes the minted key.
+No key reaches the browser.
 
 ## Federated, map, and analytics extensions
 

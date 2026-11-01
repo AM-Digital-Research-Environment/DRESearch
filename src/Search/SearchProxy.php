@@ -423,7 +423,10 @@ final class SearchProxy
             $this->cachePut($cacheKey, [], 600);
             return ['available' => true, 'queries' => []];
         }
-        $client = $this->client();
+        // The analytics collections hold every query visitors typed, so the
+        // search-only key cannot read them; the admin key does, server-side,
+        // and only approved queries leave this method.
+        $client = $this->client(true);
         if ($client === null) {
             return ['available' => false, 'queries' => []];
         }
@@ -431,7 +434,7 @@ final class SearchProxy
         try {
             $analytics = PopularAnalytics::fetch($client, $profile->name(), $minCount);
         } catch (\Throwable $e) {
-            $this->logBackendFailure('popular', $e, $profile, $requestId);
+            $this->logBackendFailure('popular', $e, $profile, $requestId, true);
             return ['available' => false, 'queries' => []];
         }
         // An approved query is served only while it is still a candidate:
@@ -745,7 +748,7 @@ final class SearchProxy
             $this->provider->getClient(),
             $names,
             $this->gate->check($names),
-            fn(\Throwable $error) => $this->noteFailure($error),
+            fn(\Throwable $error) => $this->noteFailure($error, true),
         );
     }
 
@@ -819,13 +822,16 @@ final class SearchProxy
     }
 
     /**
-     * The public client, or null when Typesense is unconfigured or was just
-     * found unreachable. Without the breaker a page rendering several blocks
-     * against a firewalled server waits out one connect timeout per call.
+     * The client for public searches — the search-only key's
+     * ({@see TypesenseClientProvider::getSearchClient()}), or with `$admin`
+     * the admin key's, for what that key cannot read (the analytics) — or null
+     * when Typesense is unconfigured or was just found unreachable. Without
+     * the breaker a page rendering several blocks against a firewalled server
+     * waits out one connect timeout per call.
      */
-    private function client(): ?object
+    private function client(bool $admin = false): ?object
     {
-        $client = $this->provider->getClient();
+        $client = $admin ? $this->provider->getClient() : $this->provider->getSearchClient();
         if ($client === null || $this->backendDown) {
             return null;
         }
@@ -836,9 +842,17 @@ final class SearchProxy
         return $client;
     }
 
-    private function noteFailure(\Throwable $error): void
+    /** @param bool $admin the failed request ran with the admin key */
+    private function noteFailure(\Throwable $error, bool $admin = false): void
     {
         for ($e = $error; $e !== null; $e = $e->getPrevious()) {
+            if (!$admin && $e instanceof \Typesense\Exceptions\RequestUnauthorized) {
+                // Typesense answers 401 for a deleted key and for one that may
+                // not do what was asked: forget a minted key, so the next
+                // request mints a fresh one rather than every request failing.
+                $this->provider->searchKeyRejected();
+                return;
+            }
             if ($e instanceof \GuzzleHttp\Exception\ConnectException || $e instanceof \Psr\Http\Client\NetworkExceptionInterface) {
                 $this->backendDown = true;
                 if (function_exists('apcu_store')) {
@@ -859,8 +873,9 @@ final class SearchProxy
         \Throwable $error,
         SearchProfile $profile,
         ?string $requestId,
+        bool $admin = false,
     ): void {
-        $this->noteFailure($error);
+        $this->noteFailure($error, $admin);
         $this->logger->err('DRESearch backend request failed', [
             'request_id' => $requestId,
             'operation' => $operation,

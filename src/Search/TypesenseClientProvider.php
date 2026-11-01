@@ -19,9 +19,12 @@ use Typesense\Client;
  * ({@see getClient()}); imports of large documents (full texts, transcripts)
  * run in background jobs and may take longer ({@see getIndexClient()}).
  *
- * A single API key is used for both. It is only ever used server-side (the
- * search proxy enforces is_public:=true and forwards results) and never
- * reaches the browser.
+ * Those two carry the admin key, which indexing, health and maintenance need.
+ * Public collection searches run with a third client, {@see getSearchClient()},
+ * whose key may only search the module's aliases
+ * ({@see TypesenseSearchKeyProvider}); without one it is the admin client, so
+ * search keeps working. No key ever reaches the browser: the search proxy
+ * enforces is_public:=true and forwards results.
  */
 final class TypesenseClientProvider
 {
@@ -29,6 +32,9 @@ final class TypesenseClientProvider
     private bool $resolved = false;
     private ?Client $indexClient = null;
     private bool $indexResolved = false;
+    private ?Client $searchClient = null;
+    private bool $searchResolved = false;
+    private bool $usesSearchKey = false;
 
     public function __construct(
         private readonly string $host,
@@ -38,6 +44,8 @@ final class TypesenseClientProvider
         private readonly float $searchTimeout = 5.0,
         private readonly float $indexTimeout = 60.0,
         private readonly float $connectTimeout = 2.0,
+        /** @var (\Closure():(TypesenseSearchKeyProvider|null))|null resolved on the first public search */
+        private readonly ?\Closure $searchKeys = null,
     ) {
     }
 
@@ -65,6 +73,46 @@ final class TypesenseClientProvider
         return $this->client;
     }
 
+    /**
+     * The client public collection searches run with: the search-only key
+     * when there is one, else the admin client ({@see getClient()}), with the
+     * same short deadline. Null when Typesense isn't configured.
+     */
+    public function getSearchClient(): ?Client
+    {
+        if (!$this->searchResolved) {
+            $this->searchResolved = true;
+            $key = null;
+            if ($this->isConfigured() && $this->searchKeys !== null) {
+                try {
+                    $key = ($this->searchKeys)()?->key();
+                } catch (\Throwable) {
+                    // An unusable key setup must not take search down.
+                    $key = null;
+                }
+            }
+            $this->usesSearchKey = $key !== null && $key !== '';
+            $this->searchClient = $this->usesSearchKey ? $this->build($this->searchTimeout, (string) $key) : $this->getClient();
+        }
+        return $this->searchClient;
+    }
+
+    /**
+     * Typesense refused the search-only key: a minted one is forgotten so the
+     * next request mints another ({@see TypesenseSearchKeyProvider::rejected()}).
+     */
+    public function searchKeyRejected(): void
+    {
+        if (!$this->usesSearchKey || $this->searchKeys === null) {
+            return;
+        }
+        try {
+            ($this->searchKeys)()?->rejected();
+        } catch (\Throwable) {
+            // Nothing to forget.
+        }
+    }
+
     /** The client for rebuilds, drains and provisioning jobs. */
     public function getIndexClient(): ?Client
     {
@@ -75,14 +123,14 @@ final class TypesenseClientProvider
         return $this->indexClient;
     }
 
-    private function build(float $timeout): ?Client
+    private function build(float $timeout, ?string $key = null): ?Client
     {
         if (!$this->isConfigured()) {
             return null;
         }
         try {
             return new Client([
-                'api_key' => $this->apiKey,
+                'api_key' => $key ?? $this->apiKey,
                 'nodes'   => [[
                     'host'     => $this->host,
                     'port'     => (string) $this->port,
