@@ -563,10 +563,8 @@ final class SearchProxy
      * overwhelm the ranking. The server-held key never reaches the browser.
      *
      * @param array<string,mixed> $req
-     * @return array<string,mixed>
-     */
-    /**
      * @param callable(string):string|null $translate translates corpus badges
+     * @return array<string,mixed>
      */
     public function union(array $req, ?string $requestId = null, ?callable $translate = null): array
     {
