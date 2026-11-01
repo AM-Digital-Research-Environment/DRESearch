@@ -335,9 +335,11 @@ export async function serve(
         // with an unbroken OCR run to test the line's wrapping.
         if (q === 'mbira') {
           const excerpt = `…the \u{E000}mbira\u{E001} was tuned before ${'x'.repeat(80)} the dance…`;
+          const interview = HITS.find((h) => h.id === '102');
+          if (!interview) throw new Error('The fixture lost its interview hit.');
           return json(
             route,
-            searchResponse([{ ...HITS[1], _highlights: { restricted_text: [excerpt] } }]),
+            searchResponse([{ ...interview, _highlights: { restricted_text: [excerpt] } }]),
           );
         }
         return json(route, searchResponse(hits));
