@@ -31,6 +31,14 @@ credit the reporter unless anonymity is requested.
   changes than `pending_exclusion_limit`, or one that needs a full rebuild,
   stops answering. Indexing only public records, plus this pending-change
   readiness gate, is what keeps private data out of search.
+- One private value can be indexed, by an operator's explicit choice: a
+  profile's `restricted_fulltext` policy, off by default, makes the private full
+  text of public records in named item sets searchable. It is never returned:
+  every query excludes the field from documents, and a match is quoted only as
+  one excerpt of at most 200 characters, cut on the server. Excerpts can be
+  stitched together by repeated queries, so a collection is eligible only if
+  its rights allow short public quotation
+  ([profile configuration](docs/profile-configuration.md#restricted-full-text)).
 - Public queries also add `is_public:=true`. This is defense in depth, not the
   guarantee: every indexed document is public, so the filter matches them all.
   It would only matter if a private document ever reached the index.

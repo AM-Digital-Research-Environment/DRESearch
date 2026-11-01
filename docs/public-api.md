@@ -75,6 +75,17 @@ the background worker applies them. A corpus with more queued changes than
 A facet value may carry `"count": null`: it is selected, but lies outside the
 top values the server recounted, so its number is unknown (never zero).
 
+## Restricted full text
+
+Where a profile's `restricted_fulltext` policy names item sets, a `search` or
+`union` hit found by a word of its private full text carries one excerpt of it
+under `_highlights.restricted_text` (a one-element list, match marked with the
+usual sentinels, at most 200 characters). No document, export row, map point or
+suggestion ever carries the text itself or a longer piece of it, and a browse
+(empty `q`) returns no excerpt. The policy, and what excerpts cannot protect
+against, are described in
+[profile configuration](profile-configuration.md#restricted-full-text).
+
 ## Search analytics
 
 A `search` request with `"record_query": true` and a 32-hex `analytics_id` is

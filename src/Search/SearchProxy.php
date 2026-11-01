@@ -255,6 +255,11 @@ final class SearchProxy
             return $this->unavailableExport($requestId);
         }
         [$found, $docs] = [$pull['found'], $pull['docs']];
+        // The query excludes restricted full text; a file never carries it even
+        // if that exclusion is ever lost.
+        foreach (array_keys($docs) as $i) {
+            unset($docs[$i][SearchProfile::RESTRICTED_TEXT_FIELD]);
+        }
         $this->logMetric('export', $started, $profile, $requestId, ['found' => $found, 'exported' => count($docs)]);
         return [
             'available' => true,

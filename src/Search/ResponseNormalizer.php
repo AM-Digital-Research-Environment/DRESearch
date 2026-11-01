@@ -15,6 +15,17 @@ use DRESearch\Settings\SearchProfile;
 final class ResponseNormalizer
 {
     /**
+     * The longest restricted-text excerpt a response may carry, in characters
+     * (match marks included). Typesense already windows the snippet to a few
+     * tokens either side of the match, but a short text comes back whole and an
+     * OCR token can be any length, so the bound is enforced here, on the server.
+     */
+    public const RESTRICTED_EXCERPT_MAX = 200;
+
+    /** A sentence at least this long is preferred to a word window around the match. */
+    private const RESTRICTED_SENTENCE_MIN = 40;
+
+    /**
      * A search (or union) response: the documents, each with its `_highlights`
      * when something in it matched, the facets labelled from the profile, and
      * the paging figures.
@@ -29,6 +40,8 @@ final class ResponseNormalizer
         $hits = [];
         foreach (is_array($result['hits'] ?? null) ? $result['hits'] : [] as $hit) {
             $doc = is_array($hit['document'] ?? null) ? $hit['document'] : [];
+            // Excluded by the query; dropped again in case a caller forgot.
+            unset($doc[SearchProfile::RESTRICTED_TEXT_FIELD]);
             $highlights = self::highlights(is_array($hit['highlight'] ?? null) ? $hit['highlight'] : []);
             if ($highlights !== []) {
                 $doc['_highlights'] = $highlights;
@@ -76,6 +89,9 @@ final class ResponseNormalizer
      * aren't full-highlighted, fall back to their centred snippet. The marks are
      * the {@see QueryBuilder} private-use sentinels, converted to <mark> client-side.
      *
+     * The restricted full text is the exception: only its first snippet is
+     * read, never a full value, and it leaves as one {@see restrictedExcerpt()}.
+     *
      * @param array<mixed> $highlight
      * @return array<string,list<string>>
      */
@@ -84,6 +100,14 @@ final class ResponseNormalizer
         $out = [];
         foreach ($highlight as $field => $info) {
             if (!is_string($field) || !is_array($info)) {
+                continue;
+            }
+            if ($field === SearchProfile::RESTRICTED_TEXT_FIELD) {
+                $snippet = $info['snippet'] ?? (is_array($info['snippets'] ?? null) ? ($info['snippets'][0] ?? null) : null);
+                $excerpt = is_string($snippet) ? self::restrictedExcerpt($snippet) : null;
+                if ($excerpt !== null) {
+                    $out[$field] = [$excerpt];
+                }
                 continue;
             }
             $candidates = [];
@@ -126,6 +150,109 @@ final class ResponseNormalizer
             }
         }
         return $out;
+    }
+
+    /**
+     * One bounded excerpt of a restricted-text snippet, around its first match:
+     * the sentence holding it when that sentence is long enough to say
+     * something, else whole words either side, never more than
+     * {@see RESTRICTED_EXCERPT_MAX} characters. Whitespace (OCR line breaks,
+     * tabs) collapses to single spaces, an "…" marks each cut, and the match
+     * marks are rebalanced so a cut never leaves one open. Null when the
+     * snippet holds no match: an unmarked restricted text is never quoted.
+     */
+    public static function restrictedExcerpt(string $snippet): ?string
+    {
+        $text = trim((string) preg_replace('/\s+/u', ' ', $snippet));
+        $chars = preg_split('//u', $text, -1, PREG_SPLIT_NO_EMPTY);
+        if ($chars === false) {
+            return null;
+        }
+        $count = count($chars);
+        $start = array_search(QueryBuilder::HL_START, $chars, true);
+        if ($start === false) {
+            return null;
+        }
+        $end = $count - 1;
+        for ($i = $start + 1; $i < $count; $i++) {
+            if ($chars[$i] === QueryBuilder::HL_END) {
+                $end = $i;
+                break;
+            }
+        }
+
+        // The sentence around the match, when it is a real one.
+        $from = 0;
+        $to = $count;
+        for ($i = $start - 1; $i > 0; $i--) {
+            if ($chars[$i] === ' ' && self::endsSentence($chars[$i - 1])) {
+                $from = $i + 1;
+                break;
+            }
+        }
+        for ($i = $end + 1; $i < $count; $i++) {
+            if (self::endsSentence($chars[$i]) && ($i + 1 === $count || $chars[$i + 1] === ' ')) {
+                $to = $i + 1;
+                break;
+            }
+        }
+        if ($to - $from < self::RESTRICTED_SENTENCE_MIN) {
+            [$from, $to] = [0, $count];
+        }
+
+        // Then the length cap: up to half the spare room before the match, the
+        // rest after it, and whole words at either cut.
+        // Room is kept for the two "…" and a closing mark added below.
+        $max = self::RESTRICTED_EXCERPT_MAX - 3;
+        if ($to - $from > $max) {
+            $room = $max - ($end + 1 - $start);
+            if ($room <= 0) {
+                [$from, $to] = [$start, $start + $max];
+            } else {
+                $windowFrom = max($from, $start - intdiv($room, 2));
+                $windowTo = min($to, $windowFrom + $max);
+                $windowFrom = max($from, $windowTo - $max);
+                if ($windowFrom > $from) {
+                    while ($windowFrom < $start && $chars[$windowFrom - 1] !== ' ') {
+                        $windowFrom++;
+                    }
+                }
+                if ($windowTo < $to) {
+                    while ($windowTo > $end + 1 && $chars[$windowTo] !== ' ') {
+                        $windowTo--;
+                    }
+                }
+                [$from, $to] = [$windowFrom, $windowTo];
+            }
+        }
+
+        $out = '';
+        $open = false;
+        for ($i = $from; $i < $to; $i++) {
+            $char = $chars[$i];
+            if ($char === QueryBuilder::HL_START) {
+                if ($open) {
+                    continue;
+                }
+                $open = true;
+            } elseif ($char === QueryBuilder::HL_END) {
+                if (!$open) {
+                    continue;
+                }
+                $open = false;
+            }
+            $out .= $char;
+        }
+        if ($open) {
+            $out .= QueryBuilder::HL_END;
+        }
+        $out = trim($out);
+        return ($from > 0 ? '…' : '') . $out . ($to < $count ? '…' : '');
+    }
+
+    private static function endsSentence(string $char): bool
+    {
+        return $char === '.' || $char === '!' || $char === '?';
     }
 
     /**

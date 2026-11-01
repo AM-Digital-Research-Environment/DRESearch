@@ -9,7 +9,10 @@ use DRESearch\Settings\SearchProfile;
 use DRESearch\Settings\SourcePredicate;
 use Omeka\Entity\Item;
 
-/** Reads only metadata visible to an anonymous Omeka visitor. */
+/**
+ * Reads only metadata visible to an anonymous Omeka visitor, with one opt-in
+ * exception: the restricted full text of {@see loadRestrictedTexts()}.
+ */
 final class OmekaSourceRepository
 {
     private readonly array $valueTerms;
@@ -148,6 +151,48 @@ final class OmekaSourceRepository
                 'uri'   => $row['turi'] !== null ? (string) $row['turi'] : null,
                 'title' => $row['vrid'] !== null ? ($titles[(int) $row['vrid']] ?? '') : null,
             ];
+        }
+        return $out;
+    }
+
+    /**
+     * The one exception to reading only public values: the restricted full text
+     * a profile's `restricted_fulltext` policy makes eligible for discovery
+     * ({@see SearchProfile::restrictedFulltext()}). Per record, the first
+     * non-empty PRIVATE literal of the policy's property, read only for public
+     * items in one of its item sets; nothing at all while no item set is
+     * eligible. A public value is not read here: a text a visitor may already
+     * see is not restricted, and the policy is not the place to index it.
+     *
+     * @param list<int> $ids
+     * @return array<int, string>
+     */
+    public function loadRestrictedTexts(array $ids): array
+    {
+        $policy = $this->profile->restrictedFulltext();
+        if ($policy === null || $policy['item_sets'] === [] || $ids === []) {
+            return [];
+        }
+        $propId = $this->propertyId($policy['property']);
+        if ($propId === null) {
+            return [];
+        }
+        $idList = implode(',', array_map('intval', $ids));
+        $setList = implode(',', array_map('intval', $policy['item_sets']));
+        $sql = 'SELECT v.resource_id AS rid, v.value AS val FROM value v'
+            . ' JOIN resource r ON r.id = v.resource_id AND r.is_public = 1'
+            . " WHERE v.resource_id IN ($idList) AND v.property_id = $propId"
+            . ' AND v.is_public = 0 AND v.value_resource_id IS NULL AND v.uri IS NULL AND v.value IS NOT NULL'
+            . " AND v.resource_id IN (SELECT item_id FROM item_item_set WHERE item_set_id IN ($setList))"
+            . ' ORDER BY v.resource_id ASC, v.id ASC';
+
+        $out = [];
+        foreach ($this->connection->executeQuery($sql)->fetchAllAssociative() as $row) {
+            $rid = (int) $row['rid'];
+            $text = trim((string) $row['val']);
+            if (!isset($out[$rid]) && $text !== '') {
+                $out[$rid] = $text;
+            }
         }
         return $out;
     }

@@ -23,6 +23,11 @@ and public media. It resolves property IDs before loading values, through one
 lookups; prefix and local name matched as columns, every answer remembered). Cached Omeka
 resource titles can originate from private values, so title reads choose the
 first public value of the template title property (or dcterms:title).
+The one exception is opt-in: a profile's `restricted_fulltext` policy reads a
+private full text of public records in named item sets into `restricted_text`,
+which `DocumentAssembler` lays onto the document, `QueryBuilder` searches last
+and drops from every payload, and `ResponseNormalizer` returns only as one
+capped excerpt ([profile configuration](profile-configuration.md#restricted-full-text)).
 `MapperRegistry` (the one kind → mapper map, which profile validation also reads)
 and `DocumentAssembler` share mapping and batch loading between
 full rebuilds and incremental work. Authority lookups are reused within a batch.

@@ -27,6 +27,7 @@ final class DocumentAssembler
             $this->mapper->prepare($values);
         }
         $thumbnails = $this->source->loadThumbnails($ids);
+        $restricted = $this->source->loadRestrictedTexts($ids);
         $itemLink = $this->profile->itemLink();
         $reverseLinks = $this->profile->reverseLinks();
         $counts = $itemLink !== null ? $this->source->loadItemCounts($ids, $itemLink) : [];
@@ -57,6 +58,12 @@ final class DocumentAssembler
                 if ($uris !== []) {
                     $doc['same_as_ss'] = $uris;
                 }
+            }
+            // Restricted full text is laid in here, not by a mapper: it is read
+            // outside the public values a mapper is handed, and the same policy
+            // holds for every kind of record.
+            if (isset($restricted[$id])) {
+                $doc[SearchProfile::RESTRICTED_TEXT_FIELD] = $restricted[$id];
             }
             $doc['_profile'] = $this->profile->name();
             $doc['_kind'] = $this->profile->kind();

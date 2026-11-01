@@ -331,6 +331,15 @@ export async function serve(
           hits = hits.filter((h) => filters.type_s!.includes(String(h.type_s)));
         // 'many' finds more than one page (the same two hits), so the pager renders.
         if (q === 'many') return json(route, { ...searchResponse(hits), found: 45 });
+        // 'mbira' matches only a restricted full text: one capped excerpt,
+        // with an unbroken OCR run to test the line's wrapping.
+        if (q === 'mbira') {
+          const excerpt = `…the \u{E000}mbira\u{E001} was tuned before ${'x'.repeat(80)} the dance…`;
+          return json(
+            route,
+            searchResponse([{ ...HITS[1], _highlights: { restricted_text: [excerpt] } }]),
+          );
+        }
         return json(route, searchResponse(hits));
       }
       case '/dre-search/api/suggest': {

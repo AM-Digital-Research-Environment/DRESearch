@@ -32,7 +32,11 @@ borrow from each other, but the boundaries below are this module's own.
 - **The indexer reads only what an anonymous visitor may see** — public items,
   values, link targets and media (`Indexer\OmekaSourceRepository`). Omeka's cached
   titles can come from private values, so titles are read from the first public
-  value of the title property.
+  value of the title property. The single, opt-in exception is a profile's
+  `restricted_fulltext` (off by default): a private full text of public records
+  in named item sets, stored as `restricted_text`, which every query excludes
+  from payloads and `ResponseNormalizer` returns only as one capped excerpt.
+  Never widen the shared public-value filter for anything else.
 - **Profiles are the contract.** `dre_search.profiles` in
   `config/module.config.php` (overridable key by key from `local.config.php`)
   drives the Typesense schema, the mappers, request validation, the block

@@ -521,6 +521,19 @@ return [
                     'dcterms:issued', 'dcterms:created', 'dcterms:date',
                     'dcterms:creator', 'dcterms:contributor', 'marcrel:aut', 'marcrel:edt',
                 ],
+
+                // Private full text approved for public discovery and limited
+                // quotation, off until item_sets names a collection whose
+                // rights allow it (e.g. [27724], ILAM's OCR text, in
+                // local.config.php). A public record in one of these sets is
+                // then found by a word of its PRIVATE `property` literal, and
+                // its card shows one capped excerpt around the match; the text
+                // itself is never returned. Rebuild the corpus after changing
+                // the list (docs/profile-configuration.md).
+                'restricted_fulltext' => [
+                    'property'  => 'bibo:content',
+                    'item_sets' => [],
+                ],
             ],
 
             // Research projects — resource template 5, item set 20. Links are

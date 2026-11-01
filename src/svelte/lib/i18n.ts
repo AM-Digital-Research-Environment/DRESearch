@@ -117,6 +117,9 @@ const ENGLISH_STRINGS: Record<string, string> = {
 
   // Match highlighting — prefix for matches in a field the card doesn't show.
   matched_in: 'Matched in',
+  // A match in a private full text: one short excerpt, never the text itself.
+  matched_restricted: 'Matched in restricted full text',
+  restricted_note: 'The complete text is not publicly accessible.',
   field_title: 'Title',
   field_abstract: 'Abstract',
   field_description: 'Description',
@@ -136,6 +139,7 @@ const ENGLISH_STRINGS: Record<string, string> = {
   field_playlist: 'Playlist',
   field_transcript: 'Transcript',
   field_fulltext: 'Full text',
+  field_restricted_text: 'Restricted full text',
   field_pi: 'Principal investigator',
   field_member: 'Member',
   field_institution: 'Institution',
@@ -285,6 +289,7 @@ const MATCH_FIELD_KEYS: Record<string, string> = {
   playlist_s: 'field_playlist',
   transcript: 'field_transcript',
   fulltext: 'field_fulltext',
+  restricted_text: 'field_restricted_text',
   pi_ss: 'field_pi',
   member_ss: 'field_member',
   institution_ss: 'field_institution',

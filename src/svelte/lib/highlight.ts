@@ -16,6 +16,12 @@ import type { Doc } from './types';
 export const HL_START = String.fromCharCode(0xe000);
 export const HL_END = String.fromCharCode(0xe001);
 
+/**
+ * Must match SearchProfile::RESTRICTED_TEXT_FIELD: the highlight key of a match
+ * in a restricted full text, whose capped excerpt the cards label apart.
+ */
+export const RESTRICTED_TEXT_FIELD = 'restricted_text';
+
 export interface HighlightSegment {
   text: string;
   /** True if this run was a matched token (render as <mark>). */

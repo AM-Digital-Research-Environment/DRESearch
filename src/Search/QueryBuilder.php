@@ -214,7 +214,9 @@ final class QueryBuilder
      * documents so a large value never bloats every hit; Typesense still returns
      * their highlighted snippet, so a transcript match still surfaces in the
      * card's "Matched in" line. is_public is the visibility guard, always true in
-     * a public result; shipping it with every hit is noise.
+     * a public result; shipping it with every hit is noise. The restricted full
+     * text is dropped whatever the profile says, so a document indexed under a
+     * policy since removed still never ships it.
      *
      * @return array{exclude_fields:string}
      */
@@ -222,7 +224,7 @@ final class QueryBuilder
     {
         return ['exclude_fields' => implode(',', array_values(array_unique(array_merge(
             $this->profile->searchOnlyFields(),
-            ['is_public'],
+            ['is_public', SearchProfile::RESTRICTED_TEXT_FIELD],
         ))))];
     }
 
@@ -232,7 +234,9 @@ final class QueryBuilder
      * highlight a whole chip/byline value — while the long free-text fields
      * (abstract, description, transcript) return a windowed snippet centred on
      * the match (the full text would scroll the match out of the clamped card, or
-     * dump a whole transcript into a line). Nothing to mark on a browse.
+     * dump a whole transcript into a line). The restricted full text is only
+     * ever snippeted, and {@see ResponseNormalizer} caps that snippet again.
+     * Nothing to mark on a browse.
      *
      * @param array<string,mixed> $req
      * @return array<string,mixed>
@@ -242,7 +246,7 @@ final class QueryBuilder
         if (self::isBrowse($req)) {
             return [];
         }
-        $longTextFields = ['abstract', 'description', 'transcript', 'fulltext'];
+        $longTextFields = ['abstract', 'description', 'transcript', 'fulltext', SearchProfile::RESTRICTED_TEXT_FIELD];
         $queryFields = array_values(array_filter(array_map(
             'trim',
             explode(',', $this->profile->queryBy())

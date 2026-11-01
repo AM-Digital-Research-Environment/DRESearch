@@ -60,6 +60,13 @@ authority-term corpora share the generic `term` kind.
 | Digitisation method | `dcterms:format`     | 7438 (genres in set 21 excluded)                           |
 | Year (range slider) | `dcterms:issued`     | single `year` (fallback `created` → `date`)                |
 
+Search covers the title, abstract, description, subjects, tags and creators.
+Optionally, last, a **private** `bibo:content` of public records in the item
+sets named by `restricted_fulltext` (none by default; ILAM, set 27724, holds
+Mistral OCR text under copyright): it is searched but only ever quoted as one
+short excerpt
+([restricted full text](profile-configuration.md#restricted-full-text)).
+
 ## Research projects (`research_projects`) — resource template 5, item set 20
 
 | Field                      | Omeka property     | Notes                                                                            |

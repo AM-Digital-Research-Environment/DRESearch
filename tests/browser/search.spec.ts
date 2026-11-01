@@ -140,6 +140,28 @@ test.describe('search block', () => {
     await expect(page.getByRole('article')).toHaveCount(0);
   });
 
+  test('a match in a restricted full text shows its excerpt under its own label', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await serve(page);
+    await page.goto('/');
+    const box = page.getByRole('combobox', { name: 'Search research items…' });
+    await box.fill('mbira');
+    await box.press('Enter');
+    const card = page.getByRole('article').filter({ hasText: 'Interview recording, Lagos' });
+    await expect(card.getByText('Matched in restricted full text')).toBeVisible();
+    await expect(card.getByText('The complete text is not publicly accessible.')).toBeVisible();
+    await expect(card.locator('mark', { hasText: 'mbira' })).toBeVisible();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+    expect(await seriousViolations(page)).toEqual([]);
+    await setTheme(page, 'dark');
+    expect(await seriousViolations(page)).toEqual([]);
+  });
+
   test('a failed search offers Try again and keeps the detail out of the page', async ({
     page,
   }) => {

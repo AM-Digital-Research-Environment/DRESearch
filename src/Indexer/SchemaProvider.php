@@ -72,6 +72,14 @@ final class SchemaProvider
             $add($f);
         }
 
+        // Restricted full text: declared whenever the profile has the policy,
+        // even with no eligible item set, so enabling it later needs no schema
+        // change before searches may name the field. Searchable, never returned
+        // (QueryBuilder excludes it from every payload).
+        if ($profile->restrictedFulltext() !== null) {
+            $add(['name' => SearchProfile::RESTRICTED_TEXT_FIELD, 'type' => 'string', 'optional' => true]);
+        }
+
         // Origin date(s) — single year, or a start/end range. A corpus may have
         // no date at all (e.g. people), in which case no year field is added.
         if ($profile->hasDate()) {

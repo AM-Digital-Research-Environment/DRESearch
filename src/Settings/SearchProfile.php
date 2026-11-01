@@ -45,6 +45,15 @@ final class SearchProfile
     public const SUBTITLE_YEAR_RANGE = 'year_range';
 
     /**
+     * The Typesense field holding a record's restricted full text
+     * ({@see restrictedFulltext()}). A fixed name rather than a configured one:
+     * the query builder drops it from every payload and the response normaliser
+     * caps its snippet by this name, whatever a profile says, so a stale
+     * document can never ship it after the policy is changed or removed.
+     */
+    public const RESTRICTED_TEXT_FIELD = 'restricted_text';
+
+    /**
      * The line under an autocomplete suggestion's title, by kind, unless the
      * profile sets `suggest_subtitle`: a list of parts, each the first of its
      * fields that has a value ("·"-joined; see
@@ -78,6 +87,7 @@ final class SearchProfile
      * @param array{counts?:array<string,array<string,mixed>>,roles?:list<array<string,mixed>>}|null $reverseLinks
      * @param array{properties:list<string>,url_prefix:string}|null $fulltextSource
      * @param list<list<string>>|null $subtitle suggestion subtitle parts; null = the kind's
+     * @param array{property:string,item_sets:list<int>}|null $restrictedFulltext
      */
     public function __construct(
         private readonly string $name,
@@ -103,6 +113,7 @@ final class SearchProfile
         private readonly ?string $thumbnailProperty,
         private readonly ?array $fulltextSource = null,
         private readonly ?array $subtitle = null,
+        private readonly ?array $restrictedFulltext = null,
     ) {
         $this->assertValid();
     }
@@ -114,7 +125,7 @@ final class SearchProfile
                 throw new \InvalidArgumentException(sprintf('Profile "%s" key "%s" must be an array.', $name, $key));
             }
         }
-        foreach (['date', 'item_link', 'reverse_links', 'person_links', 'sort_count', 'fulltext_source'] as $key) {
+        foreach (['date', 'item_link', 'reverse_links', 'person_links', 'sort_count', 'fulltext_source', 'restricted_fulltext'] as $key) {
             if (isset($c[$key]) && !is_array($c[$key])) {
                 throw new \InvalidArgumentException(sprintf('Profile "%s" key "%s" must be an object.', $name, $key));
             }
@@ -221,6 +232,16 @@ final class SearchProfile
                 )),
                 $c['suggest_subtitle'],
             )) : null,
+            // Private full text approved for discovery: the property, and the
+            // item sets whose records may be found through it. No item sets
+            // (the default) = off.
+            isset($c['restricted_fulltext']) ? [
+                'property'  => (string) ($c['restricted_fulltext']['property'] ?? 'bibo:content'),
+                'item_sets' => array_values(array_unique(array_map(
+                    'intval',
+                    (array) ($c['restricted_fulltext']['item_sets'] ?? []),
+                ))),
+            ] : null,
         );
     }
 
@@ -276,6 +297,13 @@ final class SearchProfile
             }
         }
         foreach (array_map('trim', explode(',', $this->queryBy)) as $field) {
+            if ($field === self::RESTRICTED_TEXT_FIELD) {
+                throw new \InvalidArgumentException(sprintf(
+                    'query_by in profile "%s" may not name %s: restricted_fulltext adds it while item sets are eligible.',
+                    $this->name,
+                    $field,
+                ));
+            }
             if ($field === '' || !isset($available[$field])) {
                 throw new \InvalidArgumentException(sprintf(
                     'query_by field "%s" is not indexed in profile "%s".',
@@ -287,6 +315,31 @@ final class SearchProfile
         foreach ($this->readProperties() as $term) {
             if (!preg_match('/^[A-Za-z][A-Za-z0-9._-]*:[A-Za-z][A-Za-z0-9._-]*$/', $term)) {
                 throw new \InvalidArgumentException(sprintf('Invalid Omeka property term "%s" in profile "%s".', $term, $this->name));
+            }
+        }
+        $restricted = $this->restrictedFulltext;
+        if ($restricted !== null) {
+            if (!preg_match('/^[A-Za-z][A-Za-z0-9._-]*:[A-Za-z][A-Za-z0-9._-]*$/', $restricted['property'])) {
+                throw new \InvalidArgumentException(sprintf(
+                    'Invalid restricted_fulltext property "%s" in profile "%s".',
+                    $restricted['property'],
+                    $this->name,
+                ));
+            }
+            foreach ($restricted['item_sets'] as $set) {
+                if ($set <= 0) {
+                    throw new \InvalidArgumentException(sprintf(
+                        'restricted_fulltext item_sets in profile "%s" must be item set ids.',
+                        $this->name,
+                    ));
+                }
+            }
+            if (isset($this->facets[self::RESTRICTED_TEXT_FIELD]) || isset($this->displayFields[self::RESTRICTED_TEXT_FIELD])) {
+                throw new \InvalidArgumentException(sprintf(
+                    'Profile "%s" may not declare %s as a field: restricted_fulltext owns it.',
+                    $this->name,
+                    self::RESTRICTED_TEXT_FIELD,
+                ));
             }
         }
         $source = $this->fulltextSource;
@@ -374,9 +427,17 @@ final class SearchProfile
     {
         return $this->itemSetId;
     }
+    /**
+     * The fields a query searches, in priority order: the configured
+     * `query_by`, then the restricted full text while item sets are eligible
+     * for it ({@see restrictedFulltextEnabled()}), last, so a metadata match
+     * still outranks a match found only in the text.
+     */
     public function queryBy(): string
     {
-        return $this->queryBy;
+        return $this->restrictedFulltextEnabled()
+            ? $this->queryBy . ',' . self::RESTRICTED_TEXT_FIELD
+            : $this->queryBy;
     }
 
     // ── Facets ────────────────────────────────────────────────────────────────
@@ -488,6 +549,9 @@ final class SearchProfile
             if (!empty($def['search_only'])) {
                 $out[] = $name;
             }
+        }
+        if ($this->restrictedFulltext !== null) {
+            $out[] = self::RESTRICTED_TEXT_FIELD;
         }
         return $out;
     }
@@ -667,6 +731,29 @@ final class SearchProfile
     public function fulltextSource(): ?array
     {
         return $this->fulltextSource;
+    }
+
+    /**
+     * Private full text approved for public discovery and limited quotation
+     * (`restricted_fulltext`): the property it lives on and the item sets
+     * whose public records may be found through it. The indexer reads the
+     * first private literal of that property on a public record in one of
+     * those sets ({@see \DRESearch\Indexer\OmekaSourceRepository::loadRestrictedTexts()})
+     * into {@see RESTRICTED_TEXT_FIELD}; it is never returned whole, only as a
+     * capped excerpt around a match. Null when the profile has no such block;
+     * an empty item-set list leaves it off (the default).
+     *
+     * @return array{property:string,item_sets:list<int>}|null
+     */
+    public function restrictedFulltext(): ?array
+    {
+        return $this->restrictedFulltext;
+    }
+
+    /** Whether any records are eligible for discovery through their restricted full text. */
+    public function restrictedFulltextEnabled(): bool
+    {
+        return $this->restrictedFulltext !== null && $this->restrictedFulltext['item_sets'] !== [];
     }
 
     // ── Reindex ─────────────────────────────────────────────────────────────

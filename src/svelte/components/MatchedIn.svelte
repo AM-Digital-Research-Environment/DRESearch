@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
   import { t, matchFieldLabel } from '../lib/i18n';
+  import { RESTRICTED_TEXT_FIELD } from '../lib/highlight';
   import Highlight from './Highlight.svelte';
 
   /**
@@ -9,6 +10,10 @@
    * item) — so the reader always sees *why* a result matched. Fields the card
    * already shows highlighted are passed in `exclude`. Renders nothing when there
    * are no off-card matches (the common case), so it's safe to drop on any card.
+   *
+   * A match in a restricted full text gets a line of its own: the server sends
+   * one capped excerpt around it, labelled so the reader knows the complete
+   * text is not open to them (the record page does not show it either).
    */
   interface Props {
     doc: Doc;
@@ -20,7 +25,7 @@
 
   const items = $derived.by(() => {
     const hl = doc._highlights ?? {};
-    const skip = new Set(exclude);
+    const skip = new Set([...exclude, RESTRICTED_TEXT_FIELD]);
     const out: { field: string; label: string; snippet: string }[] = [];
     for (const [field, snippets] of Object.entries(hl)) {
       const snippet = snippets?.[0];
@@ -31,6 +36,8 @@
     }
     return out;
   });
+
+  const restricted = $derived(doc._highlights?.[RESTRICTED_TEXT_FIELD]?.[0] ?? null);
 </script>
 
 {#if items.length > 0}
@@ -40,6 +47,13 @@
         class="dre-match__field">{it.label}:</span
       >
       <Highlight value={it.snippet} />{/each}
+  </p>
+{/if}
+{#if restricted !== null}
+  <p class="dre-match dre-match--restricted">
+    <span class="dre-match__label">{t('matched_restricted')}</span>
+    <span class="dre-match__excerpt"><Highlight value={restricted} /></span>
+    <span class="dre-match__note">{t('restricted_note')}</span>
   </p>
 {/if}
 
@@ -64,5 +78,15 @@
   }
   .dre-match__sep {
     color: var(--muted, #716a66);
+  }
+  .dre-match__label,
+  .dre-match__excerpt,
+  .dre-match__note {
+    overflow-wrap: anywhere;
+  }
+  .dre-match__note {
+    display: block;
+    color: var(--muted, #716a66);
+    font-style: italic;
   }
 </style>

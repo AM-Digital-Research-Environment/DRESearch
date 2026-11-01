@@ -49,7 +49,7 @@ DRESearch/
 │   │                                #   block-picker label (the one list the factory, picker and
 │   │                                #   scope resolver read)
 │   ├── Indexer/                     # MySQL → Typesense
-│   │   ├── OmekaSourceRepository.php    # reads only what an anonymous visitor may see
+│   │   ├── OmekaSourceRepository.php    # reads only what an anonymous visitor may see (+ opt-in restricted text)
 │   │   ├── PropertyResolver.php     #   property ids by term, resolved once per run and shared
 │   │   ├── ValueBag.php             #   one resource's values, with shared normalisation (labels
 │   │   │                            #   trimmed, blank ones dropped)
@@ -97,7 +97,7 @@ DRESearch/
 │   │   ├── FacetRecount.php         #   multi-select facets: recount each refined facet, merge
 │   │   ├── BulkPager.php            #   the export and map pulls; a short pull fails closed
 │   │   │                            #   (Exception/IncompletePullException)
-│   │   ├── ResponseNormalizer.php   #   the public JSON shapes, highlights, suggestion subtitles
+│   │   ├── ResponseNormalizer.php   #   the public JSON shapes, highlights, restricted-text excerpts, suggestion subtitles
 │   │   ├── HealthReport.php         #   GET /dre-search/api/health
 │   │   ├── SearchStateQuery.php     #   does the raw URL carry a block's own state (skip the
 │   │   │                            #   server-rendered first page)

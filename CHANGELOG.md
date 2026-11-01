@@ -5,6 +5,12 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+**Upgrade:** reindex Research items once, so its collection gains the `restricted_text` field before anyone enables the policy below; until then the policy must stay off, or that corpus's searches fail. Nothing changes for visitors while it is off.
+
+### Added
+
+- Research items can be found through a private full text they cannot read (#51). A profile's `restricted_fulltext` policy names the item sets whose texts are approved for public discovery and short quotation; it ships with none, so it is off. For a public record in one of those sets, the indexer reads its first private `bibo:content` literal, the search matches it after every metadata field (in corpus search, blocks, the project records block and federated search), and the card shows one excerpt of at most 200 characters, cut on the server, under **Matched in restricted full text**, with a note that the complete text is not publicly accessible. The text never leaves the server whole: every query drops the field from documents, exports and map points, autocomplete stays on titles, and a browse shows no excerpt. Excerpts can be stitched together by repeated queries; docs/profile-configuration.md says what that means for choosing a collection, and how naming or removing a set takes effect.
+
 ## [1.33.0] - 2026-11-01
 
 **Upgrade:** no schema change, no new table. Reindex the people, organisations, research items and the four term corpora when convenient: labels are now trimmed, so blank facet values already indexed disappear. The first public search after the upgrade mints a search-only Typesense key with the admin key; to supply your own instead, set it in the module's configuration or in `TYPESENSE_SEARCH_API_KEY`.
