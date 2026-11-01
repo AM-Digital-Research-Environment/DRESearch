@@ -19,11 +19,16 @@ borrow from each other, but the boundaries below are this module's own.
 ## Invariants
 
 - **The browser never talks to Typesense.** It calls `/dre-search/api/*`; PHP
-  holds the key. `is_public:=true` is hard-coded in `Search\QueryBuilder`, never
-  taken from a request. A block's locked filter and the Project records scope are
-  rebuilt on the server from `block_id` / `scope_item` (`BlockScopeResolver`,
-  `ResourceScopeResolver`); a browser cannot send a raw filter, and
-  `FilterExpression` refuses an editor's filter that could escape its group.
+  holds the keys. Public searches run with a search-only key
+  (`documents:search` on the profiles' aliases;
+  `Search\TypesenseSearchKeyProvider`: configured, else minted with the admin
+  key, else the admin key), and the admin key serves indexing, health,
+  analytics and maintenance. `is_public:=true` is hard-coded in
+  `Search\QueryBuilder`, never taken from a request. A block's locked filter and
+  the Project records scope are rebuilt on the server from `block_id` /
+  `scope_item` (`BlockScopeResolver`, `ResourceScopeResolver`); a browser cannot
+  send a raw filter, and `FilterExpression` refuses an editor's filter that
+  could escape its group.
 - **The indexer reads only what an anonymous visitor may see** — public items,
   values, link targets and media (`Indexer\OmekaSourceRepository`). Omeka's cached
   titles can come from private values, so titles are read from the first public
@@ -33,16 +38,20 @@ borrow from each other, but the boundaries below are this module's own.
   drives the Typesense schema, the mappers, request validation, the block
   options and the client bootstrap. The Typesense field names (`type_s`,
   `people_ss`, `year`, …) are the stable interface. `npm run lint:schema` fails
-  when profiles, schema and client contracts drift. A new corpus is a profile, a
-  mapper and a card (docs/profile-configuration.md).
+  when profiles, schema and client contracts drift. A new corpus is a profile
+  and a block layout (a row in `Settings\BlockProfiles::LAYOUTS`); a new kind
+  adds a mapper (one line in `Indexer\MapperRegistry`) and a card
+  (docs/profile-configuration.md).
 - **Typesense is optional.** No host or key: the module installs, the site runs,
   the blocks say search is unavailable (`TypesenseClientProvider`). Every
   integration degrades rather than fails.
 - **A rebuild never serves a half-built index.** Each run builds a fresh,
-  timestamped collection, verifies it and swaps the alias (`GenerationPublisher`);
-  a generation holding less than `min_retained_ratio` (half) of the live one is
-  refused unless the operator allows the shrink; the previous generation is kept
-  for rollback.
+  timestamped collection, verifies it, reconciles it with the profile's public
+  records in SQL (`source_count_mismatch` otherwise) and swaps the alias; every
+  Typesense call of the indexer goes through `Indexer\CollectionOps`, which
+  reads an ambiguous alias write back. A generation holding less than
+  `min_retained_ratio` (half) of the live one is refused unless the operator
+  allows the shrink; the previous generation is kept for rollback.
 - **Saves never wait on Typesense.** Omeka write events queue SQL work for the
   profiles whose scope holds the item (`ScopeMatcher`, the same `SourcePredicate`
   the indexer uses); one coalesced worker (`WorkerLease`) drains it.
@@ -58,8 +67,8 @@ borrow from each other, but the boundaries below are this module's own.
 ## Module lifecycle
 
 - `Module::install()` / `upgrade()` create and migrate the `dre_search_*` tables;
-  `uninstall()` drops them and leaves Typesense collections in place (it logs
-  them).
+  `uninstall()` drops them, revokes the search-only keys the module minted, and
+  leaves Typesense collections in place (it logs them).
 - **`upgrade()` runs while the module is inactive**: its own factories are not
   registered, so it can use only Omeka's services and plain DBAL. The 1.22.0
   upgrade broke on exactly this.
@@ -85,12 +94,16 @@ borrow from each other, but the boundaries below are this module's own.
   promise with `void`), Prettier. Style with DRE-theme's tokens:
   `npm run lint:tokens` runs the theme's rules, vendored into `scripts/lib/` and
   hash-checked — change them in DRE-theme, never here.
-- The host theme styles every `<button>` as a filled primary button and its
-  `button:hover` bleeds into the module's bare buttons; the module's idiom is
-  `!important` on background, box-shadow and transform. Measure CSS on the
-  rendered page before and after a fix.
+- The DRE theme no longer paints bare `<button>`s (the module dropped its
+  `!important` resets in 1.15.2), so the components' single-class rules hold
+  without them; the shared outline button is `styles/buttons.css`. Host-theme
+  cascade is still invisible in source: measure CSS on the rendered page before
+  and after a fix.
 - Strings: after changing a user-visible string run `npm run i18n` and commit
   `language/template.pot` and `data/client-strings.json`.
+- Every `QueryBuilder` mode (counts, export, map, facet recounts, union) is
+  built from one matching core, `matching()`, plus only what it renders: a
+  parameter that changes what matches goes in the core, never in one mode.
 - The Typesense server rejects field combinations the schema builder cannot see
   (a `geopoint` must be sortable, for one): validate a schema change against a
   live Typesense, not only the unit tests.

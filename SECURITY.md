@@ -18,8 +18,11 @@ credit the reporter unless anonymity is requested.
 
 ## Security boundaries
 
-- The Typesense API key remains server-side and is never included in bootstrap
-  JSON or JavaScript.
+- The Typesense keys remain server-side and are never included in bootstrap
+  JSON or JavaScript. Public searches run with a search-only key, limited to
+  `documents:search` on the corpora's collection aliases (configured, or minted
+  with the admin key); the admin key serves indexing, health, analytics and the
+  maintenance page. Uninstall revokes the keys the module minted.
 - Only public records are indexed. The indexer reads public items only, and
   within them only public values, linked resources and media, so every
   document in Typesense is a public one. A record whose change is still queued

@@ -123,6 +123,7 @@ Use isolated services, never a production database or search cluster:
 ```sh
 export OMEKA_VENDOR=/tmp/omeka-s/vendor/autoload.php
 export DRE_TEST_MYSQL_HOST=127.0.0.1
+export DRE_TEST_MYSQL_PORT=3306   # the default
 export DRE_TEST_MYSQL_USER=root
 export DRE_TEST_MYSQL_PASSWORD=your-disposable-test-password
 export TYPESENSE_HOST=127.0.0.1
@@ -133,7 +134,9 @@ composer analyse
 ```
 
 The MySQL user needs permission to create and drop disposable databases named
-`dre_test_<random>`. Each case builds its database from Omeka's own install
+`dre_test_<random>`. `TYPESENSE_API_KEY` must be the server's admin
+(bootstrap) key: the search-key tests mint, list and revoke keys with it.
+Each case builds its database from Omeka's own install
 schema (`application/data/install/schema.sql` in the tree `OMEKA_VENDOR` points
 into), foreign keys and cascades included, and cleans up its own random
 Typesense collections. CI runs this against MySQL 8.4, Typesense
@@ -143,8 +146,15 @@ variables skip the integration cases; they must be present for a release check.
 Coverage includes real entity event payloads, old/new dependencies, public value,
 linked-resource/media/title visibility, revision-safe queue acknowledgements,
 rebuild cutover races, cancellation, advisory locks, ambiguous alias writes,
-cache invalidation, long-tail facets and excluded-field highlights. Frontend tests
-exercise out-of-order tab and facet responses. PHPStan (level 8) covers all
+the source-count reconciliation before promotion, what the search-only key may
+and may not reach, cache invalidation, long-tail facets and excluded-field
+highlights. The indexer's Typesense calls are also unit-tested against an
+in-memory Typesense (`tests/phpunit/Support/Typesense`). Frontend tests
+exercise out-of-order tab and facet responses, and run with
+`TZ=America/New_York` (`vite.config.ts`): dates are indexed as midnight UTC,
+so a formatter that forgets `timeZone: 'UTC'` shows the day before there, as it
+would to a reader in the Americas. `npm run test:browser` measures touch
+targets and runs axe on the rendered page. PHPStan (level 8) covers all
 module classes and the tests; small stubs describe framework plugins and correct
 inaccurate upstream PHPDoc. ESLint type-checks the client for floating and
 misused promises: mark a deliberate fire-and-forget call with `void`.

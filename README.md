@@ -157,8 +157,8 @@ Beyond the per-corpus blocks, the module exposes a **site-wide search** across
 Three server endpoints back it (top-level, anonymous, `is_public:=true` enforced):
 `/dre-search/api/suggest-all` (grouped autocomplete) and
 `/dre-search/api/search-all` (per-corpus counts + the focused corpus's results),
-plus `/dre-search/api/union` (the merged result stream). The Typesense key remains
-server-side in every case.
+plus `/dre-search/api/union` (the merged result stream). They search with the
+server-held search-only key; no Typesense key reaches the browser.
 
 **Theme integration** is one guarded helper call — the theme degrades to its own
 search form when the module is absent:
@@ -222,10 +222,27 @@ From a git checkout instead: `composer install --no-dev && npm ci && npm run bui
 
 ### Or configure in the admin
 
-Admin → Modules → **DRE Search** → _Configure_: host, port, protocol, API key.
-Resolution order is **settings → environment variables → config defaults**, so
-the admin form overrides everything. (Collection aliases are per-profile config,
-not set here — see below.)
+Admin → Modules → **DRE Search** → _Configure_: host, port, protocol, API key,
+and an optional **search-only key**. Resolution order is **settings →
+environment variables → config defaults**, so the admin form overrides
+everything. (Collection aliases are per-profile config, not set here — see
+below.)
+
+### The search-only key
+
+The API key above is the admin key: indexing, rebuilds, health, analytics and
+the maintenance page use it. Public searches run with a key Typesense lets do
+only `documents:search` on the corpora's collection aliases, so a bug in the
+search proxy cannot write, delete or read anything else. Neither key ever
+reaches the browser.
+
+Nothing has to be configured. On the first public search the module creates
+that key with the admin key and keeps it in its settings; if it cannot, public
+search runs with the admin key and tries again five minutes later. To use a key
+of your own, save it in the config form's **Typesense search-only key** field or
+set `TYPESENSE_SEARCH_API_KEY`. **Admin → DRE Search → Public search key**
+shows which key public search uses and what Typesense lets it do. See
+[the operations runbook](docs/operations.md#secrets).
 
 ## Building / refreshing the index
 
@@ -257,10 +274,11 @@ empty search box list only queries an editor approved on that page; see
 ## The page blocks
 
 Edit a site page → add the **Research items search**, **Research projects
-search**, **Publications search**, **Podcasts search**, **People search**,
-**Research sections search**, **Organisations search**, **Genres search**,
-**Languages search**, **Locations search**, or **Subjects & tags search** block.
-All share the same options:
+search**, **Publications search**, **Podcasts search**, **YouTube videos
+search**, **People search**, **Research sections search**, **Organisations
+search**, **Genres search**, **Languages search**, **Locations search**, or
+**Subjects & tags search** block. All twelve are one block class, configured per
+corpus, and share the same options:
 
 - **Filters to show** — which facets appear in the sidebar, including whether the
   **Year** range slider shows.
@@ -275,7 +293,9 @@ All share the same options:
   (`section_ss`). The browser sends only the block ID; the server reloads the
   saved scope, so visitors cannot weaken or replace it.
 
-Put each block on its own page and link them in the site navigation.
+Put each block on its own page and link them in the site navigation. Without
+JavaScript a block, the Project records block and the results page show a link
+to the site's item browse instead (the results page carries its query over).
 
 Facet behaviour is the same across every block, with nothing to configure:
 
@@ -396,23 +416,31 @@ no PHP restart.
 - **Search is server-side.** The browser calls the module's own JSON endpoints
   (`/dre-search/api/search`, `/dre-search/api/suggest` per corpus;
   `/dre-search/api/suggest-all`, `/dre-search/api/search-all`,
-  `/dre-search/api/union` federated) with a
-  `profile`; PHP forwards to Typesense with the server-held key and enforces
-  `is_public:=true`. The key never reaches the browser, so there are no scoped
-  keys or nginx changes — and "optional" is trivial (no key → no search). The
-  federated endpoints use Typesense `multi_search`; the All tab opts into the
-  Typesense 30 union mode for one merged ranking.
-- **PHP**: `src/Search` (proxy, query builder, lazy client provider),
-  `src/Indexer` (schema, authority resolver, mappers, analytics sync, paged
-  reindexer and shared reindex orchestrator), `src/Job` (background operations), `src/Site/BlockLayout` (the blocks),
+  `/dre-search/api/union` federated) with a `profile`; PHP forwards to
+  Typesense with a server-held search-only key and enforces `is_public:=true`.
+  No key reaches the browser, so there are no browser-side scoped keys or nginx
+  changes — and "optional" is trivial (no key → no search). The federated
+  endpoints use Typesense `multi_search`; the All tab opts into the Typesense 30
+  union mode for one merged ranking.
+- **PHP**: `src/Search` (the proxy and its collaborators — query builder, facet
+  recount, bulk pager, response normaliser, health — and the lazy client and
+  search-key providers), `src/Indexer` (schema, authority resolver, the
+  kind → mapper registry and its mappers, the Typesense collection operations,
+  analytics sync, paged reindexer, change applier and shared reindex
+  orchestrator), `src/Job` (background operations), `src/Site/BlockLayout` (one
+  `SearchBlock` class for every corpus's block),
   `src/Site/ResourcePageBlockLayout` (the item-page Project records block),
   `src/Controller` (public proxy + federated results page + admin maintenance),
-  `src/View/Helper` (the `dreSearchBar` / `dreFederatedSearch` / `dreSearchAssets`
-  surfaces), `src/Settings` (`SearchProfile`, `ProfileRegistry`, `SortOptions`).
+  `src/View` (`SurfaceBootstrap`, the bootstrap every surface hands the client,
+  and the `dreSearchBar` / `dreFederatedSearch` / `dreSearchAssets` helpers),
+  `src/Settings` (`SearchProfile`, `ProfileRegistry`, `SortOptions`,
+  `BlockProfiles`).
 - **JS**: `src/svelte` — Svelte 5, an ESM entry (header bar) that loads the
   per-corpus `App` and `FederatedApp` as page chunks on demand; the federated
-  page reuses `App` per type-tab. Styled with DRE-theme design tokens (so it
-  inherits the theme's light/dark palette automatically).
+  page reuses `App` per type-tab. What a surface fetches, and the search-box
+  combobox, live in tested `.svelte.ts` modules under `lib/`. Styled with
+  DRE-theme design tokens (so it inherits the theme's light/dark palette
+  automatically).
 - **Keyword search only** (no embedding model) to keep Typesense lean on a
   modest host. The reindexer is paged + batched, so memory stays flat.
 
