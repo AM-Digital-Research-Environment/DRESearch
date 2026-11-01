@@ -30,11 +30,13 @@ final class ChangeApplier
 
     /** @var Closure():void */
     private readonly Closure $invalidate;
+    private readonly PropertyResolver $properties;
 
     /**
      * @param Closure():void|null $invalidate run after each drained batch, before
      *        its acknowledgement; defaults to moving the search-cache epoch so no
      *        cached page outlives the change
+     * @param PropertyResolver|null $properties the run's shared property ids
      */
     public function __construct(
         private readonly Connection $connection,
@@ -43,7 +45,9 @@ final class ChangeApplier
         private readonly LoggerInterface $logger,
         private readonly ?RebuildStateStore $stateStore = null,
         ?Closure $invalidate = null,
+        ?PropertyResolver $properties = null,
     ) {
+        $this->properties = $properties ?? new PropertyResolver($connection);
         $this->invalidate = $invalidate ?? static function () use ($connection): void {
             (new SearchCache($connection))->invalidate();
         };
@@ -61,11 +65,11 @@ final class ChangeApplier
      */
     public function apply(array $ids, string $collection, bool $tolerateRejected = false): array
     {
-        $source = new OmekaSourceRepository($this->connection, $this->profile);
+        $source = new OmekaSourceRepository($this->connection, $this->profile, $this->properties);
         // Targeted: resolve only the authorities this batch links to.
         $assembler = new DocumentAssembler(
             $source,
-            MapperRegistry::default()->create($this->profile, $this->connection, true),
+            MapperRegistry::default()->create($this->profile, $this->connection, true, $this->properties),
             $this->profile,
         );
         $rejected = [];

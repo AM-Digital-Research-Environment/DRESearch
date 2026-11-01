@@ -29,13 +29,14 @@ final class MapperRegistry
 {
     private static ?self $default = null;
 
-    /** @var array<string, Closure(SearchProfile, Connection, bool): MapperInterface> */
+    /** @var array<string, Closure(SearchProfile, Connection, bool, PropertyResolver): MapperInterface> */
     private readonly array $factories;
 
     /**
-     * @param iterable<array{0:string, 1:Closure(SearchProfile, Connection, bool): MapperInterface}> $entries
+     * @param iterable<array{0:string, 1:Closure(SearchProfile, Connection, bool, PropertyResolver): MapperInterface}> $entries
      *        kind => factory pairs; the factory receives the profile, the Omeka
-     *        connection and whether the batch is targeted (incremental)
+     *        connection, whether the batch is targeted (incremental) and the
+     *        run's property ids
      */
     public function __construct(iterable $entries)
     {
@@ -64,8 +65,13 @@ final class MapperRegistry
         return self::$default ??= new self([
             // Research items: shared-property facets disambiguated by the
             // authorities' item sets and types (see AuthorityResolver).
-            ['item', static function (SearchProfile $profile, Connection $connection, bool $targeted): MapperInterface {
-                $authorities = new AuthorityResolver($connection, $profile);
+            ['item', static function (
+                SearchProfile $profile,
+                Connection $connection,
+                bool $targeted,
+                PropertyResolver $properties,
+            ): MapperInterface {
+                $authorities = new AuthorityResolver($connection, $profile, $properties);
                 if (!$targeted) {
                     // A full rebuild loads every tracked authority once; an
                     // incremental batch primes only the ones it links to.
@@ -102,14 +108,19 @@ final class MapperRegistry
      * @param bool $targeted incremental batches resolve only the authorities they
      *                       link to ({@see AuthorityResolver::prime()}); a full
      *                       rebuild loads them all once.
+     * @param PropertyResolver|null $properties the run's shared lookup; a new one otherwise
      */
-    public function create(SearchProfile $profile, Connection $connection, bool $targeted = false): MapperInterface
-    {
+    public function create(
+        SearchProfile $profile,
+        Connection $connection,
+        bool $targeted = false,
+        ?PropertyResolver $properties = null,
+    ): MapperInterface {
         $factory = $this->factories[$profile->kind()] ?? throw new \InvalidArgumentException(sprintf(
             'No mapper is registered for kind "%s" (profile "%s").',
             $profile->kind(),
             $profile->name(),
         ));
-        return $factory($profile, $connection, $targeted);
+        return $factory($profile, $connection, $targeted, $properties ?? new PropertyResolver($connection));
     }
 }

@@ -87,7 +87,9 @@ final class Reindexer
         $imported = 0;
         $failed = 0;
         $queue = $this->stateStore !== null ? new ChangeQueue($this->connection) : null;
-        $applier = new ChangeApplier($this->connection, $this->ops, $this->profile, $this->logger, $this->stateStore);
+        // Property ids are looked up once for the whole run: scan, replay, drain.
+        $properties = new PropertyResolver($this->connection);
+        $applier = new ChangeApplier($this->connection, $this->ops, $this->profile, $this->logger, $this->stateStore, null, $properties);
         $dirtyRevision = $this->stateStore?->dirtyRevision($this->profile->name());
 
         try {
@@ -98,10 +100,10 @@ final class Reindexer
                 . '_' . bin2hex(random_bytes(3));
             $token = bin2hex(random_bytes(16));
             $this->throwIfCancelled();
-            $source = new OmekaSourceRepository($this->connection, $this->profile);
+            $source = new OmekaSourceRepository($this->connection, $this->profile, $properties);
             $assembler = new DocumentAssembler(
                 $source,
-                MapperRegistry::default()->create($this->profile, $this->connection),
+                MapperRegistry::default()->create($this->profile, $this->connection, false, $properties),
                 $this->profile,
             );
             $this->stateStore?->markBuilding(

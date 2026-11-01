@@ -12,12 +12,17 @@ use Omeka\Entity\Item;
 /** Reads only metadata visible to an anonymous Omeka visitor. */
 final class OmekaSourceRepository
 {
-    private array $propIdCache = [];
     private readonly array $valueTerms;
+    private readonly PropertyResolver $properties;
 
-    public function __construct(private readonly Connection $connection, private readonly SearchProfile $profile)
-    {
+    /** @param PropertyResolver|null $properties shared by everything one run builds; a new one otherwise */
+    public function __construct(
+        private readonly Connection $connection,
+        private readonly SearchProfile $profile,
+        ?PropertyResolver $properties = null,
+    ) {
         $this->valueTerms = $profile->readProperties();
+        $this->properties = $properties ?? new PropertyResolver($connection);
     }
 
     public function rows(?array $ids = null, int $after = 0, int $limit = 500): array
@@ -116,13 +121,8 @@ final class OmekaSourceRepository
         if ($idList === '' || $this->valueTerms === []) {
             return [];
         }
-        $terms = [];
-        foreach ($this->valueTerms as $term) {
-            $pid = $this->propertyId($term);
-            if ($pid !== null) {
-                $terms[$pid] = $term;
-            }
-        }
+        // One lookup for every term the profile reads.
+        $terms = array_flip($this->properties->ids($this->valueTerms));
         if ($terms === []) {
             return [];
         }
@@ -243,13 +243,7 @@ final class OmekaSourceRepository
 
         $props = $rule['properties'] ?? null;
         if (is_array($props) && $props !== []) {
-            $propIds = [];
-            foreach ($props as $term) {
-                $pid = $this->propertyId($term);
-                if ($pid !== null) {
-                    $propIds[] = $pid;
-                }
-            }
+            $propIds = array_values($this->properties->ids(array_values(array_map('strval', $props))));
             if ($propIds === []) {
                 return []; // none of the rule's properties exist on this instance
             }
@@ -315,13 +309,7 @@ final class OmekaSourceRepository
         // … and/or to an explicit property allowlist.
         $props = $rule['properties'] ?? null;
         if (is_array($props) && $props !== []) {
-            $propIds = [];
-            foreach ($props as $term) {
-                $pid = $this->propertyId($term);
-                if ($pid !== null) {
-                    $propIds[] = $pid;
-                }
-            }
+            $propIds = array_values($this->properties->ids(array_values(array_map('strval', $props))));
             if ($propIds === []) {
                 return []; // none of the rule's properties exist on this instance
             }
@@ -367,19 +355,10 @@ final class OmekaSourceRepository
         return $out;
     }
 
-    /** Resolve (and cache) a property id from its "prefix:local" term. */
+    /** A property id from its "prefix:local" term ({@see PropertyResolver}). */
     public function propertyId(string $term): ?int
     {
-        if (array_key_exists($term, $this->propIdCache)) {
-            return $this->propIdCache[$term];
-        }
-        [$prefix, $local] = array_pad(explode(':', $term, 2), 2, '');
-        $id = $this->connection->executeQuery(
-            'SELECT p.id FROM property p JOIN vocabulary vo ON p.vocabulary_id = vo.id'
-            . ' WHERE vo.prefix = :prefix AND p.local_name = :local',
-            ['prefix' => $prefix, 'local' => $local],
-        )->fetchOne();
-        return $this->propIdCache[$term] = ($id !== false ? (int) $id : null);
+        return $this->properties->id($term);
     }
 
     /**

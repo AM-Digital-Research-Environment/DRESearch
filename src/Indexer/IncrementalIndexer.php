@@ -31,6 +31,8 @@ final class IncrementalIndexer
     private readonly ChangeQueue $queue;
     private readonly ScopeMatcher $scope;
     private readonly WorkerLease $lease;
+    /** Property ids, looked up once for the life of the worker or request. */
+    private readonly PropertyResolver $properties;
 
     public function __construct(
         private readonly Connection $connection,
@@ -41,7 +43,8 @@ final class IncrementalIndexer
         private readonly ?Closure $schedule = null,
     ) {
         $this->queue = new ChangeQueue($connection);
-        $this->scope = new ScopeMatcher($connection, $registry);
+        $this->properties = new PropertyResolver($connection);
+        $this->scope = new ScopeMatcher($connection, $registry, $this->properties);
         $this->lease = new WorkerLease($connection);
     }
 
@@ -258,7 +261,7 @@ final class IncrementalIndexer
                     continue;
                 }
                 // Rejected documents are removed, logged and recorded by the applier.
-                $applier = new ChangeApplier($this->connection, $ops, $profile, $this->logger, $this->stateStore);
+                $applier = new ChangeApplier($this->connection, $ops, $profile, $this->logger, $this->stateStore, null, $this->properties);
                 $rejected = $applier->drain($this->queue, $target, $cancel, $beat);
                 if ($rejected !== []) {
                     $pass['rejected'][$profile->name()] = $rejected;

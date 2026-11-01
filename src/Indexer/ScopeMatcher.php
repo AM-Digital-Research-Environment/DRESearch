@@ -22,13 +22,14 @@ use Omeka\Entity\Item;
  */
 final class ScopeMatcher
 {
-    /** @var array<string,?int> */
-    private array $propertyIds = [];
+    private readonly PropertyResolver $properties;
 
     public function __construct(
         private readonly Connection $connection,
         private readonly ProfileRegistry $registry,
+        ?PropertyResolver $properties = null,
     ) {
+        $this->properties = $properties ?? new PropertyResolver($connection);
     }
 
     /**
@@ -47,7 +48,7 @@ final class ScopeMatcher
             $parts = [];
             $params = [];
             foreach ($this->registry->all() as $profile) {
-                $scope = SourcePredicate::compile($profile, fn(string $term): ?int => $this->propertyId($term));
+                $scope = SourcePredicate::compile($profile, $this->properties->id(...));
                 $parts[] = 'SELECT ? AS profile, id FROM resource WHERE resource_type = ? AND id IN (' . $idList . ')'
                     . ($scope !== '' ? ' AND ' . $scope : '');
                 $params[] = $profile->name();
@@ -90,19 +91,5 @@ final class ScopeMatcher
         $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $id): bool => $id > 0)));
         sort($ids);
         return $ids;
-    }
-
-    private function propertyId(string $term): ?int
-    {
-        if (array_key_exists($term, $this->propertyIds)) {
-            return $this->propertyIds[$term];
-        }
-        [$prefix, $local] = array_pad(explode(':', $term, 2), 2, '');
-        $id = $this->connection->executeQuery(
-            'SELECT p.id FROM property p JOIN vocabulary v ON v.id = p.vocabulary_id'
-            . ' WHERE v.prefix = :prefix AND p.local_name = :local',
-            ['prefix' => $prefix, 'local' => $local],
-        )->fetchOne();
-        return $this->propertyIds[$term] = $id !== false ? (int) $id : null;
     }
 }

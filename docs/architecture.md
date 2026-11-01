@@ -18,7 +18,9 @@ mapping, validation, and UI bootstrap.
 ## Indexing and visibility
 
 `OmekaSourceRepository` reads public resources, public values, public link targets,
-and public media. It resolves property IDs before loading values. Cached Omeka
+and public media. It resolves property IDs before loading values, through one
+`PropertyResolver` per run (shared with the scope matcher and the authority
+lookups; prefix and local name matched as columns, every answer remembered). Cached Omeka
 resource titles can originate from private values, so title reads choose the
 first public value of the template title property (or dcterms:title).
 `MapperRegistry` (the one kind → mapper map, which profile validation also reads)

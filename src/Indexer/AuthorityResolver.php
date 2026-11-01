@@ -30,11 +30,14 @@ final class AuthorityResolver
     /** @var array<int,true> ids already resolved by {@see prime()} */
     private array $primed = [];
     private bool $complete = false;
+    private readonly PropertyResolver $properties;
 
     public function __construct(
         private readonly Connection $connection,
         private readonly SearchProfile $profile,
+        ?PropertyResolver $properties = null,
     ) {
+        $this->properties = $properties ?? new PropertyResolver($connection);
     }
 
     /** Whole-corpus load for a full rebuild: every tracked authority, once. */
@@ -113,7 +116,7 @@ final class AuthorityResolver
         $idList = implode(',', $loadedIds);
 
         // 2. Public title values (the cached Omeka title may originate from a private value).
-        foreach ((new OmekaSourceRepository($this->connection, $this->profile))->publicTitles($loadedIds) as $id => $title) {
+        foreach ((new OmekaSourceRepository($this->connection, $this->profile, $this->properties))->publicTitles($loadedIds) as $id => $title) {
             $id = (int) $id;
             if (isset($this->byId[$id])) {
                 $entry = $this->byId[$id];
@@ -122,21 +125,24 @@ final class AuthorityResolver
             }
         }
 
-        // 3. dcterms:type and dcterms:isPartOf targets (the discriminators).
-        $sql = "SELECT v.resource_id, CONCAT(vo.prefix, ':', p.local_name) AS term, v.value_resource_id
-                FROM value v
-                JOIN property p ON v.property_id = p.id
-                JOIN vocabulary vo ON p.vocabulary_id = vo.id
-                WHERE v.resource_id IN ($idList)
-                  AND v.is_public = 1
-                  AND v.value_resource_id IN (SELECT id FROM resource WHERE is_public = 1)
-                  AND CONCAT(vo.prefix, ':', p.local_name) IN ('dcterms:type', 'dcterms:isPartOf')";
-        foreach ($this->connection->executeQuery($sql)->fetchAllNumeric() as [$rid, $term, $vrid]) {
+        // 3. dcterms:type and dcterms:isPartOf targets (the discriminators), by
+        //    property id: the indexed column, not a term rebuilt on every row.
+        $discriminators = array_flip($this->properties->ids(['dcterms:type', 'dcterms:isPartOf']));
+        if ($discriminators === []) {
+            return $loadedIds;
+        }
+        $sql = 'SELECT v.resource_id, v.property_id, v.value_resource_id FROM value v'
+            . " WHERE v.resource_id IN ($idList)"
+            . ' AND v.property_id IN (' . implode(',', array_keys($discriminators)) . ')'
+            . ' AND v.is_public = 1'
+            . ' AND v.value_resource_id IN (SELECT id FROM resource WHERE is_public = 1)';
+        foreach ($this->connection->executeQuery($sql)->fetchAllNumeric() as [$rid, $pid, $vrid]) {
             $rid = (int) $rid;
             if (!isset($this->byId[$rid])) {
                 continue;
             }
             $entry = $this->byId[$rid];
+            $term = $discriminators[(int) $pid] ?? null;
             if ($term === 'dcterms:type') {
                 $entry['typeItemId'] = (int) $vrid;
             } elseif ($term === 'dcterms:isPartOf') {
