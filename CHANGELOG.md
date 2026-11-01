@@ -5,6 +5,39 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+**Upgrade:** no schema change, no new table. Reindex the people, organisations, research items and the four term corpora when convenient: labels are now trimmed, so blank facet values already indexed disappear. The first public search after the upgrade mints a search-only Typesense key with the admin key; to supply your own instead, set it in the module's configuration or in `TYPESENSE_SEARCH_API_KEY`.
+
+### Security
+
+- Public searches run with a Typesense key limited to `documents:search` on the module's own aliases. The admin key is kept for indexing, health, maintenance and popular searches, which read the analytics collections. The key is the operator's if one is configured, otherwise minted once under a lock and cached; if minting fails, search falls back to the admin key, logs it and retries after five minutes. The maintenance page has a new "Public search key" section showing which key is in use and what it may do, and uninstall revokes a minted key.
+- A locked filter containing a backslash is refused: inside a backtick-quoted value Typesense may read it as escaping the closing quote. A block already saved with one renders "unavailable".
+
+### Added
+
+- A rebuild refuses promotion with `source_count_mismatch` when a public, in-scope record is missing from the new generation and no change for it is queued.
+- A "Skip to results" link in blocks that have facets.
+- Without JavaScript, every search surface links to Omeka's item browse.
+- Profiles can set `suggest_subtitle`; each kind keeps its default.
+
+### Changed
+
+- A block's server-rendered first page is cached for two minutes and shared between visitors, and is not rendered at all when the link already carries the block's state. The federated page fetches every corpus's year range in one request, and the header bar no longer builds the search proxy on every page.
+- The live region announces only settled results, after a short pause, and never "Loading…".
+- Result counts follow the page locale's plural rules ("0 résultat" in French).
+- Back undoes a typed search: a burst of typing is one history step.
+- Filter values on result cards are labelled toggles ("Filter by …" / "Remove filter …") with a pressed state; pressing an active value removes its filter. Values without a facet label read "Journal / Book", "Type" and "Phase" instead of "In" or a raw field name, in the active-filter chips too.
+- Requests time out (15 s; 30 s for export and map) with the usual error and "Try again" instead of loading for ever.
+- Label values (affiliation, type, language, places, creators…) are trimmed when indexed; a value that is only whitespace is no longer indexed, nor taken as an organisation's type.
+- The rebuild log gives Typesense's reason for a rejected document, carries the profile, job and collection as context, and reports failures as warnings or errors instead of info. Property ids are looked up once per run, and the authority lookup can use indexes.
+- The twelve search block classes are one data-driven class; stored layout names are unchanged. A block whose corpus is no longer configured renders nothing.
+- Development: `npm run bump` is the only version writer; the build checks gzip budgets; `npm audit` allows only documented exceptions; Lighthouse budgets for a block page and the federated page; a weekly check keeps the MapLibre pin in step with DRE Visualizations; the release splits building from publishing, and its tag must be on `main`; stacked PHP docblocks fail the lint; PHPUnit runs in random order and fails risky tests; the client tests run west of Greenwich and are named by module; touch targets are measured in the browser; new `CLAUDE.md`, code map and data model documents.
+
+### Fixed
+
+- A numeric label such as "1990" was indexed as a number.
+- A blank abstract no longer hides the description as a card's snippet.
+- Focus returning to a search box within 150 ms keeps its suggestions open.
+
 ## [1.32.2] - 2026-10-27
 
 ### Fixed
