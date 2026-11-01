@@ -7,6 +7,7 @@
     SortOption,
     ViewMode,
   } from './lib/types';
+  import { untrack } from 'svelte';
   import { SearchApi } from './lib/api';
   import { seedAnswersFirstSearch, usableInitialResponse } from './lib/initialState';
   import { createMapResults, createSearchResults } from './lib/searchResults.svelte';
@@ -18,10 +19,15 @@
     type UrlSearchState,
     type UrlSyncOptions,
   } from './lib/urlState';
-  import { resultCount, t } from './lib/i18n';
+  import { t } from './lib/i18n';
   import { buildFilterChips, type FilterChipModel as ChipModel } from './lib/filterChips';
   import { provideHeadingLevel, type HeadingLevel } from './lib/headings';
-  import { COPY_FEEDBACK_MS, provideAnnouncer } from './lib/announce';
+  import {
+    ANNOUNCE_DELAY_MS,
+    COPY_FEEDBACK_MS,
+    provideAnnouncer,
+    resultAnnouncement,
+  } from './lib/announce';
   import SearchBox from './components/SearchBox.svelte';
   import SortSelect from './components/SortSelect.svelte';
   import ExportMenu from './components/ExportMenu.svelte';
@@ -397,23 +403,36 @@
     query.trim() !== '' || activeCount > 0 ? t('no_results_title') : t('corpus_empty'),
   );
   // The one persistent, polite, atomic status node of this surface (DRE-theme
-  // integration contract, "Asynchronous states"): "Loading…", the result
-  // count, the empty message or the failure — never a stray number or the
-  // contents of an open menu. The skeleton and the visible empty/error boxes
-  // are not live regions of their own.
-  const announcement = $derived(
-    notice
-      ? notice
-      : isLoading
-        ? t('loading')
-        : failed
-          ? t('search_unavailable')
-          : response && response.available
-            ? response.found === 0
-              ? emptyTitle
-              : resultCount(response.found)
-            : '',
+  // integration contract, "Asynchronous states"): the settled result count,
+  // the empty message or the failure — never "Loading…", a stray number or the
+  // contents of an open menu. aria-busy on the results says a request is in
+  // flight. The skeleton and the visible empty/error boxes are not live
+  // regions of their own.
+  const settledAnnouncement = $derived(
+    resultAnnouncement({ loading: isLoading, failed, response, emptyMessage: emptyTitle }),
   );
+  // The text in the node, held one beat behind the settled state
+  // (ANNOUNCE_DELAY_MS): one sentence per pause in typing, and nothing for a
+  // response superseded a moment later. A block's first paint is not news, so
+  // its seeded count is in place at mount, unspoken; an App the federated page
+  // mounts for a tab or a new query does speak its count.
+  let announced = $state('');
+  // svelte-ignore state_referenced_locally
+  let quietMount = bootstrap.initial_state_applied !== true;
+  $effect(() => {
+    const next = settledAnnouncement;
+    const atMount = quietMount;
+    quietMount = false;
+    if (next === null || next === untrack(() => announced)) return;
+    if (atMount) {
+      announced = next;
+      return;
+    }
+    const timer = window.setTimeout(() => (announced = next), ANNOUNCE_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  });
+  // A widget's own message ("Copied") answers a press, so it is spoken at once.
+  const announcement = $derived(notice || announced);
 
   function retry(): void {
     results.retry();

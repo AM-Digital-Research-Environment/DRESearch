@@ -12,7 +12,7 @@
     syncUnionPage,
     writeUrlState,
   } from '../lib/urlState';
-  import { formatNumber, resultCount, resultWord, t } from '../lib/i18n';
+  import { formatNumber, resultWord, t } from '../lib/i18n';
   import { installSlashFocus } from '../lib/keyboard';
   import App from '../App.svelte';
   import MixedResultCard from './MixedResultCard.svelte';
@@ -20,7 +20,12 @@
   import ResultSkeleton from './ResultSkeleton.svelte';
   import CopyLinkButton from './CopyLinkButton.svelte';
   import '../styles/buttons.css';
-  import { COPY_FEEDBACK_MS, provideAnnouncer } from '../lib/announce';
+  import {
+    ANNOUNCE_DELAY_MS,
+    COPY_FEEDBACK_MS,
+    provideAnnouncer,
+    resultAnnouncement,
+  } from '../lib/announce';
 
   interface Props {
     bootstrap: FederatedBootstrap;
@@ -258,23 +263,25 @@
     void results.load(activeProfile, query, activeProfile === ALL ? unionPage : 1);
   }
   // This surface's one persistent status node: it speaks while the shell owns
-  // the panel (loading, the merged list, a failure). Once a corpus's App is
+  // the panel (the merged list, a failure), once that has settled and stayed
+  // so for ANNOUNCE_DELAY_MS (see App, lib/announce.ts). Once a corpus's App is
   // mounted, that App's own status node takes over and this one falls silent.
-  const announcement = $derived(
-    notice
-      ? notice
-      : isLoading
-        ? t('loading')
-        : failed
-          ? t('search_unavailable')
-          : activeProfile === ALL && unionResponse
-            ? unionResponse.found === 0
-              ? query
-                ? t('no_results_title')
-                : t('corpus_empty')
-              : resultCount(unionResponse.found)
-            : '',
+  const settledAnnouncement = $derived(
+    resultAnnouncement({
+      loading: isLoading,
+      failed,
+      response: activeProfile === ALL ? unionResponse : null,
+      emptyMessage: query ? t('no_results_title') : t('corpus_empty'),
+    }),
   );
+  let announced = $state('');
+  $effect(() => {
+    const next = settledAnnouncement;
+    if (next === null || next === untrack(() => announced)) return;
+    const timer = window.setTimeout(() => (announced = next), ANNOUNCE_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  });
+  const announcement = $derived(notice || announced);
   const count = (name: string): string =>
     results.countsKnown ? formatNumber(counts[name] ?? 0) : '';
 </script>

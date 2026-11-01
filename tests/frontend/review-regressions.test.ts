@@ -216,7 +216,8 @@ describe('asynchronous states', () => {
     await waitFor(() => expect(container.querySelector('.dre-skeletons')).toBeTruthy());
     expect(container.querySelector('.dre-skeletons')).toHaveAttribute('aria-hidden', 'true');
     expect(container.querySelectorAll('[role="status"]')).toHaveLength(1);
-    expect(screen.getByRole('status').textContent?.trim()).toBe('Loading…');
+    // In flight: aria-busy says so; the status node says nothing until it settles.
+    expect(screen.getByRole('status').textContent?.trim()).toBe('');
     expect(container.querySelector('.dre-search__results')).toHaveAttribute('aria-busy', 'true');
 
     // An empty corpus with no query or filter: nothing was searched for.

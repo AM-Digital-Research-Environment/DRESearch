@@ -1,4 +1,5 @@
 import { getContext, setContext } from 'svelte';
+import { resultCount, t } from './i18n';
 
 /**
  * Copy feedback, per the shared contract (DRE-theme
@@ -46,4 +47,38 @@ export function announce(message: string, surface?: Announcer): boolean {
     return true;
   }
   return false;
+}
+
+/**
+ * Quiet the results live region needs before it speaks. The search is already
+ * debounced, but a fast typist still settles several searches in a row, and a
+ * region that changes three times in a second is read as an interruption of
+ * itself: 600 ms of quiet means one sentence per pause (IwacSearch's figure).
+ */
+export const ANNOUNCE_DELAY_MS = 600;
+
+export interface ResultAnnouncementInput {
+  /** A request is in flight: nothing is settled, so nothing new is said. */
+  loading: boolean;
+  failed: boolean;
+  response: { available: boolean; found: number } | null;
+  /** What an empty result says: a search that matched nothing, or an empty corpus. */
+  emptyMessage: string;
+}
+
+/**
+ * The sentence the results live region reads once the surface settles: the
+ * result count, the empty message or the failure — or null while a request
+ * is in flight, which leaves the region as it was. It used to say "Loading…"
+ * on every fetch, so each keystroke's search was read out twice, and a
+ * response superseded a moment later still had its count spoken.
+ *
+ * Plurals come from the locale's rules (resultCount), never `found === 1`.
+ */
+export function resultAnnouncement(input: ResultAnnouncementInput): string | null {
+  if (input.loading) return null;
+  if (input.failed) return t('search_unavailable');
+  const response = input.response;
+  if (!response || !response.available) return '';
+  return response.found === 0 ? input.emptyMessage : resultCount(response.found);
 }
