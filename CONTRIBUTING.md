@@ -99,6 +99,14 @@ Unreleased section, and checks everything before it writes anything. The list of
 sites is `scripts/shared/versions.mjs`, shared with `npm run lint:version`, which
 `npm run lint`, CI and the release workflow run.
 
+A release is a `vX.Y.Z` tag on a commit of `main`. `release.yml` runs the whole
+CI suite on it (`gates`), then builds and verifies `DRESearch.zip` with a
+read-only token (`build`: the tag must be on the default branch and match every
+version declaration; the notes are the changelog section), and only then
+attests and attaches it (`publish`, the one job with `contents: write`, which
+runs no dependency). A manual run of the workflow builds the zip without
+publishing it.
+
 ## Integration tests
 
 PHP analysis and the Omeka integration suite load core dependencies before the

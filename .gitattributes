@@ -50,3 +50,4 @@ asset/dist/*.js -whitespace
 /.nvmrc            export-ignore
 
 /phpcs.xml.dist    export-ignore
+/CLAUDE.md         export-ignore

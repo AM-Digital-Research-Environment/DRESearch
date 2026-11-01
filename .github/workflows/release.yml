@@ -1,44 +1,107 @@
+# Release: build DRESearch.zip and publish it on the tag.
+#
+# Three jobs, so that nothing ships unchecked and no third-party code runs with
+# a write token:
+#
+#   gates    the whole push/PR suite (ci.yml, called as a reusable workflow) on
+#            the tagged tree: lint, types, frontend and browser tests, and the
+#            PHP 8.4–8.5 suite against Omeka 4.2.1, MySQL and Typesense.
+#   build    checks the tag (on the default branch, every version declaration
+#            agreeing with it), builds and verifies the archive with a read-only
+#            token, and uploads the zip, its sha256 and the release notes as a
+#            run artifact. npm and Composer install here, and only here.
+#   publish  (tags only) needs BOTH, and does nothing but download that
+#            artifact, check its sha256, attest its provenance and attach it to
+#            the GitHub release. It holds `contents: write` and the OIDC token
+#            the attestation signs with — permissions no install script ever
+#            sees, because no dependency runs in this job.
+#
+# A manual run (workflow_dispatch) proves the build without releasing: it stops
+# after `build`, with the zip downloadable from the run.
+#
+# Actions are pinned to commit SHAs; Dependabot keeps the pins current.
+
 name: Release package
 
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: read
 
-jobs:
-  # The full CI suite (lint, types, frontend + PHP 8.4–8.5 tests against
-  # Omeka 4.2.1, MySQL and Typesense) must pass before anything is published.
-  ci:
-    uses: ./.github/workflows/ci.yml
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
-  package:
-    needs: ci
+jobs:
+  gates:
+    name: CI suite on the tagged tree
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  build:
+    name: Build + verify DRESearch.zip
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
-      contents: write
-      id-token: write
-      attestations: write
+      contents: read
+    outputs:
+      artifact: ${{ steps.version.outputs.artifact }}
     steps:
+      # fetch-depth 0 so the ancestry check below can see the default branch.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Tag must match the module version
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # A tag on a commit that never reached main (a local experiment, a branch
+      # nobody merged) would publish code that main does not contain. The gates
+      # job proves the tree is green; this proves it is the tree everyone has.
+      - name: Assert the tagged commit is on the default branch
+        if: github.ref_type == 'tag'
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          module_version=$(sed -n 's/^version[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' config/module.ini | head -1)
-          if [ "v$module_version" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::tag $GITHUB_REF_NAME does not match config/module.ini version $module_version"
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/$DEFAULT_BRANCH"; then
+            echo "::error::$GITHUB_REF_NAME ($GITHUB_SHA) is not an ancestor of origin/$DEFAULT_BRANCH — merge it before tagging"
             exit 1
           fi
+
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24
+          node-version-file: .nvmrc
           cache: npm
+
+      # The tag is the version, and every file that restates it must agree:
+      # module.ini, package.json, both lockfile copies, CITATION.cff (with an
+      # ISO date-released) and a CHANGELOG.md section. The list is data in
+      # scripts/shared/versions.mjs, shared with `npm run bump` and the
+      # push-time lint; this step used to compare the tag with module.ini only,
+      # which is how v1.19.2 shipped with CITATION.cff on 1.19.1.
+      - name: Resolve the version and check every declaration agrees
+        id: version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="$(node -p "require('./package.json').version")"
+            echo "::notice::Manual run — version taken from package.json ($version); nothing is published"
+          fi
+          node scripts/check-version-consistency.mjs "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "artifact=DRESearch-v$version" >> "$GITHUB_OUTPUT"
+
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.4'
+          coverage: none
           tools: composer:v2
-      - run: npm ci && npm run build
+
+      # The build ends with the gzip bundle budget (npm run check:size).
+      - run: npm ci --no-audit --no-fund && npm run build
       # From the committed lock (resolved for PHP 8.4): the dependency set CI tested.
       - run: composer install --no-dev --classmap-authoritative --no-interaction
       - run: composer audit --no-dev --locked
@@ -65,7 +128,7 @@ jobs:
             --exclude='/vite.config.ts' --exclude='/tsconfig.json' --exclude='/playwright.config.ts' \
             --exclude='/phpstan.neon.dist' --exclude='/phpunit.xml.dist' --exclude='/phpcs.xml.dist' \
             --exclude='/package.json' --exclude='/package-lock.json' \
-            --exclude='/.editorconfig' --exclude='/.nvmrc' \
+            --exclude='/.editorconfig' --exclude='/.nvmrc' --exclude='/CLAUDE.md' \
             ./ package/DRESearch/
           find package -exec touch -d '1980-01-01T00:00:00Z' {} +
           (cd package && zip -X -r ../DRESearch.zip DRESearch)
@@ -77,7 +140,7 @@ jobs:
           # legitimately ship their own tests/ and package.json inside vendor/,
           # and failing the release over those would be noise.
           leaked=$(grep -v '^DRESearch/vendor/' entries.txt | grep -E \
-            '^DRESearch/(tests|scripts|node_modules|\.github|\.agents)/|^DRESearch/(package(-lock)?\.json|tsconfig\.json|vite\.config\.ts|playwright\.config\.ts|eslint\.config\.js|svelte\.config\.js|phpcs\.xml\.dist|phpunit\.xml\.dist|phpstan\.neon\.dist|\.prettierrc\.json|\.prettierignore|\.gitattributes|\.gitignore|\.editorconfig|\.nvmrc)$' || true)
+            '^DRESearch/(tests|scripts|node_modules|\.github|\.agents)/|^DRESearch/(package(-lock)?\.json|tsconfig\.json|vite\.config\.ts|playwright\.config\.ts|eslint\.config\.js|svelte\.config\.js|phpcs\.xml\.dist|phpunit\.xml\.dist|phpstan\.neon\.dist|\.prettierrc\.json|\.prettierignore|\.gitattributes|\.gitignore|\.editorconfig|\.nvmrc|CLAUDE\.md)$' || true)
           if [ -n "$leaked" ]; then
             echo "::error::development files present in DRESearch.zip:"; echo "$leaked"; exit 1
           fi
@@ -109,29 +172,21 @@ jobs:
           rm -f dist-manifest.json
           echo "Archive shape OK ($(wc -l < entries.txt) entries, $(du -h DRESearch.zip | cut -f1))."
           rm -f entries.txt
-      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
-        with:
-          subject-path: DRESearch.zip
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: DRESearch-${{ github.ref_name }}
-          path: |
-            DRESearch.zip
-            DRESearch.zip.sha256
-          if-no-files-found: error
       # Release notes come from CHANGELOG.md, not --generate-notes: this project
       # commits straight to main, so the generated notes list only the handful of
-      # Dependabot PRs and none of the actual changes.
+      # Dependabot PRs and none of the actual changes. Built here, beside the
+      # changelog, so the publish job needs no checkout.
       - name: Build release notes from the changelog
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          version="${GITHUB_REF_NAME#v}"
-          awk -v v="$version" '
+          awk -v v="$VERSION" '
             $0 == "## [" v "]" || index($0, "## [" v "] -") == 1 { f = 1; next }
             /^## \[/ { f = 0 }
             f
           ' CHANGELOG.md > SECTION.md
           if [ ! -s SECTION.md ]; then
-            echo "::error file=CHANGELOG.md::no '## [$version]' section to build release notes from"
+            echo "::error file=CHANGELOG.md::no '## [$VERSION]' section to build release notes from"
             exit 1
           fi
           {
@@ -145,24 +200,60 @@ jobs:
           carries \`vendor/\` and the compiled front-end bundle, so no Composer or
           Node toolchain is needed on the server.
 
-          Verify the download:
+          Verify the download, and that this repository's release workflow built it:
 
           \`\`\`
           sha256sum -c DRESearch.zip.sha256
+          gh attestation verify DRESearch.zip -R ${GITHUB_REPOSITORY}
           \`\`\`
 
           Requires Omeka S ^4.2.1 and PHP >= 8.4. Typesense is optional — with no
           backend configured the module installs cleanly and the site runs
           normally.
 
-          **Full changelog**: https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/CHANGELOG.md
+          **Full changelog**: https://github.com/${GITHUB_REPOSITORY}/blob/v${VERSION}/CHANGELOG.md
           EOF
           } > RELEASE_NOTES.md
           rm -f SECTION.md
           cat RELEASE_NOTES.md
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.version.outputs.artifact }}
+          path: |
+            DRESearch.zip
+            DRESearch.zip.sha256
+            RELEASE_NOTES.md
+          retention-days: 14
+          if-no-files-found: error
+
+  publish:
+    name: Publish the release
+    needs: [gates, build]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ needs.build.outputs.artifact }}
+
+      # The artifact crossed a job boundary; attest and publish only the bytes
+      # the build job hashed.
+      - name: Check the archive against its sha256
+        run: sha256sum -c DRESearch.zip.sha256
+
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: DRESearch.zip
+
       - name: Publish GitHub release assets
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" DRESearch.zip DRESearch.zip.sha256 --clobber
