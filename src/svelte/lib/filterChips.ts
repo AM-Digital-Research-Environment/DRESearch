@@ -1,4 +1,4 @@
-import { matchFieldLabel, t } from './i18n';
+import { filterFieldLabel, t } from './i18n';
 import type { ActiveFilters } from './types';
 
 export interface FilterChipModel {
@@ -32,7 +32,7 @@ export function buildFilterChips(
         id: `${field}|${value}`,
         field,
         value,
-        label: labels[field] ?? matchFieldLabel(field),
+        label: labels[field] ?? filterFieldLabel(field),
         kind: 'facet',
       });
     }

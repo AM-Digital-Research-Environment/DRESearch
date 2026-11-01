@@ -1,40 +1,58 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { cardFilters, filterToggleLabel } from '../lib/cardFilters';
 
   /**
    * An inline "click to filter" value — an author, editor, venue, publisher,
-   * place, project or language sitting inside a sentence of running text.
+   * place, project or language sitting inside a sentence of running text. It
+   * is a toggle (lib/cardFilters.ts): pressed while the value is an active
+   * filter, named for what pressing it does ("Filter by Author: …" / "Remove
+   * filter Author: …").
    *
    * Why a span with role="button" and not a real <button>: a <button> is an
    * atomic inline-block, so its label can never break across the paragraph's
-   * line boxes. On a narrow screen that wrecks a citation twice over — a long
-   * venue takes the full column width and forces itself onto its own line
-   * (stranding orphans like " (eds.)," and ", pp. 25–48." on lines of their
-   * own), and the UA's `text-align: center` for buttons centres the value's own
-   * wrapped lines against the left-aligned text around them. A span fragments
-   * like the text it sits in, so the reference reads as one paragraph at every
-   * width. Keyboard and screen-reader semantics are restored by
-   * role + tabindex + Enter/Space.
+   * line boxes — `display: inline` does not change that (measured in Chromium:
+   * one box, against three for the span in a 160px column), and
+   * `display: contents` drops the button from the focus order. On a narrow
+   * screen that wrecks a citation twice over — a long venue takes the full
+   * column width and forces itself onto its own line (stranding orphans like
+   * " (eds.)," and ", pp. 25–48." on lines of their own), and the UA's
+   * `text-align: center` for buttons centres the value's own wrapped lines
+   * against the left-aligned text around them. A span fragments like the text
+   * it sits in, so the reference reads as one paragraph at every width.
+   * Keyboard and screen-reader semantics are restored by role + tabindex +
+   * Enter/Space, and the toggle state by aria-pressed.
    */
 
   interface Props {
-    /** Apply the filter this value stands for. */
-    onclick: () => void;
+    /** The filter field this value belongs to, e.g. "creator_ss". */
+    field: string;
+    /** The raw filter value (the visible text may carry highlight marks). */
+    value: string;
     children: Snippet;
   }
 
-  const { onclick, children }: Props = $props();
+  const { field, value, children }: Props = $props();
+  const filters = cardFilters();
+  const active = $derived(filters.isActive(field, value));
+  const label = $derived(filterToggleLabel(active, filters.label(field), value));
 
   function handleKeydown(event: KeyboardEvent): void {
     if (event.key !== 'Enter' && event.key !== ' ') return;
     // Enter does nothing on a span, and Space would scroll the page.
     event.preventDefault();
-    onclick();
+    filters.toggle(field, value);
   }
 </script>
 
-<span class="dre-filter-link" role="button" tabindex="0" {onclick} onkeydown={handleKeydown}
-  >{@render children()}</span
+<span
+  class="dre-filter-link"
+  role="button"
+  tabindex="0"
+  aria-pressed={active}
+  aria-label={label}
+  onclick={() => filters.toggle(field, value)}
+  onkeydown={handleKeydown}>{@render children()}</span
 >
 
 <style>
@@ -53,6 +71,13 @@
   .dre-filter-link:hover {
     color: var(--primary, #007a50);
     text-decoration-color: currentColor;
+  }
+  /* Pressed: the value is an active filter. A full-strength, thicker underline
+     in the readable brand text colour — still text, so it still wraps. */
+  .dre-filter-link[aria-pressed='true'] {
+    color: var(--primary-text, #006440);
+    text-decoration-color: currentColor;
+    text-decoration-thickness: 2px;
   }
   .dre-filter-link:focus-visible {
     outline: 2px solid var(--focus-color, #007a50);

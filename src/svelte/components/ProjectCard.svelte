@@ -12,6 +12,7 @@
   } from '../lib/resultCard';
   import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
+  import FilterButton from './FilterButton.svelte';
   import MatchedIn from './MatchedIn.svelte';
   import RecordLink from './RecordLink.svelte';
   import '../styles/card.css';
@@ -29,16 +30,15 @@
    *
    * A PI name filters by that person; the arrow beside it (when the PI is a
    * linked person, `pi_ids`) opens their Omeka page. Section / institution
-   * chips add that value as a facet filter (onAddFilter).
+   * chips toggle that value as a facet filter (lib/cardFilters.ts).
    */
 
   interface Props {
     doc: Doc;
     itemUrlBase: string;
-    onAddFilter: (field: string, value: string) => void;
   }
 
-  const { doc, itemUrlBase, onAddFilter }: Props = $props();
+  const { doc, itemUrlBase }: Props = $props();
   const titleTag = cardTitleTag();
 
   const url = $derived(recordUrl(itemUrlBase, doc.id));
@@ -79,8 +79,8 @@
       <p class="dre-shell__line">
         <span class="dre-pcard__pi-label">{t('pi_label')}</span>
         {#each pis as pi, i (pi + '|' + i)}{i > 0 ? ', ' : ''}<FilterLink
-            onclick={() => onAddFilter('people_ss', pi)}
-            ><Highlight value={piHl.get(pi) ?? pi} /></FilterLink
+            field="people_ss"
+            value={pi}><Highlight value={piHl.get(pi) ?? pi} /></FilterLink
           ><RecordLink {itemUrlBase} id={doc.pi_ids?.[i]} name={pi} />{/each}
       </p>
     {/if}
@@ -93,26 +93,20 @@
       <ul class="dre-shell__chips">
         {#each sections as s (s)}
           <li>
-            <button
-              type="button"
-              data-print
+            <FilterButton
+              field="section_ss"
+              value={s}
               class="dre-shell__chip dre-shell__chip--accent"
-              onclick={() => onAddFilter('section_ss', s)}
             >
               <Highlight value={sectionHl.get(s) ?? s} />
-            </button>
+            </FilterButton>
           </li>
         {/each}
         {#each institutions as inst (inst)}
           <li>
-            <button
-              type="button"
-              data-print
-              class="dre-shell__chip"
-              onclick={() => onAddFilter('institution_ss', inst)}
-            >
+            <FilterButton field="institution_ss" value={inst} class="dre-shell__chip">
               <Highlight value={instHl.get(inst) ?? inst} />
-            </button>
+            </FilterButton>
           </li>
         {/each}
       </ul>

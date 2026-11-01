@@ -73,6 +73,60 @@ test.describe('search block', () => {
     await expect(page.getByRole('article')).toHaveCount(2);
   });
 
+  test('card filter values are labelled toggles that add and remove their filter', async ({
+    page,
+  }) => {
+    const stub = await serve(page);
+    await page.goto('/');
+    // The card's value, not the summary's chip of the same filter.
+    const card = page.getByRole('article').filter({ hasText: 'Photograph of the Bayreuth market' });
+    const add = card.getByRole('button', { name: 'Filter by Author: Madore, Frédérick' });
+    await expect(add).toHaveAttribute('aria-pressed', 'false');
+    await add.click();
+    await expect
+      .poll(() => stub.searches.at(-1)?.filters)
+      .toEqual({
+        creator_ss: ['Madore, Frédérick'],
+      });
+    const remove = card.getByRole('button', { name: 'Remove filter Author: Madore, Frédérick' });
+    await expect(remove).toHaveAttribute('aria-pressed', 'true');
+    await remove.click();
+    await expect.poll(() => stub.searches.at(-1)?.filters).toEqual({});
+    await expect(add).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('a pressed card chip keeps its own look on hover, with no lift or bleed', async ({
+    page,
+  }) => {
+    await serve(page);
+    await page.goto('/');
+    const name = 'Lived Religion in West Africa';
+    const card = page.getByRole('article').filter({ hasText: 'Photograph of the Bayreuth market' });
+    await card.getByRole('button', { name: `Filter by Project: ${name}` }).click();
+    const chip = card.getByRole('button', { name: `Remove filter Project: ${name}` });
+    await expect(chip).toHaveAttribute('aria-pressed', 'true');
+    // Wait out the chip's 150ms colour transition before measuring.
+    const settled = () =>
+      page.waitForFunction(() =>
+        document.getAnimations().every((animation) => animation.playState !== 'running'),
+      );
+    await settled();
+    const style = () =>
+      chip.evaluate((el) => {
+        const cs = getComputedStyle(el);
+        return { background: cs.backgroundColor, shadow: cs.boxShadow, transform: cs.transform };
+      });
+    const pressed = await style();
+    // The pressed ring is drawn; nothing lifts the chip.
+    expect(pressed.shadow).toContain('inset');
+    expect(pressed.transform).toBe('none');
+    await chip.hover();
+    await settled();
+    expect(await style()).toEqual(pressed);
+    // The pressed state also passes the contrast scan.
+    expect(await seriousViolations(page)).toEqual([]);
+  });
+
   test('a search that matches nothing says so, through the one status node', async ({ page }) => {
     await serve(page);
     await page.goto('/');

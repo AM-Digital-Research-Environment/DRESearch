@@ -4,6 +4,7 @@
   import { associationCounts, cardTitle, recordUrl, titleMarkup } from '../lib/resultCard';
   import { markedLookup } from '../lib/highlight';
   import Highlight from './Highlight.svelte';
+  import FilterButton from './FilterButton.svelte';
   import FilterLink from './FilterLink.svelte';
   import CardThumb from './CardThumb.svelte';
   import IdentifierLinks from './IdentifierLinks.svelte';
@@ -22,7 +23,7 @@
    *   └──────────────────────────────────────────────────┘
    *
    * Name links to the person's Omeka page; each affiliation (in the byline) and
-   * each role chip adds that value as a facet filter (onAddFilter). Affiliations
+   * each role chip toggles that value as a facet filter (lib/cardFilters.ts). Affiliations
    * used to be listed twice when roles existed, and not be clickable at all
    * when they did not.
    */
@@ -30,10 +31,9 @@
   interface Props {
     doc: Doc;
     itemUrlBase: string;
-    onAddFilter: (field: string, value: string) => void;
   }
 
-  const { doc, itemUrlBase, onAddFilter }: Props = $props();
+  const { doc, itemUrlBase }: Props = $props();
   const titleTag = cardTitleTag();
 
   const url = $derived(recordUrl(itemUrlBase, doc.id));
@@ -64,8 +64,8 @@
     {#if affiliations.length > 0}
       <p class="dre-shell__line">
         {#each affiliations as aff, i (aff + '|' + i)}{i > 0 ? '; ' : ''}<FilterLink
-            onclick={() => onAddFilter('affiliation_ss', aff)}
-            ><Highlight value={affilHl.get(aff) ?? aff} /></FilterLink
+            field="affiliation_ss"
+            value={aff}><Highlight value={affilHl.get(aff) ?? aff} /></FilterLink
           >{/each}
       </p>
     {/if}
@@ -74,14 +74,13 @@
       <ul class="dre-shell__chips">
         {#each roles as role (role)}
           <li>
-            <button
-              type="button"
-              data-print
+            <FilterButton
+              field="roles_ss"
+              value={role}
               class="dre-shell__chip dre-shell__chip--role"
-              onclick={() => onAddFilter('roles_ss', role)}
             >
               <Highlight value={roleHl.get(role) ?? role} />
-            </button>
+            </FilterButton>
           </li>
         {/each}
       </ul>

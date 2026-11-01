@@ -6,6 +6,7 @@
   import { cardSnippet, cardTitle, recordUrl, titleMarkup } from '../lib/resultCard';
   import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
+  import FilterButton from './FilterButton.svelte';
   import MatchedIn from './MatchedIn.svelte';
   import CardThumb from './CardThumb.svelte';
   import '../styles/card.css';
@@ -25,7 +26,7 @@
    *   └────────────────────────────────────────────────┘
    *
    * The project chip, each author, place of origin, current location and language
-   * are buttons that add that value as a facet filter (onAddFilter). Matched query
+   * are toggles of that value as a facet filter (lib/cardFilters.ts). Matched query
    * terms are highlighted in the title, byline and snippet; matches in fields the
    * card doesn't show surface in a "Matched in" line.
    */
@@ -33,13 +34,12 @@
   interface Props {
     doc: Doc;
     itemUrlBase: string;
-    onAddFilter: (field: string, value: string) => void;
     view?: ViewMode;
     /** Above the fold (first gallery row): load now rather than lazily. */
     eager?: boolean;
   }
 
-  const { doc, itemUrlBase, onAddFilter, view = 'list', eager = false }: Props = $props();
+  const { doc, itemUrlBase, view = 'list', eager = false }: Props = $props();
   const titleTag = cardTitleTag();
 
   const url = $derived(recordUrl(itemUrlBase, doc.id));
@@ -91,8 +91,8 @@
     {#if creators.length > 0}
       <p class="dre-shell__line">
         {#each creators as name, i (name + '|' + i)}{i > 0 ? ', ' : ''}<FilterLink
-            onclick={() => onAddFilter('creator_ss', name)}
-            ><Highlight value={creatorHl.get(name) ?? name} /></FilterLink
+            field="creator_ss"
+            value={name}><Highlight value={creatorHl.get(name) ?? name} /></FilterLink
           >{/each}
       </p>
     {/if}
@@ -104,14 +104,13 @@
     {#if project}
       <ul class="dre-shell__chips">
         <li>
-          <button
-            type="button"
-            data-print
+          <FilterButton
+            field="project_s"
+            value={project}
             class="dre-shell__chip dre-shell__chip--accent"
-            onclick={() => onAddFilter('project_s', project)}
           >
             {project}
-          </button>
+          </FilterButton>
         </li>
       </ul>
     {/if}
@@ -120,7 +119,8 @@
       <p class="dre-shell__meta dre-card__geo">
         <span class="dre-shell__label">{t('origin_label')}</span>
         {#each origins as o, i (o + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
-            onclick={() => onAddFilter('origin_ss', o)}>{o}</FilterLink
+            field="origin_ss"
+            value={o}>{o}</FilterLink
           >{/each}
       </p>
     {/if}
@@ -129,7 +129,8 @@
       <p class="dre-shell__meta dre-card__geo">
         <span class="dre-shell__label">{t('current_location_label')}</span>
         {#each currentLocations as c, i (c + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
-            onclick={() => onAddFilter('provenance_ss', c)}>{c}</FilterLink
+            field="provenance_ss"
+            value={c}>{c}</FilterLink
           >{/each}
       </p>
     {/if}
@@ -138,7 +139,8 @@
       <p class="dre-shell__meta dre-card__geo">
         <span class="dre-shell__label">{t('language_label')}</span>
         {#each languages as l, i (l + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
-            onclick={() => onAddFilter('language_ss', l)}>{l}</FilterLink
+            field="language_ss"
+            value={l}>{l}</FilterLink
           >{/each}
       </p>
     {/if}

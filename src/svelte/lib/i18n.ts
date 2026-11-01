@@ -17,6 +17,7 @@ const ENGLISH_STRINGS: Record<string, string> = {
   filters: 'Filters',
   active_filters: 'Active filters',
   remove_filter: 'Remove filter {label}: {value}',
+  add_filter: 'Filter by {label}: {value}',
   show_more: 'Show {n} more',
   show_less: 'Show less',
   search_to_see_options: 'No filter options for the current results.',
@@ -124,6 +125,7 @@ const ENGLISH_STRINGS: Record<string, string> = {
   field_author: 'Author',
   field_editor: 'Editor',
   field_container: 'In',
+  field_venue: 'Journal / Book',
   field_publisher: 'Publisher',
   field_keyword: 'Keyword',
   field_host: 'Host',
@@ -146,6 +148,8 @@ const ENGLISH_STRINGS: Record<string, string> = {
   field_origin: 'Place of origin',
   field_provenance: 'Current location',
   field_project: 'Project',
+  field_type: 'Type',
+  field_phase: 'Phase',
 
   // Research-item card.
   origin_label: 'Place of origin',
@@ -293,11 +297,28 @@ const MATCH_FIELD_KEYS: Record<string, string> = {
   origin_ss: 'field_origin',
   provenance_ss: 'field_provenance',
   project_s: 'field_project',
+  type_s: 'field_type',
+  phase_s: 'field_phase',
 };
 
 export function matchFieldLabel(field: string): string {
   const key = MATCH_FIELD_KEYS[field];
   return key ? t(key) : field;
+}
+
+/**
+ * A field's name where it labels a FILTER (an active-filter chip, a card value's
+ * toggle) and the corpus gives the field no facet label of its own. The
+ * "Matched in" names are written to follow "Matched in"; a few read wrong in
+ * front of a value ("Filter by In: …"), so those have a filter name here.
+ */
+const FILTER_FIELD_KEYS: Record<string, string> = {
+  container_ss: 'field_venue',
+};
+
+export function filterFieldLabel(field: string): string {
+  const key = FILTER_FIELD_KEYS[field];
+  return key ? t(key) : matchFieldLabel(field);
 }
 
 export function t(key: string, vars?: Record<string, string | number>): string {

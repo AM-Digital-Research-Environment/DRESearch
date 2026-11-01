@@ -9,6 +9,7 @@
     titleMarkup,
   } from '../lib/resultCard';
   import Highlight from './Highlight.svelte';
+  import FilterButton from './FilterButton.svelte';
   import CardThumb from './CardThumb.svelte';
   import IdentifierLinks from './IdentifierLinks.svelte';
   import { externalIds } from '../lib/identifiers';
@@ -24,16 +25,15 @@
    *   └──────────────────────────────────────────────────┘
    *
    * Name links to the organisation's Omeka page; the type and role chips are
-   * buttons that add that value as a facet filter (onAddFilter).
+   * filter toggles (FilterButton, lib/cardFilters.ts).
    */
 
   interface Props {
     doc: Doc;
     itemUrlBase: string;
-    onAddFilter: (field: string, value: string) => void;
   }
 
-  const { doc, itemUrlBase, onAddFilter }: Props = $props();
+  const { doc, itemUrlBase }: Props = $props();
   const titleTag = cardTitleTag();
 
   const url = $derived(recordUrl(itemUrlBase, doc.id));
@@ -58,14 +58,13 @@
         <a href={url}><Highlight value={nameHl ?? name} /></a>
       </svelte:element>
       {#if type}
-        <button
-          type="button"
-          data-print
+        <FilterButton
+          field="type_s"
+          value={type}
           class="dre-shell__tag dre-shell__tag--organisation"
-          onclick={() => onAddFilter('type_s', type)}
         >
           {type}
-        </button>
+        </FilterButton>
       {/if}
     </div>
 
@@ -73,14 +72,13 @@
       <ul class="dre-shell__chips">
         {#each roles as role (role)}
           <li>
-            <button
-              type="button"
-              data-print
+            <FilterButton
+              field="roles_ss"
+              value={role}
               class="dre-shell__chip dre-shell__chip--role"
-              onclick={() => onAddFilter('roles_ss', role)}
             >
               {role}
-            </button>
+            </FilterButton>
           </li>
         {/each}
       </ul>

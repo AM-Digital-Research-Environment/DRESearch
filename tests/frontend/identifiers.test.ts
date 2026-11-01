@@ -1,6 +1,6 @@
 import { render } from '@testing-library/svelte';
 import axe from 'axe-core';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import PersonCard from '../../src/svelte/components/PersonCard.svelte';
 import PublicationCard from '../../src/svelte/components/PublicationCard.svelte';
 import TermCard from '../../src/svelte/components/TermCard.svelte';
@@ -77,7 +77,6 @@ describe('identifier links on cards', () => {
     const { container, getByRole } = render(PersonCard, {
       doc: person,
       itemUrlBase: '/s/site/item',
-      onAddFilter: vi.fn(),
     });
     const list = getByRole('list', { name: 'Identifiers in other registers' });
     const links = [...list.querySelectorAll('a')];
@@ -98,7 +97,6 @@ describe('identifier links on cards', () => {
       doc: { id: '7', title: 'Popular music' } as unknown as Doc,
       itemUrlBase: '/s/site/item',
       profile: 'research_subjects',
-      onAddFilter: vi.fn(),
     });
     expect(queryByRole('list', { name: 'Identifiers in other registers' })).toBeNull();
   });
@@ -115,7 +113,6 @@ describe('identifier links on cards', () => {
         ],
       } as unknown as Doc,
       itemUrlBase: '/s/site/item',
-      onAddFilter: vi.fn(),
     });
     const actions = container.querySelector('.dre-bcard__actions');
     expect(

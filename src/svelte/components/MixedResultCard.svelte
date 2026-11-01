@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { Doc } from '../lib/types';
+  import { provideCardFilters } from '../lib/cardFilters';
+  import { filterFieldLabel } from '../lib/i18n';
   import ResultItem from './ResultItem.svelte';
   import ProjectCard from './ProjectCard.svelte';
   import PublicationCard from './PublicationCard.svelte';
@@ -16,22 +18,28 @@
   }
   const { doc, itemUrlBase, onHandoff }: Props = $props();
   const profile = $derived(doc._profile ?? '');
-  const add = (field: string, value: string): void => onHandoff(profile, field, value);
+  // The merged list has no filters of its own: a card value is never pressed,
+  // and pressing one opens its corpus's tab filtered by it.
+  provideCardFilters({
+    isActive: () => false,
+    toggle: (field, value) => onHandoff(profile, field, value),
+    label: filterFieldLabel,
+  });
 </script>
 
 <div class="dre-mixed">
   <button type="button" class="dre-mixed__source" onclick={() => onHandoff(profile)}
     >{doc._profile_label ?? profile}</button
   >
-  {#if doc._kind === 'project'}<ProjectCard {doc} {itemUrlBase} onAddFilter={add} />
-  {:else if doc._kind === 'publication'}<PublicationCard {doc} {itemUrlBase} onAddFilter={add} />
-  {:else if doc._kind === 'podcast'}<PodcastCard {doc} {itemUrlBase} onAddFilter={add} />
-  {:else if doc._kind === 'video'}<VideoCard {doc} {itemUrlBase} onAddFilter={add} />
-  {:else if doc._kind === 'person'}<PersonCard {doc} {itemUrlBase} onAddFilter={add} />
-  {:else if doc._kind === 'section'}<SectionCard {doc} {itemUrlBase} onAddFilter={add} />
-  {:else if doc._kind === 'organisation'}<OrganisationCard {doc} {itemUrlBase} onAddFilter={add} />
-  {:else if doc._kind === 'term'}<TermCard {doc} {itemUrlBase} {profile} onAddFilter={add} />
-  {:else}<ResultItem {doc} {itemUrlBase} onAddFilter={add} />{/if}
+  {#if doc._kind === 'project'}<ProjectCard {doc} {itemUrlBase} />
+  {:else if doc._kind === 'publication'}<PublicationCard {doc} {itemUrlBase} />
+  {:else if doc._kind === 'podcast'}<PodcastCard {doc} {itemUrlBase} />
+  {:else if doc._kind === 'video'}<VideoCard {doc} {itemUrlBase} />
+  {:else if doc._kind === 'person'}<PersonCard {doc} {itemUrlBase} />
+  {:else if doc._kind === 'section'}<SectionCard {doc} {itemUrlBase} />
+  {:else if doc._kind === 'organisation'}<OrganisationCard {doc} {itemUrlBase} />
+  {:else if doc._kind === 'term'}<TermCard {doc} {itemUrlBase} {profile} />
+  {:else}<ResultItem {doc} {itemUrlBase} />{/if}
 </div>
 
 <style>

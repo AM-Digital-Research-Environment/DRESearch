@@ -10,6 +10,7 @@
     titleMarkup,
   } from '../lib/resultCard';
   import Highlight from './Highlight.svelte';
+  import FilterButton from './FilterButton.svelte';
   import Sparkline from './Sparkline.svelte';
   import IdentifierLinks from './IdentifierLinks.svelte';
   import { externalIds } from '../lib/identifiers';
@@ -28,19 +29,18 @@
    *
    * Name links to the term's Omeka page; the type chip (present only for corpora
    * with a sub-type, e.g. locations and subjects) and the relationship chips
-   * (locations: how the place is referenced) are buttons that add that value as a
-   * facet filter (onAddFilter). Genres and languages have neither.
+   * (locations: how the place is referenced) toggle that value as a facet filter
+   * (lib/cardFilters.ts). Genres and languages have neither.
    */
 
   interface Props {
     doc: Doc;
     itemUrlBase: string;
-    onAddFilter: (field: string, value: string) => void;
     /** The corpus, which names the entity hue of the type tag. */
     profile?: string;
   }
 
-  const { doc, itemUrlBase, onAddFilter, profile }: Props = $props();
+  const { doc, itemUrlBase, profile }: Props = $props();
   const titleTag = cardTitleTag();
 
   const url = $derived(recordUrl(itemUrlBase, doc.id));
@@ -62,14 +62,9 @@
       <a href={url}><Highlight value={nameHl ?? name} /></a>
     </svelte:element>
     {#if type}
-      <button
-        type="button"
-        data-print
-        class="dre-shell__tag {entityTagClass(profile)}"
-        onclick={() => onAddFilter('type_s', type)}
-      >
+      <FilterButton field="type_s" value={type} class="dre-shell__tag {entityTagClass(profile)}">
         {type}
-      </button>
+      </FilterButton>
     {/if}
   </div>
 
@@ -77,14 +72,9 @@
     <ul class="dre-shell__chips">
       {#each roles as role (role)}
         <li>
-          <button
-            type="button"
-            data-print
-            class="dre-shell__chip dre-shell__chip--role"
-            onclick={() => onAddFilter('roles_ss', role)}
-          >
+          <FilterButton field="roles_ss" value={role} class="dre-shell__chip dre-shell__chip--role">
             {role}
-          </button>
+          </FilterButton>
         </li>
       {/each}
     </ul>

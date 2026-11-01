@@ -550,8 +550,9 @@
     page = 1;
   }
 
-  function handleAddFilter(field: string, value: string): void {
-    handleFacetToggle(field, value, true);
+  /** A card's filter value: add it, or remove it when it is already active. */
+  function handleToggleFilter(field: string, value: string): void {
+    handleFacetToggle(field, value, !(filters[field]?.includes(value) ?? false));
   }
 
   function handlePageChange(next: number): void {
@@ -769,7 +770,9 @@
               masonry={masonryLayout}
               {view}
               onPageChange={handlePageChange}
-              onAddFilter={handleAddFilter}
+              {filters}
+              facetLabels={bootstrap.facet_labels}
+              onToggleFilter={handleToggleFilter}
             />
           </div>
         {/if}

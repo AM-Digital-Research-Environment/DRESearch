@@ -12,6 +12,7 @@
   } from '../lib/resultCard';
   import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
+  import FilterButton from './FilterButton.svelte';
   import MatchedIn from './MatchedIn.svelte';
   import '../styles/card.css';
 
@@ -34,10 +35,9 @@
   interface Props {
     doc: Doc;
     itemUrlBase: string;
-    onAddFilter: (field: string, value: string) => void;
   }
 
-  const { doc, itemUrlBase, onAddFilter }: Props = $props();
+  const { doc, itemUrlBase }: Props = $props();
   const titleTag = cardTitleTag();
 
   const url = $derived(recordUrl(itemUrlBase, doc.id));
@@ -62,13 +62,9 @@
   <div class="dre-shell__body">
     <header class="dre-shell__head">
       {#if phase}
-        <button
-          type="button"
-          class="dre-scard__phase"
-          onclick={() => onAddFilter('phase_s', phase)}
-        >
+        <FilterButton field="phase_s" value={phase} class="dre-scard__phase">
           {phase}
-        </button>
+        </FilterButton>
       {/if}
       {#if projectCount > 0}
         <span class="dre-scard__count">{projectsLabel(projectCount)}</span>
@@ -83,8 +79,8 @@
       <p class="dre-shell__line">
         <span class="dre-scard__leaders-label">{leaders.label}</span>
         {#each leaders.names as nm, i (nm + '|' + i)}{i > 0 ? ', ' : ''}<FilterLink
-            onclick={() => onAddFilter('people_ss', nm)}
-            ><Highlight value={leaderHl.get(nm) ?? nm} /></FilterLink
+            field="people_ss"
+            value={nm}><Highlight value={leaderHl.get(nm) ?? nm} /></FilterLink
           >{/each}
       </p>
     {/if}
@@ -103,7 +99,9 @@
 
 <style>
   /* The shell, title, byline, counts and snippet are styles/card.css. */
-  .dre-scard__phase {
+  /* The phase chip is FilterButton's <button>, so its rules reach into that
+     component (:global), kept to this card by the .dre-scard ancestor. */
+  .dre-scard :global(.dre-scard__phase) {
     display: inline-flex;
     align-items: center;
     min-height: 1.5rem;
@@ -121,10 +119,14 @@
     cursor: pointer;
     transition: background var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1));
   }
-  .dre-scard__phase:hover {
+  .dre-scard :global(.dre-scard__phase:hover) {
     background: color-mix(in srgb, var(--primary, #007a50) 28%, var(--surface, #fdfcf9));
   }
-  .dre-scard__phase:focus-visible {
+  .dre-scard :global(.dre-scard__phase[aria-pressed='true']) {
+    background: color-mix(in srgb, var(--primary, #007a50) 24%, var(--surface, #fdfcf9));
+    box-shadow: inset 0 0 0 2px var(--primary, #007a50);
+  }
+  .dre-scard :global(.dre-scard__phase:focus-visible) {
     outline: 2px solid var(--focus-color, #007a50);
     outline-offset: 2px;
   }

@@ -14,6 +14,7 @@
   import { safeExternalUrl } from '../lib/text';
   import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
+  import FilterButton from './FilterButton.svelte';
   import MatchedIn from './MatchedIn.svelte';
   import CiteMenu from './CiteMenu.svelte';
   import IdentifierLinks from './IdentifierLinks.svelte';
@@ -33,9 +34,9 @@
    *   │ [keyword]  ([|||] Q123 ↗) (Full text ↗) (DOI ↗) (Cite ▾) │
    *   └────────────────────────────────────────────────────┘
    *
-   * Authors and editors are FilterLinks that add the person to the "Author / Editor"
-   * facet (onAddFilter creator_ss); the venue (journal / book) and publisher filter
-   * on container_ss / publisher_ss; the keyword chips add a keyword filter; "Full
+   * Authors and editors are FilterLinks that toggle the person in the "Author /
+   * Editor" facet (creator_ss); the venue (journal / book) and publisher filter
+   * on container_ss / publisher_ss; the keyword chips toggle a keyword filter; "Full
    * text" opens the open-access copy (the EPub Bayreuth record), the DOI the
    * canonical record, and Cite copies or downloads the reference. Editors render
    * as their own byline for an edited volume (editors, no container) and inside
@@ -45,10 +46,9 @@
   interface Props {
     doc: Doc;
     itemUrlBase: string;
-    onAddFilter: (field: string, value: string) => void;
   }
 
-  const { doc, itemUrlBase, onAddFilter }: Props = $props();
+  const { doc, itemUrlBase }: Props = $props();
   const titleTag = cardTitleTag();
 
   const url = $derived(recordUrl(itemUrlBase, doc.id));
@@ -114,8 +114,8 @@
     {#if authors.length > 0}
       <p class="dre-shell__line dre-bcard__authors">
         {#each authors as name, i (name + '|' + i)}{i > 0 ? ', ' : ''}<FilterLink
-            onclick={() => onAddFilter('creator_ss', name)}
-            ><Highlight value={authorHl.get(name) ?? name} /></FilterLink
+            field="creator_ss"
+            value={name}><Highlight value={authorHl.get(name) ?? name} /></FilterLink
           >{/each}
       </p>
     {/if}
@@ -123,8 +123,8 @@
     {#if editorsAsByline}
       <p class="dre-shell__line dre-bcard__authors">
         {#each editors as name, i (name + '|' + i)}{i > 0 ? '; ' : ''}<FilterLink
-            onclick={() => onAddFilter('creator_ss', name)}
-            ><Highlight value={editorHl.get(name) ?? name} /></FilterLink
+            field="creator_ss"
+            value={name}><Highlight value={editorHl.get(name) ?? name} /></FilterLink
           >{/each}{` (${edsLabel})`}
       </p>
     {/if}
@@ -133,15 +133,17 @@
       <p class="dre-bcard__ref">
         {#if editorsInRef}{`${t('in_prefix')} `}{#each editors as name, i (name + '|' + i)}{i > 0
               ? '; '
-              : ''}<FilterLink onclick={() => onAddFilter('creator_ss', name)}
+              : ''}<FilterLink field="creator_ss" value={name}
               ><Highlight value={editorHl.get(name) ?? name} /></FilterLink
             >{/each}{` (${edsLabel}), `}{/if}{#if container}<FilterLink
-            onclick={() => onAddFilter('container_ss', container)}
+            field="container_ss"
+            value={container}
             ><cite class="dre-bcard__venue"
               ><Highlight value={containerHl.get(container) ?? container} /></cite
             ></FilterLink
           >{sepAfterVenue}{/if}{#if metrics}{metrics}{sepAfterMetrics}{/if}{#if publisher}<FilterLink
-            onclick={() => onAddFilter('publisher_ss', publisher)}
+            field="publisher_ss"
+            value={publisher}
             ><Highlight value={publisherHl.get(publisher) ?? publisher} /></FilterLink
           >{/if}
       </p>
@@ -151,7 +153,8 @@
       <p class="dre-shell__line dre-bcard__languages">
         <span>{t('language_label')}</span>
         {#each languages as language, i (language + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
-            onclick={() => onAddFilter('language_ss', language)}>{language}</FilterLink
+            field="language_ss"
+            value={language}>{language}</FilterLink
           >{/each}
       </p>
     {/if}
@@ -165,14 +168,9 @@
         <ul class="dre-shell__chips dre-bcard__chips">
           {#each keywords as kw (kw)}
             <li>
-              <button
-                type="button"
-                data-print
-                class="dre-shell__chip"
-                onclick={() => onAddFilter('keyword_ss', kw)}
-              >
+              <FilterButton field="keyword_ss" value={kw} class="dre-shell__chip">
                 <Highlight value={keywordHl.get(kw) ?? kw} />
-              </button>
+              </FilterButton>
             </li>
           {/each}
         </ul>

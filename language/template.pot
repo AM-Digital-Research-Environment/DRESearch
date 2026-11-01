@@ -280,6 +280,10 @@ msgstr ""
 msgid "Exports the first {n} results of the current set."
 msgstr ""
 
+#: src/svelte/lib/i18n.ts (add_filter)
+msgid "Filter by {label}: {value}"
+msgstr ""
+
 #: src/svelte/lib/i18n.ts (export_filters_label) src/svelte/lib/i18n.ts (filters) src/svelte/lib/i18n.ts (show_filters)
 msgid "Filters"
 msgstr ""
@@ -398,7 +402,7 @@ msgstr ""
 msgid "JSON (.json)"
 msgstr ""
 
-#: config/module.config.php (research_publications)
+#: config/module.config.php (research_publications) src/svelte/lib/i18n.ts (field_venue)
 msgid "Journal / Book"
 msgstr ""
 
@@ -592,7 +596,7 @@ msgstr ""
 msgid "People search"
 msgstr ""
 
-#: config/module.config.php (research_sections)
+#: config/module.config.php (research_sections) src/svelte/lib/i18n.ts (field_phase)
 msgid "Phase"
 msgstr ""
 

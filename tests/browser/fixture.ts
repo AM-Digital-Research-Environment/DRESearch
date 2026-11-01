@@ -51,6 +51,7 @@ export const HITS: Hit[] = [
     title: 'Photograph of the Bayreuth market',
     type_s: 'Photograph',
     creator_ss: ['Madore, Frédérick'],
+    project_s: 'Lived Religion in West Africa',
     year: 1932,
     abstract: 'A street scene recorded for the research collection.',
   },

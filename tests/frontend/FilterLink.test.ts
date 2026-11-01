@@ -1,15 +1,21 @@
 import { fireEvent, render } from '@testing-library/svelte';
 import axe from 'axe-core';
 import { describe, expect, it, vi } from 'vitest';
-import PublicationCard from '../../src/svelte/components/PublicationCard.svelte';
-import type { Doc } from '../../src/svelte/lib/types';
+import ResultsList from '../../src/svelte/components/ResultsList.svelte';
+import type { ActiveFilters, CardKind, Doc } from '../../src/svelte/lib/types';
 
 /**
- * Inline "click to filter" values are spans with role="button", not <button>s,
- * so they can break across the line boxes of the sentence they sit in. A real
- * <button> is an atomic inline-block that the UA also centres, which wrecked
- * bibliographic references on narrow screens. These tests pin the behaviour a
- * <button> gave us for free — pointer, keyboard, and exposed role.
+ * Card filter values are TOGGLES: named for what pressing them does, pressed
+ * while the value is an active filter, and pressing an active one removes it.
+ *
+ * Inline values are spans with role="button", not <button>s, so they can break
+ * across the line boxes of the sentence they sit in. A real <button> is an
+ * atomic inline-block that the UA also centres, which wrecked bibliographic
+ * references on narrow screens. These tests pin the behaviour a <button> gave
+ * us for free — pointer, keyboard, exposed role and pressed state.
+ *
+ * Cards are rendered through ResultsList, which provides the surface's filters
+ * to every card (lib/cardFilters.ts).
  */
 
 const doc: Doc = {
@@ -23,57 +29,89 @@ const doc: Doc = {
   pages_s: '25–48',
 } as unknown as Doc;
 
-function renderCard() {
-  const onAddFilter = vi.fn();
-  render(PublicationCard, { doc, itemUrlBase: '/s/site/item', onAddFilter });
-  return onAddFilter;
+function renderCard(
+  card: Doc = doc,
+  filters: ActiveFilters = {},
+  cardKind: CardKind = 'publication',
+  facetLabels: Record<string, string> = { creator_ss: 'Author / Editor' },
+) {
+  const onToggleFilter = vi.fn();
+  const view = render(ResultsList, {
+    hits: [card],
+    found: 1,
+    page: 1,
+    perPage: 20,
+    itemUrlBase: '/s/site/item',
+    cardKind,
+    filters,
+    facetLabels,
+    onPageChange: vi.fn(),
+    onToggleFilter,
+  });
+  return { ...view, onToggleFilter };
 }
 
+const inline = () => [...document.querySelectorAll<HTMLElement>('span[role="button"]')];
+
 describe('inline filter values', () => {
-  it('exposes every clickable value as a button to assistive tech', () => {
+  it('exposes every clickable value as a toggle button named for its action', () => {
     renderCard();
-    const labels = [...document.querySelectorAll('[role="button"]')].map((el) =>
-      el.textContent?.trim(),
-    );
-    expect(labels).toEqual([
+    expect(inline().map((el) => el.textContent?.trim())).toEqual([
       'Madore, Frédérick',
       'Pérouse de Montclos, Marc-Antoine',
       "L'Afrique des religions à l'épreuve des chiffres et des catégorisations",
       'Maisonneuve & Larose-Hémisphères éditions',
     ]);
-    // A span only reaches the tab order if we put it there.
-    for (const el of document.querySelectorAll('[role="button"]')) {
+    expect(inline().map((el) => el.getAttribute('aria-label'))).toEqual([
+      'Filter by Author / Editor: Madore, Frédérick',
+      'Filter by Author / Editor: Pérouse de Montclos, Marc-Antoine',
+      "Filter by Journal / Book: L'Afrique des religions à l'épreuve des chiffres et des catégorisations",
+      'Filter by Publisher: Maisonneuve & Larose-Hémisphères éditions',
+    ]);
+    for (const el of inline()) {
+      // A span only reaches the tab order if we put it there.
       expect(el).toHaveAttribute('tabindex', '0');
+      expect(el).toHaveAttribute('aria-pressed', 'false');
     }
   });
 
   it('applies the filter on click', async () => {
-    const onAddFilter = renderCard();
-    const author = document.querySelectorAll('[role="button"]')[0] as HTMLElement;
-    await fireEvent.click(author);
-    expect(onAddFilter).toHaveBeenCalledWith('creator_ss', 'Madore, Frédérick');
+    const { onToggleFilter } = renderCard();
+    await fireEvent.click(inline()[0]!);
+    expect(onToggleFilter).toHaveBeenCalledWith('creator_ss', 'Madore, Frédérick');
   });
 
   it.each([['Enter'], [' ']])('applies the filter on %s', async (key) => {
-    const onAddFilter = renderCard();
-    const venue = document.querySelectorAll('[role="button"]')[2] as HTMLElement;
-    await fireEvent.keyDown(venue, { key });
-    expect(onAddFilter).toHaveBeenCalledWith(
+    const { onToggleFilter } = renderCard();
+    await fireEvent.keyDown(inline()[2]!, { key });
+    expect(onToggleFilter).toHaveBeenCalledWith(
       'container_ss',
       "L'Afrique des religions à l'épreuve des chiffres et des catégorisations",
     );
   });
 
   it('ignores other keys', async () => {
-    const onAddFilter = renderCard();
-    const author = document.querySelectorAll('[role="button"]')[0] as HTMLElement;
-    await fireEvent.keyDown(author, { key: 'a' });
-    await fireEvent.keyDown(author, { key: 'ArrowDown' });
-    expect(onAddFilter).not.toHaveBeenCalled();
+    const { onToggleFilter } = renderCard();
+    await fireEvent.keyDown(inline()[0]!, { key: 'a' });
+    await fireEvent.keyDown(inline()[0]!, { key: 'ArrowDown' });
+    expect(onToggleFilter).not.toHaveBeenCalled();
   });
 
-  it('has no detectable axe violations', async () => {
-    renderCard();
+  it('shows an active value as pressed, offering to remove it', async () => {
+    const { onToggleFilter, getByRole } = renderCard(doc, { creator_ss: ['Madore, Frédérick'] });
+    const author = getByRole('button', {
+      name: 'Remove filter Author / Editor: Madore, Frédérick',
+    });
+    expect(author).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      getByRole('button', { name: 'Filter by Author / Editor: Pérouse de Montclos, Marc-Antoine' }),
+    ).toHaveAttribute('aria-pressed', 'false');
+    await fireEvent.click(author);
+    expect(onToggleFilter).toHaveBeenCalledWith('creator_ss', 'Madore, Frédérick');
+  });
+
+  it('has no detectable axe violations, pressed or not', async () => {
+    renderCard(doc, { publisher_ss: ['Maisonneuve & Larose-Hémisphères éditions'] });
     const result = await axe.run(document.body, { rules: { region: { enabled: false } } });
     expect(result.violations).toEqual([]);
   });
@@ -82,18 +120,13 @@ describe('inline filter values', () => {
     // The template packs the separators tight against the tags so no stray
     // space ever surfaces before a comma. It survives a markup change only if
     // someone checks — hence this.
-    const onAddFilter = vi.fn();
-    render(PublicationCard, {
-      doc: {
-        ...doc,
-        editor_ss: ['Pérouse de Montclos, Marc-Antoine', 'Dasré, Aurélien'],
-        container_ss: ["L'Afrique des religions"],
-        volume_s: '4',
-        issue_s: '2',
-      } as unknown as Doc,
-      itemUrlBase: '/s/site/item',
-      onAddFilter,
-    });
+    renderCard({
+      ...doc,
+      editor_ss: ['Pérouse de Montclos, Marc-Antoine', 'Dasré, Aurélien'],
+      container_ss: ["L'Afrique des religions"],
+      volume_s: '4',
+      issue_s: '2',
+    } as unknown as Doc);
     expect(document.querySelector('.dre-bcard__ref')?.textContent).toBe(
       "In: Pérouse de Montclos, Marc-Antoine; Dasré, Aurélien (eds.), L'Afrique des religions, " +
         'vol. 4(2), pp. 25–48. Maisonneuve & Larose-Hémisphères éditions',
@@ -102,26 +135,53 @@ describe('inline filter values', () => {
   });
 });
 
+describe('card chips', () => {
+  const person = {
+    id: '42',
+    title: 'Vierke, Ulf',
+    roles_ss: ['Principal investigator', 'Author'],
+  } as unknown as Doc;
+
+  it('are real buttons that toggle their filter', async () => {
+    const { onToggleFilter, getByRole } = renderCard(person, { roles_ss: ['Author'] }, 'person', {
+      roles_ss: 'Role',
+    });
+    const pi = getByRole('button', { name: 'Filter by Role: Principal investigator' });
+    const author = getByRole('button', { name: 'Remove filter Role: Author' });
+    expect(pi.tagName).toBe('BUTTON');
+    expect(pi).toHaveAttribute('aria-pressed', 'false');
+    expect(author).toHaveAttribute('aria-pressed', 'true');
+    await fireEvent.click(author);
+    expect(onToggleFilter).toHaveBeenCalledWith('roles_ss', 'Author');
+  });
+
+  it("name a field that is not one of the corpus's facets by its generic label", () => {
+    const { getByRole } = renderCard(
+      { id: '5', title: 'Lagos', type_s: 'City' } as unknown as Doc,
+      {},
+      'term',
+      {},
+    );
+    expect(getByRole('button', { name: 'Filter by Type: City' })).toBeTruthy();
+  });
+});
+
 describe('publication languages', () => {
   it('shows every language and applies the language filter by pointer and keyboard', async () => {
-    const onAddFilter = vi.fn();
-    const { getByRole } = render(PublicationCard, {
-      doc: { ...doc, language_ss: ['English', 'French'] },
-      itemUrlBase: '/s/site/item',
-      onAddFilter,
+    const { onToggleFilter, getByRole } = renderCard({
+      ...doc,
+      language_ss: ['English', 'French'],
     });
-    await fireEvent.click(getByRole('button', { name: 'English' }));
-    expect(onAddFilter).toHaveBeenLastCalledWith('language_ss', 'English');
-    await fireEvent.keyDown(getByRole('button', { name: 'French' }), { key: 'Enter' });
-    expect(onAddFilter).toHaveBeenLastCalledWith('language_ss', 'French');
+    await fireEvent.click(getByRole('button', { name: 'Filter by Language: English' }));
+    expect(onToggleFilter).toHaveBeenLastCalledWith('language_ss', 'English');
+    await fireEvent.keyDown(getByRole('button', { name: 'Filter by Language: French' }), {
+      key: 'Enter',
+    });
+    expect(onToggleFilter).toHaveBeenLastCalledWith('language_ss', 'French');
   });
 
   it('omits the language row when metadata is absent', () => {
-    const { container } = render(PublicationCard, {
-      doc,
-      itemUrlBase: '/s/site/item',
-      onAddFilter: vi.fn(),
-    });
+    const { container } = renderCard();
     expect(container.querySelector('.dre-bcard__languages')).toBeNull();
   });
 });
@@ -137,7 +197,7 @@ describe('publication footer', () => {
   } as unknown as Doc;
 
   it('prints a page count once, without a doubled full stop', () => {
-    render(PublicationCard, { doc: monograph, itemUrlBase: '/s/site/item', onAddFilter: vi.fn() });
+    renderCard(monograph);
     expect(document.querySelector('.dre-bcard__ref')?.textContent).toBe(
       'Afrikanische Literaturen Transmedial, Transregional, Transkulturell, ' +
         'vol. 1, 370 pp. Akademische Verlagsanstalt',
@@ -145,16 +205,12 @@ describe('publication footer', () => {
   });
 
   it('links the open-access full text beside the DOI and Cite', () => {
-    const { container, getByRole } = render(PublicationCard, {
-      doc: {
-        ...monograph,
-        has_fulltext: 'Yes',
-        fulltext_url_s: 'https://epub.uni-bayreuth.de/id/eprint/9405/',
-        doi_s: 'https://doi.org/10.1007/s12115-026-01169-1',
-      },
-      itemUrlBase: '/s/site/item',
-      onAddFilter: vi.fn(),
-    });
+    const { container, getByRole } = renderCard({
+      ...monograph,
+      has_fulltext: 'Yes',
+      fulltext_url_s: 'https://epub.uni-bayreuth.de/id/eprint/9405/',
+      doi_s: 'https://doi.org/10.1007/s12115-026-01169-1',
+    } as unknown as Doc);
     expect(getByRole('link', { name: 'Full text' }).getAttribute('href')).toBe(
       'https://epub.uni-bayreuth.de/id/eprint/9405/',
     );
@@ -168,11 +224,7 @@ describe('publication footer', () => {
   });
 
   it('keeps Cite in the footer when there is no full text, DOI or keyword', () => {
-    const { container, queryByRole } = render(PublicationCard, {
-      doc: monograph,
-      itemUrlBase: '/s/site/item',
-      onAddFilter: vi.fn(),
-    });
+    const { container, queryByRole } = renderCard(monograph);
     expect(queryByRole('link', { name: 'Full text' })).toBeNull();
     expect(container.querySelector('.dre-bcard__footer .dre-cite')).not.toBeNull();
   });

@@ -36,7 +36,7 @@ describe('the results pager', () => {
       itemUrlBase: '/s/site/item',
       cardKind: 'item',
       onPageChange: vi.fn(),
-      onAddFilter: vi.fn(),
+      onToggleFilter: vi.fn(),
     });
     expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeTruthy();
     expect(screen.getByRole('button', { current: 'page' }).textContent).toBe('2');

@@ -257,7 +257,7 @@
   text-decoration-color: currentColor;
 }
 
-/* ── Chips: buttons that add a facet filter; reset the native button chrome ──
+/* ── Chips: buttons that toggle a facet filter; reset the native button chrome ─
    Chip, tag and pill share the contract's label shape: --radius-full, --text-xs
    at weight 600 (DRE-theme docs/DESIGN-INTEGRATION.md, "Form controls"). */
 
@@ -356,6 +356,29 @@
 .dre-shell__tag:focus-visible {
   outline: 2px solid var(--focus-color, #007a50);
   outline-offset: 2px;
+}
+
+/* Pressed: the chip's value is one of the active filters (FilterButton sets
+   aria-pressed; pressing it again removes the filter). A stronger tint and an
+   inset brand ring, on the chip's own --ink-strong label, so the state does not
+   rest on colour alone. Two classes' worth of specificity, so it holds over the
+   accent and role variants. Forced-colours mode drops box-shadows, so the ring
+   becomes an outline there. */
+.dre-shell__chip[aria-pressed='true'],
+.dre-shell__chip[aria-pressed='true']:hover {
+  background: color-mix(in srgb, var(--primary, #007a50) 24%, var(--surface, #fdfcf9));
+  color: var(--ink-strong, #261d15);
+  box-shadow: inset 0 0 0 2px var(--primary, #007a50);
+}
+.dre-shell__tag[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 2px var(--dre-tag-hue);
+}
+@media (forced-colors: active) {
+  .dre-shell__chip[aria-pressed='true'],
+  .dre-shell__tag[aria-pressed='true'] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
 }
 
 /* ── Footer: transcript badge + external link (podcasts, videos) ───────────── */

@@ -7,6 +7,7 @@
   import { safeExternalUrl } from '../lib/text';
   import FilterLink from './FilterLink.svelte';
   import Highlight from './Highlight.svelte';
+  import FilterButton from './FilterButton.svelte';
   import MatchedIn from './MatchedIn.svelte';
   import RecordLink from './RecordLink.svelte';
   import CardThumb from './CardThumb.svelte';
@@ -33,10 +34,9 @@
   interface Props {
     doc: Doc;
     itemUrlBase: string;
-    onAddFilter: (field: string, value: string) => void;
   }
 
-  const { doc, itemUrlBase, onAddFilter }: Props = $props();
+  const { doc, itemUrlBase }: Props = $props();
   const titleTag = cardTitleTag();
 
   const url = $derived(recordUrl(itemUrlBase, doc.id));
@@ -87,14 +87,13 @@
     {#if series}
       <ul class="dre-shell__chips">
         <li>
-          <button
-            type="button"
-            data-print
+          <FilterButton
+            field="series_s"
+            value={series}
             class="dre-shell__chip dre-shell__chip--accent"
-            onclick={() => onAddFilter('series_s', series)}
           >
             {series}
-          </button>
+          </FilterButton>
           <RecordLink {itemUrlBase} id={doc.series_id} name={series} />
         </li>
       </ul>
@@ -138,7 +137,8 @@
       <p class="dre-shell__meta">
         <span class="dre-shell__label">{t('language_label')}</span>
         {#each languages as l, i (l + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
-            onclick={() => onAddFilter('language_ss', l)}>{l}</FilterLink
+            field="language_ss"
+            value={l}>{l}</FilterLink
           >{/each}
       </p>
     {/if}
