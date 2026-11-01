@@ -404,6 +404,79 @@ final class OmekaIntegrationTest extends TestCase
         self::assertSame(1, $this->client->collections[$this->profile->collection()]->retrieve()['num_documents']);
     }
 
+    /**
+     * A block's server-rendered first page is shared between visitors through
+     * the MySQL cache, and retired by everything that could make it stale: an
+     * enqueued change (epoch and exclusion list), a different request or scope.
+     */
+    public function testTheServerRenderedFirstPageIsCachedUntilAChangeIsRecorded(): void
+    {
+        $this->item(8, 'Public second title');
+        $this->member(8, 29918);
+        $this->build()->run();
+        $proxy = $this->proxy();
+        $name = $this->profile->name();
+        self::assertSame(2, $proxy->firstPage($name, [])['found']);
+
+        // Behind the module's back (nothing recorded): the cached page stands,
+        // while a live search sees the index as it is now.
+        $this->client->collections[$this->profile->collection()]->documents['8']->delete();
+        self::assertSame(1, $proxy->search($name, [])['found']);
+        self::assertSame(2, $proxy->firstPage($name, [])['found'], 'Served from the cache.');
+        self::assertSame(1, $proxy->firstPage($name, ['per_page' => 5])['found'], 'Another request is another entry.');
+
+        // A recorded change moves the epoch and hides the queued record.
+        $this->queue->enqueue($this->registry->names(), [1]);
+        $page = $proxy->firstPage($name, []);
+        self::assertSame(0, $page['found']);
+        self::assertSame([], $page['hits']);
+
+        // An unavailable answer is never cached: once the corpus answers again,
+        // so does its first page.
+        $this->state->markDirty([$name], 'test');
+        self::assertFalse($proxy->firstPage($name, [])['available']);
+        $this->db->executeStatement('UPDATE dre_search_profile_state SET dirty = 0');
+        self::assertTrue($proxy->firstPage($name, [])['available']);
+    }
+
+    /**
+     * The federated page asks for every corpus's slider span at once: one
+     * readiness-gate query and one cache read (with its epoch read), not one
+     * of each per corpus; a corpus that fails (here: never built) answers null
+     * and keeps the set out of the cache.
+     */
+    public function testYearBoundsForSeveralCorporaCostOneGateAndOneCacheRead(): void
+    {
+        $this->property(9, 'dcterms:date');
+        $this->value(900, 1, 9, null, '2001');
+        $this->build()->run();
+        $config = require dirname(__DIR__, 2) . '/config/module.config.php';
+        $unbuilt = $config['dre_search']['profiles']['research_videos'];
+        $unbuilt['collection'] = $this->prefix . '_unbuilt_current';
+        $registry = new ProfileRegistry([
+            $this->profile->name() => $this->profile,
+            'research_videos' => SearchProfile::fromArray('research_videos', $unbuilt),
+        ]);
+        $proxy = new SearchProxy($this->provider, $registry, new BlockScopeResolver($this->db), $this->logger, [], $this->db);
+
+        $log = new \Doctrine\DBAL\Logging\DebugStack();
+        $this->db->getConfiguration()->setSQLLogger($log);
+        try {
+            $bounds = $proxy->yearBoundsFor([$this->profile->name(), 'research_videos', 'unknown']);
+        } finally {
+            $this->db->getConfiguration()->setSQLLogger(null);
+        }
+
+        self::assertSame(
+            [$this->profile->name() => ['min' => 2001, 'max' => 2001], 'research_videos' => null, 'unknown' => null],
+            $bounds,
+        );
+        $sql = array_column($log->queries, 'sql');
+        self::assertCount(1, array_filter($sql, static fn(string $q): bool => str_contains($q, 'dre_search_profile_state')), 'One gate query.');
+        self::assertCount(2, array_filter($sql, static fn(string $q): bool => str_starts_with($q, 'SELECT payload FROM dre_search_cache')), 'One epoch and one cache read.');
+        self::assertSame(['min' => 2001, 'max' => 2001], $proxy->yearBounds($this->profile->name()));
+    }
+
     public function testHealthReportsCorpusStatesWithoutRecordIds(): void
     {
         $this->item(8, 'Second publication');

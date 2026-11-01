@@ -9,9 +9,9 @@ use DRESearch\Search\ResourceScopeResolver;
 use DRESearch\Search\SearchProxy;
 use DRESearch\Settings\ProfileRegistry;
 use DRESearch\Settings\SearchProfile;
-use DRESearch\Settings\SortOptions;
 use DRESearch\Site\BlockLayout\SearchBlockSettings;
 use DRESearch\View\BundleAssets;
+use DRESearch\View\SurfaceBootstrap;
 use Laminas\View\Renderer\PhpRenderer;
 use Omeka\Api\Manager as ApiManager;
 use Omeka\Api\Representation\AbstractResourceEntityRepresentation;
@@ -100,7 +100,9 @@ final class ProjectRecords implements ResourcePageBlockLayoutInterface
         // one value.
         $facets = array_values(array_diff($settings->facets(), [ResourceScopeResolver::FIELD]));
         try {
-            $initial = $this->proxy->search($profile->name(), [
+            // Shared through the cache like a page block's first page; the
+            // project's scope (rebuilt from the item) is part of its key.
+            $initial = $this->proxy->firstPage($profile->name(), [
                 'q' => '',
                 'page' => 1,
                 'per_page' => $settings->perPage(),
@@ -142,41 +144,15 @@ final class ProjectRecords implements ResourcePageBlockLayoutInterface
         array $facets,
         array $initial,
     ): array {
-        $t = fn(string $s): string => (string) $view->translate($s);
-        $facetLabels = [];
-        foreach ($facets as $field) {
-            $facetLabels[$field] = $t($profile->facetLabel($field));
-        }
-        $showYear = $settings->showYear();
-        $siteSlug = $view->currentSite()?->slug() ?? '';
-        $bootstrap = [
-            'block_id' => null,
-            'scope_item' => $itemId,
-            'profile' => $profile->name(),
-            'card_kind' => $profile->kind(),
-            'search_placeholder' => $profile->placeholder() !== '' ? $t($profile->placeholder()) : null,
-            'date_mode' => $profile->dateMode(),
-            'show_year' => $showYear,
-            'year_bounds' => $showYear ? $this->proxy->yearBounds($profile->name()) : null,
-            'facets' => $facets,
-            'facet_labels' => $facetLabels,
-            'default_sort' => $settings->defaultSort(),
-            'sort_options' => SortOptions::forProfile($profile, $t),
-            'per_page' => $settings->perPage(),
-            'item_url_base' => $view->basePath('/s/' . $siteSlug . '/item'),
-            'endpoints' => [
-                'facet' => $view->basePath('/dre-search/api/facet'),
-                'search' => $view->basePath('/dre-search/api/search'),
-                'export' => $view->basePath('/dre-search/api/export'),
-                'suggest' => $view->basePath('/dre-search/api/suggest'),
-                'map' => $view->basePath('/dre-search/api/map'),
-            ],
-            'initial_response' => $initial,
-        ];
-        if ($this->proxy->popularEnabled()) {
-            $bootstrap['endpoints']['popular'] = $view->basePath('/dre-search/api/popular');
-        }
-        return $bootstrap;
+        $surface = SurfaceBootstrap::forView($view, $this->proxy->popularEnabled());
+        $corpus = $surface->corpus(
+            $profile,
+            $settings,
+            $facets,
+            $settings->showYear() ? $this->proxy->yearBounds($profile->name()) : null,
+        );
+        return $surface->embedded($corpus, $view->currentSite()?->slug() ?? '', null, $itemId)
+            + ['initial_response' => $initial];
     }
 
     /**

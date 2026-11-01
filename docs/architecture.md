@@ -126,10 +126,20 @@ endpoint is a GET, and Typesense rejects query strings over 4,000 bytes, which a
 long non-Latin query or an exclusion list exceeds. Queries recorded for analytics
 keep the GET endpoint while they fit.
 
-Count and year caches live in MySQL across PHP workers. Keys include connection
-identity and profile configuration. Epoch changes on enqueue, replay and
-promotion invalidate existing entries and prevent late fills from reviving stale
-results. Cache failures degrade to uncached queries.
+Count, year and first-page caches live in MySQL across PHP workers. Keys include
+connection identity and profile configuration. Epoch changes on enqueue, replay
+and promotion invalidate existing entries and prevent late fills from reviving
+stale results. Cache failures degrade to uncached queries.
+
+A page block, and the Project records block, render their first page on the
+server so the block paints at once. That page is cached for two minutes, keyed
+also by the resolved saved scope and the readiness gate's exclusion list, so a
+queued or applied change misses it; only an available answer is stored. A block
+renders no first page when the URL already carries its own state
+(`b{id}.q`, `b{id}.f.*`, a sort, a year window or a later page): the client
+fetches that state instead. The federated page reads every corpus's year span
+in one request with one gate and one cache read, and the header search bar is
+built from the connection settings alone, without the search proxy.
 
 ## Federated, map, and analytics extensions
 

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace DRESearch\View\Helper;
 
-use DRESearch\Search\SearchProxy;
+use DRESearch\View\SurfaceBootstrap;
 
 /**
  * Renders the theme header's federated search bar: a mount point + a compact
@@ -19,12 +19,16 @@ use DRESearch\Search\SearchProxy;
  * box still works and still navigates to the results page (which shows its own
  * "unavailable" notice); only the live suggestions go quiet.
  *
+ * It renders on every page of the site, so it is given only what it reads —
+ * whether Typesense is configured — rather than the search proxy and the
+ * profile registry behind it ({@see \DRESearch\Service\View\Helper\SearchBarFactory}).
+ *
  * @see view/common/block-layout/dre-search-block.phtml for the sibling mount contract
  * @see src/svelte/main.ts (the [data-dre-search-bar] mount)
  */
 class SearchBar extends AbstractDreSearchHelper
 {
-    public function __construct(private readonly SearchProxy $proxy)
+    public function __construct(private readonly bool $available)
     {
     }
 
@@ -44,17 +48,16 @@ class SearchBar extends AbstractDreSearchHelper
 
         $resultsUrl = $view->url('site/dre-search', ['site-slug' => $slug]);
 
+        $surface = SurfaceBootstrap::forView($view);
         $bootstrap = [
             'variant'       => 'bar',
-            'available'     => $this->proxy->isAvailable(),
+            'available'     => $this->available,
             // Client builds suggestion links as `${item_url_base}/${id}`.
-            'item_url_base' => $view->basePath('/s/' . $slug . '/item'),
+            'item_url_base' => $surface->itemUrlBase($slug),
             'results_url'   => $resultsUrl,
             'placeholder'   => (string) $view->translate('Search…'), // @translate
             'collapsible'   => $collapsible,
-            'endpoints'     => [
-                'suggest_all' => $view->basePath('/dre-search/api/suggest-all'),
-            ],
+            'endpoints'     => $surface->endpoints(['suggest_all']),
         ];
 
         $escId      = $view->escapeHtmlAttr($id);

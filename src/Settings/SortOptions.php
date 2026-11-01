@@ -8,10 +8,9 @@ namespace DRESearch\Settings;
  * Builds the ordered sort choices a corpus offers, as the client's
  * `[{value,label}]` shape with labels already translated.
  *
- * The built-in label map mirrors {@see \DRESearch\Site\BlockLayout\SearchBlock}'s
- * own SORT_OPTIONS — the page blocks predate this helper and still build their
- * sort list inline. Keep the two in sync; new surfaces (the federated results
- * page) use this so the federated and per-block sort dropdowns read identically.
+ * Every search surface — page blocks, the project records and the federated
+ * tabs ({@see \DRESearch\View\SurfaceBootstrap}), and the block form's default
+ * sort — reads its choices here, so their sort dropdowns read identically.
  */
 final class SortOptions
 {

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace DRESearch\Site\BlockLayout;
 
+use DRESearch\Search\Exception\RequestValidationException;
 use DRESearch\Search\FilterExpression;
 use DRESearch\Search\SearchProxy;
+use DRESearch\Search\SearchStateQuery;
 use DRESearch\Search\QueryBuilder;
 use DRESearch\Security\HtmlSanitizer;
 use DRESearch\Settings\BlockProfiles;
@@ -13,6 +15,7 @@ use DRESearch\Settings\ProfileRegistry;
 use DRESearch\Settings\SearchProfile;
 use DRESearch\Settings\SortOptions;
 use DRESearch\View\BundleAssets;
+use DRESearch\View\SurfaceBootstrap;
 use Laminas\View\Renderer\PhpRenderer;
 use Omeka\Api\Representation\SitePageBlockRepresentation;
 use Omeka\Api\Representation\SitePageRepresentation;
@@ -43,23 +46,35 @@ use Omeka\Stdlib\ErrorStore;
  *   }
  *
  * prepareRender() injects the Svelte bundle once per page; render() builds a
- * bootstrap blob (including the profile name + card kind so the client renders
- * the right card) and server-side renders the first page so the block paints
- * immediately. Themes may supply their own markup through Omeka's block
- * templates (`common/block-template/<name>`, declared under `block_templates`
- * in the theme config); the bootstrap and mount contract stay the same.
+ * bootstrap blob ({@see SurfaceBootstrap}: the profile name + card kind so the
+ * client renders the right card) and server-side renders the first page so the
+ * block paints immediately — from the shared cache when another visitor just
+ * did ({@see SearchProxy::firstPage()}), and not at all when the URL already
+ * carries this block's own search state, which the client would fetch instead.
+ * Themes may supply their own markup through Omeka's block templates
+ * (`common/block-template/<name>`, declared under `block_templates` in the
+ * theme config); the bootstrap and mount contract stay the same.
  */
 final class SearchBlock extends AbstractBlockLayout implements TemplateableBlockLayoutInterface
 {
     private readonly string $profileName;
     private readonly string $label;
+    /** @var \Closure():string */
+    private readonly \Closure $queryString;
 
-    /** @param string $layout a registered layout name ({@see BlockProfiles::LAYOUTS}) */
+    /**
+     * @param string $layout a registered layout name ({@see BlockProfiles::LAYOUTS})
+     * @param (\Closure():string)|null $queryString the request's raw query string
+     *        ({@see SearchStateQuery}); defaults to the web request's, and is
+     *        empty outside one (a job rendering a page)
+     */
     public function __construct(
         private readonly SearchProxy $proxy,
         private readonly ProfileRegistry $registry,
         string $layout,
+        ?\Closure $queryString = null,
     ) {
+        $this->queryString = $queryString ?? static fn(): string => (string) ($_SERVER['QUERY_STRING'] ?? '');
         $profile = BlockProfiles::profileFor($layout);
         $label = BlockProfiles::labelFor($layout);
         if ($profile === null || $label === null) {
@@ -245,84 +260,52 @@ final class SearchBlock extends AbstractBlockLayout implements TemplateableBlock
         return trim((string) ($data['title'] ?? '') . ' ' . strip_tags((string) ($data['intro_html'] ?? '')));
     }
 
-    /** @param string|null $templateViewScript a theme's block template, or the module's */
+    /**
+     * A block whose corpus is no longer configured renders nothing: there is
+     * no search for it to run.
+     *
+     * @param string|null $templateViewScript a theme's block template, or the module's
+     */
     public function render(
         PhpRenderer $view,
         SitePageBlockRepresentation $block,
         $templateViewScript = 'common/block-layout/dre-search-block'
     ) {
         $templateViewScript = (string) ($templateViewScript ?? 'common/block-layout/dre-search-block');
-        $data = $block->data();
         $profile = $this->profile();
+        if ($profile === null) {
+            return '';
+        }
+        $data = $block->data();
+        $blockId = (int) $block->id();
         $settings = new SearchBlockSettings($data, $profile);
+        $surface = SurfaceBootstrap::forView($view, $this->proxy->popularEnabled());
+        $corpus = $surface->corpus(
+            $profile,
+            $settings,
+            null,
+            $settings->showYear() ? $this->proxy->yearBounds($profile->name()) : null,
+        );
+        $bootstrap = $surface->embedded($corpus, $block->page()->site()->slug(), $blockId);
 
-        $facets = $settings->facets();
-        $showYear = $settings->showYear();
-
-        // Sort options for this corpus (drops year sorts on date-less corpora,
-        // adds the count sort where configured). default_sort is validated against
-        // them so a stale/invalid saved value can't reach the client.
-        $t           = fn(string $s): string => (string) $view->translate($s);
-        $defaultSort = $settings->defaultSort();
-        $sortOptions = $profile ? SortOptions::forProfile($profile, $t) : [];
-        $perPage = $settings->perPage();
-
-        $facetLabels = [];
-        foreach ($facets as $field) {
-            $facetLabels[$field] = (string) $view->translate($profile?->facetLabel($field) ?? $field);
-        }
-
-        $profileName = $profile ? $profile->name() : '';
-        $siteSlug = $block->page()->site()->slug();
-
-        // Corpus-specific search-box hint (e.g. "Search genres…"), so corpora that
-        // share a card kind can still read distinctly. Null → the client uses its
-        // kind-derived default.
-        $placeholder = $profile && $profile->placeholder() !== ''
-            ? (string) $view->translate($profile->placeholder())
-            : null;
-
-        $bootstrap = [
-            'block_id'      => (int) $block->id(),
-            'profile'       => $profileName,
-            'card_kind'     => $profile ? $profile->kind() : 'item',
-            'search_placeholder' => $placeholder,
-            'date_mode'     => $profile ? $profile->dateMode() : 'single',
-            'show_year'     => $showYear,
-            'year_bounds'   => $showYear ? $this->proxy->yearBounds($profileName) : null,
-            'facets'        => $facets,
-            'facet_labels'  => $facetLabels,
-            'default_sort'  => $defaultSort,
-            'sort_options'  => $sortOptions,
-            'per_page'      => $perPage,
-            // Client builds result links as `${item_url_base}/${id}`.
-            'item_url_base' => $view->basePath('/s/' . $siteSlug . '/item'),
-            'endpoints'     => [
-                'facet' => $view->basePath('/dre-search/api/facet'),
-                'search'  => $view->basePath('/dre-search/api/search'),
-                'export'  => $view->basePath('/dre-search/api/export'),
-                'suggest' => $view->basePath('/dre-search/api/suggest'),
-                'map'     => $view->basePath('/dre-search/api/map'),
-            ],
-        ];
-        if ($this->proxy->popularEnabled()) {
-            $bootstrap['endpoints']['popular'] = $view->basePath('/dre-search/api/popular');
-        }
-
-        // Server-render the first (browse) page so the block paints immediately.
-        // A block whose saved scope is invalid (e.g. a locked filter set through
-        // the REST API) must render its "unavailable" state, not 500 the page.
-        try {
-            $bootstrap['initial_response'] = $this->proxy->search($profileName, [
-                'q'             => '',
-                'page'          => 1,
-                'per_page'      => $perPage,
-                'sort'          => $defaultSort,
-                'facets'        => $facets,
-                'block_id'      => (int) $block->id(),
-            ]);
-        } catch (\DRESearch\Search\Exception\RequestValidationException) {
-            $bootstrap['initial_response'] = ['available' => false, 'found' => 0, 'page' => 1, 'hits' => [], 'facets' => []];
+        // Server-render the first (browse) page so the block paints immediately,
+        // unless the URL already carries this block's own state (`b{id}.…`): the
+        // client would discard the default page and fetch the one asked for.
+        if (!SearchStateQuery::carriesState(($this->queryString)(), SearchStateQuery::blockPrefix($blockId))) {
+            // A block whose saved scope is invalid (e.g. a locked filter set
+            // through the REST API) renders its "unavailable" state, not a 500.
+            try {
+                $bootstrap['initial_response'] = $this->proxy->firstPage($profile->name(), [
+                    'q'        => '',
+                    'page'     => 1,
+                    'per_page' => $settings->perPage(),
+                    'sort'     => $settings->defaultSort(),
+                    'facets'   => $corpus['facets'],
+                    'block_id' => $blockId,
+                ]);
+            } catch (RequestValidationException) {
+                $bootstrap['initial_response'] = ['available' => false, 'found' => 0, 'page' => 1, 'hits' => [], 'facets' => []];
+            }
         }
 
         return $view->partial($templateViewScript, [
@@ -330,7 +313,7 @@ final class SearchBlock extends AbstractBlockLayout implements TemplateableBlock
             'data'       => $data,
             'bootstrap'  => $bootstrap,
             'title'      => (string) ($data['title'] ?? ''),
-            'corpus_label' => $profile ? (string) $view->translate($profile->label()) : '',
+            'corpus_label' => (string) $view->translate($profile->label()),
             'intro_html' => HtmlSanitizer::sanitize((string) ($data['intro_html'] ?? '')),
         ]);
     }

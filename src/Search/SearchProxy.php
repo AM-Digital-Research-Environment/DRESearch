@@ -30,6 +30,14 @@ final class SearchProxy
     /** Seconds to stop calling an unreachable Typesense after a connection failure. */
     private const BREAKER_SECONDS = 30;
 
+    /**
+     * Lifetime of a cached server-rendered first page ({@see firstPage()}).
+     * The epoch and the exclusion list already retire it on every recorded
+     * change; this bounds what they cannot see (a direct SQL edit, an alias
+     * moved by hand) while collapsing the views of a busy page.
+     */
+    private const FIRST_PAGE_SECONDS = 120;
+
     private readonly ?SearchCache $cache;
     private readonly ?PopularModeration $moderation;
     private readonly ReadinessGate $gate;
@@ -77,6 +85,46 @@ final class SearchProxy
         $this->gate->reset();
         [$profile, $req, $serverFilter] = $this->prepare($profileName, $req, 'search');
         return $this->searchPrepared($profile, $req, $serverFilter, $requestId);
+    }
+
+    /**
+     * {@see search()} for the first page a surface renders on the server (a
+     * page block, the project records), shared between visitors through the
+     * MySQL cache: every visitor of a page asks for the same page, which only
+     * ever holds public documents.
+     *
+     * The key covers everything that shapes the answer: the profile, the
+     * validated request, the resolved saved scope (so an edited locked filter
+     * misses), the connection, the cache epoch, and the readiness gate's
+     * exclusion list. The epoch moves when a change is enqueued, when a drain
+     * applies one and when a rebuild is promoted, and the exclusion list names
+     * what is queued in between, so a fill is served only while the queue and
+     * the index look as they did when it was made. (The epoch is read before
+     * the gate, as for the popular searches, so a change recorded meanwhile
+     * moves it past this fill.) Only an available answer is stored: caching an
+     * outage would pin it.
+     *
+     * @param array<string,mixed> $req
+     * @return array<string,mixed>
+     */
+    public function firstPage(string $profileName, array $req, ?string $requestId = null): array
+    {
+        $this->gate->reset();
+        [$profile, $req, $serverFilter] = $this->prepare($profileName, $req, 'search');
+        $base = $this->cacheKey('first-page:' . serialize([$profile, $req, $serverFilter]));
+        $state = $this->state($profile);
+        $key = $base !== null && $state['ready'] && $this->client() !== null
+            ? hash('sha256', $base . ':' . implode(',', $state['exclude']))
+            : null;
+        $cached = $this->cacheGet($key);
+        if (($cached['available'] ?? false) === true) {
+            return $cached;
+        }
+        $page = $this->searchPrepared($profile, $req, $serverFilter, $requestId);
+        if (($page['available'] ?? false) === true) {
+            $this->cachePut($key, $page, self::FIRST_PAGE_SECONDS);
+        }
+        return $page;
     }
 
     /**
@@ -582,28 +630,72 @@ final class SearchProxy
      */
     public function yearBounds(string $profileName): ?array
     {
+        return $this->yearBoundsFor([$profileName])[$profileName] ?? null;
+    }
+
+    /**
+     * {@see yearBounds()} for several corpora at once, as the federated page
+     * needs them for every tab: one readiness-gate answer, one cache read (and
+     * epoch read) and, on a miss, one `multi_search`, instead of one of each
+     * per corpus. A corpus without a year facet, paused, unknown, or whose
+     * entry failed maps to null; the set is cached only when every entry
+     * answered.
+     *
+     * @param list<string> $profileNames
+     * @return array<string,array{min:int,max:int}|null> keyed by every name asked for
+     */
+    public function yearBoundsFor(array $profileNames): array
+    {
         $this->gate->reset();
-        $profile = $this->registry->get($profileName);
+        $bounds = array_fill_keys($profileNames, null);
+        $profiles = [];
+        foreach ($profileNames as $name) {
+            $profile = $this->registry->get($name);
+            if ($profile !== null && $profile->name() === $name && $profile->hasYearFacet()) {
+                $profiles[] = $profile;
+            }
+        }
         $client = $this->client();
-        if ($profile === null || $client === null || !$profile->hasYearFacet() || !$this->state($profile)['ready']) {
-            return null;
+        $profiles = $profiles === [] || $client === null ? [] : $this->readyProfiles($profiles);
+        if ($client === null || $profiles === []) {
+            return $bounds;
         }
-        $cacheKey = $this->cacheKey('years:' . serialize($profile));
+        $cacheKey = $this->cacheKey('years:' . serialize($profiles));
         $cached = $this->cacheGet($cacheKey);
-        if ($cached !== null && is_int($cached['min'] ?? null) && is_int($cached['max'] ?? null)) {
-            return ['min' => $cached['min'], 'max' => $cached['max']];
+        if ($cached !== null) {
+            foreach ($profiles as $profile) {
+                $span = $cached[$profile->name()] ?? null;
+                $bounds[$profile->name()] = is_array($span) && is_int($span['min'] ?? null) && is_int($span['max'] ?? null)
+                    ? ['min' => $span['min'], 'max' => $span['max']]
+                    : null;
+            }
+            return $bounds;
         }
+        $searches = array_map(
+            static fn(SearchProfile $p): array => (new QueryBuilder($p))->yearStats() + ['collection' => $p->collection()],
+            $profiles,
+        );
         try {
-            $result = SearchExecutor::single($client, $profile->collection(), (new QueryBuilder($profile))->yearStats());
+            $response = SearchExecutor::multi($client, ['searches' => $searches]);
         } catch (\Throwable $e) {
             $this->noteFailure($e);
-            return null;
+            return $bounds;
         }
-        $bounds = ResponseNormalizer::yearBounds($result, $profile);
-        if ($bounds !== null) {
-            $this->cachePut($cacheKey, $bounds, 300);
+        $complete = true;
+        $found = [];
+        foreach ($profiles as $i => $profile) {
+            $result = $response['results'][$i] ?? null;
+            if (!is_array($result) || isset($result['error'])) {
+                // e.g. a corpus never built: no bounds, and nothing cached.
+                $complete = false;
+                continue;
+            }
+            $found[$profile->name()] = ResponseNormalizer::yearBounds($result, $profile);
         }
-        return $bounds;
+        if ($complete) {
+            $this->cachePut($cacheKey, $found, 300);
+        }
+        return array_replace($bounds, $found);
     }
 
     public function facet(string $profileName, array $input, ?string $requestId = null): array

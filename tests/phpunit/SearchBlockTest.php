@@ -120,6 +120,32 @@ final class SearchBlockTest extends TestCase
         }
     }
 
+    /**
+     * A link into the block's own state (a shared search, a filter chip, page
+     * 2) makes the client fetch that state and discard the default first page,
+     * so the server does not render one. Another block's state, or the host
+     * page's own parameters, leave this block's first page in place.
+     */
+    public function testTheFirstPageIsSkippedWhenTheUrlCarriesTheBlocksOwnState(): void
+    {
+        $registry = $this->registry();
+        $render = function (string $query) use ($registry): array {
+            $proxy = $this->services($registry, 'dreSearch')->get(SearchProxy::class);
+            self::assertInstanceOf(SearchProxy::class, $proxy);
+            $layout = new SearchBlock($proxy, $registry, 'dreSearch', static fn(): string => $query);
+            $html = (string) $layout->render($this->view(), $this->block(42, []));
+            preg_match('#<script type="application/json" id="dre-search-state-42">(.*?)</script>#s', $html, $match);
+            $bootstrap = json_decode($match[1] ?? '', true);
+            self::assertIsArray($bootstrap);
+            return $bootstrap;
+        };
+
+        self::assertArrayNotHasKey('initial_response', $render('b42.f.type_s=Text&b42.page=2'));
+        self::assertArrayNotHasKey('initial_response', $render('b42.q=kenya'));
+        self::assertArrayHasKey('initial_response', $render('b7.q=kenya&page=3'));
+        self::assertArrayHasKey('initial_response', $render('b42.view=gallery'));
+    }
+
     public function testAnUnknownLayoutNameIsRefused(): void
     {
         $this->expectException(\InvalidArgumentException::class);
@@ -133,17 +159,26 @@ final class SearchBlockTest extends TestCase
     }
 
     /**
-     * The factory as Omeka's block-layout manager calls it, over a database
-     * holding block 42 saved under each layout name in turn.
+     * The factory as Omeka's block-layout manager calls it, each layout over a
+     * database holding block 42 saved under that layout's name.
      *
      * @return \Closure(string):SearchBlock
      */
     private function factory(ProfileRegistry $registry): \Closure
     {
+        return function (string $name) use ($registry): SearchBlock {
+            return (new SearchBlockFactory())($this->services($registry, $name), $name);
+        };
+    }
+
+    /** The module services a block needs, over a database holding block 42 saved as `$layout`. */
+    private function services(ProfileRegistry $registry, string $layout): ServiceManager
+    {
         $logger = new \Laminas\Log\Logger();
         $logger->addWriter(new \Laminas\Log\Writer\Noop());
         $db = \Doctrine\DBAL\DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
         $db->executeStatement('CREATE TABLE site_page_block (id INTEGER PRIMARY KEY, layout TEXT, data TEXT)');
+        $db->executeStatement("INSERT INTO site_page_block (id, layout, data) VALUES (42, ?, '{}')", [$layout]);
         $services = new ServiceManager();
         $services->setService(ProfileRegistry::class, $registry);
         $services->setService(SearchProxy::class, new SearchProxy(
@@ -152,11 +187,7 @@ final class SearchBlockTest extends TestCase
             new BlockScopeResolver($db),
             $logger,
         ));
-        return static function (string $name) use ($services, $db): SearchBlock {
-            $db->executeStatement('DELETE FROM site_page_block');
-            $db->executeStatement("INSERT INTO site_page_block (id, layout, data) VALUES (42, ?, '{}')", [$name]);
-            return (new SearchBlockFactory())($services, $name);
-        };
+        return $services;
     }
 
     /** @param array<string,mixed> $data */

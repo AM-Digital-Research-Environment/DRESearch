@@ -7,8 +7,9 @@ namespace DRESearch\View\Helper;
 use DRESearch\Search\SearchProxy;
 use DRESearch\Settings\ProfileRegistry;
 use DRESearch\Settings\SearchProfile;
-use DRESearch\Settings\SortOptions;
+use DRESearch\Site\BlockLayout\SearchBlockSettings;
 use DRESearch\View\BundleAssets;
+use DRESearch\View\SurfaceBootstrap;
 
 /**
  * Renders the federated results page surface: a mount point + a bootstrap that
@@ -18,15 +19,16 @@ use DRESearch\View\BundleAssets;
  *
  * Deliberately inlines only profile *metadata* — no per-profile first page of
  * results — so the bootstrap stays small; the active corpus is fetched on mount
- * via the search-all endpoint.
+ * via the search-all endpoint. Each tab is a block's bootstrap with no saved
+ * data (all facets, the corpus default sort, the standard page size;
+ * {@see SurfaceBootstrap}), and the year sliders' spans come from one request
+ * for every corpus ({@see SearchProxy::yearBoundsFor()}).
  *
  * @see src/svelte/components/FederatedApp.svelte
  * @see src/svelte/main.ts (the [data-dre-federated-root] mount)
  */
 class FederatedSearch extends AbstractDreSearchHelper
 {
-    private const PER_PAGE_DEFAULT = 20;
-
     public function __construct(
         private readonly SearchProxy $proxy,
         private readonly ProfileRegistry $registry,
@@ -42,31 +44,28 @@ class FederatedSearch extends AbstractDreSearchHelper
         }
         $this->injectBundle(BundleAssets::FEDERATED);
 
-        $t = fn(string $s): string => (string) $view->translate($s);
+        $surface = SurfaceBootstrap::forView($view);
+        $withYears = array_values(array_map(
+            static fn(SearchProfile $profile): string => $profile->name(),
+            array_filter($this->registry->all(), static fn(SearchProfile $profile): bool => $profile->hasYearFacet()),
+        ));
+        $years = $withYears === [] ? [] : $this->proxy->yearBoundsFor($withYears);
 
         $profiles = [];
         foreach ($this->registry->all() as $profile) {
-            $profiles[] = $this->profileMeta($profile, $t);
+            $corpus = $surface->corpus($profile, new SearchBlockSettings([], $profile), null, $years[$profile->name()] ?? null);
+            $profiles[] = $surface->federatedTab($profile, $corpus);
         }
         $default = $this->registry->default();
 
         $bootstrap = [
             'variant'         => 'federated',
             'available'       => $this->proxy->isAvailable(),
-            'item_url_base'   => $view->basePath('/s/' . $slug . '/item'),
+            'item_url_base'   => $surface->itemUrlBase($slug),
             'initial_query'   => $initialQuery,
             'default_profile' => $default !== null ? $default->name() : '',
             'profiles'        => $profiles,
-            'endpoints'       => [
-                'facet' => $view->basePath('/dre-search/api/facet'),
-                'search'      => $view->basePath('/dre-search/api/search'),
-                'export'      => $view->basePath('/dre-search/api/export'),
-                'search_all'  => $view->basePath('/dre-search/api/search-all'),
-                'union'       => $view->basePath('/dre-search/api/union'),
-                'map'         => $view->basePath('/dre-search/api/map'),
-                'suggest'     => $view->basePath('/dre-search/api/suggest'),
-                'suggest_all' => $view->basePath('/dre-search/api/suggest-all'),
-            ],
+            'endpoints'       => $surface->endpoints(['facet', 'search', 'export', 'search_all', 'union', 'map', 'suggest', 'suggest_all']),
         ];
 
         $json = $view->dreBootstrapJson($bootstrap);
@@ -82,49 +81,5 @@ class FederatedSearch extends AbstractDreSearchHelper
         </div>
         <script type="application/json" id="dre-federated-state-main">{$json}</script>
         HTML;
-    }
-
-    /**
-     * Per-corpus metadata for one tab. Mirrors the per-profile portion of
-     * {@see \DRESearch\Site\BlockLayout\SearchBlock::render()} but with
-     * defaults (no saved block data): all facets shown, the corpus default sort,
-     * the standard page size.
-     *
-     * @param callable(string):string $t
-     * @return array<string,mixed>
-     */
-    private function profileMeta(SearchProfile $profile, callable $t): array
-    {
-        $name = $profile->name();
-
-        $facets = $profile->fieldNames();
-        $facetLabels = [];
-        foreach ($facets as $field) {
-            $facetLabels[$field] = $t($profile->facetLabel($field));
-        }
-
-        $showYear = $profile->hasYearFacet();
-
-        // Validate the configured default against the sorts this corpus offers.
-        $sortValues = $profile->sortOptionValues();
-        $defaultSort = $profile->defaultSort();
-        if (!in_array($defaultSort, $sortValues, true)) {
-            $defaultSort = $sortValues[0] ?? 'relevance';
-        }
-
-        return [
-            'name'         => $name,
-            'label'        => $t($profile->label()),
-            'kind'         => $profile->kind(),
-            'date_mode'    => $profile->dateMode(),
-            'show_year'    => $showYear,
-            'year_bounds'  => $showYear ? $this->proxy->yearBounds($name) : null,
-            'facets'       => $facets,
-            'facet_labels' => $facetLabels,
-            'default_sort' => $defaultSort,
-            'sort_options' => SortOptions::forProfile($profile, $t),
-            'per_page'     => self::PER_PAGE_DEFAULT,
-            'placeholder'  => $profile->placeholder() !== '' ? $t($profile->placeholder()) : null,
-        ];
     }
 }
