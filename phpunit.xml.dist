@@ -4,6 +4,8 @@
          bootstrap="tests/bootstrap.php"
          colors="true"
          cacheDirectory=".phpunit.cache"
+         executionOrder="random"
+         failOnRisky="true"
          failOnDeprecation="true"
          failOnPhpunitDeprecation="true"
          failOnWarning="true"
@@ -11,6 +13,12 @@
          displayDetailsOnTestsThatTriggerDeprecations="true"
          displayDetailsOnTestsThatTriggerWarnings="true"
          displayDetailsOnTestsThatTriggerNotices="true">
+    <!-- Random order: a test that passes only after another one (shared
+         static state, a leftover setting, a Typesense collection someone
+         else created) fails here instead of hiding until the suite is
+         reordered. The run prints its seed; pass it back with PHPUnit's
+         random-order-seed option to repeat an order. A risky test (one that
+         asserts nothing, for instance) fails too. -->
     <testsuites>
         <testsuite name="DRESearch">
             <directory>tests/phpunit</directory>
