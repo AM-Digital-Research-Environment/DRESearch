@@ -9,6 +9,8 @@ GET or POST parameters.
   `facet_query`, under the current query and the other filters.
 - `POST /dre-search/api/export`: complete citation fields up to 1,000 hits.
 - `POST /dre-search/api/map`: up to 1,000 geocoded hits of a location profile.
+  Export and map are all or nothing: when a page of the pull comes back short,
+  they answer `503` rather than a partial file or map.
 - `GET|POST /dre-search/api/suggest`: one profile's title suggestions.
 - `GET|POST /dre-search/api/suggest-all`: grouped suggestions across profiles.
 - `GET /dre-search/api/popular?profile=…`: up to `popular_searches.limit`
@@ -20,6 +22,13 @@ GET or POST parameters.
   per-corpus counts.
 - `POST /dre-search/api/union`: one merged result stream across the configured
   `federated.union_profiles`.
+- `GET /dre-search/api/health`: the monitoring probe, `200` while Typesense is
+  reachable and `503` otherwise (see the
+  [operations runbook](operations.md#monitoring-and-the-command-line)).
+
+The server runs the collection searches behind these endpoints with a
+search-only Typesense key ([Keys](architecture.md#keys)); no key reaches the
+client.
 
 Requests are strict: unknown keys, profiles/fields, unsupported sorts, oversized
 bodies/queries, invalid UTF-8 and out-of-range paging are rejected. Filter

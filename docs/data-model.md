@@ -15,6 +15,11 @@ mode, and facets. The Typesense field names (`type_s`, `institution_ss`,
 `year_start`, …) are the stable interface; the Typesense schema, the SQL term
 list, and each block's facet picker all derive from the profile config.
 
+Every facet and card label is read the same way: a linked resource's title,
+else the literal value, trimmed, with duplicates dropped in source order. A
+value that is only whitespace is no label (an index built before this rule may
+still hold such values until its corpus is reindexed).
+
 ## The corpora at a glance
 
 Each corpus is one profile: its own Typesense collection, published under a
@@ -126,7 +131,7 @@ into publications — their links differ (`marcrel:hst`/`spk` contributors,
 
 The episode's own media is the audio file, so the card thumbnail is resolved by
 **hopping** `dcterms:isPartOf` to the series item and using _its_ first thumbnailed
-media (`thumbnail_property` → `Reindexer::loadThumbnailsVia()`). Sorts: **Episode
+media (`thumbnail_property` → `OmekaSourceRepository::loadThumbnailsVia()`). Sorts: **Episode
 number** (default) is a config-defined numeric sort (`sort_fields` — the generic
 form of the term corpora's count sort) over the sortable `episode` field; the date
 sorts use `year`. There is **no year slider** (the corpus is small and ordered by

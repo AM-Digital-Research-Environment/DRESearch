@@ -20,6 +20,21 @@ computes the value. `index: false` is for payload-only fields and cannot be
 faceted, sorted, or search-only. `search_only: true` indexes large text such as a
 transcript but excludes it from returned documents.
 
+The line under an autocomplete suggestion's title comes from the profile's
+kind (`SearchProfile::SUBTITLE_DEFAULTS`: a project's section and years, a
+publication's first author, else editor, else type, and its year, …). A profile
+may set its own with `suggest_subtitle`: a list of parts, joined with "·", each
+a field or `a|b` alternatives (the first with a value wins; a list field gives
+its first value). The token `year_range` gives a range corpus's years
+(`year_start`, or `year_start–year_end`):
+
+```php
+'suggest_subtitle' => ['author_ss|editor_ss|type_s', 'year'],
+```
+
+A part naming a field the corpus does not store is refused, as is an empty
+part.
+
 A publication profile may name a `fulltext_source`: a `property` and an http(s)
 `url_prefix`. The first value of that property under the prefix marks the record
 `has_fulltext: "Yes"` and is returned as `fulltext_url_s`, the card's **Full

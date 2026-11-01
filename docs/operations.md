@@ -123,6 +123,35 @@ the saved field empty. A blank admin API-key field leaves the stored value
 unchanged; the clear checkbox removes it. Rotate the Typesense key at the server
 and module together.
 
+That key is the admin key: indexing, rebuilds, health, analytics and the
+maintenance page use it. Public searches use a second key that Typesense lets
+do only `documents:search` on the profiles' collection aliases:
+
+- **Your own.** The form's optional **Typesense search-only key** field
+  (setting `dre_search_typesense_search_key`) takes precedence over the
+  `TYPESENSE_SEARCH_API_KEY` environment variable. It behaves like the admin
+  field: a blank field keeps the stored key, its own checkbox clears it. Create
+  it in Typesense with the `documents:search` action only, on the scope the
+  maintenance page prints (each alias anchored: `^dre_research_current$`, …).
+- **Minted.** With neither, the first public search creates one with the admin
+  key, described "DRESearch public search-only key (auto-created)", and keeps
+  it in the setting `dre_search_minted_search_key_<hash of its scope>`; a
+  changed alias list mints a new one. A minted key Typesense refuses (deleted
+  by hand, a reset volume) is forgotten, and the next search mints another: to
+  rotate it, delete it in Typesense.
+- **The admin key**, as a fallback. If minting fails (the admin key may not
+  create keys, Typesense is down), the failure is logged and kept in
+  `dre_search_search_key_failure`, public search runs with the admin key, and
+  the next attempt waits five minutes.
+
+**Admin → DRE Search → Public search key** shows which of the three public
+search uses and what Typesense lets it do. It warns when Typesense cannot be
+asked, when the minted key is gone (a new one comes with the next search), when
+no single key matches the configured one, and when the key may do more than
+search. Uninstall revokes the keys the module minted (matched by their value
+prefix and description, so never one of yours) and deletes their settings; if
+Typesense is unreachable then, the key stays in Typesense.
+
 ## Translations
 
 `language/template.pot` holds every interface string, the server's and the
@@ -167,3 +196,20 @@ before changing these limits.
 Rollback collections may predate privacy edits. Rebuild from current Omeka data
 before using an older generation after visibility changes. The module does not
 rewrite retained historical collections.
+
+## Upgrading from 1.32
+
+No migration and no new table; saved blocks keep working, since the twelve
+stored layout names are unchanged.
+
+- **Reindex** People, Organisations, Research items, Genres, Languages,
+  Locations and Subjects & tags (or **Reindex all corpora**). Labels are now
+  trimmed and a whitespace-only value is no label, so a facet value indexed
+  with stray spaces, or blank, goes only when its corpus is rebuilt. Search
+  works meanwhile.
+- Public search moves to a search-only key by itself (see [Secrets](#secrets)).
+  Check **Public search key** on the maintenance page: if the admin key may not
+  create keys, configure a search-only key, or public search keeps running with
+  the admin key.
+- A rebuild can now refuse promotion with `source_count_mismatch` (see
+  [Failure triage](#failure-triage)).

@@ -26,6 +26,9 @@ first public value of the template title property (or dcterms:title).
 `MapperRegistry` (the one kind → mapper map, which profile validation also reads)
 and `DocumentAssembler` share mapping and batch loading between
 full rebuilds and incremental work. Authority lookups are reused within a batch.
+People and organisations share one mapper, `ReverseLinkMapper`, which the term
+corpora build on; every mapper reads labels through `ValueBag::labels()`
+(linked title, else the literal, trimmed, a blank one dropped).
 
 ## Rebuild lifecycle
 
@@ -131,13 +134,17 @@ connection identity and profile configuration. Epoch changes on enqueue, replay
 and promotion invalidate existing entries and prevent late fills from reviving
 stale results. Cache failures degrade to uncached queries.
 
-A page block, and the Project records block, render their first page on the
-server so the block paints at once. That page is cached for two minutes, keyed
-also by the resolved saved scope and the readiness gate's exclusion list, so a
-queued or applied change misses it; only an available answer is stored. A block
-renders no first page when the URL already carries its own state
-(`b{id}.q`, `b{id}.f.*`, a sort, a year window or a later page): the client
-fetches that state instead. The federated page reads every corpus's year span
+Every surface gets its client bootstrap from one builder,
+`View\SurfaceBootstrap`: the twelve page blocks (one `SearchBlock` class, bound
+per stored layout name by `Settings\BlockProfiles::LAYOUTS`), the Project
+records block and each tab of the federated page. A page block, and the Project
+records block, render their first page on the server so the block paints at
+once. That page is cached for two minutes, keyed also by the resolved saved
+scope and the readiness gate's exclusion list, so a queued or applied change
+misses it; only an available answer is stored. A block renders no first page
+when the URL already carries its own state (`b{id}.q`, `b{id}.f.*`, a sort, a
+year window or a later page; `Search\SearchStateQuery`): the client fetches
+that state instead. The federated page reads every corpus's year span
 in one request with one gate and one cache read, and the header search bar is
 built from the connection settings alone, without the search proxy.
 
@@ -157,6 +164,14 @@ next attempt waits five minutes. A minted key Typesense refuses (401) is
 forgotten and replaced on the next request. The maintenance page shows which
 key is in use and what Typesense lets it do; uninstall revokes the minted key.
 No key reaches the browser.
+
+The key lives in Omeka settings: an operator's in
+`dre_search_typesense_search_key` (secret like the admin key's, never echoed
+back into the form), a minted one in `dre_search_minted_search_key_<hash of its
+scope>`, and the last failed mint in `dre_search_search_key_failure`. The
+popular-searches list and the health probe keep the admin key: the analytics
+collections are outside the search-only key's scope, and health is not a
+collection search.
 
 ## Federated, map, and analytics extensions
 
@@ -183,6 +198,28 @@ facet requests, map pulls, exports and suggestions explicitly disable capture.
 An ephemeral browser-page identifier separates proxy users without sending IPs,
 account IDs or persistent cookies. Merged searches are not attributed to an
 individual corpus's analytics rule.
+
+## The client
+
+A search surface (`App.svelte`, or `FederatedApp.svelte` for the results page)
+owns its state — query, filters, sort, page, year window, view — and keeps it in
+the URL (`lib/urlState.ts`). What that state fetches lives in tested modules:
+`lib/searchResults.svelte.ts` (results and the map's geo-tagged set) and
+`lib/federatedResults.svelte.ts` (the merged list, the active tab, the tab
+counts); the block box and the header bar share one combobox,
+`lib/typeahead.svelte.ts`. The rules they carry:
+
+- The latest request wins. A newer request aborts the older one, and a sequence
+  ticket (`lib/transport.ts`) drops any answer that arrives anyway.
+- Every request has a deadline: 15 seconds, 30 for the export and map pulls. A
+  request that runs out of time shows the failure state with **Try again**; a
+  superseded one stays silent.
+- The server-rendered first page is adopted only when it answers the state the
+  URL seeded (`lib/initialState.ts`); otherwise the surface fetches.
+- A burst of typing is one history entry: the first commit pushes, the commits
+  within 1.5 seconds of each other replace it.
+- The results live region speaks only settled results, after 600 ms of quiet,
+  with the count's plural chosen by the page locale (`Intl.PluralRules`).
 
 ## Typesense API references
 
