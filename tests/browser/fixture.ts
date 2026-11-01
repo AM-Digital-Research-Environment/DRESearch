@@ -212,7 +212,28 @@ function federatedPage(): string {
 </section>`;
 }
 
-function shell(body: string, h1: string): string {
+/**
+ * The theme header's federated search bars (src/View/Helper/SearchBar.php):
+ * the in-flow desktop one and the collapsible one narrow screens get.
+ */
+function headerBars(): string {
+  const bar = (id: string, collapsible: boolean): string => {
+    const bootstrap = {
+      variant: 'bar',
+      available: true,
+      item_url_base: '/s/site/item',
+      results_url: '/search',
+      placeholder: '',
+      collapsible,
+      endpoints: { suggest_all: ENDPOINTS.suggest_all },
+    };
+    return `<div data-dre-search-bar data-dre-bar-id="${id}"></div>
+  <script type="application/json" id="dre-search-bar-state-${id}">${JSON.stringify(bootstrap)}</script>`;
+  };
+  return `<header>${bar('desktop', false)}${bar('mobile', true)}</header>`;
+}
+
+function shell(body: string, h1: string, header = ''): string {
   return `<!doctype html>
 <html lang="en" data-theme="light">
 <head>
@@ -225,6 +246,7 @@ function shell(body: string, h1: string): string {
   <script type="module" src="/dist/dre-search.js"></script>
 </head>
 <body data-theme="light">
+  ${header}
   <main>
     <h1>${h1}</h1>
     ${body}
@@ -251,7 +273,7 @@ function json(route: Route, body: unknown, status = 200): Promise<void> {
  */
 export async function serve(
   page: Page,
-  surface: 'block' | 'titled-block' | 'federated' | 'project-records' = 'block',
+  surface: 'block' | 'titled-block' | 'federated' | 'project-records' | 'header' = 'block',
 ): Promise<ApiStub> {
   const stub: ApiStub = { failSearches: 0, searches: [] };
 
@@ -268,6 +290,7 @@ export async function serve(
             : shell(
                 blockPage(surface === 'titled-block' ? 'Find research items' : ''),
                 'Collection',
+                surface === 'header' ? headerBars() : '',
               );
       return route.fulfill({ contentType: 'text/html', body: html });
     }
@@ -306,6 +329,8 @@ export async function serve(
         let hits = q === 'nothing' ? [] : HITS;
         if (filters.type_s?.length)
           hits = hits.filter((h) => filters.type_s!.includes(String(h.type_s)));
+        // 'many' finds more than one page (the same two hits), so the pager renders.
+        if (q === 'many') return json(route, { ...searchResponse(hits), found: 45 });
         return json(route, searchResponse(hits));
       }
       case '/dre-search/api/suggest': {
@@ -315,6 +340,8 @@ export async function serve(
         );
         return json(route, { available: true, suggestions });
       }
+      case '/dre-search/api/suggest-all':
+        return json(route, { available: true, groups: [] });
       case '/dre-search/api/facet':
         return json(route, { available: true, counts: [] });
       case '/dre-search/api/search-all': {
@@ -332,14 +359,25 @@ export async function serve(
       case '/dre-search/api/union':
         return json(
           route,
-          searchResponse(
-            HITS.map((h) => ({
+          searchResponse([
+            ...HITS.map((h) => ({
               ...h,
               _profile: 'research_items',
               _profile_label: 'Research items',
               _kind: 'item',
             })),
-          ),
+            // A publication, so the merged list carries a card with Cite.
+            {
+              id: '301',
+              title: 'Swahili poetry and its audiences',
+              author_ss: ['Vierke, Clarissa'],
+              container_ss: ['Journal of African Cultural Studies'],
+              year: 2014,
+              _profile: 'publications',
+              _profile_label: 'Publications',
+              _kind: 'publication',
+            },
+          ]),
         );
       default:
         return route.fulfill({ status: 404, body: '' });
