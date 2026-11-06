@@ -11,11 +11,11 @@
 <button
   type="button"
   class="dre-filter-chip"
-  aria-label={t('remove_filter', { label: chip.label, value: chip.value })}
+  aria-label={t('remove_filter', { label: chip.label, value: chip.display })}
   onclick={() => onRemove(chip)}
 >
   <span class="dre-filter-chip__label">{chip.label}:</span>
-  <strong>{chip.value}</strong>
+  <strong>{chip.display}</strong>
   <span aria-hidden="true">×</span>
 </button>
 

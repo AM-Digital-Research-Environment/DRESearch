@@ -98,6 +98,8 @@ final class ResearchItemMapper implements MapperInterface, PreparesBatch
 
         // project_s — single dcterms:isPartOf target that is a project (set).
         // (isPartOf is reused for inter-item relations, so the set check matters.)
+        // project_id_s keys the same project by item id, so a link survives a
+        // title change and same-titled projects stay apart.
         foreach ($values[$pProject] ?? [] as $v) {
             if (
                 $v['vrid'] !== null
@@ -105,6 +107,7 @@ final class ResearchItemMapper implements MapperInterface, PreparesBatch
                 && ($v['title'] ?? '') !== ''
             ) {
                 $doc['project_s'] = $v['title'];
+                $doc['project_id_s'] = (string) $v['vrid'];
                 break;
             }
         }

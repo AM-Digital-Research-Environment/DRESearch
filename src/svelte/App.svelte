@@ -21,7 +21,12 @@
     type UrlSyncOptions,
   } from './lib/urlState';
   import { t } from './lib/i18n';
-  import { buildFilterChips, type FilterChipModel as ChipModel } from './lib/filterChips';
+  import {
+    buildFilterChips,
+    learnValueLabels,
+    type FilterChipModel as ChipModel,
+    type ValueLabels,
+  } from './lib/filterChips';
   import { provideHeadingLevel, type HeadingLevel } from './lib/headings';
   import {
     ANNOUNCE_DELAY_MS,
@@ -422,8 +427,13 @@
     Object.values(filters).reduce((n, values) => n + (values?.length ?? 0), 0) +
       (yearFrom != null || yearTo != null ? 1 : 0),
   );
+  // The titles the hits carry for id filters (a project link's f.project_id_s),
+  // remembered across responses so a chip keeps its title when a later search
+  // finds nothing. Plain, not $state: it only accumulates.
+  const knownValueLabels: ValueLabels = {};
+  const valueLabels = $derived(learnValueLabels(knownValueLabels, response?.hits ?? []));
   const scopeChips = $derived(
-    buildFilterChips(filters, bootstrap.facet_labels, yearFrom, yearTo, query),
+    buildFilterChips(filters, bootstrap.facet_labels, yearFrom, yearTo, query, valueLabels),
   );
 
   // A search or a filter that matches nothing, as against a corpus that is
@@ -646,6 +656,7 @@
             {facets}
             order={bootstrap.facets}
             labels={bootstrap.facet_labels}
+            {valueLabels}
             selected={filters}
             {activeCount}
             {headingLevel}

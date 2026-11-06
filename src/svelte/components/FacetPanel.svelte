@@ -4,7 +4,7 @@
   import { t, matchFieldLabel } from '../lib/i18n';
   import FacetGroup from './FacetGroup.svelte';
   import FilterChip from './FilterChip.svelte';
-  import { buildFilterChips, type FilterChipModel } from '../lib/filterChips';
+  import { buildFilterChips, type FilterChipModel, type ValueLabels } from '../lib/filterChips';
 
   interface Props {
     /** Facet counts from the latest response (arbitrary order). */
@@ -16,6 +16,8 @@
     order: string[];
     /** field => label. */
     labels: Record<string, string>;
+    /** What a chip shows for an id filter value (lib/filterChips.ts). */
+    valueLabels?: ValueLabels;
     selected: ActiveFilters;
     activeCount: number;
     onToggle: (field: string, value: string, checked: boolean) => void;
@@ -30,6 +32,7 @@
     facets,
     order,
     labels,
+    valueLabels = {},
     selected,
     activeCount,
     onToggle,
@@ -54,7 +57,7 @@
       .filter((f): f is Facet => !!f && f.counts.length > 0),
   );
 
-  const chips = $derived(buildFilterChips(selected, labels));
+  const chips = $derived(buildFilterChips(selected, labels, null, null, '', valueLabels));
   function removeChip(chip: FilterChipModel): void {
     onToggle(chip.field, chip.value, false);
   }

@@ -319,6 +319,8 @@ export function matchFieldLabel(field: string): string {
  */
 const FILTER_FIELD_KEYS: Record<string, string> = {
   container_ss: 'field_venue',
+  // The project's item id, a link's stable key for project_s (#45).
+  project_id_s: 'field_project',
 };
 
 export function filterFieldLabel(field: string): string {

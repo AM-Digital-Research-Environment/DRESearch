@@ -84,13 +84,35 @@ final class ResearchItemMapperTest extends TestCase
         self::assertArrayNotHasKey('origin_ss', $doc, 'A whitespace-only place is no place.');
     }
 
-    /** @param array<string,list<array{vrid:?int,value:?string,uri:?string,title:?string}>> $values */
-    private function researchItem(array $values): array
+    public function testResearchItemKeysItsProjectByIdBesideTheTitle(): void
+    {
+        $doc = $this->researchItem(
+            ['dcterms:isPartOf' => [$this->link(7, 'Another record'), $this->link(1797, 'Muslim Youth in Kenya')]],
+            [1797 => 20],
+        );
+        self::assertSame('Muslim Youth in Kenya', $doc['project_s']);
+        self::assertSame('1797', $doc['project_id_s'], 'The stable key of #45, a string like every filter value.');
+
+        $none = $this->researchItem(['dcterms:isPartOf' => [$this->link(7, 'Another record')]]);
+        self::assertArrayNotHasKey('project_s', $none, 'An isPartOf target outside the project set is no project.');
+        self::assertArrayNotHasKey('project_id_s', $none);
+    }
+
+    /**
+     * @param array<string,list<array{vrid:?int,value:?string,uri:?string,title:?string}>> $values
+     * @param array<int,int> $authorities authority item id => its item set
+     */
+    private function researchItem(array $values, array $authorities = []): array
     {
         $profile = $this->configProfile('research_items');
-        // Nothing here needs an authority: the resolver is never primed, so it
-        // never queries the (empty) database.
+        // The resolver is never primed, so it never queries the (empty)
+        // database; the authorities a test needs are seeded directly.
         $auth = new AuthorityResolver(DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]), $profile);
+        $byId = [];
+        foreach ($authorities as $id => $setId) {
+            $byId[$id] = ['title' => '', 'sets' => [$setId => true], 'typeItemId' => null, 'partOfId' => null];
+        }
+        (new \ReflectionProperty(AuthorityResolver::class, 'byId'))->setValue($auth, $byId);
         return (new ResearchItemMapper($auth, $profile))->map(['id' => 1, 'is_public' => true, 'title' => 'Item'], $values, null);
     }
 

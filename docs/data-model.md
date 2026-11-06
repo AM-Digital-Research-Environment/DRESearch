@@ -60,6 +60,12 @@ authority-term corpora share the generic `term` kind.
 | Digitisation method | `dcterms:format`     | 7438 (genres in set 21 excluded)                           |
 | Year (range slider) | `dcterms:issued`     | single `year` (fallback `created` → `date`)                |
 
+The Project facet's value is the project's title. Beside it, every record
+carries `project_id_s`, the same project's item id: a filter but not a sidebar
+facet, so a link such as `/s/amira/dre-search?profile=research_items&f.project_id_s=1797`
+keeps working when the project's title changes, and two projects with one title
+stay apart. Its active-filter chip shows the title, read from the results.
+
 Search covers the title, abstract, description, subjects, tags and creators.
 Optionally, last, a **private** `bibo:content` of public records in the item
 sets named by `restricted_fulltext` (none by default; ILAM, set 27724, holds

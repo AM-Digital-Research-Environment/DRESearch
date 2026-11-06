@@ -512,6 +512,11 @@ return [
                 // the schema knows the field. property = null (mapper-emitted).
                 'display_fields' => [
                     'creator_ss' => ['property' => null, 'type' => 'string[]', 'facet' => true],
+                    // The project_s project's item id: a filter key that survives
+                    // a title change and tells same-titled projects apart, for
+                    // links such as ?f.project_id_s=1797 (#45). Filterable, never
+                    // a sidebar facet; the chip shows project_s.
+                    'project_id_s' => ['property' => null, 'type' => 'string', 'facet' => true],
                 ],
 
                 // Extra property terms the reindexer must read beyond the facet

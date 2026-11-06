@@ -5,6 +5,12 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+**Upgrade:** reindex Research items, so its collection gains `project_id_s`. Until then a search that filters on it fails, so update the theme's project links to it only afterwards.
+
+### Added
+
+- Research items carry `project_id_s`, their project's item id, beside the title in `project_s` (#45). A link can filter on it (`?profile=research_items&f.project_id_s=1797`) and keep working when the project's title changes, and two projects with one title no longer share a filter. It is not a sidebar facet; its chip shows the project's title, taken from the results, and the id only until a result names it. The Project facet and links by title work as before.
+
 ## [1.34.0] - 2026-11-01
 
 **Upgrade:** reindex Research items once, so its collection gains the `restricted_text` field before anyone enables the policy below; until then the policy must stay off, or that corpus's searches fail. Nothing changes for visitors while it is off.

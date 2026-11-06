@@ -99,6 +99,8 @@ export interface Doc {
   // Research-item fields.
   type_s?: string;
   project_s?: string;
+  /** The project_s project's item id: a filter key that survives a title change. */
+  project_id_s?: string;
   /** Place of origin — the specific place as recorded (dcterms:spatial, e.g. "Bayreuth"). */
   origin_ss?: string[];
   /** Country of origin — dcterms:spatial rolled up to country (broad-browse facet). */
