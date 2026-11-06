@@ -5,6 +5,8 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+## [1.35.0] - 2026-11-06
+
 **Upgrade:** reindex Research items, so its collection gains `project_id_s`. Until then a search that filters on it fails, so update the theme's project links to it only afterwards.
 
 ### Added
