@@ -67,6 +67,7 @@ function bootstrap(): Bootstrap {
       { value: 'title', label: 'Title' },
     ],
     per_page: 20,
+    views: ['list', 'gallery'],
     item_url_base: '/s/site/item',
     endpoints: { search: '/s', export: '/e', suggest: '/g', map: '/m' },
     initial_response: response(),
@@ -120,6 +121,35 @@ describe('search block history', () => {
     for (const call of searchSpy.mock.calls) {
       expect((call[0] as { sort: string }).sort).not.toBe('bogus');
     }
+  });
+});
+
+describe('views', () => {
+  beforeEach(() => {
+    window.history.replaceState({}, '', '/page');
+    searchSpy.mockReset();
+    searchSpy.mockResolvedValue(response());
+  });
+
+  it('offers the views the server sends, whatever the profile is called', async () => {
+    render(App, {
+      bootstrap: {
+        ...bootstrap(),
+        profile: 'field_sites',
+        card_kind: 'term',
+        views: ['list', 'map'],
+      },
+    });
+    await screen.findByText('Item 1');
+    expect(screen.getByRole('button', { name: /Map/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Grid/ })).toBeNull();
+  });
+
+  it('shows no toggle when the server sends no views', async () => {
+    render(App, { bootstrap: { ...bootstrap(), views: undefined } });
+    await screen.findByText('Item 1');
+    expect(screen.queryByRole('group', { name: /view/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Grid/ })).toBeNull();
   });
 });
 

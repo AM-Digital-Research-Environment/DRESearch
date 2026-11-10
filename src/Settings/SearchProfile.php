@@ -534,6 +534,38 @@ final class SearchProfile
     }
 
     /**
+     * Whether the corpus indexes coordinates: the `geo` point and the
+     * `has_coords` flag the map query filters on. The map endpoint
+     * ({@see \DRESearch\Search\SearchProxy::map()}) and the client's Map button
+     * ({@see views()}) both read this, so a renamed or added geo corpus gets
+     * both or neither.
+     */
+    public function supportsMap(): bool
+    {
+        return isset($this->displayFields['geo'], $this->displayFields['has_coords']);
+    }
+
+    /**
+     * The result views the client offers, in toggle order; `list` always first.
+     * The gallery suits the item cards, whose records are mostly pictures; the
+     * map needs coordinates ({@see supportsMap()}). Sent in every surface's
+     * bootstrap so the client never decides from a profile's name.
+     *
+     * @return list<'list'|'gallery'|'map'>
+     */
+    public function views(): array
+    {
+        $views = ['list'];
+        if ($this->kind === 'item') {
+            $views[] = 'gallery';
+        }
+        if ($this->supportsMap()) {
+            $views[] = 'map';
+        }
+        return $views;
+    }
+
+    /**
      * Fields indexed for search (query_by) but excluded from result payloads — the
      * `search_only` display fields (e.g. a podcast transcript). The reindexer still
      * stores them so Typesense can match + snippet-highlight them; the query

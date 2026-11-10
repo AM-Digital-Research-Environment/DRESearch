@@ -487,7 +487,7 @@ msgstr ""
 msgid "Member"
 msgstr ""
 
-#: src/Settings/SearchProfile.php:655
+#: src/Settings/SearchProfile.php:687
 msgid "Most results"
 msgstr ""
 

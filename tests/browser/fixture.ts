@@ -96,6 +96,7 @@ const PROFILES = [
       { value: 'title', label: 'Title (A–Z)' },
     ],
     per_page: 20,
+    views: ['list', 'gallery'],
   },
   {
     name: 'research_projects',
@@ -136,6 +137,7 @@ function blockPage(title: string): string {
     default_sort: 'relevance',
     sort_options: PROFILES[0]!.sort_options,
     per_page: 20,
+    views: PROFILES[0]!.views,
     item_url_base: '/s/site/item',
     endpoints: ENDPOINTS,
     initial_response: searchResponse(HITS),
@@ -174,6 +176,7 @@ function projectRecordsPage(): string {
     default_sort: 'relevance',
     sort_options: PROFILES[0]!.sort_options,
     per_page: 20,
+    views: PROFILES[0]!.views,
     item_url_base: '/s/site/item',
     endpoints: ENDPOINTS,
     initial_response: searchResponse(HITS),

@@ -48,4 +48,39 @@ final class SearchProfileTest extends TestCase
         self::assertCount(12, $registry->all());
         self::assertSame('research_items', $registry->default()?->name());
     }
+
+    /**
+     * The shipped corpora keep the views the client used to decide from their
+     * names: the gallery on research items, the map on locations, the list
+     * everywhere.
+     */
+    public function testTheShippedCorporaKeepTheirViews(): void
+    {
+        $config = require dirname(__DIR__, 2) . '/config/module.config.php';
+        $registry = ProfileRegistry::fromArray($config['dre_search']['profiles']);
+        $views = [];
+        foreach ($registry->all() as $profile) {
+            $views[$profile->name()] = $profile->views();
+        }
+        $expected = array_fill_keys(array_keys($views), ['list']);
+        $expected['research_items'] = ['list', 'gallery'];
+        $expected['research_locations'] = ['list', 'map'];
+        self::assertSame($expected, $views);
+        self::assertTrue($registry->get('research_locations')?->supportsMap());
+        self::assertFalse($registry->get('research_items')?->supportsMap());
+    }
+
+    /** The map follows the coordinate fields, whatever the corpus is called. */
+    public function testAnyProfileWithCoordinatesOffersTheMap(): void
+    {
+        $profile = $this->profile([
+            'kind' => 'term',
+            'display_fields' => [
+                'geo'        => ['property' => null, 'type' => 'geopoint', 'facet' => false],
+                'has_coords' => ['property' => null, 'type' => 'bool', 'facet' => true],
+            ],
+        ]);
+        self::assertSame('records', $profile->name());
+        self::assertSame(['list', 'map'], $profile->views());
+    }
 }

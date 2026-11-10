@@ -45,8 +45,9 @@ final class SurfaceBootstrapTest extends TestCase
 
         self::assertSame([
             'block_id', 'profile', 'card_kind', 'search_placeholder', 'date_mode', 'show_year', 'year_bounds',
-            'facets', 'facet_labels', 'default_sort', 'sort_options', 'per_page', 'item_url_base', 'endpoints',
+            'facets', 'facet_labels', 'default_sort', 'sort_options', 'per_page', 'views', 'item_url_base', 'endpoints',
         ], array_keys($bootstrap));
+        self::assertSame(['list'], $bootstrap['views']);
         self::assertSame(42, $bootstrap['block_id']);
         self::assertSame('research_projects', $bootstrap['profile']);
         self::assertSame('project', $bootstrap['card_kind']);
@@ -107,8 +108,9 @@ final class SurfaceBootstrapTest extends TestCase
         $tab = $bootstrap['profiles'][0];
         self::assertSame([
             'name', 'label', 'kind', 'date_mode', 'show_year', 'year_bounds', 'facets', 'facet_labels',
-            'default_sort', 'sort_options', 'per_page', 'placeholder',
+            'default_sort', 'sort_options', 'per_page', 'placeholder', 'views',
         ], array_keys($tab));
+        self::assertSame(['list', 'gallery'], $tab['views']);
         $items = $registry->get('research_items');
         self::assertNotNull($items);
         self::assertSame($items->fieldNames(), $tab['facets'], 'Every facet, as a block with no saved data.');
@@ -116,6 +118,24 @@ final class SurfaceBootstrapTest extends TestCase
         self::assertNull($tab['year_bounds'], 'Typesense is unconfigured here.');
         $genres = array_values(array_filter($bootstrap['profiles'], static fn(array $p): bool => $p['name'] === 'research_genres'))[0];
         self::assertSame('Search genres…', $genres['placeholder']);
+        $locations = array_values(array_filter($bootstrap['profiles'], static fn(array $p): bool => $p['name'] === 'research_locations'))[0];
+        self::assertSame(['list', 'map'], $locations['views']);
+    }
+
+    /**
+     * The views come from what a profile indexes, not from its name: a geo
+     * corpus under another name offers the map, in a block and as a tab.
+     */
+    public function testAGeoCorpusUnderAnotherNameOffersTheMap(): void
+    {
+        $config = require dirname(__DIR__, 2) . '/config/module.config.php';
+        $profile = \DRESearch\Settings\SearchProfile::fromArray('field_sites', $config['dre_search']['profiles']['research_locations']);
+        $surface = new SurfaceBootstrap(static fn(string $s): string => $s, static fn(string $p): string => $p);
+        $corpus = $surface->corpus($profile, new SearchBlockSettings([], $profile));
+
+        self::assertSame('field_sites', $corpus['profile']);
+        self::assertSame(['list', 'map'], $corpus['views']);
+        self::assertSame(['list', 'map'], $surface->federatedTab($profile, $corpus)['views']);
     }
 
     /** Without JavaScript, the results page hands its query to Omeka's item browse. */

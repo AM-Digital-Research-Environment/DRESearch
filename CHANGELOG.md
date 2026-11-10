@@ -5,6 +5,10 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+### Changed
+
+- The result views a surface offers (list, grid, map) now come from the server in each bootstrap (`views`), derived from the profile: the grid for item cards, the map for any corpus that indexes `geo` and `has_coords` (#55). The client used to decide from the names `research_items` and `research_locations`, so a renamed or added geo corpus had a map endpoint and no Map button. The shipped corpora offer the same views as before.
+
 ## [1.35.0] - 2026-11-06
 
 **Upgrade:** reindex Research items, so its collection gains `project_id_s`. Until then a search that filters on it fails, so update the theme's project links to it only afterwards.

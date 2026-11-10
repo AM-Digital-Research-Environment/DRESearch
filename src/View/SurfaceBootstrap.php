@@ -101,6 +101,9 @@ final class SurfaceBootstrap
             'default_sort'       => $settings->defaultSort(),
             'sort_options'       => SortOptions::forProfile($profile, $t),
             'per_page'           => $settings->perPage(),
+            // The result views to offer (list, gallery, map), decided here from
+            // the profile so the client never infers them from its name.
+            'views'              => $profile->views(),
         ];
     }
 
@@ -150,6 +153,7 @@ final class SurfaceBootstrap
             'sort_options' => $corpus['sort_options'],
             'per_page'     => $corpus['per_page'],
             'placeholder'  => $corpus['search_placeholder'],
+            'views'        => $corpus['views'],
         ];
     }
 

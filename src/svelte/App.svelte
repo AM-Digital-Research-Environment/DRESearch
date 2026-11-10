@@ -182,13 +182,12 @@
   // the bootstrap (the federated page passes its shared query via initial_query).
   // svelte-ignore state_referenced_locally
   const urlInitial = syncUrl ? readUrlState(window.location.href, urlOptions) : null;
-  const viewOptions = $derived<ViewMode[]>(
-    bootstrap.profile === 'research_items'
-      ? ['list', 'gallery']
-      : bootstrap.profile === 'research_locations'
-        ? ['list', 'map']
-        : ['list'],
-  );
+  // The server decides the views from what the profile indexes; an unknown
+  // value is dropped, and the list is always there to fall back on.
+  const viewOptions = $derived<ViewMode[]>([
+    'list',
+    ...(bootstrap.views ?? []).filter((v) => v === 'gallery' || v === 'map'),
+  ]);
   // svelte-ignore state_referenced_locally
   const viewStorageKey = `dre-search:view:${bootstrap.profile}`;
   const storedView = (() => {
@@ -275,11 +274,11 @@
   const failed = $derived(results.failed);
 
   /**
-   * A research-item corpus whose first results are mostly pictures opens on the
-   * gallery, once per mount and only while the visitor has not chosen a view.
+   * A corpus offering the gallery whose first results are mostly pictures opens
+   * on the gallery, once per mount and only while the visitor has not chosen a view.
    */
   function suggestGallery(r: SearchResponse): void {
-    if (viewExplicit || view !== 'list' || bootstrap.profile !== 'research_items') return;
+    if (viewExplicit || view !== 'list' || !viewOptions.includes('gallery')) return;
     if (r.hits.length < 4) return;
     const ratio = r.hits.filter((hit) => Boolean(hit.thumbnail_url)).length / r.hits.length;
     if (ratio > 0.6) {

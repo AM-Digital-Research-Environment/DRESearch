@@ -598,7 +598,7 @@ final class SearchProxy
     {
         $this->gate->reset();
         [$profile, $validated, $serverFilter] = $this->prepare($profileName, $req, 'search');
-        if (!isset($profile->displayFields()['geo'], $profile->displayFields()['has_coords'])) {
+        if (!$profile->supportsMap()) {
             throw new RequestValidationException('map_unavailable', 'This search profile does not provide map coordinates.');
         }
         $client = $this->client();

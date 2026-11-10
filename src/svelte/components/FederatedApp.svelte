@@ -255,6 +255,7 @@
       default_sort: meta.default_sort,
       sort_options: meta.sort_options,
       per_page: meta.per_page,
+      views: meta.views,
       item_url_base: bootstrap.item_url_base,
       endpoints: {
         facet: bootstrap.endpoints.facet,

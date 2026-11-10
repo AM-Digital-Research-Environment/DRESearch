@@ -65,6 +65,12 @@ export interface Bootstrap {
   /** Sort choices to show, in order (varies by corpus — e.g. no year sorts when date-less). */
   sort_options?: SortOption[];
   per_page: number;
+  /**
+   * Result views to offer, `list` first; decided by the server from what the
+   * profile indexes (thumbnails, coordinates), never from its name. Absent →
+   * the list only.
+   */
+  views?: ViewMode[];
   /** Result links are built as `${item_url_base}/${doc.id}`. */
   item_url_base: string;
   endpoints: {
@@ -358,6 +364,8 @@ export interface ProfileMeta {
   sort_options: SortOption[];
   per_page: number;
   placeholder?: string | null;
+  /** {@link Bootstrap.views} */
+  views?: ViewMode[];
 }
 
 /** Bootstrap for the theme header search bar (variant 'bar'). */
