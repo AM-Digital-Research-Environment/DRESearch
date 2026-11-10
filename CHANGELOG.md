@@ -5,6 +5,10 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+### Added
+
+- The header search bar has a documented styling surface: custom properties on `.dre-search-bar` for its position, field height and radius, the suggestions dropdown's offset, edges and width, and the collapsible bar's expanded field (#59). Their defaults are today's look; the README lists them under "Styling the header search bar". A theme should set them instead of overriding `.dre-search-bar__input-wrap` or `.dre-search-bar__suggest`, which are internal; those rules keep working for now.
+
 ### Changed
 
 - The result views a surface offers (list, grid, map) now come from the server in each bootstrap (`views`), derived from the profile: the grid for item cards, the map for any corpus that indexes `geo` and `has_coords` (#55). The client used to decide from the names `research_items` and `research_locations`, so a renamed or added geo corpus had a map endpoint and no Map button. The shipped corpora offer the same views as before.

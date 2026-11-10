@@ -55,6 +55,10 @@ const SCAN = {
   // asset/dist holds the built bundle; linting generated output would report
   // every finding twice and could never be fixed there.
   skipDirs: ['node_modules', '.git', 'dist', 'vendor', 'build'],
+  // The module's own custom properties: the header bar's styling surface
+  // (README "Styling the header search bar"), which a host theme sets. Their
+  // fallbacks are the bar's defaults, not theme tokens.
+  localPrefixes: ['--dre-search-'],
 };
 
 // Exempt BY DESIGN, as opposed to the ratchet in design-token-allowlist.txt,

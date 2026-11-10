@@ -345,3 +345,41 @@ test.describe('project records (item page)', () => {
     expect(await seriousViolations(page)).toEqual([]);
   });
 });
+
+test.describe('header search bar', () => {
+  /**
+   * The theme lays the bar out through the custom properties the README
+   * documents, not through internal class names: the defaults keep the
+   * dropdown narrow and right-anchored, and the properties re-lay it.
+   */
+  test('its dropdown follows the documented custom properties', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await serve(page, 'header');
+    await page.goto('/');
+    const bar = page.locator('header [role="search"]').first();
+    const field = bar.getByRole('combobox');
+    await field.fill('market');
+    const dropdown = bar.getByRole('listbox');
+    await expect(dropdown).toBeVisible();
+
+    const fieldBox = (await field.boundingBox())!;
+    let box = (await dropdown.boundingBox())!;
+    expect(Math.round(box.x + box.width)).toBe(Math.round(fieldBox.x + fieldBox.width));
+    // Narrow by default (min(26rem, 92vw)), well short of the 1280px-wide field.
+    expect(box.width).toBeLessThan(fieldBox.width / 2);
+
+    await page.addStyleTag({
+      content: `header .dre-search-bar {
+        --dre-search-bar-suggest-inset-inline-start: 0;
+        --dre-search-bar-suggest-width: auto;
+        --dre-search-bar-suggest-offset: 10px;
+        --dre-search-bar-radius: 4px;
+      }`,
+    });
+    box = (await dropdown.boundingBox())!;
+    expect(Math.round(box.x)).toBe(Math.round(fieldBox.x));
+    expect(Math.round(box.width)).toBe(Math.round(fieldBox.width));
+    expect(Math.round(box.y)).toBe(Math.round(fieldBox.y + fieldBox.height + 10));
+    await expect(field).toHaveCSS('border-top-left-radius', '4px');
+  });
+});

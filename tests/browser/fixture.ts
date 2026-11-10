@@ -354,8 +354,16 @@ export async function serve(
         );
         return json(route, { available: true, suggestions });
       }
-      case '/dre-search/api/suggest-all':
-        return json(route, { available: true, groups: [] });
+      case '/dre-search/api/suggest-all': {
+        const q = (url.searchParams.get('q') ?? '').toLowerCase();
+        const suggestions = HITS.filter((h) => q !== '' && h.title.toLowerCase().includes(q)).map(
+          (h) => ({ id: h.id, title: h.title, subtitle: String(h.year) }),
+        );
+        const groups = suggestions.length
+          ? [{ profile: 'research_items', label: 'Research items', kind: 'item', suggestions }]
+          : [];
+        return json(route, { available: true, groups });
+      }
       case '/dre-search/api/facet':
         return json(route, { available: true, counts: [] });
       case '/dre-search/api/search-all': {

@@ -181,6 +181,49 @@ chrome — after `<head>` is already emitted — so the bundle must be injected
 before then. Search blocks self-inject, so a page with a block needs only the
 header calls; `headScript`/`headLink` dedupe by URL.)
 
+### Styling the header search bar
+
+The bar's class names below `.dre-search-bar` (`__input-wrap`, `__suggest`, …)
+are internal and may change. A theme adjusts the bar through these custom
+properties instead, set on `.dre-search-bar` or any ancestor; each default is
+the bar's own look.
+
+| Property                                      | Default              | Controls                                                                                                                                                          |
+| --------------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--dre-search-bar-position`                   | `relative`           | The bar root's `position`. `static` makes the expanded mobile field and the dropdown anchor to the nearest positioned ancestor (a header row) instead of the bar. |
+| `--dre-search-bar-min-height`                 | `auto`               | Minimum height of the field's wrapper.                                                                                                                            |
+| `--dre-search-bar-radius`                     | `var(--radius-full)` | Corner radius of the input (a pill).                                                                                                                              |
+| `--dre-search-bar-suggest-offset`             | `var(--space-1)`     | Gap between the field and the suggestions dropdown.                                                                                                               |
+| `--dre-search-bar-suggest-inset-inline-start` | `auto`               | Dropdown's start edge. `0` with the end edge at `0` and the width at `auto` spans the field.                                                                      |
+| `--dre-search-bar-suggest-inset-inline-end`   | `0`                  | Dropdown's end edge (right-anchored by default).                                                                                                                  |
+| `--dre-search-bar-suggest-width`              | `min(26rem, 92vw)`   | Dropdown width.                                                                                                                                                   |
+| `--dre-search-bar-suggest-max-width`          | `none`               | Dropdown maximum width.                                                                                                                                           |
+| `--dre-search-bar-overlay-inset-inline-start` | `auto`               | Collapsible bar, expanded: the floating field's start edge.                                                                                                       |
+| `--dre-search-bar-overlay-inset-inline-end`   | `0`                  | Collapsible bar, expanded: the floating field's end edge.                                                                                                         |
+| `--dre-search-bar-overlay-width`              | `min(20rem, 80vw)`   | Collapsible bar, expanded: the floating field's width.                                                                                                            |
+| `--dre-search-bar-overlay-top`                | `50%`                | Collapsible bar, expanded: the floating field's top.                                                                                                              |
+| `--dre-search-bar-overlay-transform`          | `translateY(-50%)`   | Collapsible bar, expanded: the floating field's offset from that top.                                                                                             |
+
+For example, a full-width desktop field whose dropdown spans it, and a mobile
+field dropped below the header row inside 12px gutters:
+
+```scss
+.main-header__search .dre-search-bar {
+  --dre-search-bar-min-height: var(--size-control-lg);
+  --dre-search-bar-suggest-inset-inline-start: 0;
+  --dre-search-bar-suggest-width: auto;
+}
+.main-header__search-bar.d-xl-none {
+  position: static;
+  --dre-search-bar-position: static;
+  --dre-search-bar-overlay-inset-inline-start: var(--space-3);
+  --dre-search-bar-overlay-inset-inline-end: var(--space-3);
+  --dre-search-bar-overlay-width: auto;
+  --dre-search-bar-overlay-top: 100%;
+  --dre-search-bar-overlay-transform: translateY(var(--space-2));
+}
+```
+
 ## Requirements
 
 - Omeka S `^4.2.1` on PHP 8.4+ (production AMIRA runs PHP 8.5). Below 8.4 the

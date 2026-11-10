@@ -311,8 +311,14 @@
 </div>
 
 <style>
+  /*
+   * The public styling surface. A host theme sets these custom properties on
+   * .dre-search-bar (or any ancestor) instead of overriding the internal
+   * classes, which are not a contract; README "Styling the header search bar"
+   * lists them. Every fallback is the bar's own default.
+   */
   .dre-search-bar {
-    position: relative;
+    position: var(--dre-search-bar-position, relative);
     width: 100%;
   }
 
@@ -344,10 +350,11 @@
      reflows the header cluster. Desktop (non-collapsible) keeps it in flow. */
   .dre-search-bar--collapsible.dre-search-bar--expanded .dre-search-bar__input-wrap {
     position: absolute;
-    inset-inline-end: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: min(20rem, 80vw);
+    inset-inline-start: var(--dre-search-bar-overlay-inset-inline-start, auto);
+    inset-inline-end: var(--dre-search-bar-overlay-inset-inline-end, 0);
+    top: var(--dre-search-bar-overlay-top, 50%);
+    transform: var(--dre-search-bar-overlay-transform, translateY(-50%));
+    width: var(--dre-search-bar-overlay-width, min(20rem, 80vw));
     z-index: var(--z-dropdown, 100);
   }
 
@@ -355,6 +362,7 @@
     position: relative;
     display: flex;
     align-items: center;
+    min-height: var(--dre-search-bar-min-height, auto);
   }
   .dre-search-bar__icon {
     position: absolute;
@@ -375,7 +383,7 @@
     background: var(--surface, #fdfcf9);
     border: 1px solid var(--field-border, #8b857f);
     /* Pill, not --radius-md: the theme's own header search field is one. */
-    border-radius: var(--radius-full, 9999px);
+    border-radius: var(--dre-search-bar-radius, var(--radius-full, 9999px));
     box-shadow: var(--shadow-xs, 0 1px 2px 0 rgba(52, 37, 26, 0.07));
     transition:
       border-color var(--transition-fast, 150ms cubic-bezier(0.25, 1, 0.5, 1)),
@@ -436,9 +444,11 @@
   .dre-search-bar__suggest {
     position: absolute;
     z-index: var(--z-dropdown, 100);
-    inset-inline-end: 0;
-    top: calc(100% + var(--space-1, 0.25rem));
-    width: min(26rem, 92vw);
+    inset-inline-start: var(--dre-search-bar-suggest-inset-inline-start, auto);
+    inset-inline-end: var(--dre-search-bar-suggest-inset-inline-end, 0);
+    top: calc(100% + var(--dre-search-bar-suggest-offset, var(--space-1, 0.25rem)));
+    width: var(--dre-search-bar-suggest-width, min(26rem, 92vw));
+    max-width: var(--dre-search-bar-suggest-max-width, none);
     margin: 0;
     padding: 0.25rem;
     background: var(--surface, #fdfcf9);
