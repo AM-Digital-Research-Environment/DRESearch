@@ -1,0 +1,506 @@
+{
+    "research_genres": {
+        "full": {
+            "id": "101",
+            "is_public": true,
+            "title": "A full record",
+            "item_count": 3,
+            "thumbnail_url": "https://example.org/thumb/101.jpg"
+        },
+        "empty": {
+            "id": "102",
+            "is_public": false,
+            "title": "[Unnamed #102]",
+            "item_count": 0
+        }
+    },
+    "research_items": {
+        "full": {
+            "id": "101",
+            "is_public": true,
+            "title": "A full record",
+            "abstract": "dcterms:abstract literal",
+            "description": "dcterms:description literal",
+            "type_s": "dcterms:type A",
+            "project_s": "  dcterms:isPartOf B  ",
+            "project_id_s": "3664",
+            "language_ss": [
+                "dcterms:language A",
+                "dcterms:language B",
+                "dcterms:language literal",
+                "dcterms:language uri"
+            ],
+            "audience_ss": [
+                "dcterms:audience A",
+                "dcterms:audience B",
+                "dcterms:audience literal",
+                "dcterms:audience uri"
+            ],
+            "creator_ss": [
+                "dcterms:creator A",
+                "dcterms:creator B",
+                "dcterms:creator literal",
+                "dcterms:creator uri",
+                "dcterms:contributor A",
+                "dcterms:contributor B",
+                "dcterms:contributor literal",
+                "dcterms:contributor uri",
+                "marcrel:aut A",
+                "marcrel:aut B",
+                "marcrel:aut literal",
+                "marcrel:aut uri",
+                "marcrel:edt A",
+                "marcrel:edt B",
+                "marcrel:edt literal",
+                "marcrel:edt uri"
+            ],
+            "subject_ss": [
+                "  dcterms:subject B  "
+            ],
+            "tag_ss": [
+                "dcterms:subject A"
+            ],
+            "origin_ss": [
+                "dcterms:spatial A",
+                "dcterms:spatial B",
+                "dcterms:spatial literal",
+                "dcterms:spatial uri"
+            ],
+            "country_ss": [
+                "Parent country",
+                "dcterms:spatial literal",
+                "dcterms:spatial uri",
+                "   "
+            ],
+            "provenance_ss": [
+                "dcterms:provenance A",
+                "dcterms:provenance B",
+                "dcterms:provenance literal",
+                "dcterms:provenance uri"
+            ],
+            "digitisation_ss": [
+                "  dcterms:format B  "
+            ],
+            "year": 1950,
+            "date": -631152000,
+            "thumbnail_url": "https://example.org/thumb/101.jpg"
+        },
+        "empty": {
+            "id": "102",
+            "is_public": false,
+            "title": "[Untitled #102]"
+        }
+    },
+    "research_languages": {
+        "full": {
+            "id": "101",
+            "is_public": true,
+            "title": "A full record",
+            "item_count": 3,
+            "publication_count": 6,
+            "thumbnail_url": "https://example.org/thumb/101.jpg"
+        },
+        "empty": {
+            "id": "102",
+            "is_public": false,
+            "title": "[Unnamed #102]",
+            "item_count": 0,
+            "publication_count": 0
+        }
+    },
+    "research_locations": {
+        "full": {
+            "id": "101",
+            "is_public": true,
+            "title": "A full record",
+            "type_s": "dcterms:type A",
+            "roles_ss": [
+                "Author",
+                "Host",
+                "Member"
+            ],
+            "item_count": 3,
+            "thumbnail_url": "https://example.org/thumb/101.jpg",
+            "has_coords": true,
+            "geo": [
+                12.5,
+                -1.25
+            ]
+        },
+        "empty": {
+            "id": "102",
+            "is_public": false,
+            "title": "[Unnamed #102]",
+            "item_count": 0,
+            "has_coords": false
+        }
+    },
+    "research_organisations": {
+        "full": {
+            "id": "101",
+            "is_public": true,
+            "title": "A full record",
+            "type_s": "dcterms:type A",
+            "roles_ss": [
+                "Author",
+                "Host",
+                "Member"
+            ],
+            "project_count": 3,
+            "item_count": 6,
+            "people_count": 9,
+            "thumbnail_url": "https://example.org/thumb/101.jpg"
+        },
+        "empty": {
+            "id": "102",
+            "is_public": false,
+            "title": "[Unnamed #102]",
+            "project_count": 0,
+            "item_count": 0,
+            "people_count": 0
+        }
+    },
+    "research_people": {
+        "full": {
+            "id": "101",
+            "is_public": true,
+            "title": "A full record",
+            "affiliation_ss": [
+                "dcterms:isPartOf A",
+                "dcterms:isPartOf B",
+                "dcterms:isPartOf literal",
+                "dcterms:isPartOf uri"
+            ],
+            "roles_ss": [
+                "Author",
+                "Host",
+                "Member"
+            ],
+            "item_count": 3,
+            "publication_count": 6,
+            "thumbnail_url": "https://example.org/thumb/101.jpg"
+        },
+        "empty": {
+            "id": "102",
+            "is_public": false,
+            "title": "[Unnamed #102]",
+            "item_count": 0,
+            "publication_count": 0
+        }
+    },
+    "research_podcasts": {
+        "full": {
+            "id": "101",
+            "is_public": true,
+            "title": "A full record",
+            "abstract": "dcterms:abstract literal",
+            "series_s": "dcterms:isPartOf A",
+            "language_ss": [
+                "dcterms:language A",
+                "dcterms:language B",
+                "dcterms:language literal",
+                "dcterms:language uri"
+            ],
+            "host_ss": [
+                "marcrel:hst A",
+                "marcrel:hst B",
+                "marcrel:hst literal",
+                "marcrel:hst uri"
+            ],
+            "host_ids": [
+                "1028",
+                "1029",
+                "",
+                ""
+            ],
+            "guest_ss": [
+                "marcrel:spk A",
+                "marcrel:spk B",
+                "marcrel:spk literal",
+                "marcrel:spk uri"
+            ],
+            "guest_ids": [
+                "8859",
+                "8860",
+                "",
+                ""
+            ],
+            "engineer_ss": [
+                "marcrel:sde A",
+                "marcrel:sde B",
+                "marcrel:sde literal",
+                "marcrel:sde uri"
+            ],
+            "engineer_ids": [
+                "5537",
+                "5538",
+                "",
+                ""
+            ],
+            "people_ss": [
+                "marcrel:hst A",
+                "marcrel:hst B",
+                "marcrel:hst literal",
+                "marcrel:hst uri",
+                "marcrel:spk A",
+                "marcrel:spk B",
+                "marcrel:spk literal",
+                "marcrel:spk uri"
+            ],
+            "series_id": "3663",
+            "episode": 12,
+            "url_s": "https://example.org/fabio-hasURL",
+            "date_s": "2019-03-04",
+            "year": 2019,
+            "transcript": "bibo:content literal",
+            "has_transcript": true,
+            "thumbnail_url": "https://example.org/thumb/101.jpg"
+        },
+        "empty": {
+            "id": "102",
+            "is_public": false,
+            "title": "[Untitled #102]",
+            "has_transcript": false
+        }
+    },
+    "research_projects": {
+        "full": {
+            "id": "101",
+            "is_public": true,
+            "title": "A full record",
+            "abstract": "dcterms:abstract literal",
+            "institution_ss": [
+                "frapo:isFundedBy A",
+                "frapo:isFundedBy B",
+                "frapo:isFundedBy literal",
+                "frapo:isFundedBy uri"
+            ],
+            "section_ss": [
+                "dcterms:isPartOf A",
+                "dcterms:isPartOf B",
+                "dcterms:isPartOf literal",
+                "dcterms:isPartOf uri"
+            ],
+            "pi_ss": [
+                "dcterms:creator A",
+                "dcterms:creator B",
+                "dcterms:creator literal",
+                "dcterms:creator uri"
+            ],
+            "pi_ids": [
+                "5373",
+                "5374",
+                "",
+                ""
+            ],
+            "member_ss": [
+                "foaf:member A",
+                "foaf:member B",
+                "foaf:member literal",
+                "foaf:member uri"
+            ],
+            "people_ss": [
+                "dcterms:creator A",
+                "dcterms:creator B",
+                "dcterms:creator literal",
+                "dcterms:creator uri",
+                "foaf:member A",
+                "foaf:member B",
+                "foaf:member literal",
+                "foaf:member uri"
+            ],
+            "year_start": 2019,
+            "year_end": 2023,
+            "item_count": 4,
+            "has_items": "Yes",
+            "thumbnail_url": "https://example.org/thumb/101.jpg"
+        },
+        "empty": {
+            "id": "102",
+            "is_public": false,
+            "title": "[Untitled #102]",
+            "item_count": 0,
+            "has_items": "No"
+        }
+    },
+    "research_publications": {
+        "full": {
+            "id": "101",
+            "is_public": true,
+            "title": "A full record",
+            "abstract": "bibo:abstract literal",
+            "fulltext": "bibo:content literal",
+            "fulltext_url_s": "https://epub.uni-bayreuth.de/id/eprint/dcterms-identifier",
+            "has_fulltext": "Yes",
+            "type_s": "dcterms:type A",
+            "container_ss": [
+                "dcterms:isPartOf A",
+                "dcterms:isPartOf B",
+                "dcterms:isPartOf literal",
+                "dcterms:isPartOf uri",
+                "https://epub.uni-bayreuth.de/id/eprint/dcterms-isPartOf"
+            ],
+            "publisher_ss": [
+                "dcterms:publisher A",
+                "dcterms:publisher B",
+                "dcterms:publisher literal",
+                "dcterms:publisher uri",
+                "https://epub.uni-bayreuth.de/id/eprint/dcterms-publisher"
+            ],
+            "keyword_ss": [
+                "dcterms:subject A",
+                "dcterms:subject B",
+                "dcterms:subject literal",
+                "dcterms:subject uri",
+                "https://epub.uni-bayreuth.de/id/eprint/dcterms-subject"
+            ],
+            "language_ss": [
+                "dcterms:language A",
+                "dcterms:language B",
+                "dcterms:language literal",
+                "dcterms:language uri",
+                "https://epub.uni-bayreuth.de/id/eprint/dcterms-language"
+            ],
+            "author_ss": [
+                "bibo:authorList A",
+                "bibo:authorList B",
+                "bibo:authorList literal",
+                "bibo:authorList uri",
+                "https://epub.uni-bayreuth.de/id/eprint/bibo-authorList"
+            ],
+            "editor_ss": [
+                "bibo:editorList A",
+                "bibo:editorList B",
+                "bibo:editorList literal",
+                "bibo:editorList uri",
+                "https://epub.uni-bayreuth.de/id/eprint/bibo-editorList"
+            ],
+            "creator_ss": [
+                "bibo:authorList A",
+                "bibo:authorList B",
+                "bibo:authorList literal",
+                "bibo:authorList uri",
+                "https://epub.uni-bayreuth.de/id/eprint/bibo-authorList",
+                "bibo:editorList A",
+                "bibo:editorList B",
+                "bibo:editorList literal",
+                "bibo:editorList uri",
+                "https://epub.uni-bayreuth.de/id/eprint/bibo-editorList"
+            ],
+            "volume_s": "7",
+            "issue_s": "2",
+            "pages_s": "bibo:pages literal",
+            "doi_s": "https://doi.org/10.1234/ABC.5",
+            "year": 2019,
+            "thumbnail_url": "https://example.org/thumb/101.jpg"
+        },
+        "empty": {
+            "id": "102",
+            "is_public": false,
+            "title": "[Untitled #102]"
+        }
+    },
+    "research_sections": {
+        "full": {
+            "id": "101",
+            "is_public": true,
+            "title": "A full record",
+            "abstract": "dcterms:abstract literal",
+            "pi_ss": [
+                "dcterms:creator A",
+                "dcterms:creator B",
+                "dcterms:creator literal",
+                "dcterms:creator uri"
+            ],
+            "spokesperson_ss": [
+                "marcrel:spk A",
+                "marcrel:spk B",
+                "marcrel:spk literal",
+                "marcrel:spk uri"
+            ],
+            "member_count": 4,
+            "project_count": 4,
+            "people_ss": [
+                "dcterms:creator A",
+                "dcterms:creator B",
+                "dcterms:creator literal",
+                "dcterms:creator uri",
+                "marcrel:spk A",
+                "marcrel:spk B",
+                "marcrel:spk literal",
+                "marcrel:spk uri",
+                "foaf:member A",
+                "foaf:member B",
+                "foaf:member literal",
+                "foaf:member uri"
+            ],
+            "phase_s": "Phase 1",
+            "thumbnail_url": "https://example.org/thumb/101.jpg"
+        },
+        "empty": {
+            "id": "102",
+            "is_public": false,
+            "title": "[Untitled #102]",
+            "member_count": 0,
+            "project_count": 0
+        }
+    },
+    "research_subjects": {
+        "full": {
+            "id": "101",
+            "is_public": true,
+            "title": "A full record",
+            "type_s": "dcterms:type A",
+            "item_count": 3,
+            "publication_count": 6,
+            "thumbnail_url": "https://example.org/thumb/101.jpg"
+        },
+        "empty": {
+            "id": "102",
+            "is_public": false,
+            "title": "[Unnamed #102]",
+            "item_count": 0,
+            "publication_count": 0
+        }
+    },
+    "research_videos": {
+        "full": {
+            "id": "101",
+            "is_public": true,
+            "title": "A full record",
+            "abstract": "dcterms:abstract literal",
+            "playlist_s": "dcterms:isPartOf A",
+            "language_ss": [
+                "dcterms:language A",
+                "dcterms:language B",
+                "dcterms:language literal",
+                "dcterms:language uri"
+            ],
+            "speaker_ss": [
+                "marcrel:spk A",
+                "marcrel:spk B",
+                "marcrel:spk literal",
+                "marcrel:spk uri"
+            ],
+            "speaker_ids": [
+                "8859",
+                "8860",
+                "",
+                ""
+            ],
+            "playlist_id": "3663",
+            "url_s": "https://example.org/fabio-hasURL",
+            "date_s": "2019-03-04",
+            "year": 2019,
+            "transcript": "bibo:content literal",
+            "has_transcript": true,
+            "thumbnail_url": "https://example.org/thumb/101.jpg"
+        },
+        "empty": {
+            "id": "102",
+            "is_public": false,
+            "title": "[Untitled #102]",
+            "has_transcript": false
+        }
+    }
+}
