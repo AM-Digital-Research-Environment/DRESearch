@@ -73,12 +73,28 @@ foreach ($profiles as $name => $definition) {
                 $errors[] = "$name: search_only field $field is not excluded from payloads";
             }
         }
-        if (!preg_match('/[|]\s*[\'\"]' . preg_quote($profile->kind(), '/') . '[\'\"]/', $clientTypes)) {
-            $errors[] = "$name: card kind {$profile->kind()} is missing from the client CardKind union";
-        }
     } catch (Throwable $exception) {
         $errors[] = "$name: {$exception->getMessage()}";
     }
+}
+
+// One list of kinds: the mapper registry is the source (a profile's kind is
+// validated against it), and the client's CARD_KINDS in src/svelte/lib/types.ts
+// must name exactly the same ones. A kind only the server knows renders the
+// generic item card; one only the client knows hides a typo.
+$serverKinds = \DRESearch\Indexer\MapperRegistry::default()->kinds();
+$clientKinds = [];
+if (preg_match('/export const CARD_KINDS = \[(.*?)\] as const;/s', $clientTypes, $match)) {
+    preg_match_all("/'([a-z_]+)'/", $match[1], $kinds);
+    $clientKinds = $kinds[1];
+} else {
+    $errors[] = 'src/svelte/lib/types.ts: CARD_KINDS is missing';
+}
+foreach (array_diff($serverKinds, $clientKinds) as $kind) {
+    $errors[] = "kind $kind is registered in MapperRegistry but missing from the client's CARD_KINDS";
+}
+foreach (array_diff($clientKinds, $serverKinds) as $kind) {
+    $errors[] = "kind $kind is in the client's CARD_KINDS but no mapper is registered for it";
 }
 
 if ($errors !== []) {

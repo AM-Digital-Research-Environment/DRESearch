@@ -14,17 +14,26 @@ export interface SortOption {
   label: string;
 }
 
+/**
+ * The profile kinds, each with its result card. The server's list is
+ * `Indexer\MapperRegistry::default()`; `npm run lint:schema` fails unless this
+ * one names exactly the same kinds, so a kind added on one side only is caught
+ * before it renders the fallback card or a placeholder key.
+ */
+export const CARD_KINDS = [
+  'item',
+  'project',
+  'publication',
+  'podcast',
+  'video',
+  'person',
+  'section',
+  'organisation',
+  'term',
+] as const;
+
 /** Which result card to render — selected by the profile's `kind`. */
-export type CardKind =
-  | 'item'
-  | 'project'
-  | 'publication'
-  | 'podcast'
-  | 'video'
-  | 'person'
-  | 'section'
-  | 'organisation'
-  | 'term';
+export type CardKind = (typeof CARD_KINDS)[number];
 
 /** Single origin year vs a start/end range. */
 /** 'none': a date-less corpus (people, terms, organisations, sections, …). */

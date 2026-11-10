@@ -2,6 +2,7 @@
   import type {
     ActiveFilters,
     Bootstrap,
+    CardKind,
     SearchResponse,
     SortKey,
     SortOption,
@@ -151,28 +152,25 @@
       bootstrap.card_kind === 'organisation' ||
       (bootstrap.card_kind === 'term' && bootstrap.facets.length > 0),
   );
+  /** Each kind's search-box hint; a Record, so a new kind fails the type check until it has one. */
+  const PLACEHOLDER_KEYS: Record<CardKind, string> = {
+    item: 'search_placeholder',
+    project: 'search_placeholder_project',
+    publication: 'search_placeholder_publication',
+    podcast: 'search_placeholder_podcast',
+    video: 'search_placeholder_video',
+    person: 'search_placeholder_person',
+    section: 'search_placeholder_section',
+    organisation: 'search_placeholder_organisation',
+    term: 'search_placeholder_term',
+  };
   // A corpus may set its own placeholder (e.g. the authority-term corpora, which
   // share a card kind); otherwise fall back to a kind-derived default.
+  // An unknown kind (a server newer than this bundle) gets the generic hint.
   const placeholder = $derived(
     bootstrap.search_placeholder?.trim()
       ? bootstrap.search_placeholder
-      : bootstrap.card_kind === 'project'
-        ? t('search_placeholder_project')
-        : bootstrap.card_kind === 'publication'
-          ? t('search_placeholder_publication')
-          : bootstrap.card_kind === 'podcast'
-            ? t('search_placeholder_podcast')
-            : bootstrap.card_kind === 'video'
-              ? t('search_placeholder_video')
-              : bootstrap.card_kind === 'person'
-                ? t('search_placeholder_person')
-                : bootstrap.card_kind === 'section'
-                  ? t('search_placeholder_section')
-                  : bootstrap.card_kind === 'organisation'
-                    ? t('search_placeholder_organisation')
-                    : bootstrap.card_kind === 'term'
-                      ? t('search_placeholder_term')
-                      : t('search_placeholder'),
+      : t(PLACEHOLDER_KEYS[bootstrap.card_kind] ?? 'search_placeholder'),
   );
 
   // svelte-ignore state_referenced_locally
