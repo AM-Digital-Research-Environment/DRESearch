@@ -34,28 +34,15 @@ use DRESearch\Settings\SearchProfile;
  *                here into one display string.
  *   - doi      : a URI value — prefer its @id (the full https://doi.org/… link).
  */
-final class PublicationMapper implements MapperInterface
+final class PublicationMapper extends AbstractMapper
 {
-    public function __construct(private readonly SearchProfile $profile)
-    {
-    }
-
     public function map(array $item, array $values, ?string $thumbnailUrl): array
     {
         $bag = new ValueBag($values);
-        $doc = [
-            'id'        => (string) $item['id'],
-            'is_public' => $item['is_public'],
-            'title'     => $item['title'] !== '' ? $item['title'] : sprintf('[Untitled #%d]', $item['id']),
-        ];
-
-        if (($abstract = $bag->firstLiteral('bibo:abstract')) !== null) {
-            $doc['abstract'] = $abstract;
-        }
+        $doc = $this->skeleton($item, $bag, 'bibo:abstract');
 
         // Extracted publication full text is a search-only payload.
-        $fulltextProperty = $this->profile->displayFields()['fulltext']['property'] ?? 'bibo:content';
-        $fulltext = $bag->firstLiteral($fulltextProperty);
+        $fulltext = $bag->firstLiteral($this->displayProperty('fulltext'));
         if ($fulltext !== null) {
             $doc['fulltext'] = $fulltext;
         }
@@ -79,33 +66,20 @@ final class PublicationMapper implements MapperInterface
             $doc['has_fulltext'] = 'Yes';
         }
 
-        $df = $this->profile->displayFields();
-
-        // Facet fields — each takes its linked titles (or literal fallback). Single-
-        // valued facets store the first title, multi-valued ones the deduped list.
-        // creator_ss (the Author / Editor facet) has no property of its own; it is
-        // the author ∪ editor union built below, so the null-property guard skips it.
-        foreach ($this->profile->all() as $field => $def) {
-            if (empty($def['property'])) {
-                continue;
-            }
-            $titles = $bag->labels($def['property']);
-            if ($titles === []) {
-                continue;
-            }
-            $doc[$field] = $this->profile->isMultivalued($field) ? $titles : $titles[0];
-        }
+        // Facet fields. creator_ss (the Author / Editor facet) has no property of
+        // its own; it is the author ∪ editor union built below.
+        $this->addFacetLabels($doc, $bag);
 
         // People. Authors and editors are kept apart for the byline (author_ss /
         // editor_ss, display-only — the card marks editors "(eds.)"), then merged
         // into the creator_ss facet so one sidebar filter finds everything a person
         // authored OR edited. Names are linked persons (literal fallback); the card
         // filters creator_ss by the clicked name.
-        $authors = $bag->labels($df['author_ss']['property'] ?? 'bibo:authorList');
+        $authors = $bag->labels($this->displayProperty('author_ss'));
         if ($authors !== []) {
             $doc['author_ss'] = $authors;
         }
-        $editors = $bag->labels($df['editor_ss']['property'] ?? 'bibo:editorList');
+        $editors = $bag->labels($this->displayProperty('editor_ss'));
         if ($editors !== []) {
             $doc['editor_ss'] = $editors;
         }
@@ -115,10 +89,10 @@ final class PublicationMapper implements MapperInterface
         }
 
         // Bibliographic-reference bits.
-        if (($vol = $bag->firstLiteral($df['volume_s']['property'] ?? 'bibo:volume')) !== null) {
+        if (($vol = $bag->firstLiteral($this->displayProperty('volume_s'))) !== null) {
             $doc['volume_s'] = $vol;
         }
-        if (($issue = $bag->firstLiteral($df['issue_s']['property'] ?? 'bibo:issue')) !== null) {
+        if (($issue = $bag->firstLiteral($this->displayProperty('issue_s'))) !== null) {
             $doc['issue_s'] = $issue;
         }
         if (($pages = $this->resolvePages($bag)) !== null) {
@@ -133,10 +107,7 @@ final class PublicationMapper implements MapperInterface
             $doc['year'] = $year;
         }
 
-        if ($thumbnailUrl !== null) {
-            $doc['thumbnail_url'] = $thumbnailUrl;
-        }
-
+        $this->addThumbnail($doc, $thumbnailUrl);
         return $doc;
     }
 

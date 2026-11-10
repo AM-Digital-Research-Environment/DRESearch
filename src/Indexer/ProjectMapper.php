@@ -26,55 +26,22 @@ use DRESearch\Settings\SearchProfile;
  *                  computed by the reindexer and passed in via $item['item_count'];
  *                  surfaced as the has_items facet ("Yes"/"No") and a card figure.
  */
-final class ProjectMapper implements MapperInterface
+final class ProjectMapper extends AbstractMapper
 {
-    public function __construct(private readonly SearchProfile $profile)
-    {
-    }
-
     public function map(array $item, array $values, ?string $thumbnailUrl): array
     {
         $bag = new ValueBag($values);
-        $doc = [
-            'id'        => (string) $item['id'],
-            'is_public' => $item['is_public'],
-            'title'     => $item['title'] !== '' ? $item['title'] : sprintf('[Untitled #%d]', $item['id']),
-        ];
-
-        if (($abstract = $bag->firstLiteral('dcterms:abstract')) !== null) {
-            $doc['abstract'] = $abstract;
-        }
+        $doc = $this->skeleton($item, $bag, 'dcterms:abstract');
 
         // Facet fields — linked-resource titles (or literal fallback).
-        foreach ($this->profile->all() as $field => $def) {
-            if (!empty($def['property'])) {
-                $titles = $bag->labels($def['property']);
-                if ($titles !== []) {
-                    $doc[$field] = $titles;
-                }
-            }
-        }
+        $this->addFacetLabels($doc, $bag);
 
-        // PIs (dcterms:creator) and members (foaf:member). PIs keep their person
-        // item ids alongside the names so the card can link each one.
-        $df = $this->profile->displayFields();
-        [$piNames, $piIds] = $bag->people($df['pi_ss']['property'] ?? null);
-        if ($piNames) {
-            $doc['pi_ss'] = $piNames;
-            $doc['pi_ids'] = $piIds;
-        }
-        [$memberNames] = $bag->people($df['member_ss']['property'] ?? null);
-        if ($memberNames) {
-            $doc['member_ss'] = $memberNames;
-        }
-
-        // Associated-people facet — union of PIs and members.
-        if ($this->profile->hasFacet('people_ss')) {
-            $people = array_values(array_unique(array_merge($piNames, $memberNames)));
-            if ($people) {
-                $doc['people_ss'] = $people;
-            }
-        }
+        // PIs (dcterms:creator) keep their person item ids so the card can link
+        // each one; members (foaf:member) are names only. The associated-people
+        // facet is their union.
+        $pis = $this->addPeople($doc, $bag, $this->displayProperty('pi_ss'), 'pi_ss', 'pi_ids');
+        $members = $this->addPeople($doc, $bag, $this->displayProperty('member_ss'), 'member_ss');
+        $this->addPeopleFacet($doc, $pis, $members);
 
         // Year range from dcterms:temporal.
         [$start, $end] = $bag->firstYearRange($this->profile->dateProperty());
@@ -92,10 +59,7 @@ final class ProjectMapper implements MapperInterface
             $doc['has_items'] = $count > 0 ? 'Yes' : 'No';
         }
 
-        if ($thumbnailUrl !== null) {
-            $doc['thumbnail_url'] = $thumbnailUrl;
-        }
-
+        $this->addThumbnail($doc, $thumbnailUrl);
         return $doc;
     }
 }

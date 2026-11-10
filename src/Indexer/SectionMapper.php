@@ -24,7 +24,7 @@ use DRESearch\Settings\SearchProfile;
  * Which property feeds which field comes from {@see SearchProfile}; the stable
  * field names (phase_s, people_ss, member_count, project_count, …) are the interface.
  */
-final class SectionMapper implements MapperInterface
+final class SectionMapper extends AbstractMapper
 {
     /** Section members live on foaf:member (linked Person items). */
     private const MEMBER_TERM = 'foaf:member';
@@ -32,26 +32,13 @@ final class SectionMapper implements MapperInterface
     private const PHASE_1 = 'Phase 1';
     private const PHASE_2 = 'Phase 2';
 
-    public function __construct(private readonly SearchProfile $profile)
-    {
-    }
-
     public function map(array $item, array $values, ?string $thumbnailUrl): array
     {
         $bag = new ValueBag($values);
-        $doc = [
-            'id'        => (string) $item['id'],
-            'is_public' => $item['is_public'],
-            'title'     => $item['title'] !== '' ? $item['title'] : sprintf('[Untitled #%d]', $item['id']),
-        ];
+        $doc = $this->skeleton($item, $bag, 'dcterms:abstract');
 
-        if (($abstract = $bag->firstLiteral('dcterms:abstract')) !== null) {
-            $doc['abstract'] = $abstract;
-        }
-
-        $df = $this->profile->displayFields();
-        $piTerm = $df['pi_ss']['property'] ?? null;            // dcterms:creator (Phase 1)
-        $spkTerm = $df['spokesperson_ss']['property'] ?? null; // marcrel:spk (Phase 2)
+        $piTerm = $this->displayProperty('pi_ss');            // dcterms:creator (Phase 1)
+        $spkTerm = $this->displayProperty('spokesperson_ss'); // marcrel:spk (Phase 2)
 
         $piNames = $bag->labels($piTerm);
         $spkNames = $bag->labels($spkTerm);
@@ -67,12 +54,7 @@ final class SectionMapper implements MapperInterface
         $doc['project_count'] = (int) ($item['item_count'] ?? 0);
 
         // Associated persons facet — union of leaders and members.
-        if ($this->profile->hasFacet('people_ss')) {
-            $people = array_values(array_unique(array_merge($piNames, $spkNames, $memberNames)));
-            if ($people) {
-                $doc['people_ss'] = $people;
-            }
-        }
+        $this->addPeopleFacet($doc, $piNames, $spkNames, $memberNames);
 
         // Phase facet — implicit in which leadership property the section carries.
         if ($this->profile->hasFacet('phase_s')) {
@@ -84,10 +66,7 @@ final class SectionMapper implements MapperInterface
             // else: no phase (e.g. the External section) — left unset.
         }
 
-        if ($thumbnailUrl !== null) {
-            $doc['thumbnail_url'] = $thumbnailUrl;
-        }
-
+        $this->addThumbnail($doc, $thumbnailUrl);
         return $doc;
     }
 }

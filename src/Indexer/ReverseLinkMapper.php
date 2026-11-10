@@ -28,35 +28,19 @@ use DRESearch\Settings\SearchProfile;
  * facet comes from {@see SearchProfile}; the stable field names (affiliation_ss,
  * type_s, roles_ss, item_count, project_count, …) are the interface.
  */
-final class ReverseLinkMapper implements MapperInterface
+final class ReverseLinkMapper extends AbstractMapper
 {
-    public function __construct(private readonly SearchProfile $profile)
-    {
-    }
-
     public function map(array $item, array $values, ?string $thumbnailUrl): array
     {
         $bag = new ValueBag($values);
-        $doc = [
-            'id'        => (string) $item['id'],
-            'is_public' => $item['is_public'],
-            'title'     => $item['title'] !== '' ? $item['title'] : sprintf('[Unnamed #%d]', $item['id']),
-        ];
+        // An entity has no abstract in its document.
+        $doc = $this->skeleton($item, $bag, null, '[Unnamed #%d]');
 
         // Property-backed facets (affiliation_ss ← dcterms:isPartOf, type_s ←
         // dcterms:type): linked titles with a literal fallback, trimmed and
         // deduplicated. Derived facets such as roles_ss carry no property and
         // are filled below.
-        foreach ($this->profile->all() as $field => $def) {
-            if (empty($def['property'])) {
-                continue;
-            }
-            $labels = $bag->labels($def['property']);
-            if ($labels === []) {
-                continue;
-            }
-            $doc[$field] = $this->profile->isMultivalued($field) ? $labels : $labels[0];
-        }
+        $this->addFacetLabels($doc, $bag);
 
         // Roles: the reverse relationships the entity holds (reverse_links).
         if ($this->profile->hasFacet('roles_ss')) {
@@ -75,10 +59,7 @@ final class ReverseLinkMapper implements MapperInterface
             }
         }
 
-        if ($thumbnailUrl !== null) {
-            $doc['thumbnail_url'] = $thumbnailUrl;
-        }
-
+        $this->addThumbnail($doc, $thumbnailUrl);
         return $doc;
     }
 }

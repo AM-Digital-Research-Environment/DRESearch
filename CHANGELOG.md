@@ -11,6 +11,7 @@ All notable changes to DRE Search are documented here. The project follows
 
 ### Changed
 
+- The mappers share one document skeleton (`AbstractMapper`: id, visibility, title, abstract, property-backed facets, people with their ids, the derived People facet, the thumbnail), and podcasts and videos their link, date and transcript (`MediaMapper`) (#56). Fields read their property from the profile only; the mappers no longer repeat vocabulary terms as fallbacks, so a field a profile does not declare is not emitted. A snapshot test pins every shipped profile's documents, which are unchanged: no reindex is needed.
 - The result views a surface offers (list, grid, map) now come from the server in each bootstrap (`views`), derived from the profile: the grid for item cards, the map for any corpus that indexes `geo` and `has_coords` (#55). The client used to decide from the names `research_items` and `research_locations`, so a renamed or added geo corpus had a map endpoint and no Map button. The shipped corpora offer the same views as before.
 
 ## [1.35.0] - 2026-11-06

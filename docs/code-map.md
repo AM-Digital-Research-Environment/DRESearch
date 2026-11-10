@@ -57,6 +57,8 @@ DRESearch/
 │   │   ├── MapperInterface.php · MapperRegistry.php · PreparesBatch.php
 │   │   │                            #   MapperRegistry: the one kind → mapper map (also what makes a
 │   │   │                            #   kind valid in profile config)
+│   │   ├── AbstractMapper · MediaMapper  # the shared document skeleton; podcasts' and
+│   │   │                            #   videos' link, date and transcript
 │   │   ├── ResearchItemMapper · ProjectMapper · PublicationMapper · PodcastMapper ·
 │   │   │   VideoMapper · SectionMapper · ReverseLinkMapper · TermMapper
 │   │   │                            #   ReverseLinkMapper maps both `person` and `organisation`;

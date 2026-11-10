@@ -20,7 +20,7 @@ use DRESearch\Settings\SearchProfile;
  *   ['vrid' => ?int, 'value' => ?string, 'title' => ?string]
  * where vrid/title come from a value_resource link and value is the literal.
  */
-final class ResearchItemMapper implements MapperInterface, PreparesBatch
+final class ResearchItemMapper extends AbstractMapper implements PreparesBatch
 {
     /** Roles folded into creator_ss for search + byline. */
     private const CREATOR_TERMS = ['dcterms:creator', 'dcterms:contributor', 'marcrel:aut', 'marcrel:edt'];
@@ -30,8 +30,9 @@ final class ResearchItemMapper implements MapperInterface, PreparesBatch
 
     public function __construct(
         private readonly AuthorityResolver $auth,
-        private readonly SearchProfile $profile,
+        SearchProfile $profile,
     ) {
+        parent::__construct($profile);
     }
 
     /** Resolve every authority this batch links to in one pass (no-op after a full load). */
@@ -75,15 +76,7 @@ final class ResearchItemMapper implements MapperInterface, PreparesBatch
         $itemTag     = $this->profile->typeItem('tag');
         $itemCountry = $this->profile->typeItem('country');
 
-        $doc = [
-            'id'        => (string) $item['id'],
-            'is_public' => $item['is_public'],
-            'title'     => $item['title'] !== '' ? $item['title'] : sprintf('[Untitled #%d]', $item['id']),
-        ];
-
-        if (($abstract = $bag->firstLiteral('dcterms:abstract')) !== null) {
-            $doc['abstract'] = $abstract;
-        }
+        $doc = $this->skeleton($item, $bag, 'dcterms:abstract');
         if (($description = $bag->firstLiteral('dcterms:description')) !== null) {
             $doc['description'] = $description;
         }
@@ -206,10 +199,7 @@ final class ResearchItemMapper implements MapperInterface, PreparesBatch
             $doc['date'] = $epoch;
         }
 
-        if ($thumbnailUrl !== null) {
-            $doc['thumbnail_url'] = $thumbnailUrl;
-        }
-
+        $this->addThumbnail($doc, $thumbnailUrl);
         return $doc;
     }
 
