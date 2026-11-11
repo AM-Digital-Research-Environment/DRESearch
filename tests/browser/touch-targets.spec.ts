@@ -36,8 +36,13 @@ test.describe('search block', () => {
     const box = page.getByRole('combobox', { name: 'Search research items…' });
     await box.fill('market');
     await expectTarget(page.getByRole('button', { name: 'Clear search' }));
-    // Close the suggestions, which float over the toolbar measured next.
+    // Close the suggestions, which float over the toolbar measured next. Wait
+    // for them first: an Escape that lands before the debounced fetch returns
+    // leaves the list to open afterwards (seen on WebKit in CI).
+    const suggestions = page.getByRole('listbox');
+    await expect(suggestions).toBeVisible();
     await box.press('Escape');
+    await expect(suggestions).toBeHidden();
     await expectTarget(page.getByRole('combobox', { name: 'Sort' }), { width: MIN });
     // The view switch is one 44px segmented control: its buttons fill it inside
     // the group's 1px border, so each is 42px tall and at least 44px wide.

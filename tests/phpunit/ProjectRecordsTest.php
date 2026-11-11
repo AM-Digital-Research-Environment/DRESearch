@@ -177,5 +177,6 @@ final class ProjectRecordsTest extends TestCase
         self::assertSame('12,345', ProjectRecords::formatCount(12345, 'en'));
         self::assertSame('12.345', ProjectRecords::formatCount(12345, 'de'));
         self::assertSame('487', ProjectRecords::formatCount(487, 'en'));
+        self::assertSame('12,345', ProjectRecords::formatCount(12345, 'en_US_POSIX'), 'A POSIX locale (LANG=C) still groups.');
     }
 }
