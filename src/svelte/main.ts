@@ -2,11 +2,14 @@
  * Auto-mount entry point for all three DRE Search surfaces:
  *   - [data-dre-search-root]    → App          (a per-page faceted search block)
  *   - [data-dre-search-bar]     → SearchBar    (the theme header federated bar)
- *   - [data-dre-federated-root] → FederatedApp (the grouped-by-type results page)
+ *   - [data-dre-federated-root] → FederatedApp (the results page: an All tab over
+ *                                 the union search, then one tab per corpus)
  *
  * Each root carries an id attribute and has a sibling JSON <script> holding its
  * bootstrap (see the matching PHP: block template, SearchBar / FederatedSearch
  * view helpers). Idempotent against a double load via the data-dre-mounted guard.
+ * The header bar is in the entry; App and FederatedApp are imported only on a
+ * page that has their root, and must stay lazy (`npm run check:size`).
  */
 
 import { mount } from 'svelte';

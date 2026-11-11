@@ -756,6 +756,7 @@ final class SearchProxy
             $names,
             $this->gate->check($names),
             fn(\Throwable $error) => $this->noteFailure($error, true),
+            $this->provider->usesSearchKey(),
         );
     }
 

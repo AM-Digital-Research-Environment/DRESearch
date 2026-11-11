@@ -447,22 +447,23 @@ class Module extends AbstractModule
         } catch (\Throwable) {
             // Table already gone: nothing to report.
         }
-        $connection->executeStatement('DROP TABLE IF EXISTS dre_search_change');
-        $connection->executeStatement('DROP TABLE IF EXISTS dre_search_worker');
-        $connection->executeStatement('DROP TABLE IF EXISTS dre_search_cache');
-        $connection->executeStatement('DROP TABLE IF EXISTS dre_search_rate_limit');
-        $connection->executeStatement('DROP TABLE IF EXISTS dre_search_generation');
-        $connection->executeStatement('DROP TABLE IF EXISTS dre_search_profile_state');
-        $connection->executeStatement('DROP TABLE IF EXISTS dre_search_popular_moderation');
+        foreach (array_keys(self::TABLES) as $table) {
+            $connection->executeStatement('DROP TABLE IF EXISTS ' . $table);
+        }
         // Typesense collections are intentionally left untouched — they may be
         // shared with a parallel install, and dropping data on uninstall is
         // surprising. Clean them up from the Typesense side if needed.
     }
 
-    private function installOperationalTables(ServiceLocatorInterface $services): void
-    {
-        $connection = $services->get('Omeka\Connection');
-        $connection->executeStatement(<<<'SQL'
+    /**
+     * The module's tables, by name, with the statement that creates each: the
+     * one schema definition install, upgrade (which re-runs it, every statement
+     * being IF NOT EXISTS) and uninstall (which drops every name) all read, so a
+     * new table cannot be created and then left behind. A column added later
+     * also needs its ALTER in upgrade() for existing installs.
+     */
+    private const TABLES = [
+        'dre_search_profile_state' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS dre_search_profile_state (
     profile VARCHAR(100) NOT NULL PRIMARY KEY,
     collection_alias VARCHAR(255) NULL,
@@ -489,8 +490,8 @@ CREATE TABLE IF NOT EXISTS dre_search_profile_state (
     INDEX idx_dre_search_state_status (status),
     INDEX idx_dre_search_state_dirty (dirty)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-SQL);
-        $connection->executeStatement(<<<'SQL'
+SQL,
+        'dre_search_generation' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS dre_search_generation (
     id INT AUTO_INCREMENT PRIMARY KEY,
     profile VARCHAR(100) NOT NULL,
@@ -502,16 +503,16 @@ CREATE TABLE IF NOT EXISTS dre_search_generation (
     UNIQUE INDEX uniq_dre_search_collection (collection_name),
     INDEX idx_dre_search_generation_profile (profile, status, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-SQL);
-        $connection->executeStatement(<<<'SQL'
+SQL,
+        'dre_search_rate_limit' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS dre_search_rate_limit (
     bucket_key CHAR(64) NOT NULL PRIMARY KEY,
     window_started DATETIME NOT NULL,
     request_count INT NOT NULL DEFAULT 0,
     INDEX idx_dre_search_rate_window (window_started)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-SQL);
-        $connection->executeStatement(<<<'SQL'
+SQL,
+        'dre_search_change' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS dre_search_change (
     profile VARCHAR(100) NOT NULL,
     item_id INT NOT NULL,
@@ -519,27 +520,27 @@ CREATE TABLE IF NOT EXISTS dre_search_change (
     queued_at DATETIME NOT NULL,
     PRIMARY KEY (profile, item_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-SQL);
-        $connection->executeStatement(<<<'SQL'
+SQL,
+        'dre_search_worker' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS dre_search_worker (
     name VARCHAR(32) NOT NULL PRIMARY KEY,
     requested TINYINT(1) NOT NULL DEFAULT 0,
     heartbeat DATETIME NULL,
     updated_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-SQL);
-        $connection->executeStatement(<<<'SQL'
+SQL,
+        'dre_search_cache' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS dre_search_cache (
     cache_key CHAR(64) NOT NULL PRIMARY KEY,
     payload MEDIUMTEXT NOT NULL,
     expires_at DATETIME NOT NULL,
     INDEX idx_dre_cache_expiry (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-SQL);
+SQL,
         // query_hash is the SHA-256 of the case- and whitespace-folded query
         // (Search\PopularModeration): variants share one decision without
         // relying on the collation, which would also fold accents together.
-        $connection->executeStatement(<<<'SQL'
+        'dre_search_popular_moderation' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS dre_search_popular_moderation (
     profile VARCHAR(100) NOT NULL,
     query_hash CHAR(64) NOT NULL,
@@ -549,6 +550,14 @@ CREATE TABLE IF NOT EXISTS dre_search_popular_moderation (
     decided_at DATETIME NOT NULL,
     PRIMARY KEY (profile, query_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-SQL);
+SQL,
+    ];
+
+    private function installOperationalTables(ServiceLocatorInterface $services): void
+    {
+        $connection = $services->get('Omeka\Connection');
+        foreach (self::TABLES as $create) {
+            $connection->executeStatement($create);
+        }
     }
 }

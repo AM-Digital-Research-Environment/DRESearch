@@ -15,9 +15,12 @@ If alias verification is unavailable, cleanup preserves the collection for a lat
 
 `GET /dre-search/api/health` reports, without secrets or record ids, whether
 Typesense is configured and reachable, each corpus' public state (`live`,
-`hiding` pending records, or `paused`), the age of the oldest queued change and
-whether the incremental worker is alive. It answers `200` while Typesense is
-reachable and `503` otherwise, so an uptime monitor can poll it.
+`hiding` pending records, or `paused`), the age of the oldest queued change,
+whether the incremental worker is alive, and which key public searches use
+(`search_key`: `search_only`, or `admin` when no search-only key is configured
+and minting one failed). It answers `200` while Typesense is reachable and
+`503` otherwise, so an uptime monitor can poll it; `search_key: admin` does not
+change the status, since search still works, but a monitor should alert on it.
 
 `bin/dre-search` operates the index from a shell, through Omeka's own bootstrap:
 

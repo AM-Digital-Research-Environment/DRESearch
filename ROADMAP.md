@@ -10,24 +10,15 @@ Status: **done** (merged, not yet released) · **in progress** · **planned** ·
 
 ## Next release
 
-**Done: the cross-module review with IwacSearch (2026-10-28).** The two
-modules were compared file by file, and what IwacSearch did better is now
-merged here. The rows below are merged, not yet released; they replace the
-**Planned** rows for smaller server classes, a search controller module and a
-scoped search-only key. The release needs a reindex of people,
-organisations, research items and the four term corpora (trimmed labels;
-[operations](docs/operations.md#upgrading-from-132)).
+**Done: the coherence review of the DRE theme and modules (2026-11-10).**
+Merged, not yet released; no reindex needed.
 
-| Area    | Item                                                                                                                                                                                                                                                                                                                                                     | Status                                                                                                                                                                                                                                                                                                                          |
-| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Client  | Search, map and federated fetching move out of `App.svelte` and `FederatedApp.svelte` into tested `.svelte.ts` modules (`searchResults`, `federatedResults`); one combobox (`typeahead`) replaces the duplicated one of `SearchBox`/`SearchBar`; card field derivations become pure, tested functions (`resultCard.ts`).                                 | **done**. `App` still owns the search state and the URL sync (its script is about 580 lines): the fetching and its rules moved, not the state.                                                                                                                                                                                  |
-| Client  | Live region announces settled results only, after a pause; result counts use `Intl.PluralRules`; a typing burst is one history entry; card filter values are labelled toggles with `aria-pressed`; a skip link to the results; every request has a deadline; tests run in a west-of-Greenwich timezone; touch targets measured in the browser.           | **done**. The chips are real `<button>`s (`FilterButton`); the values inline in a citation stay `role="button"` spans, because a `<button>` cannot wrap across the paragraph's lines (measured; `FilterLink.svelte`'s docblock). Keyboard and screen-reader semantics come from role, tabindex, Enter/Space and `aria-pressed`. |
-| Server  | `SearchProxy` split (`FacetRecount`, one `BulkPager` for export and map, `ResponseNormalizer`, `HealthReport`); `QueryBuilder` modes from one matching core; per-kind suggestion subtitles in profile config (`suggest_subtitle`); the federated search validated and scoped once.                                                                       | **done**. `SearchProxy` keeps the orchestration every endpoint shares (validation, gate, breaker, cache, logging).                                                                                                                                                                                                              |
-| Server  | Block render: first page cached, skipped when the URL carries the block's state (`SearchStateQuery`); federated year bounds in one request; the header bar no longer builds the proxy; one bootstrap builder (`SurfaceBootstrap`) for blocks, Project records and federated tabs; a noscript link to item browse.                                        | **done**                                                                                                                                                                                                                                                                                                                        |
-| Server  | One data-driven block layout class (`SearchBlock` + `BlockProfiles::LAYOUTS`) instead of twelve subclasses (stored layout names unchanged); a search-only Typesense key for the public proxy, configured or minted, the admin key kept for indexing; locked filters refuse backslashes.                                                                  | **done**                                                                                                                                                                                                                                                                                                                        |
-| Indexer | One kind → mapper registry (`MapperRegistry`); `PersonMapper`/`OrganisationMapper` merged into `ReverseLinkMapper` on `ValueBag::labels` (trimmed); mapper and assembler unit tests; Typesense plumbing in one injectable class (`CollectionOps`, `ChangeApplier`); exact source counts before promotion; property ids resolved once; dead code removed. | **done**. Needs the reindex above.                                                                                                                                                                                                                                                                                              |
-| Tooling | `npm run bump` as the only version writer; gzip bundle budgets; `npm audit` with documented exceptions; Lighthouse budgets in CI; MapLibre pin checked against DRE Visualizations; release jobs split by privilege; stacked-docblock check; PHPUnit in random order.                                                                                     | **done**. The Lighthouse gate runs in bootstrap mode until `tests/lighthouse/baseline.json` is committed from a CI run (CONTRIBUTING.md).                                                                                                                                                                                       |
-| Docs    | `CLAUDE.md` and a code map; the AMIRA data model moves out of the README; tests named by module rather than by release; the docs and comments brought up to date with the merged code.                                                                                                                                                                   | **done**                                                                                                                                                                                                                                                                                                                        |
+| Area    | Item                                                                                                                                                         | Status   |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| Client  | The result views (list, grid, map) come from the profile in the bootstrap, not from the profile's name (#55).                                                | **done** |
+| Client  | The header bar's styling surface: documented custom properties on `.dre-search-bar` (#59). The theme still overrides the internal classes until it switches. | **done** |
+| Indexer | The mappers share one document skeleton; no vocabulary fallbacks in mapper code; a snapshot of every profile's documents; one list of kinds, checked (#56).  | **done** |
+| Server  | The health endpoint reports when public search has fallen back to the admin key; one table definition for install and uninstall (#57).                       | **done** |
 
 ## Planned
 
@@ -86,6 +77,16 @@ organisations, research items and the four term corpora (trimmed labels;
   PHPStan on `tests/`, type-aware ESLint, a CI check on where PSR Log loads
   from, Omeka's real schema in the integration tests, and new indexer and
   delete-path tests.
+- **1.33.0–1.35.0:** the cross-module review with IwacSearch (2026-10-28):
+  fetching moved out of `App` and `FederatedApp` into tested modules, one
+  combobox, pure card derivations; settled-only announcements, plural rules,
+  labelled filter toggles, a skip link, request deadlines; `SearchProxy` split
+  and every `QueryBuilder` mode from one matching core; cached first pages and
+  one bootstrap builder; one data-driven block layout class; a scoped
+  search-only Typesense key; the mapper registry and `CollectionOps`; exact
+  source counts before promotion; `npm run bump`, bundle and Lighthouse
+  budgets. Then a restricted full-text policy (1.34.0) and a stable project
+  key (1.35.0).
 - **Repository:** Dependabot security updates, secret scanning and push
   protection on (2026-10-07); issue #22 closed; the AMIRA deployment pins
   v1.25.0.

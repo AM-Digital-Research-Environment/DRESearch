@@ -10,7 +10,9 @@ use DRESearch\Indexer\WorkerLease;
 /**
  * The monitoring probe's answer (`GET /dre-search/api/health`): is Typesense
  * configured and reachable, which corpora are live, hiding pending records or
- * paused, and is the incremental worker keeping up. No secrets, no record ids.
+ * paused, is the incremental worker keeping up, and do public searches run with
+ * the search-only key or have they fallen back to the admin key. No secrets,
+ * no record ids.
  *
  * Every part degrades on its own: an unreachable Typesense, a missing queue
  * table or an unreadable worker lease leaves that part empty, never the whole
@@ -29,10 +31,17 @@ final class HealthReport
      * @param list<string> $profiles every configured profile name
      * @param array<string,array{ready:bool,exclude:list<int>}> $states the readiness gate's answer for them
      * @param callable(\Throwable):void $onFailure told about a failed reachability probe (the breaker)
+     * @param bool|null $searchOnlyKey whether public searches use the search-only key; null when unconfigured
      * @return array<string,mixed>
      */
-    public function build(bool $configured, ?object $client, array $profiles, array $states, callable $onFailure): array
-    {
+    public function build(
+        bool $configured,
+        ?object $client,
+        array $profiles,
+        array $states,
+        callable $onFailure,
+        ?bool $searchOnlyKey = null,
+    ): array {
         $reachable = false;
         if ($client !== null) {
             try {
@@ -57,6 +66,10 @@ final class HealthReport
             'reachable' => $reachable,
             'oldest_pending_seconds' => $oldest !== null ? max(0, time() - (int) strtotime($oldest . ' UTC')) : null,
             'worker' => $this->worker(),
+            // `admin`: search works, but with a key that may also write. Not a
+            // failure (ok and the status code are unchanged); a monitor should
+            // still flag it, as the maintenance page does.
+            'search_key' => $searchOnlyKey === null ? null : ($searchOnlyKey ? 'search_only' : 'admin'),
             'profiles' => $corpora,
         ];
     }

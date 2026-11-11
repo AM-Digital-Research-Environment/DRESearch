@@ -98,6 +98,21 @@ final class TypesenseClientProvider
     }
 
     /**
+     * Whether public searches run with the search-only key (true) or fall back
+     * to the admin key (false): none configured, minting failed, or no alias
+     * to scope one to. Null when Typesense isn't configured. Resolves the
+     * search client, so it may mint the key, once, as the first search would.
+     */
+    public function usesSearchKey(): ?bool
+    {
+        if (!$this->isConfigured()) {
+            return null;
+        }
+        $this->getSearchClient();
+        return $this->usesSearchKey;
+    }
+
+    /**
      * Typesense refused the search-only key: a minted one is forgotten so the
      * next request mints another ({@see TypesenseSearchKeyProvider::rejected()}).
      */
