@@ -13,14 +13,22 @@ Status: **done** (merged, not yet released) · **in progress** · **planned** ·
 **Done: the coherence review of the DRE theme and modules (2026-11-10).**
 Merged, not yet released; no reindex needed.
 
-| Area    | Item                                                                                                                                                         | Status   |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
-| Client  | The result views (list, grid, map) come from the profile in the bootstrap, not from the profile's name (#55).                                                | **done** |
-| Client  | The header bar's styling surface: documented custom properties on `.dre-search-bar` (#59). The theme still overrides the internal classes until it switches. | **done** |
-| Indexer | The mappers share one document skeleton; no vocabulary fallbacks in mapper code; a snapshot of every profile's documents; one list of kinds, checked (#56).  | **done** |
-| Server  | The health endpoint reports when public search has fallen back to the admin key; one table definition for install and uninstall (#57).                       | **done** |
+| Area    | Item                                                                                                                                                         | Status                      |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------- |
+| Client  | The result views (list, grid, map) come from the profile in the bootstrap, not from the profile's name (#55).                                                | **done**                    |
+| Client  | The header bar's styling surface: documented custom properties on `.dre-search-bar` (#59). The theme still overrides the internal classes until it switches. | **done**                    |
+| Indexer | The mappers share one document skeleton; no vocabulary fallbacks in mapper code; a snapshot of every profile's documents; one list of kinds, checked (#56).  | **done**                    |
+| Server  | The health endpoint reports when public search has fallen back to the admin key; one table definition for install and uninstall (#57).                       | **done**                    |
+| Tests   | WebKit browser tests; controller, circuit breaker, export menu and view toggle tests; one visually hidden rule; a formatted Project records count (#58).     | **in progress**: see below. |
 
 ## Planned
+
+The rest of #58 (coherence review, 2026-11-10): tests for the admin POST
+actions, the jobs, the orchestrator and the CLI, and for the map view, year
+slider and mobile filter drawer in the client; the secondary button still
+copied from the theme by hand (`styles/buttons.css`); raw `rem` spacing in
+components; `asset/css/dre-search.css` outside Prettier and every CSS outside
+a linter beyond the token rules.
 
 | Item                                                                                                                                                                             | Notes                                                         |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |

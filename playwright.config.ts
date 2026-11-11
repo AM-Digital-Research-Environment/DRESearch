@@ -16,5 +16,10 @@ export default defineConfig({
     baseURL: 'http://dre.test',
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // WebKit too: Safari is where YearRangeFacet's iOS workaround and the
+  // header bar's overlay are most likely to break, and Chromium cannot see it.
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+  ],
 });

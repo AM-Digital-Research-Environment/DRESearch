@@ -191,6 +191,7 @@ test.describe('search block', () => {
 
   test('a skip link after the search box jumps past the facets to the results', async ({
     page,
+    browserName,
   }) => {
     await serve(page);
     await page.goto('/');
@@ -199,7 +200,11 @@ test.describe('search block', () => {
     expect((await skip.boundingBox())?.width).toBeLessThanOrEqual(1);
 
     await page.getByRole('combobox', { name: 'Search research items…' }).focus();
-    await page.keyboard.press('Tab');
+    // WebKit, like Safari's default setting, moves Tab past links (and its
+    // Option-Tab is not available off macOS): the tab order is Chromium's to
+    // check; WebKit still checks the reveal and the jump.
+    if (browserName === 'webkit') await skip.focus();
+    else await page.keyboard.press('Tab');
     await expect(skip).toBeFocused();
     const box = await skip.boundingBox();
     expect(box?.width).toBeGreaterThan(40);

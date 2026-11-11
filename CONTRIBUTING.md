@@ -11,7 +11,7 @@ npm run lint
 npm run check
 npm test
 npm run build
-# Real browser (Chromium), against the built bundle; once: npx playwright install chromium
+# Real browsers (Chromium, WebKit), against the built bundle; once: npx playwright install chromium webkit
 npm run test:browser
 
 composer install

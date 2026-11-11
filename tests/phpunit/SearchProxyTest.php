@@ -67,6 +67,49 @@ final class SearchProxyTest extends TestCase
         self::assertSame('Typesense returned 1 of 3 expected documents.', $writer->events[0]['extra']['message']);
     }
 
+    /**
+     * The circuit breaker: a connection failure anywhere in the cause chain
+     * stops every later call in the request from waiting out its own connect
+     * timeout. Any other failure (a 500, a timeout reading a reply) leaves
+     * the client in use, and a refused search key is forgotten instead.
+     */
+    public function testAConnectionFailureOpensTheBreakerForTheRestOfTheRequest(): void
+    {
+        $failures = [
+            'other' => [new \RuntimeException('500 from Typesense'), false],
+            'refused key' => [new \Typesense\Exceptions\RequestUnauthorized('Forbidden'), false],
+            'connect, wrapped' => [new \RuntimeException('search failed', 0, new \GuzzleHttp\Exception\ConnectException(
+                'Connection refused',
+                new \GuzzleHttp\Psr7\Request('POST', 'http://127.0.0.1:18199/multi_search'),
+            )), true],
+        ];
+        foreach ($failures as $name => [$error, $opens]) {
+            $proxy = $this->proxy(new TypesenseClientProvider('127.0.0.1', 18199, 'http', 'k'), $this->blockDatabase());
+            $client = new \ReflectionMethod($proxy, 'client');
+            self::assertNotNull($client->invoke($proxy), $name . ': a configured client is used.');
+
+            (new \ReflectionMethod($proxy, 'noteFailure'))->invoke($proxy, $error);
+
+            self::assertSame($opens, !is_object($client->invoke($proxy)), $name);
+            self::assertSame($opens, !is_object($client->invoke($proxy, true)), $name . ', admin key');
+        }
+    }
+
+    /** With the breaker open, a search answers "unavailable" without a request. */
+    public function testAnOpenBreakerAnswersUnavailableAtOnce(): void
+    {
+        $proxy = $this->proxy(new TypesenseClientProvider('127.0.0.1', 18199, 'http', 'k', 2.0, 2.0, 0.5), $this->blockDatabase());
+        (new \ReflectionProperty($proxy, 'backendDown'))->setValue($proxy, true);
+        // Building the Typesense client (HTTP client discovery) is slow on a
+        // cold process and is not what is measured: build it first.
+        self::assertNull((new \ReflectionMethod($proxy, 'client'))->invoke($proxy));
+
+        $started = hrtime(true);
+        $result = $proxy->search('research_items', ['q' => 'river']);
+        self::assertFalse($result['available']);
+        self::assertLessThan(0.4, (hrtime(true) - $started) / 1e9, 'No connect timeout was waited out.');
+    }
+
     private function proxy(TypesenseClientProvider $provider, Connection $db, ?\Laminas\Log\Writer\WriterInterface $writer = null): SearchProxy
     {
         $logger = new \Laminas\Log\Logger();
