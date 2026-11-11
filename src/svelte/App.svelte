@@ -47,6 +47,7 @@
   import CopyLinkButton from './components/CopyLinkButton.svelte';
   import MapView from './components/MapView.svelte';
   import './styles/buttons.css';
+  import './styles/a11y.css';
 
   /**
    * One instance per mounted block. Owns the search state (query, page, sort,
@@ -638,7 +639,7 @@
         <!-- In-block bypass: the first stop after the search box, ahead of every
              facet. The theme's own skip link lands above the block, from where
              the first result was a facet column of Tab presses away. -->
-        <a class="dre-search__skip" href="#{resultsHeadingId}" onclick={skipToResults}
+        <a class="dre-search__skip dre-sr-only" href="#{resultsHeadingId}" onclick={skipToResults}
           >{t('skip_to_results')}</a
         >
         <aside
@@ -668,13 +669,13 @@
         <svelte:element
           this={`h${headingLevel}`}
           id={resultsHeadingId}
-          class="dre-search__sr-only"
+          class="dre-sr-only"
           tabindex="-1"
           bind:this={resultsHeading}
         >
           {t('search_results')}
         </svelte:element>
-        <p class="dre-search__sr-only" role="status" aria-live="polite" aria-atomic="true">
+        <p class="dre-sr-only" role="status" aria-live="polite" aria-atomic="true">
           {announcement}
         </p>
         {#if failed}
@@ -855,29 +856,10 @@
     gap: var(--space-md, 1rem);
     min-width: 0;
   }
-  .dre-search__sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-    border: 0;
-  }
   /* Skip link: visually hidden until focused (the sr-only clip, not an
      off-screen offset), then a control at the top of the layout, spanning both
      columns but only as wide as its label. Once static it is a grid item; out
      of the flow it takes no cell. */
-  .dre-search__skip {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-  }
   .dre-search__skip:focus,
   .dre-search__skip:focus-visible {
     position: static;
@@ -885,6 +867,7 @@
     height: auto;
     overflow: visible;
     clip: auto;
+    white-space: normal;
     grid-column: 1 / -1;
     justify-self: start;
     padding: var(--space-1, 0.25rem) var(--space-4, 1rem);

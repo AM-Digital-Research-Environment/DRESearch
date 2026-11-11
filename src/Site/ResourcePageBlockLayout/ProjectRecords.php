@@ -129,6 +129,30 @@ final class ProjectRecords implements ResourcePageBlockLayoutInterface
     }
 
     /**
+     * The heading's record count as the site's locale writes it ("1,234" on an
+     * English site, "1.234" on a German one), as the client formats every
+     * count. Omeka makes the site locale PHP's default when intl is loaded;
+     * without intl, or for a locale ICU does not know, number_format() is the
+     * fallback. The same rule as DRE-theme's FormatNumber helper.
+     *
+     * @param string|null $locale an ICU locale; the default is the site's
+     */
+    public static function formatCount(int $value, ?string $locale = null): string
+    {
+        if (class_exists(\NumberFormatter::class)) {
+            try {
+                $formatted = (new \NumberFormatter($locale ?? \Locale::getDefault(), \NumberFormatter::DECIMAL))->format($value);
+                if (is_string($formatted)) {
+                    return $formatted;
+                }
+            } catch (\Throwable) {
+                // number_format() below.
+            }
+        }
+        return number_format($value);
+    }
+
+    /**
      * The client bootstrap: the research items block's, with `scope_item` in
      * place of `block_id`.
      *

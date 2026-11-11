@@ -23,7 +23,7 @@ $id = 'r' . (int) $itemId;
     <summary class="dre-search-project-records__head">
         <span class="dre-search-project-records__headwrap">
             <h2 class="dre-search-project-records__title" id="dre-search-title-<?= $this->escapeHtmlAttr($id) ?>"><?= $this->escapeHtml($this->translate('Records of this project')) ?></h2>
-            <span class="dre-search-project-records__count"><?= (int) $found ?></span>
+            <span class="dre-search-project-records__count"><?= $this->escapeHtml(\DRESearch\Site\ResourcePageBlockLayout\ProjectRecords::formatCount((int) $found)) ?></span>
         </span>
         <span class="dre-search-project-records__chevron" aria-hidden="true"></span>
     </summary>

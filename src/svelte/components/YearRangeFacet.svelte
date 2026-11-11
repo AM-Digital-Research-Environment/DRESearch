@@ -1,4 +1,5 @@
 <script lang="ts">
+  import '../styles/a11y.css';
   import { t } from '../lib/i18n';
 
   /**
@@ -126,7 +127,7 @@
     <div class="dre-yr__body">
       <div class="dre-yr__values">
         <label>
-          <span class="dre-yr__sr">{t('year_from')}</span>
+          <span class="dre-sr-only">{t('year_from')}</span>
           <input
             class="dre-yr__number"
             type="number"
@@ -140,7 +141,7 @@
         </label>
         <span aria-hidden="true">–</span>
         <label>
-          <span class="dre-yr__sr">{t('year_to')}</span>
+          <span class="dre-sr-only">{t('year_to')}</span>
           <input
             class="dre-yr__number"
             type="number"
@@ -204,14 +205,6 @@
     outline: 2px solid transparent;
     border-color: var(--primary, #007a50);
     box-shadow: var(--ring-focus, 0 0 0 3px rgba(0, 122, 80, 0.32));
-  }
-  .dre-yr__sr {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
   }
   .dre-yr {
     padding-block: var(--space-md, 1rem);

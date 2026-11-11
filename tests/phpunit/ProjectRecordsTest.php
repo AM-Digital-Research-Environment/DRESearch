@@ -120,6 +120,8 @@ final class ProjectRecordsTest extends TestCase
         self::assertStringContainsString('<script type="application/json" id="dre-search-state-r1797">', $html);
         self::assertStringContainsString('Records of this project', $html);
         self::assertStringContainsString('<span class="dre-search-project-records__count">487</span>', $html);
+        $large = (string) $view->render(ProjectRecords::TEMPLATE, ['itemId' => 1, 'found' => 12345, 'bootstrap' => []]);
+        self::assertStringNotContainsString('__count">12345<', $large, 'A large count is grouped, in the site locale.');
         self::assertStringNotContainsString('</script><b>', $html, 'The bootstrap cannot close its script.');
         preg_match('#<script type="application/json" id="dre-search-state-r1797">(.*?)</script>#s', $html, $match);
         self::assertSame(1797, json_decode($match[1] ?? '', true)['scope_item'] ?? null);
@@ -166,5 +168,14 @@ final class ProjectRecordsTest extends TestCase
         self::assertInstanceOf(\Laminas\View\Helper\BasePath::class, $basePath);
         $basePath->setBasePath('/omeka');
         return $view;
+    }
+
+    /** The count follows the locale it is given, as the client's Intl.NumberFormat does. */
+    #[\PHPUnit\Framework\Attributes\RequiresPhpExtension('intl')]
+    public function testTheCountIsFormattedInTheSiteLocale(): void
+    {
+        self::assertSame('12,345', ProjectRecords::formatCount(12345, 'en'));
+        self::assertSame('12.345', ProjectRecords::formatCount(12345, 'de'));
+        self::assertSame('487', ProjectRecords::formatCount(487, 'en'));
     }
 }

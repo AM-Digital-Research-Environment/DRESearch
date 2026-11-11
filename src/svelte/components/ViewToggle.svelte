@@ -1,4 +1,5 @@
 <script lang="ts">
+  import '../styles/a11y.css';
   import type { ViewMode } from '../lib/types';
   import { t } from '../lib/i18n';
   interface Props {
@@ -26,7 +27,7 @@
       {:else}<svg viewBox="0 0 20 20" aria-hidden="true"
           ><path d="m2 5 5-2 6 2 5-2v12l-5 2-6-2-5 2zm6-.5v9l4 1.4v-9zm6 1.4v8.6l2-.8V5.1z" /></svg
         >{/if}
-      <span>{t(`view_${option}`)}</span>
+      <span class="dre-sr-only-narrow">{t(`view_${option}`)}</span>
     </button>
   {/each}
 </div>
@@ -78,14 +79,5 @@
     width: 1rem;
     height: 1rem;
     fill: currentColor;
-  }
-  @media (max-width: 599px) {
-    button span {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip: rect(0 0 0 0);
-    }
   }
 </style>

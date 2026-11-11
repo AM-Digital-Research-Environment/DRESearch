@@ -1,0 +1,33 @@
+/*
+ * Visually hidden, still read by screen readers: live-region status lines,
+ * labels a mark or an icon stands in for. The one definition every component
+ * imports; it used to be written out eleven times under five class names.
+ * Global (not component-scoped) on purpose, like styles/buttons.css.
+ */
+.dre-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* A label that only phones hide: below 600px the control shows its icon alone
+   and keeps the text as its accessible name. */
+@media (max-width: 599px) {
+  .dre-sr-only-narrow {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}

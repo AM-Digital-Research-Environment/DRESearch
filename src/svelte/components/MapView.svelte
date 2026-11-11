@@ -1,4 +1,5 @@
 <script lang="ts">
+  import '../styles/a11y.css';
   import type { Doc } from '../lib/types';
   import { formatNumber, t } from '../lib/i18n';
   import {
@@ -239,7 +240,7 @@
   <div class="dre-map__canvas" bind:this={container}></div>
   <!-- The map's one persistent status node (DRE-theme integration contract,
        "Asynchronous states"); the visible overlays below repeat it. -->
-  <p class="dre-map__sr-only" role="status" aria-live="polite" aria-atomic="true">
+  <p class="dre-sr-only" role="status" aria-live="polite" aria-atomic="true">
     {failed
       ? t('map_error')
       : loading || !ready
@@ -321,17 +322,6 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-2, 0.5rem);
-  }
-  .dre-map__sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-    border: 0;
   }
   .dre-map__coverage {
     margin: 0;

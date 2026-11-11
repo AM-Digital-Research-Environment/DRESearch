@@ -1,4 +1,5 @@
 <script lang="ts">
+  import '../styles/a11y.css';
   import { t } from '../lib/i18n';
   import { announce, COPY_FEEDBACK_MS, surfaceAnnouncer } from '../lib/announce';
   import '../styles/buttons.css';
@@ -51,8 +52,8 @@
     >{#if copied}<path d="M20 6 9 17l-5-5" />{:else}<path
         d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
       /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />{/if}</svg
-  ><span class="dre-copy__label">{copied ? t('copied') : t('copy_link')}</span></button
->{#if !surface}<span class="dre-copy__status" role="status">{status}</span>{/if}
+  ><span class="dre-sr-only-narrow">{copied ? t('copied') : t('copy_link')}</span></button
+>{#if !surface}<span class="dre-sr-only" role="status">{status}</span>{/if}
 
 <style>
   /* The shared secondary button (styles/buttons.css), at the toolbar's size. */
@@ -68,21 +69,5 @@
       min-width: var(--size-control-lg, 2.75rem);
       padding-inline: 0;
     }
-    .dre-copy__label {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip: rect(0 0 0 0);
-      white-space: nowrap;
-    }
-  }
-  .dre-copy__status {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
   }
 </style>

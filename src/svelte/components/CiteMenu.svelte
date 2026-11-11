@@ -1,4 +1,5 @@
 <script lang="ts">
+  import '../styles/a11y.css';
   import type { CardKind, Doc } from '../lib/types';
   import { t } from '../lib/i18n';
   import '../styles/buttons.css';
@@ -83,7 +84,8 @@
     >
     <button type="button" class="dre-button-secondary" onclick={save}>{t('download_ris')}</button>
   </div>
-  {#if !surface}<p class="dre-cite__status" role="status">{status}</p>{/if}
+  <!-- Spoken only: the button label already shows "Copied". -->
+  {#if !surface}<p class="dre-sr-only" role="status">{status}</p>{/if}
 </details>
 
 <style>
@@ -163,15 +165,5 @@
     .dre-cite {
       display: none;
     }
-  }
-  /* Spoken only: the button label already shows "Copied". */
-  .dre-cite__status {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: 0;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
   }
 </style>

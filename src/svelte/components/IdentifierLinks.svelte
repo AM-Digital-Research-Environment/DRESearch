@@ -1,4 +1,5 @@
 <script lang="ts">
+  import '../styles/a11y.css';
   import { hasMark, type ExternalId } from '../lib/identifiers';
   import { t } from '../lib/i18n';
   import RegisterMark from './RegisterMark.svelte';
@@ -32,7 +33,7 @@
           rel="noopener noreferrer"
           title="{ext.label} {ext.id}"
           ><RegisterMark key={ext.key} /><span
-            class={hasMark(ext.key) ? 'dre-shell__sr' : 'dre-shell__id-register'}
+            class={hasMark(ext.key) ? 'dre-sr-only' : 'dre-shell__id-register'}
             >{`${ext.label} `}</span
           ><span class="dre-shell__id-value">{ext.id}</span></a
         >

@@ -13,6 +13,9 @@ All notable changes to DRE Search are documented here. The project follows
 
 ### Changed
 
+- The visually hidden rule is defined once, in `styles/a11y.css` (`.dre-sr-only`, and `.dre-sr-only-narrow` for labels only phones hide), instead of eleven times under five class names (#58). The rendered results are the same.
+- The Project records heading groups its count in the site's locale ("1,234"), as the client formats every other count (#58).
+
 - The mappers share one document skeleton (`AbstractMapper`: id, visibility, title, abstract, property-backed facets, people with their ids, the derived People facet, the thumbnail), and podcasts and videos their link, date and transcript (`MediaMapper`) (#56). Fields read their property from the profile only; the mappers no longer repeat vocabulary terms as fallbacks, so a field a profile does not declare is not emitted. A snapshot test pins every shipped profile's documents, which are unchanged: no reindex is needed.
 - The module's tables are defined once (`Module::TABLES`); install creates and uninstall drops exactly those (#57). The statements are unchanged.
 - `ROADMAP.md` and the client entry's header comment caught up with the code (#57).

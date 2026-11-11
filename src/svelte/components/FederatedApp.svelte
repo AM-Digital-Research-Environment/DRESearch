@@ -1,4 +1,5 @@
 <script lang="ts">
+  import '../styles/a11y.css';
   import type { Bootstrap, FederatedBootstrap, ProfileMeta } from '../lib/types';
   import { untrack } from 'svelte';
   import { searchAll, searchUnion } from '../lib/api';
@@ -368,7 +369,7 @@
       aria-busy={isLoading}
       tabindex="0"
     >
-      <p class="dre-fed__sr-only" role="status" aria-live="polite" aria-atomic="true">
+      <p class="dre-sr-only" role="status" aria-live="polite" aria-atomic="true">
         {announcement}
       </p>
       {#if failed}<div class="dre-fed__error">
@@ -608,17 +609,6 @@
     /* --error, not --danger: the theme has never defined --danger, so this was
        permanently on its fallback and painted the same cold red in both modes. */
     border-color: var(--error, #cc272e);
-  }
-  .dre-fed__sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-    border: 0;
   }
   .dre-fed__print-label {
     display: none;

@@ -20,6 +20,7 @@
   import { formatNumber, t } from '../lib/i18n';
   import { dismissOnEscapeOrOutside } from '../lib/popover';
   import '../styles/buttons.css';
+  import '../styles/a11y.css';
 
   /**
    * "Export" disclosure in the results toolbar: a small outlined trigger (same
@@ -153,7 +154,7 @@
         <line x1="12" x2="12" y1="15" y2="3" />
       </svg>
     </span>
-    <span class="dre-export__label">{busy ? t('exporting') : t('export')}</span>
+    <span class="dre-sr-only-narrow">{busy ? t('exporting') : t('export')}</span>
   </button>
 
   {#if open}
@@ -204,14 +205,6 @@
     .dre-export__trigger {
       min-width: var(--size-control-lg, 2.75rem);
       padding-inline: 0;
-    }
-    .dre-export__label {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip: rect(0 0 0 0);
-      white-space: nowrap;
     }
   }
 
