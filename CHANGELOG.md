@@ -5,6 +5,8 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+## [1.36.0] - 2026-11-11
+
 ### Added
 
 - `GET /dre-search/api/health` reports which key public searches use: `search_key` is `search_only`, or `admin` when no search-only key is configured and minting one failed (#57). It does not change `ok` or the status code, since search still works; a monitor should alert on `admin`.
