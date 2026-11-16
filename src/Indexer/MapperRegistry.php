@@ -83,6 +83,7 @@ final class MapperRegistry
             ['publication', static fn(SearchProfile $profile): MapperInterface => new PublicationMapper($profile)],
             ['podcast', static fn(SearchProfile $profile): MapperInterface => new PodcastMapper($profile)],
             ['video', static fn(SearchProfile $profile): MapperInterface => new VideoMapper($profile)],
+            ['chronicle', static fn(SearchProfile $profile): MapperInterface => new ChronicleMapper($profile)],
             ['section', static fn(SearchProfile $profile): MapperInterface => new SectionMapper($profile)],
             // People and organisations are the same reverse-link entity mapping
             // under two kinds (each picks its own card); authority terms add the

@@ -41,6 +41,28 @@ final class OmekaSourceRepositoryTest extends TestCase
         self::assertSame(1, $source->count([5, 7, 7, 99]), 'Queued ids are left out; ids outside the scope change nothing.');
     }
 
+    public function testAProfileThatTypesByClassReadsEachRowsClass(): void
+    {
+        $this->item(1, 'An essay', 10, [7]);
+        $this->classify(1, 'fabio:Essay');
+        $this->item(2, 'Unclassed', 10, [7]);
+        $this->item(3, 'A photograph', 10, [7]);
+        $this->classify(3, 'fabio:StillImage');
+
+        $typed = new OmekaSourceRepository($this->db, $this->profile([
+            'item_set_id' => 7,
+            'class_types' => ['fabio:Essay' => 'Essay'],
+        ]));
+        self::assertSame(
+            ['fabio:Essay', null, 'fabio:StillImage'],
+            array_column($typed->rows(after: 0), 'resource_class'),
+            'Every class is read, listed or not: the mapper decides which ones it labels.',
+        );
+
+        $untyped = new OmekaSourceRepository($this->db, $this->profile(['item_set_id' => 7]));
+        self::assertArrayNotHasKey('resource_class', $untyped->rows(after: 0)[0], 'Other profiles read no class.');
+    }
+
     public function testPendingIdsAreEveryQueuedIdOfTheProfile(): void
     {
         $this->queueFor('records', [8, 3]);

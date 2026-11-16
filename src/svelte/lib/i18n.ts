@@ -7,6 +7,7 @@ const ENGLISH_STRINGS: Record<string, string> = {
   search_placeholder_publication: 'Search publications…',
   search_placeholder_podcast: 'Search podcasts…',
   search_placeholder_video: 'Search YouTube videos…',
+  search_placeholder_chronicle: 'Search the Cluster Chronicles…',
   search_placeholder_person: 'Search people…',
   search_placeholder_section: 'Search research sections…',
   search_placeholder_organisation: 'Search organisations…',
@@ -138,6 +139,8 @@ const ENGLISH_STRINGS: Record<string, string> = {
   field_speaker: 'Speaker',
   field_playlist: 'Playlist',
   field_transcript: 'Transcript',
+  field_alternative: 'Translated title',
+  field_place: 'Place',
   field_fulltext: 'Full text',
   field_restricted_text: 'Restricted full text',
   field_pi: 'Principal investigator',
@@ -194,6 +197,18 @@ const ENGLISH_STRINGS: Record<string, string> = {
   // YouTube-video card.
   speaker_label: 'Speaker',
   watch_label: 'Watch',
+
+  // Cluster Chronicles card.
+  chronicle_number: 'No. {n}',
+  role_author: 'Author',
+  role_photographer: 'Photographer',
+  role_artist: 'Artist',
+  role_translator: 'Translator',
+  role_moderator: 'Moderator',
+  role_curator: 'Curator',
+  role_depicted: 'Pictured',
+  place_label: 'Place',
+  chronicle_source_label: 'Cluster website',
 
   // Person card.
   publications_one: '{n} publication',
@@ -288,6 +303,9 @@ const MATCH_FIELD_KEYS: Record<string, string> = {
   speaker_ss: 'field_speaker',
   playlist_s: 'field_playlist',
   transcript: 'field_transcript',
+  content: 'field_fulltext',
+  alternative_s: 'field_alternative',
+  place_ss: 'field_place',
   fulltext: 'field_fulltext',
   restricted_text: 'field_restricted_text',
   pi_ss: 'field_pi',

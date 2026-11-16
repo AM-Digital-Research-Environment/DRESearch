@@ -1,4 +1,174 @@
 {
+    "research_chronicles": {
+        "full": {
+            "id": "101",
+            "is_public": true,
+            "title": "A full record",
+            "abstract": "dcterms:abstract literal",
+            "subject_ss": [
+                "dcterms:subject A",
+                "dcterms:subject B",
+                "dcterms:subject literal",
+                "dcterms:subject uri"
+            ],
+            "place_ss": [
+                "dcterms:spatial A",
+                "dcterms:spatial B",
+                "dcterms:spatial literal",
+                "dcterms:spatial uri"
+            ],
+            "language_ss": [
+                "dcterms:language A",
+                "dcterms:language B",
+                "dcterms:language literal",
+                "dcterms:language uri"
+            ],
+            "alternative_s": "dcterms:alternative literal",
+            "author_ss": [
+                "marcrel:aut A",
+                "marcrel:aut B",
+                "marcrel:aut literal",
+                "marcrel:aut uri"
+            ],
+            "author_ids": [
+                "8725",
+                "8726",
+                "",
+                ""
+            ],
+            "photographer_ss": [
+                "marcrel:pht A",
+                "marcrel:pht B",
+                "marcrel:pht literal",
+                "marcrel:pht uri"
+            ],
+            "photographer_ids": [
+                "5838",
+                "5839",
+                "",
+                ""
+            ],
+            "artist_ss": [
+                "marcrel:art A",
+                "marcrel:art B",
+                "marcrel:art literal",
+                "marcrel:art uri"
+            ],
+            "artist_ids": [
+                "9922",
+                "9923",
+                "",
+                ""
+            ],
+            "translator_ss": [
+                "marcrel:trl A",
+                "marcrel:trl B",
+                "marcrel:trl literal",
+                "marcrel:trl uri"
+            ],
+            "translator_ids": [
+                "9407",
+                "9408",
+                "",
+                ""
+            ],
+            "speaker_ss": [
+                "marcrel:spk A",
+                "marcrel:spk B",
+                "marcrel:spk literal",
+                "marcrel:spk uri"
+            ],
+            "speaker_ids": [
+                "8859",
+                "8860",
+                "",
+                ""
+            ],
+            "moderator_ss": [
+                "marcrel:mod A",
+                "marcrel:mod B",
+                "marcrel:mod literal",
+                "marcrel:mod uri"
+            ],
+            "moderator_ids": [
+                "4046",
+                "4047",
+                "",
+                ""
+            ],
+            "curator_ss": [
+                "marcrel:cur A",
+                "marcrel:cur B",
+                "marcrel:cur literal",
+                "marcrel:cur uri"
+            ],
+            "curator_ids": [
+                "3598",
+                "3599",
+                "",
+                ""
+            ],
+            "depicted_ss": [
+                "foaf:depicts A",
+                "foaf:depicts B",
+                "foaf:depicts literal",
+                "foaf:depicts uri"
+            ],
+            "depicted_ids": [
+                "5680",
+                "5681",
+                "",
+                ""
+            ],
+            "people_ss": [
+                "marcrel:aut A",
+                "marcrel:aut B",
+                "marcrel:aut literal",
+                "marcrel:aut uri",
+                "marcrel:pht A",
+                "marcrel:pht B",
+                "marcrel:pht literal",
+                "marcrel:pht uri",
+                "marcrel:art A",
+                "marcrel:art B",
+                "marcrel:art literal",
+                "marcrel:art uri",
+                "marcrel:trl A",
+                "marcrel:trl B",
+                "marcrel:trl literal",
+                "marcrel:trl uri",
+                "marcrel:spk A",
+                "marcrel:spk B",
+                "marcrel:spk literal",
+                "marcrel:spk uri",
+                "marcrel:mod A",
+                "marcrel:mod B",
+                "marcrel:mod literal",
+                "marcrel:mod uri",
+                "marcrel:cur A",
+                "marcrel:cur B",
+                "marcrel:cur literal",
+                "marcrel:cur uri",
+                "foaf:depicts A",
+                "foaf:depicts B",
+                "foaf:depicts literal",
+                "foaf:depicts uri"
+            ],
+            "number": 12,
+            "url_s": "https://example.org/fabio-hasURL",
+            "date_s": "2019-03-04",
+            "year": 2019,
+            "content": "bibo:content literal",
+            "has_content": true,
+            "thumbnail_url": "https://example.org/thumb/101.jpg"
+        },
+        "empty": {
+            "id": "102",
+            "is_public": false,
+            "title": "[Untitled #102]",
+            "has_content": false
+        }
+    },
     "research_genres": {
         "full": {
             "id": "101",

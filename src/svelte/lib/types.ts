@@ -26,6 +26,7 @@ export const CARD_KINDS = [
   'publication',
   'podcast',
   'video',
+  'chronicle',
   'person',
   'section',
   'organisation',
@@ -202,6 +203,33 @@ export interface Doc {
   speaker_ss?: string[];
   /** Person item ids, parallel to speaker_ss ("" where the speaker is unlinked). */
   speaker_ids?: string[];
+
+  // Cluster Chronicles fields. type_s (Essay, Poem, …) comes from the resource
+  // class; speaker_ss / speaker_ids, language_ss, url_s, date_s and year are
+  // shared with the fields above; the full text (content) is search_only.
+  /** The title in the work's other language (dcterms:alternative). */
+  alternative_s?: string;
+  /** The work's place in its writer's sequence (bibo:number). */
+  number?: number;
+  /** Linked and literal places (dcterms:spatial). */
+  place_ss?: string[];
+  /** The people credited in each role, each with parallel person ids ("" where unlinked). */
+  author_ids?: string[];
+  photographer_ss?: string[];
+  photographer_ids?: string[];
+  artist_ss?: string[];
+  artist_ids?: string[];
+  translator_ss?: string[];
+  translator_ids?: string[];
+  moderator_ss?: string[];
+  moderator_ids?: string[];
+  curator_ss?: string[];
+  curator_ids?: string[];
+  /** The people a photograph or drawing depicts (foaf:depicts). */
+  depicted_ss?: string[];
+  depicted_ids?: string[];
+  /** Whether the work has a full text (the text itself isn't shipped). */
+  has_content?: boolean;
 
   // Person fields.
   affiliation_ss?: string[];

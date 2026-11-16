@@ -141,7 +141,7 @@ and promotion invalidate existing entries and prevent late fills from reviving
 stale results. Cache failures degrade to uncached queries.
 
 Every surface gets its client bootstrap from one builder,
-`View\SurfaceBootstrap`: the twelve page blocks (one `SearchBlock` class, bound
+`View\SurfaceBootstrap`: the thirteen page blocks (one `SearchBlock` class, bound
 per stored layout name by `Settings\BlockProfiles::LAYOUTS`), the Project
 records block and each tab of the federated page. A page block, and the Project
 records block, render their first page on the server so the block paints at

@@ -7,6 +7,7 @@
   import PublicationCard from './PublicationCard.svelte';
   import PodcastCard from './PodcastCard.svelte';
   import VideoCard from './VideoCard.svelte';
+  import ChronicleCard from './ChronicleCard.svelte';
   import PersonCard from './PersonCard.svelte';
   import SectionCard from './SectionCard.svelte';
   import OrganisationCard from './OrganisationCard.svelte';
@@ -35,6 +36,7 @@
   {:else if doc._kind === 'publication'}<PublicationCard {doc} {itemUrlBase} />
   {:else if doc._kind === 'podcast'}<PodcastCard {doc} {itemUrlBase} />
   {:else if doc._kind === 'video'}<VideoCard {doc} {itemUrlBase} />
+  {:else if doc._kind === 'chronicle'}<ChronicleCard {doc} {itemUrlBase} />
   {:else if doc._kind === 'person'}<PersonCard {doc} {itemUrlBase} />
   {:else if doc._kind === 'section'}<SectionCard {doc} {itemUrlBase} />
   {:else if doc._kind === 'organisation'}<OrganisationCard {doc} {itemUrlBase} />

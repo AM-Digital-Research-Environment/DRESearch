@@ -160,6 +160,7 @@
     publication: 'search_placeholder_publication',
     podcast: 'search_placeholder_podcast',
     video: 'search_placeholder_video',
+    chronicle: 'search_placeholder_chronicle',
     person: 'search_placeholder_person',
     section: 'search_placeholder_section',
     organisation: 'search_placeholder_organisation',

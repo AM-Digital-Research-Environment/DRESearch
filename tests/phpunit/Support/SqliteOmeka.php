@@ -30,8 +30,9 @@ trait SqliteOmeka
                 'CREATE TABLE property (id INTEGER PRIMARY KEY, vocabulary_id INTEGER, local_name TEXT, label TEXT)',
                 'CREATE TABLE resource_template (id INTEGER PRIMARY KEY, title_property_id INTEGER)',
                 'CREATE TABLE resource_template_property (resource_template_id INTEGER, property_id INTEGER, alternate_label TEXT)',
+                'CREATE TABLE resource_class (id INTEGER PRIMARY KEY AUTOINCREMENT, vocabulary_id INTEGER, local_name TEXT)',
                 'CREATE TABLE resource (id INTEGER PRIMARY KEY, resource_type TEXT, resource_template_id INTEGER,'
-                    . ' title TEXT, is_public INTEGER)',
+                    . ' resource_class_id INTEGER, title TEXT, is_public INTEGER)',
                 'CREATE TABLE item_item_set (item_id INTEGER, item_set_id INTEGER)',
                 'CREATE TABLE value (id INTEGER PRIMARY KEY AUTOINCREMENT, resource_id INTEGER, property_id INTEGER,'
                     . ' value_resource_id INTEGER, value TEXT, uri TEXT, is_public INTEGER)',
@@ -74,6 +75,26 @@ trait SqliteOmeka
         foreach ($sets as $set) {
             $this->db->insert('item_item_set', ['item_id' => $id, 'item_set_id' => $set]);
         }
+    }
+
+    /** Gives a resource the class "prefix:Local", creating the class (and its vocabulary) on first use. */
+    private function classify(int $resource, string $term): void
+    {
+        [$prefix, $local] = explode(':', $term, 2);
+        $vocabulary = $this->db->fetchOne('SELECT id FROM vocabulary WHERE prefix = ?', [$prefix]);
+        if ($vocabulary === false) {
+            $this->db->insert('vocabulary', ['prefix' => $prefix]);
+            $vocabulary = $this->db->lastInsertId();
+        }
+        $class = $this->db->fetchOne(
+            'SELECT id FROM resource_class WHERE vocabulary_id = ? AND local_name = ?',
+            [(int) $vocabulary, $local],
+        );
+        if ($class === false) {
+            $this->db->insert('resource_class', ['vocabulary_id' => (int) $vocabulary, 'local_name' => $local]);
+            $class = $this->db->lastInsertId();
+        }
+        $this->db->update('resource', ['resource_class_id' => (int) $class], ['id' => $resource]);
     }
 
     private function literalValue(int $resource, string $term, string $literal, bool $public = true): void

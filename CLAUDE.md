@@ -9,7 +9,7 @@ and properties behind each corpus are in [docs/data-model.md](docs/data-model.md
 ## What this is
 
 An Omeka S 4.2 module (`DRESearch\`) that adds Typesense-backed faceted search to
-the Africa Multiple cluster's AMIRA site: twelve corpora ("search profiles"),
+the Africa Multiple cluster's AMIRA site: thirteen corpora ("search profiles"),
 one page block each, a site-wide header bar with federated autocomplete, and a
 federated results page. Browser → PHP proxy → Typesense 30.2. The client is
 Svelte 5 + TypeScript, built by Vite. Its sibling, IwacSearch, solves the same

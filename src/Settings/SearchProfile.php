@@ -33,6 +33,8 @@ use DRESearch\Settings\Definition\SourceScope;
  *                      number, the series logo as the thumbnail, a "Listen" link)
  *   - 'video'        : YouTube videos (playlist + speaker people, the video's own
  *                      poster thumbnail, a transcript, a "Watch" link)
+ *   - 'chronicle'    : Cluster Chronicles works (the type from the resource
+ *                      class via `class_types`, people by role, a full text)
  *   - 'person'       : people (affiliation + reverse-link roles & association counts)
  *   - 'section'      : research sections (leaders, derived phase, project count)
  *   - 'organisation' : institutions & groups (Type facet + reverse-link roles & counts)
@@ -68,6 +70,8 @@ final class SearchProfile
         // Episodes and videos have no type_s; the series / playlist gives context.
         'podcast'      => [['series_s'], ['year']],
         'video'        => [['playlist_s'], ['year']],
+        // Essay / Poem / …, from the resource class.
+        'chronicle'    => [['type_s'], ['year']],
         'person'       => [['affiliation_ss'], ['roles_ss']],
         'section'      => [['phase_s'], ['pi_ss', 'spokesperson_ss']],
         // Institution / Group, and the first role it plays.
@@ -88,6 +92,7 @@ final class SearchProfile
      * @param array{properties:list<string>,url_prefix:string}|null $fulltextSource
      * @param list<list<string>>|null $subtitle suggestion subtitle parts; null = the kind's
      * @param array{property:string,item_sets:list<int>}|null $restrictedFulltext
+     * @param array<string,string> $classTypes resource class term => type label
      */
     public function __construct(
         private readonly string $name,
@@ -114,13 +119,14 @@ final class SearchProfile
         private readonly ?array $fulltextSource = null,
         private readonly ?array $subtitle = null,
         private readonly ?array $restrictedFulltext = null,
+        private readonly array $classTypes = [],
     ) {
         $this->assertValid();
     }
 
     public static function fromArray(string $name, array $c): self
     {
-        foreach (['facets', 'display_fields', 'authority_item_sets', 'type_items', 'read_properties', 'sort_fields', 'suggest_subtitle'] as $key) {
+        foreach (['facets', 'display_fields', 'authority_item_sets', 'type_items', 'read_properties', 'sort_fields', 'suggest_subtitle', 'class_types'] as $key) {
             if (isset($c[$key]) && !is_array($c[$key])) {
                 throw new \InvalidArgumentException(sprintf('Profile "%s" key "%s" must be an array.', $name, $key));
             }
@@ -242,6 +248,9 @@ final class SearchProfile
                     (array) ($c['restricted_fulltext']['item_sets'] ?? []),
                 ))),
             ] : null,
+            // The type of a record from its resource class: class term =>
+            // label (fabio:Essay => Essay). Unset → no class is read.
+            array_map('strval', $c['class_types'] ?? []),
         );
     }
 
@@ -315,6 +324,15 @@ final class SearchProfile
         foreach ($this->readProperties() as $term) {
             if (!preg_match('/^[A-Za-z][A-Za-z0-9._-]*:[A-Za-z][A-Za-z0-9._-]*$/', $term)) {
                 throw new \InvalidArgumentException(sprintf('Invalid Omeka property term "%s" in profile "%s".', $term, $this->name));
+            }
+        }
+        foreach ($this->classTypes as $term => $label) {
+            if (!preg_match('/^[A-Za-z][A-Za-z0-9._-]*:[A-Za-z][A-Za-z0-9._-]*$/', (string) $term) || $label === '') {
+                throw new \InvalidArgumentException(sprintf(
+                    'class_types in profile "%s" must map class terms to labels ("%s").',
+                    $this->name,
+                    $term,
+                ));
             }
         }
         $restricted = $this->restrictedFulltext;
@@ -780,6 +798,18 @@ final class SearchProfile
     public function restrictedFulltext(): ?array
     {
         return $this->restrictedFulltext;
+    }
+
+    /**
+     * The type label of each resource class this corpus holds, by class term
+     * (`class_types`), e.g. fabio:Essay => Essay. Empty when the profile does
+     * not type its records by class, and then the reindexer reads no class.
+     *
+     * @return array<string,string>
+     */
+    public function classTypes(): array
+    {
+        return $this->classTypes;
     }
 
     /** Whether any records are eligible for discovery through their restricted full text. */

@@ -60,6 +60,7 @@ final class SearchBlockTest extends TestCase
             'dreSearchPublications' => 'research_publications',
             'dreSearchPodcasts' => 'research_podcasts',
             'dreSearchVideos' => 'research_videos',
+            'dreSearchChronicles' => 'research_chronicles',
             'dreSearchPeople' => 'research_people',
             'dreSearchSections' => 'research_sections',
             'dreSearchOrganisations' => 'research_organisations',

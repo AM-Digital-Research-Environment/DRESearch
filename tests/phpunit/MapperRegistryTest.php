@@ -6,6 +6,7 @@ namespace DRESearch\Test;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
+use DRESearch\Indexer\ChronicleMapper;
 use DRESearch\Indexer\MapperInterface;
 use DRESearch\Indexer\MapperRegistry;
 use DRESearch\Indexer\PodcastMapper;
@@ -32,6 +33,7 @@ final class MapperRegistryTest extends TestCase
             'publication' => PublicationMapper::class,
             'podcast' => PodcastMapper::class,
             'video' => VideoMapper::class,
+            'chronicle' => ChronicleMapper::class,
             'section' => SectionMapper::class,
             'person' => ReverseLinkMapper::class,
             'organisation' => ReverseLinkMapper::class,

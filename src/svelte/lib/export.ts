@@ -15,6 +15,9 @@ import { safeExternalUrl } from './text';
  *   - research items carry creators + year + subjects (a @misc / GEN work);
  *   - podcasts / videos are SOUND / VIDEO records (series / playlist as the
  *     container, the external listen/watch link alongside the Omeka page);
+ *   - Cluster Chronicles works credit their author, artist, photographer or
+ *     speaker, with the translator as the secondary creator and the work on
+ *     the cluster's website beside the Omeka page;
  *   - people / organisations / sections / authority terms aren't citeable works
  *     but still export as @misc / GEN rows (most useful as txt / json), so the
  *     button behaves consistently on every corpus.
@@ -111,7 +114,7 @@ function itemUrl(d: Doc, base: string): string {
 /** Every link for a doc: the Omeka page first, then any external media link. */
 function links(d: Doc, kind: CardKind, base: string): string[] {
   const out = [itemUrl(d, base)];
-  if ((kind === 'podcast' || kind === 'video') && d.url_s) {
+  if ((kind === 'podcast' || kind === 'video' || kind === 'chronicle') && d.url_s) {
     out.push(safeExternalUrl(d.url_s));
   }
   return out.filter((s) => s !== '');
@@ -128,6 +131,13 @@ function creators(d: Doc, kind: CardKind): string[] {
       return d.host_ss ?? [];
     case 'video':
       return d.speaker_ss ?? [];
+    case 'chronicle':
+      return [
+        ...(d.author_ss ?? []),
+        ...(d.artist_ss ?? []),
+        ...(d.photographer_ss ?? []),
+        ...(d.speaker_ss ?? []),
+      ];
     case 'project':
       return d.pi_ss ?? [];
     default:
@@ -139,6 +149,7 @@ function creators(d: Doc, kind: CardKind): string[] {
 function editors(d: Doc, kind: CardKind): string[] {
   if (kind === 'publication') return d.editor_ss ?? [];
   if (kind === 'podcast') return d.guest_ss ?? [];
+  if (kind === 'chronicle') return d.translator_ss ?? [];
   return [];
 }
 
@@ -304,11 +315,18 @@ const RIS_ITEM_TYPES: Record<string, string> = {
   cartographic: 'MAP',
 };
 
+/** Cluster Chronicles type (from the resource class) → RIS TY; essays, poems and events are GEN. */
+const RIS_CHRONICLE_TYPES: Record<string, string> = {
+  Image: 'FIGURE',
+  Video: 'VIDEO',
+};
+
 function risType(d: Doc, kind: CardKind): string {
   if (kind === 'publication') return RIS_PUB_TYPES[pubClass(d, kind)];
   if (kind === 'item') return RIS_ITEM_TYPES[(d.type_s ?? '').toLowerCase()] ?? 'GEN';
   if (kind === 'podcast') return 'SOUND';
   if (kind === 'video') return 'VIDEO';
+  if (kind === 'chronicle') return RIS_CHRONICLE_TYPES[d.type_s ?? ''] ?? 'GEN';
   return 'GEN';
 }
 

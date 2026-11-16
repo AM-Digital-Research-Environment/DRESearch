@@ -16,7 +16,7 @@ DRESearch/
 ├── config/
 │   ├── module.ini                   # Omeka manifest; the version is written by `npm run bump` only
 │   └── module.config.php            # Services, routes, blocks, helpers — and dre_search.profiles,
-│                                    #   the twelve corpora (see docs/data-model.md)
+│                                    #   the thirteen corpora (see docs/data-model.md)
 ├── data/
 │   ├── stopwords.json               # English stopword set → Typesense `dre_default`
 │   ├── synonyms.json                # synonym set → Typesense `dre_synonyms`
@@ -60,7 +60,7 @@ DRESearch/
 │   │   ├── AbstractMapper · MediaMapper  # the shared document skeleton; podcasts' and
 │   │   │                            #   videos' link, date and transcript
 │   │   ├── ResearchItemMapper · ProjectMapper · PublicationMapper · PodcastMapper ·
-│   │   │   VideoMapper · SectionMapper · ReverseLinkMapper · TermMapper
+│   │   │   VideoMapper · ChronicleMapper · SectionMapper · ReverseLinkMapper · TermMapper
 │   │   │                            #   ReverseLinkMapper maps both `person` and `organisation`;
 │   │   │                            #   TermMapper builds on it (+ a location's geopoint)
 │   │   ├── DocumentAssembler.php    #   batch mapping shared by full and incremental runs
@@ -118,7 +118,7 @@ DRESearch/
 │   │   ├── SearchController.php     # /dre-search/api/* (JSON) and the federated results page
 │   │   └── Admin/MaintenanceController.php  # rebuilds, retries, analytics, moderation, key status
 │   ├── Site/
-│   │   ├── BlockLayout/             # SearchBlock: one class for all twelve layouts, bound by
+│   │   ├── BlockLayout/             # SearchBlock: one class for all thirteen layouts, bound by
 │   │   │                            #   SearchBlockFactory to BlockProfiles::LAYOUTS ·
 │   │   │                            #   SearchBlockSettings (saved data, legacy too)
 │   │   ├── ResourcePageBlockLayout/ProjectRecords.php   # the item-page Project records block
@@ -152,7 +152,7 @@ DRESearch/
 │       │   │                        #   with role=button, see its docblock) and chips (<button>)
 │       │   ├── ResultsList · ResultSummary · SortSelect · ViewToggle · Pagination ·
 │       │   │   ResultSkeleton · ExportMenu · CiteMenu · CopyLinkButton · MapView
-│       │   ├── ResultItem · ProjectCard · PublicationCard · PodcastCard · VideoCard ·
+│       │   ├── ResultItem · ProjectCard · PublicationCard · PodcastCard · VideoCard · ChronicleCard ·
 │       │   │   PersonCard · SectionCard · OrganisationCard · TermCard · MixedResultCard
 │       │   │                        #   one card per kind (+ the union list's)
 │       │   └── CardThumb · Highlight · MatchedIn · IdentifierLinks · RegisterMark ·

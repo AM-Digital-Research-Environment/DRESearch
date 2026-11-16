@@ -40,6 +40,10 @@ final class BlockProfiles
             'profile' => 'research_videos',
             'label' => 'YouTube videos search', // @translate
         ],
+        'dreSearchChronicles' => [
+            'profile' => 'research_chronicles',
+            'label' => 'Cluster Chronicles search', // @translate
+        ],
         'dreSearchPeople' => [
             'profile' => 'research_people',
             'label' => 'People search', // @translate

@@ -45,7 +45,7 @@ final class SearchProfileTest extends TestCase
         $config = require dirname(__DIR__, 2) . '/config/module.config.php';
         $registry = ProfileRegistry::fromArray($config['dre_search']['profiles']);
 
-        self::assertCount(12, $registry->all());
+        self::assertCount(13, $registry->all());
         self::assertSame('research_items', $registry->default()?->name());
     }
 

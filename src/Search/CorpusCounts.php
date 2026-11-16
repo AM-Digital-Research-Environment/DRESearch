@@ -22,6 +22,7 @@ final class CorpusCounts
         'publications' => 'research_publications',
         'podcasts' => 'research_podcasts',
         'youtube' => 'research_videos',
+        'clusterChronicles' => 'research_chronicles',
     ];
 
     private readonly Closure $fetchOne;

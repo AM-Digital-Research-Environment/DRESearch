@@ -2,7 +2,7 @@
 
 How DRE Search reads the AMIRA Omeka S instance — the one populated by
 [MongoDB2OmekaS](https://github.com/AM-Digital-Research-Environment/MongoDB2OmekaS)
-— into its twelve corpora: which resource template and item set each one
+— into its thirteen corpora: which resource template and item set each one
 indexes, which Omeka property feeds each facet and card field, and how the
 derived (reverse) counts and roles are computed. How to override a profile, or
 add a corpus, is in [profile configuration](profile-configuration.md).
@@ -26,20 +26,21 @@ Each corpus is one profile: its own Typesense collection, published under a
 stable alias that every reindex swaps atomically to a fresh, timestamped
 collection.
 
-| Corpus            | Profile                  | Kind           | Source scope                                                             | Alias                       |
-| ----------------- | ------------------------ | -------------- | ------------------------------------------------------------------------ | --------------------------- |
-| Research items    | `research_items`         | `item`         | resource template 10 (any item set)                                      | `dre_research_current`      |
-| Research projects | `research_projects`      | `project`      | template 5, item set 20                                                  | `dre_projects_current`      |
-| Publications      | `research_publications`  | `publication`  | item set 29918 (any template)                                            | `dre_publications_current`  |
-| Podcasts          | `research_podcasts`      | `podcast`      | template 21, item set 39095                                              | `dre_podcasts_current`      |
-| YouTube videos    | `research_videos`        | `video`        | template 22, item set 39192                                              | `dre_videos_current`        |
-| People            | `research_people`        | `person`       | template 4, item set 18                                                  | `dre_people_current`        |
-| Research sections | `research_sections`      | `section`      | template 7, item set 17                                                  | `dre_sections_current`      |
-| Organisations     | `research_organisations` | `organisation` | template 2, item set 110 (institutions and groups)                       | `dre_organisations_current` |
-| Genres            | `research_genres`        | `term`         | item set 21                                                              | `dre_genres_current`        |
-| Languages         | `research_languages`     | `term`         | item set 19                                                              | `dre_languages_current`     |
-| Locations         | `research_locations`     | `term`         | item set 1851, plus the geocoded institutions (template 2, item set 110) | `dre_locations_current`     |
-| Subjects & tags   | `research_subjects`      | `term`         | item set 1852                                                            | `dre_subjects_current`      |
+| Corpus             | Profile                  | Kind           | Source scope                                                             | Alias                       |
+| ------------------ | ------------------------ | -------------- | ------------------------------------------------------------------------ | --------------------------- |
+| Research items     | `research_items`         | `item`         | resource template 10 (any item set)                                      | `dre_research_current`      |
+| Research projects  | `research_projects`      | `project`      | template 5, item set 20                                                  | `dre_projects_current`      |
+| Publications       | `research_publications`  | `publication`  | item set 29918 (any template)                                            | `dre_publications_current`  |
+| Podcasts           | `research_podcasts`      | `podcast`      | template 21, item set 39095                                              | `dre_podcasts_current`      |
+| YouTube videos     | `research_videos`        | `video`        | template 22, item set 39192                                              | `dre_videos_current`        |
+| Cluster Chronicles | `research_chronicles`    | `chronicle`    | template 34, item set 50105                                              | `dre_chronicles_current`    |
+| People             | `research_people`        | `person`       | template 4, item set 18                                                  | `dre_people_current`        |
+| Research sections  | `research_sections`      | `section`      | template 7, item set 17                                                  | `dre_sections_current`      |
+| Organisations      | `research_organisations` | `organisation` | template 2, item set 110 (institutions and groups)                       | `dre_organisations_current` |
+| Genres             | `research_genres`        | `term`         | item set 21                                                              | `dre_genres_current`        |
+| Languages          | `research_languages`     | `term`         | item set 19                                                              | `dre_languages_current`     |
+| Locations          | `research_locations`     | `term`         | item set 1851, plus the geocoded institutions (template 2, item set 110) | `dre_locations_current`     |
+| Subjects & tags    | `research_subjects`      | `term`         | item set 1852                                                            | `dre_subjects_current`      |
 
 A profile's `kind` selects its indexer mapper and its result card; the four
 authority-term corpora share the generic `term` kind.
@@ -173,6 +174,30 @@ podcasts, whose own media is the audio file).
 | Watch link (card)   | `fabio:hasURL`     | `url_s`, the external YouTube link                                                                     |
 | Abstract (card)     | `dcterms:abstract` | read through `read_properties`                                                                         |
 | Transcript (search) | `bibo:content`     | full-text search payload, `search_only` (never shipped to the card); `has_transcript` drives the badge |
+
+## Cluster Chronicles (`research_chronicles`) — resource template 34, item set 50105
+
+The works of the cluster's writers in residence, one item per work, each
+`dcterms:isPartOf` the series item 50106. Hand-curated in Omeka. The template
+has no type property, so the profile's `class_types` labels the resource class
+as the type. Only photographs and drawings have media of their own, so most
+cards have no thumbnail.
+
+| Field                  | Omeka property                        | Notes                                                                                                    |
+| ---------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Type (facet)           | resource class                        | `class_types`: Essay, Poem, Image (`fabio:StillImage`), Event, Video; an unlisted class has none         |
+| People (facet)         | the role properties below             | derived union of every role and the people depicted, also searched (`query_by`)                          |
+| Subject (facet)        | `dcterms:subject`                     | linked subjects and literals                                                                             |
+| Place (facet)          | `dcterms:spatial`                     | linked places and literals                                                                               |
+| Language (facet)       | `dcterms:language`                    | linked language title                                                                                    |
+| Roles (card)           | `marcrel:aut/pht/art/trl/spk/mod/cur` | `author_ss`, `photographer_ss`, … each with parallel `*_ids`                                             |
+| Pictured (card)        | `foaf:depicts`                        | `depicted_ss` / `depicted_ids`                                                                           |
+| Translated title       | `dcterms:alternative`                 | `alternative_s`, searched                                                                                |
+| Number (card)          | `bibo:number`                         | the work's place in its writer's sequence                                                                |
+| Date, Year             | `dcterms:date`                        | `date_s` verbatim (a year, a month or a day); `year` drives the slider and the sorts                     |
+| Cluster website (card) | `fabio:hasURL`                        | `url_s`                                                                                                  |
+| Abstract (card)        | `dcterms:abstract`                    | AI-written (a `dre:generatedBy` annotation on the value, not indexed)                                    |
+| Full text (search)     | `bibo:content`                        | `content`, `search_only`; often French and English in one untagged value; `has_content` drives the badge |
 
 ## People (`research_people`) — resource template 4, item set 18
 

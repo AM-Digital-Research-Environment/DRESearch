@@ -47,12 +47,45 @@ final class OmekaSourceRepository
             . ($scope !== '' ? ' AND ' . $scope : '') . ' ORDER BY id LIMIT ' . max(1, $limit),
             $params,
         )->fetchAllAssociative();
-        $titles = $this->publicTitles(array_map('intval', array_column($rows, 'id')));
+        $ids = array_map('intval', array_column($rows, 'id'));
+        $titles = $this->publicTitles($ids);
+        // Only a profile that types its records by class reads the class.
+        $classes = $this->profile->classTypes() !== [] ? $this->resourceClasses($ids) : null;
         foreach ($rows as &$row) {
             $row['title'] = $titles[(int) $row['id']] ?? '';
+            if ($classes !== null) {
+                $row['resource_class'] = $classes[(int) $row['id']] ?? null;
+            }
         }
         unset($row);
         return $rows;
+    }
+
+    /**
+     * Each resource's class as a vocabulary term (fabio:Essay), for the
+     * profiles that take a record's type from its class (`class_types`). A
+     * class is schema, not a value, so it carries no visibility of its own.
+     *
+     * @param list<int> $ids
+     * @return array<int,string>
+     */
+    public function resourceClasses(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+        $idList = implode(',', array_map('intval', $ids));
+        $rows = $this->connection->executeQuery(
+            'SELECT r.id, vo.prefix, rc.local_name FROM resource r'
+            . ' JOIN resource_class rc ON rc.id = r.resource_class_id'
+            . ' JOIN vocabulary vo ON vo.id = rc.vocabulary_id'
+            . " WHERE r.id IN ($idList)",
+        )->fetchAllAssociative();
+        $classes = [];
+        foreach ($rows as $row) {
+            $classes[(int) $row['id']] = $row['prefix'] . ':' . $row['local_name'];
+        }
+        return $classes;
     }
 
     /**

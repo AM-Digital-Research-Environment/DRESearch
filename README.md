@@ -4,7 +4,7 @@ Typesense-backed faceted search for the Africa Multiple **DRE** Omeka S instance
 (the one populated by [MongoDB2OmekaS]). It indexes content directly from the
 Omeka dashboard via MySQL — there is no external ingestion pipeline.
 
-Twelve search corpora ship out of the box, each as its own page block (the
+Thirteen search corpora ship out of the box, each as its own page block (the
 template, item set and Omeka properties behind each are in
 [docs/data-model.md](docs/data-model.md)):
 
@@ -20,6 +20,11 @@ template, item set and Omeka properties behind each are in
   screenings on YouTube, filterable by playlist, speaker, and language, with a
   year slider. Cards show the video thumbnail, the abstract, the speakers, a
   "Transcript" badge, and a "Watch" link; search covers the transcript.
+- **Cluster Chronicles search**: the works of the cluster's writers in
+  residence (essays, poems, photographs and drawings, events, a video),
+  filterable by type, people, subject, place and language, with a year slider.
+  Cards show each person by role, the abstract, a "Full text" badge and a
+  link to the work on the cluster's website; search covers the full text.
 - **People search** — researchers and contributors, filterable by affiliation
   and role, with per-person research-item and publication counts.
 - **Research sections search** — the cluster's thematic sections, filterable by
@@ -318,9 +323,9 @@ empty search box list only queries an editor approved on that page; see
 
 Edit a site page → add the **Research items search**, **Research projects
 search**, **Publications search**, **Podcasts search**, **YouTube videos
-search**, **People search**, **Research sections search**, **Organisations
+search**, **Cluster Chronicles search**, **People search**, **Research sections search**, **Organisations
 search**, **Genres search**, **Languages search**, **Locations search**, or
-**Subjects & tags search** block. All twelve are one block class, configured per
+**Subjects & tags search** block. All thirteen are one block class, configured per
 corpus, and share the same options:
 
 - **Filters to show** — which facets appear in the sidebar, including whether the

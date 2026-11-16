@@ -17,7 +17,7 @@ namespace DRESearch\Indexer;
 interface MapperInterface
 {
     /**
-     * @param array{id:int, title:string, is_public:bool, item_count?:int, counts?:array<string,int>, roles?:list<string>} $item
+     * @param array{id:int, title:string, is_public:bool, resource_class?:?string, item_count?:int, counts?:array<string,int>, roles?:list<string>} $item
      * @param array<string, list<array{vrid:?int, value:?string, uri:?string, title:?string}>> $values
      * @return array<string,mixed>
      */

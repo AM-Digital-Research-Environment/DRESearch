@@ -74,6 +74,7 @@ return [
             'dreSearchPublications' => Service\BlockLayout\SearchBlockFactory::class,
             'dreSearchPodcasts'     => Service\BlockLayout\SearchBlockFactory::class,
             'dreSearchVideos'       => Service\BlockLayout\SearchBlockFactory::class,
+            'dreSearchChronicles'   => Service\BlockLayout\SearchBlockFactory::class,
             'dreSearchPeople'       => Service\BlockLayout\SearchBlockFactory::class,
             'dreSearchSections'     => Service\BlockLayout\SearchBlockFactory::class,
             'dreSearchOrganisations' => Service\BlockLayout\SearchBlockFactory::class,
@@ -419,6 +420,7 @@ return [
                 'research_publications',
                 'research_podcasts',
                 'research_videos',
+                'research_chronicles',
                 'research_people',
                 'research_organisations',
             ],
@@ -797,6 +799,81 @@ return [
 
                 // The abstract (dcterms:abstract) isn't a facet/display property, so
                 // declare it for the reindexer to SELECT.
+                'read_properties' => ['dcterms:abstract'],
+            ],
+
+            // Cluster Chronicles — resource template 34, item set 50105. The works
+            // of the cluster's writers in residence, one item per work: essays,
+            // poems, photographs and drawings, events and a video, each
+            // dcterms:isPartOf the series item 50106. Hand-curated in Omeka. There
+            // is no type property, so `class_types` labels the resource class as
+            // the Type facet (see ChronicleMapper). A work credits people in
+            // several roles, each kept with its person ids for the card and all
+            // folded into the People facet with the people a photograph depicts.
+            // bibo:content is the full text, often French and English in one
+            // value with no language tag, so it is searched with the default
+            // tokeniser; search_only, like the transcripts. The abstract is
+            // AI-written (a dre:generatedBy annotation on the value).
+            'research_chronicles' => [
+                'label'       => 'Cluster Chronicles', // @translate
+                'placeholder' => 'Search the Cluster Chronicles…', // @translate
+                'collection'  => 'dre_chronicles_current',
+                'kind'        => 'chronicle',
+                'template_id' => 34,
+                'item_set_id' => 50105,
+                'query_by'    => 'title,alternative_s,people_ss,abstract,subject_ss,place_ss,content',
+                // dcterms:date holds a year, a year and month, or a day.
+                'date'        => ['mode' => 'single', 'property' => 'dcterms:date', 'label' => 'Year', 'facet' => true],
+                'default_sort' => 'newest',
+
+                'class_types' => [
+                    'fabio:Essay'              => 'Essay',
+                    'fabio:Poem'               => 'Poem',
+                    'fabio:StillImage'         => 'Image',
+                    'bibo:Event'               => 'Event',
+                    'bibo:AudioVisualDocument' => 'Video',
+                ],
+
+                'facets' => [
+                    'type_s'      => ['property' => null,              'label' => 'Type',     'array' => false, 'derived' => true],
+                    // Every person credited, in any role, and the people depicted.
+                    'people_ss'   => ['property' => null,              'label' => 'People',   'array' => true,  'derived' => true],
+                    // Linked subjects and places mixed with literals: the label
+                    // either way (ValueBag::labels()).
+                    'subject_ss'  => ['property' => 'dcterms:subject',  'label' => 'Subject',  'array' => true],
+                    'place_ss'    => ['property' => 'dcterms:spatial',  'label' => 'Place',    'array' => true],
+                    'language_ss' => ['property' => 'dcterms:language', 'label' => 'Language', 'array' => true],
+                ],
+
+                // The people by role (display only: people_ss is what is
+                // searched), each with parallel person ids; the translated title;
+                // the number in the writer's sequence; the work on the cluster's
+                // website; the full text (search_only) and its flag.
+                'display_fields' => [
+                    'alternative_s'    => ['property' => 'dcterms:alternative', 'type' => 'string', 'facet' => false],
+                    'author_ss'        => ['property' => 'marcrel:aut',  'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'author_ids'       => ['property' => null,           'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'photographer_ss'  => ['property' => 'marcrel:pht',  'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'photographer_ids' => ['property' => null,           'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'artist_ss'        => ['property' => 'marcrel:art',  'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'artist_ids'       => ['property' => null,           'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'translator_ss'    => ['property' => 'marcrel:trl',  'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'translator_ids'   => ['property' => null,           'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'speaker_ss'       => ['property' => 'marcrel:spk',  'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'speaker_ids'      => ['property' => null,           'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'moderator_ss'     => ['property' => 'marcrel:mod',  'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'moderator_ids'    => ['property' => null,           'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'curator_ss'       => ['property' => 'marcrel:cur',  'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'curator_ids'      => ['property' => null,           'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'depicted_ss'      => ['property' => 'foaf:depicts', 'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'depicted_ids'     => ['property' => null,           'type' => 'string[]', 'facet' => false, 'index' => false],
+                    'number'           => ['property' => 'bibo:number',  'type' => 'int32',    'facet' => false, 'index' => false],
+                    'url_s'            => ['property' => 'fabio:hasURL', 'type' => 'string',   'facet' => false, 'index' => false],
+                    'date_s'           => ['property' => null,           'type' => 'string',   'facet' => false, 'index' => false],
+                    'has_content'      => ['property' => null,           'type' => 'bool',     'facet' => false, 'index' => false],
+                    'content'          => ['property' => 'bibo:content', 'type' => 'string',   'facet' => false, 'search_only' => true],
+                ],
+
                 'read_properties' => ['dcterms:abstract'],
             ],
 

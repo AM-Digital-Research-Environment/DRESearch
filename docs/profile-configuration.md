@@ -36,6 +36,17 @@ its first value). The token `year_range` gives a range corpus's years
 A part naming a field the corpus does not store is refused, as is an empty
 part.
 
+A profile whose records have no type property may type them by resource class
+with `class_types`, a map from class term to label:
+
+```php
+'class_types' => ['fabio:Essay' => 'Essay', 'fabio:Poem' => 'Poem'],
+```
+
+The reindexer then reads each record's class, and the mapper stores the label
+in `type_s` (a `derived` facet). A class missing from the map gives no type.
+Only the `chronicle` kind reads it today.
+
 A publication profile may name a `fulltext_source`: a `property` and an http(s)
 `url_prefix`. The first value of that property under the prefix marks the record
 `has_fulltext: "Yes"` and is returned as `fulltext_url_s`, the card's **Full
@@ -47,7 +58,7 @@ with extracted text (the `fulltext` display field) is flagged instead.
 
 A profile may let visitors find records through a full text they may not
 read: a **private** value approved for public discovery and limited quotation,
-such as the OCR text of ILAM's *African Music* articles (item set 27724, private
+such as the OCR text of ILAM's _African Music_ articles (item set 27724, private
 `bibo:content`, under the journal's copyright). It is the one exception to the
 rule that the indexer reads only what an anonymous visitor may see, so it is
 off unless an operator names the collections it covers:
