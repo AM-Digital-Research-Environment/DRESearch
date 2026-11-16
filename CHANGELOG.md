@@ -5,6 +5,8 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+## [1.37.0] - 2026-11-16
+
 ### Added
 
 - **Cluster Chronicles search**: the thirteenth corpus (`research_chronicles`, kind `chronicle`, block layout `dreSearchChronicles`), for the works of the cluster's writers in residence: item set 50105, resource template 34, 60 works on 16 November 2026 (#64). The type is the resource class, labelled through a new optional profile key, `class_types` (Essay, Poem, Image, Event, Video). The reindexer reads the class only for a profile that sets it. A work's people are kept by role (author, photographer, artist, translator, speaker, moderator, curator) with their person ids, plus the people a photograph depicts; all of them make the People facet. Subject, place and language facets, a year slider, the translated title and the full text (`bibo:content`, search-only) are searched. The card (`ChronicleCard`) shows the number and date, the type chip, a line per role, the abstract, the places and languages, a "Full text" badge and a link to the work on the cluster's website. The corpus joins the federated results. **Reindex** it after updating, then place its block on the `cluster-chronicles` page.
