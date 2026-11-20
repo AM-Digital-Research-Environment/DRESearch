@@ -87,7 +87,7 @@ final class SearchProfile
      * @param array<string,int> $typeItems
      * @param array{mode:string,property:?string,label:string,facet:bool} $date
      * @param list<string> $readProperties
-     * @param array{from_template:int,property:string,public_only:bool}|null $itemLink
+     * @param array{from_template:int,property:string}|null $itemLink
      * @param array{counts?:array<string,array<string,mixed>>,roles?:list<array<string,mixed>>}|null $reverseLinks
      * @param array{properties:list<string>,url_prefix:string}|null $fulltextSource
      * @param list<list<string>>|null $subtitle suggestion subtitle parts; null = the kind's
@@ -505,11 +505,6 @@ final class SearchProfile
         return (bool) ($this->facets[$field]['array'] ?? true);
     }
 
-    public function isDerivedFacet(string $field): bool
-    {
-        return (bool) ($this->facets[$field]['derived'] ?? false);
-    }
-
     public function property(string $field): ?string
     {
         return $this->facets[$field]['property'] ?? null;
@@ -873,7 +868,7 @@ final class SearchProfile
      * Reverse item-count config (project kind): count resources of
      * `from_template` whose `property` links to each indexed item.
      *
-     * @return array{from_template:int,property:string,public_only:bool}|null
+     * @return array{from_template:int,property:string}|null
      */
     public function itemLink(): ?array
     {
@@ -888,12 +883,12 @@ final class SearchProfile
      * them, and people affiliated with them.
      *
      *   counts: field => { properties?:?list<string>, from_template?:int,
-     *                      from_item_set?:int, public_only:bool }
+     *                      from_item_set?:int }
      *   roles:  list of { label:string, properties?:?list<string>, from_template?:int,
-     *                     from_item_set?:int, public_only?:bool }
+     *                     from_item_set?:int }
      *           OR        { per_property:true, vocabulary?:string,
      *                     properties?:?list<string>, from_template?:int,
-     *                     from_item_set?:int, public_only?:bool }
+     *                     from_item_set?:int }
      *
      * A fixed-label rule's `properties` null = any reference (e.g. "contributed to
      * a research item"); otherwise only references via those properties (e.g.

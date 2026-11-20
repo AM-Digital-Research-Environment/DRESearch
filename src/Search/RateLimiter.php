@@ -84,11 +84,6 @@ final class RateLimiter
         );
     }
 
-    public function allow(string $scope, string $identity, int $limit, int $windowSeconds = 60): bool
-    {
-        return $this->hit($scope, $identity, $limit, 1, $windowSeconds) === 0;
-    }
-
     /** The client identity to bucket on, from the request's server parameters. */
     public function identity(string $remoteAddr, string $forwardedFor = ''): string
     {

@@ -480,12 +480,11 @@ return [
                 ],
 
                 // dcterms:type discriminator target items, used to split the
-                // shared-property facets (see ResearchItemMapper).
+                // shared-property facets (see ResearchItemMapper): a local tag
+                // from an LCSH subject, a country from a city or region.
                 'type_items' => [
-                    'lcsh'         => 3167,
                     'tag'          => 22199,
                     'country'      => 3168,
-                    'geo_location' => 22431,
                 ],
 
                 // Facets: Typesense field => { Omeka property, UI label,
@@ -588,7 +587,6 @@ return [
                 'item_link' => [
                     'from_template' => 10,
                     'property'      => 'dcterms:isPartOf',
-                    'public_only'   => true,
                 ],
             ],
 
@@ -918,14 +916,14 @@ return [
                 // organisations corpus.)
                 'reverse_links' => [
                     'counts' => [
-                        'item_count'        => ['from_template' => 10,    'public_only' => true],
-                        'publication_count' => ['from_item_set' => 29918, 'public_only' => true],
+                        'item_count'        => ['from_template' => 10],
+                        'publication_count' => ['from_item_set' => 29918],
                     ],
                     'roles' => [
-                        ['label' => 'Principal investigator', 'from_template' => 5,     'properties' => ['dcterms:creator'], 'public_only' => true],
-                        ['label' => 'Project member',         'from_template' => 5,     'properties' => ['foaf:member'],     'public_only' => true],
-                        ['label' => 'Author',                 'from_item_set' => 29918, 'properties' => ['bibo:authorList'], 'public_only' => true],
-                        ['label' => 'Editor',                 'from_item_set' => 29918, 'properties' => ['bibo:editorList'], 'public_only' => true],
+                        ['label' => 'Principal investigator', 'from_template' => 5,     'properties' => ['dcterms:creator']],
+                        ['label' => 'Project member',         'from_template' => 5,     'properties' => ['foaf:member']],
+                        ['label' => 'Author',                 'from_item_set' => 29918, 'properties' => ['bibo:authorList']],
+                        ['label' => 'Editor',                 'from_item_set' => 29918, 'properties' => ['bibo:editorList']],
                         // Every specific contributor role a person holds on a research
                         // item, as its own facet value — one per marcrel:* relator in
                         // use (Author, Photographer, Interviewee, Translator, Collector,
@@ -933,7 +931,7 @@ return [
                         // `per_property` rule expands the whole marcrel vocabulary in a
                         // single query, replacing the former catch-all "Research
                         // contributor" bucket that hid which role each person played.
-                        ['per_property' => true, 'from_template' => 10, 'vocabulary' => 'marcrel', 'public_only' => true],
+                        ['per_property' => true, 'from_template' => 10, 'vocabulary' => 'marcrel'],
                     ],
                 ],
             ],
@@ -978,7 +976,6 @@ return [
                 'item_link' => [
                     'from_template' => 5,
                     'property'      => 'dcterms:isPartOf',
-                    'public_only'   => true,
                 ],
             ],
 
@@ -1027,17 +1024,17 @@ return [
                 'reverse_links' => [
                     'counts' => [
                         // Projects funded by this institution (frapo:isFundedBy).
-                        'project_count' => ['from_template' => 5,  'properties' => ['frapo:isFundedBy'], 'public_only' => true],
+                        'project_count' => ['from_template' => 5,  'properties' => ['frapo:isFundedBy']],
                         // Research items crediting this organisation in any role
                         // (marcrel:* etc.) — the "contributed items" figure groups have.
-                        'item_count'    => ['from_template' => 10, 'public_only' => true],
+                        'item_count'    => ['from_template' => 10],
                         // People who name this organisation as their affiliation.
-                        'people_count'  => ['from_template' => 4,  'properties' => ['dcterms:isPartOf'], 'public_only' => true],
+                        'people_count'  => ['from_template' => 4,  'properties' => ['dcterms:isPartOf']],
                     ],
                     'roles' => [
-                        ['label' => 'Funder',           'from_template' => 5,  'properties' => ['frapo:isFundedBy'], 'public_only' => true],
-                        ['label' => 'Contributor',      'from_template' => 10, 'public_only' => true],
-                        ['label' => 'Host institution', 'from_template' => 4,  'properties' => ['dcterms:isPartOf'], 'public_only' => true],
+                        ['label' => 'Funder',           'from_template' => 5,  'properties' => ['frapo:isFundedBy']],
+                        ['label' => 'Contributor',      'from_template' => 10],
+                        ['label' => 'Host institution', 'from_template' => 4,  'properties' => ['dcterms:isPartOf']],
                     ],
                 ],
             ],
@@ -1084,7 +1081,7 @@ return [
 
                 'reverse_links' => [
                     'counts' => [
-                        'item_count' => ['from_template' => 10, 'properties' => ['dcterms:format'], 'public_only' => true],
+                        'item_count' => ['from_template' => 10, 'properties' => ['dcterms:format']],
                     ],
                 ],
             ],
@@ -1118,8 +1115,8 @@ return [
 
                 'reverse_links' => [
                     'counts' => [
-                        'item_count'        => ['from_template' => 10,    'properties' => ['dcterms:language'], 'public_only' => true],
-                        'publication_count' => ['from_item_set' => 29918, 'properties' => ['dcterms:language'], 'public_only' => true],
+                        'item_count'        => ['from_template' => 10,    'properties' => ['dcterms:language']],
+                        'publication_count' => ['from_item_set' => 29918, 'properties' => ['dcterms:language']],
                     ],
                 ],
             ],
@@ -1188,11 +1185,11 @@ return [
                     'counts' => [
                         // Research items referencing the place as origin OR current
                         // location (deduped — an item counted once even if both).
-                        'item_count' => ['from_template' => 10, 'properties' => ['dcterms:spatial', 'dcterms:provenance'], 'public_only' => true],
+                        'item_count' => ['from_template' => 10, 'properties' => ['dcterms:spatial', 'dcterms:provenance']],
                     ],
                     'roles' => [
-                        ['label' => 'Place of origin',  'from_template' => 10, 'properties' => ['dcterms:spatial'],    'public_only' => true],
-                        ['label' => 'Current location', 'from_template' => 10, 'properties' => ['dcterms:provenance'], 'public_only' => true],
+                        ['label' => 'Place of origin',  'from_template' => 10, 'properties' => ['dcterms:spatial']],
+                        ['label' => 'Current location', 'from_template' => 10, 'properties' => ['dcterms:provenance']],
                     ],
                 ],
             ],
@@ -1230,8 +1227,8 @@ return [
 
                 'reverse_links' => [
                     'counts' => [
-                        'item_count'        => ['from_template' => 10,    'properties' => ['dcterms:subject'], 'public_only' => true],
-                        'publication_count' => ['from_item_set' => 29918, 'properties' => ['dcterms:subject'], 'public_only' => true],
+                        'item_count'        => ['from_template' => 10,    'properties' => ['dcterms:subject']],
+                        'publication_count' => ['from_item_set' => 29918, 'properties' => ['dcterms:subject']],
                     ],
                 ],
             ],

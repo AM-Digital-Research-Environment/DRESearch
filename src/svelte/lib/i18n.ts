@@ -19,8 +19,6 @@ const ENGLISH_STRINGS: Record<string, string> = {
   active_filters: 'Active filters',
   remove_filter: 'Remove filter {label}: {value}',
   add_filter: 'Filter by {label}: {value}',
-  show_more: 'Show {n} more',
-  show_less: 'Show less',
   search_to_see_options: 'No filter options for the current results.',
   facet_search_placeholder: 'Search {label}…',
   facet_no_matches: 'No matches',
@@ -30,8 +28,6 @@ const ENGLISH_STRINGS: Record<string, string> = {
 
   sort_label: 'Sort',
   sort_relevance: 'Relevance',
-  sort_newest: 'Newest first',
-  sort_oldest: 'Oldest first',
   sort_title: 'Title (A–Z)',
 
   // Shared wording: DRE-theme docs/DESIGN-INTEGRATION.md, "Wording glossary".
@@ -106,14 +102,11 @@ const ENGLISH_STRINGS: Record<string, string> = {
   // Federated header bar + results page.
   search_all_placeholder: 'Search everything…',
   see_all_results: 'See all results for “{q}”',
-  no_matches_anywhere: 'No matches in any collection.',
-  search_results_for: 'Results for “{q}”',
   result_types: 'Result types',
   all_results: 'All',
   all_no_facets: 'Open a corpus tab to filter these merged results.',
 
   untitled: 'Untitled',
-  project_label: 'Project',
   suggestions: 'Suggestions',
 
   // Match highlighting — prefix for matches in a field the card doesn't show.

@@ -257,7 +257,7 @@ final class OmekaSourceRepository
      * (a single reverse-link rule). Thin wrapper over {@see reverseCount}.
      *
      * @param list<int> $ids
-     * @param array{from_template:int,property:string,public_only:bool} $itemLink
+     * @param array{from_template:int,property:string} $itemLink
      * @return array<int, int>
      */
     public function loadItemCounts(array $ids, array $itemLink): array
@@ -265,7 +265,6 @@ final class OmekaSourceRepository
         return $this->reverseCount($ids, [
             'properties'    => [$itemLink['property']],
             'from_template' => $itemLink['from_template'],
-            'public_only'   => !empty($itemLink['public_only']),
         ]);
     }
 
@@ -324,11 +323,12 @@ final class OmekaSourceRepository
     /**
      * Count, per referenced target id, the DISTINCT source resources that point
      * at it — optionally narrowed to specific properties and/or a source template
-     * or item set, and to public sources only. The reverse-link primitive behind
+     * or item set. Only public sources count, always (an anonymous visitor's
+     * view; there is no option to count private ones). The reverse-link primitive behind
      * both the project item-count and the person counts/roles. One query per rule.
      *
      * @param list<int> $ids
-     * @param array{properties?:?list<string>, from_template?:?int, from_item_set?:?int, public_only?:bool} $rule
+     * @param array{properties?:?list<string>, from_template?:?int, from_item_set?:?int} $rule
      * @return array<int, int>
      */
     public function reverseCount(array $ids, array $rule): array
@@ -384,11 +384,11 @@ final class OmekaSourceRepository
      * (the curator-facing role name), falling back to the property's own label,
      * then its local name. The rule narrows the same way {@see reverseCount} does —
      * by `vocabulary` (prefix, e.g. all marcrel:* roles) and/or an explicit
-     * `properties` allowlist, an optional `from_template` / `from_item_set`, and
-     * `public_only`. One query for the whole page.
+     * `properties` allowlist and an optional `from_template` / `from_item_set`;
+     * only public sources count. One query for the whole page.
      *
      * @param list<int> $ids
-     * @param array{vocabulary?:string, properties?:?list<string>, from_template?:?int, from_item_set?:?int, public_only?:bool} $rule
+     * @param array{vocabulary?:string, properties?:?list<string>, from_template?:?int, from_item_set?:?int} $rule
      * @return array<int, list<string>> entityId => role labels (alphabetical)
      */
     public function reverseRolesPerProperty(array $ids, array $rule): array
