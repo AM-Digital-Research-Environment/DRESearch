@@ -76,8 +76,9 @@ final class Reindexer
             $this->alias,
             $this->stateStore,
         );
-        // A drain holds the profile lock only for one short batch at a time;
-        // wait for it instead of failing a requested rebuild outright.
+        // A drain holds the profile lock only for one batch at a time and
+        // releases it between batches (IncrementalIndexer::drain()); wait for
+        // it instead of failing a requested rebuild outright.
         $lock->acquire(self::LOCK_WAIT_SECONDS);
         $collection = '';
         $previous = null;

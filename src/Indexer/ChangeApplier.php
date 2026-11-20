@@ -116,12 +116,21 @@ final class ChangeApplier
      *
      * @param Closure():bool|null $cancel checked before every batch
      * @param Closure():void|null $beat called after every batch (lease heartbeat)
+     * @param Closure():bool|null $between called after every batch but the last;
+     *                            false stops the drain, the rest staying queued
+     *                            (the worker lets a waiting rebuild take the lock)
      * @return list<int> ids rejected and removed
      */
-    public function drain(ChangeQueue $queue, string $collection, ?Closure $cancel = null, ?Closure $beat = null): array
-    {
+    public function drain(
+        ChangeQueue $queue,
+        string $collection,
+        ?Closure $cancel = null,
+        ?Closure $beat = null,
+        ?Closure $between = null,
+    ): array {
         $rejected = [];
-        while ($rows = $queue->page($this->profile->name())) {
+        $rows = $queue->page($this->profile->name());
+        while ($rows !== []) {
             if ($cancel !== null && $cancel()) {
                 break;
             }
@@ -130,6 +139,10 @@ final class ChangeApplier
             $queue->acknowledge($this->profile->name(), $rows);
             if ($beat !== null) {
                 $beat();
+            }
+            $rows = $queue->page($this->profile->name());
+            if ($rows !== [] && $between !== null && !$between()) {
+                break;
             }
         }
         $rejected = array_values(array_unique($rejected));

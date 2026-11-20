@@ -103,6 +103,35 @@ final class ChangeApplierTest extends TestCase
         self::assertSame(0, $beats);
     }
 
+    /**
+     * The worker hands the lock back between batches; a refusal (a rebuild
+     * took it) stops the drain after the batch it applied, and the rest
+     * stays queued. The hook is never called after the last batch.
+     */
+    public function testADrainStopsBetweenBatchesWhenAskedAndKeepsTheRest(): void
+    {
+        $ids = range(1000, 1149);
+        foreach ($ids as $id) {
+            $this->item($id, 'Record ' . $id, 10);
+        }
+        $this->queueFor('records', $ids);
+        $asked = 0;
+        $this->applier()->drain(new ChangeQueue($this->db), 'records_g1', null, null, function () use (&$asked): bool {
+            $asked++;
+            return false;
+        });
+        self::assertSame(1, $asked);
+        self::assertCount(50, $this->queued(), 'One batch of 100 applied; 50 left for the next pass.');
+
+        $asked = 0;
+        $this->applier()->drain(new ChangeQueue($this->db), 'records_g1', null, null, function () use (&$asked): bool {
+            $asked++;
+            return true;
+        });
+        self::assertSame(0, $asked, 'A single remaining batch needs no hand-back.');
+        self::assertSame([], $this->queued());
+    }
+
     private function applier(?\Closure $invalidate = null): ChangeApplier
     {
         $logger = new Logger();

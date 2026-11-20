@@ -261,7 +261,29 @@ final class IncrementalIndexer
                 }
                 // Rejected documents are removed, logged and recorded by the applier.
                 $applier = new ChangeApplier($this->connection, $ops, $profile, $this->logger, $this->stateStore, null, $this->properties);
-                $rejected = $applier->drain($this->queue, $target, $cancel, $beat);
+                // The lock is held for one batch at a time, so a rebuild asked
+                // for meanwhile (it waits a minute for it) is not refused
+                // behind a long queue. Between batches it is released and
+                // taken back; if a rebuild took it, or moved the alias, the
+                // rest of the queue waits for the next pass.
+                $yielded = false;
+                $rejected = $applier->drain($this->queue, $target, $cancel, $beat, function () use ($lock, $ops, $profile, $target, &$yielded): bool {
+                    $lock->release();
+                    try {
+                        $lock->acquire(0);
+                    } catch (RebuildLockedException) {
+                        $yielded = true;
+                        return false;
+                    }
+                    if ($ops->aliasTarget($profile->collection()) !== $target) {
+                        $yielded = true;
+                        return false;
+                    }
+                    return true;
+                });
+                if ($yielded) {
+                    $pass['skipped'][] = $profile->name();
+                }
                 if ($rejected !== []) {
                     $pass['rejected'][$profile->name()] = $rejected;
                 }
