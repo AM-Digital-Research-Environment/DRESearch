@@ -69,7 +69,8 @@ borrow from each other, but the boundaries below are this module's own.
   core (`scripts/check-psr-log-origin.php`).
 - **PHP 8.4 is the floor, but the code must parse on 8.2**, so an under-version
   server degrades instead of failing: no syntax newer than 8.2 (typed class
-  constants, for one).
+  constants, for one). CI's `php-parse-floor` job lints Module.php, src/ and
+  the CLI on 8.2.
 
 ## Module lifecycle
 
