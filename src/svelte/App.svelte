@@ -254,6 +254,20 @@
     map: (...args: Parameters<SearchApi['map']>) => api.map(...args),
   };
 
+  // Skip the first search only when the seed already answers the seeded
+  // state: a shared link with facets, a sort, page 2 or a year must fetch.
+  // svelte-ignore state_referenced_locally
+  const adoptSeed = seedAnswersFirstSearch({
+    initialResponse,
+    url: urlInitial,
+    seedSort,
+    defaultSort,
+    seedQuery,
+    initialQuery: bootstrap.initial_query ?? '',
+    includeQuery,
+    stateApplied: bootstrap.initial_state_applied === true,
+  });
+
   // What the search state turns into (lib/searchResults.svelte.ts). A failed
   // request shows a translated message and "Try again", which re-runs the
   // effect below; the technical detail is logged by api.ts, never shown.
@@ -262,18 +276,7 @@
     facets: bootstrap.facets,
     perPage: bootstrap.per_page,
     initialResponse,
-    // Skip the first search only when the seed already answers the seeded
-    // state: a shared link with facets, a sort, page 2 or a year must fetch.
-    adoptInitial: seedAnswersFirstSearch({
-      initialResponse,
-      url: urlInitial,
-      seedSort,
-      defaultSort,
-      seedQuery,
-      initialQuery: bootstrap.initial_query ?? '',
-      includeQuery,
-      stateApplied: bootstrap.initial_state_applied === true,
-    }),
+    adoptInitial: adoptSeed,
     onPageOverflow: (lastPage) => (page = lastPage),
     onSettled: suggestGallery,
   });
@@ -302,6 +305,12 @@
 
   // Previous URL snapshot, so the sync can choose pushState vs replaceState.
   let prevUrlState: UrlSearchState | null = null;
+
+  // An adopted server seed is the first result set on screen, so it is what
+  // the gallery is suggested from; otherwise the suggestion waited for the
+  // visitor's first search and switched the layout under them mid-task. (No
+  // snapshot exists yet, so the first URL sync replaces, never pushes.)
+  if (adoptSeed && initialResponse) suggestGallery(initialResponse);
 
   // Facet value search reads the CURRENT scope when it runs. A stable function
   // (not a $derived closure) matters: a new closure on every filter change made

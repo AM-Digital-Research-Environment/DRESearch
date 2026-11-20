@@ -145,6 +145,22 @@ describe('views', () => {
     expect(screen.queryByRole('button', { name: /Grid/ })).toBeNull();
   });
 
+  it('suggests the gallery from the server-rendered page, not after the first search', async () => {
+    const pictures = {
+      ...response(4),
+      hits: response(4).hits.map((hit) => ({ ...hit, thumbnail_url: `/files/${hit.id}.jpg` })),
+    } as SearchResponse;
+    const steps = window.history.length;
+    render(App, { bootstrap: { ...bootstrap(), initial_response: pictures } });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Grid/ })).toHaveAttribute('aria-pressed', 'true'),
+    );
+    expect(searchSpy).not.toHaveBeenCalled();
+    expect(new URL(window.location.href).searchParams.get('b7.view')).toBe('gallery');
+    // Recorded as the page's state, not as a step the visitor took.
+    expect(window.history.length).toBe(steps);
+  });
+
   it('shows no toggle when the server sends no views', async () => {
     render(App, { bootstrap: { ...bootstrap(), views: undefined } });
     await screen.findByText('Item 1');
