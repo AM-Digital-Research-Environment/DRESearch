@@ -8,6 +8,7 @@ All notable changes to DRE Search are documented here. The project follows
 ### Security
 
 - A filter value containing a backtick is refused (`400 invalid_filter_values`). The check for values Typesense would reinterpret (a trailing `*` or `\`) ran before the query builder stripped backticks, so `Book\` followed by a backtick passed and reached Typesense as the escaped closing quote the check exists to refuse. The builder now refuses such a value instead of rewriting it. No facet value contains a backtick.
+- The rate limiter keeps its rows for five minutes instead of a day. Each row is a one-minute window keyed by an unsalted hash of the endpoint, the visitor's address and the minute, from which an IPv4 address can be recovered; a day of rows was a day's log of who searched what, and nothing reads a window once it has ended.
 - The indexer no longer keeps a title taken from a private value. A record with no value for its template's current title property used Omeka's cached title, which Omeka takes from the title property whatever its visibility and recomputes only when the item is saved: after a template's title property changed, an item could keep a private former title. That fallback is now dropped when a private value of the record carries the same text. Rebuild the corpora whose template's title property was ever changed.
 
 ### Fixed

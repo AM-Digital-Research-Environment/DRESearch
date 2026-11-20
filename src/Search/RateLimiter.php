@@ -20,6 +20,15 @@ use Doctrine\DBAL\Connection;
 final class RateLimiter
 {
     /**
+     * Seconds a past window is kept. Nothing reads a window once it has
+     * ended, and a bucket key is an unsalted hash of the scope, the address
+     * and the minute, from which an IPv4 address can be recovered by trying
+     * them all: keeping rows for a day kept a day's log of who searched what,
+     * minute by minute, for no purpose. Twice the longest window is enough.
+     */
+    public const RETENTION_SECONDS = 300;
+
+    /**
      * @param list<string> $trustedProxies IPs or CIDR ranges of reverse proxies
      */
     public function __construct(
@@ -49,12 +58,8 @@ final class RateLimiter
             ['key' => $key],
         )->fetchOne();
         if (random_int(1, 100) === 1) {
-            $cutoff = gmdate('Y-m-d H:i:s', time() - 86400);
             try {
-                $this->connection->executeStatement(
-                    'DELETE FROM dre_search_rate_limit WHERE window_started < :cutoff',
-                    compact('cutoff'),
-                );
+                $this->forgetExpired($windowSeconds);
             } catch (\Throwable) {
                 // Opportunistic housekeeping must not change this request's
                 // already-determined rate-limit result.
@@ -64,6 +69,19 @@ final class RateLimiter
             return 0;
         }
         return max(1, ($window + 1) * $windowSeconds - time());
+    }
+
+    /**
+     * Delete the windows that ended more than {@see RETENTION_SECONDS} ago
+     * (or two windows, if longer). Returns the rows removed.
+     */
+    public function forgetExpired(int $windowSeconds = 60): int
+    {
+        $cutoff = gmdate('Y-m-d H:i:s', time() - max(self::RETENTION_SECONDS, 2 * max(1, $windowSeconds)));
+        return (int) $this->connection->executeStatement(
+            'DELETE FROM dre_search_rate_limit WHERE window_started < :cutoff',
+            compact('cutoff'),
+        );
     }
 
     public function allow(string $scope, string $identity, int $limit, int $windowSeconds = 60): bool

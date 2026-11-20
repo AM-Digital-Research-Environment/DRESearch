@@ -64,6 +64,18 @@ final class RateLimiterTest extends TestCase
         }
     }
 
+    /** Ended windows are kept minutes, not a day: the keys are recoverable addresses. */
+    public function testEndedWindowsAreForgottenWithinMinutes(): void
+    {
+        $db = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
+        $db->executeStatement('CREATE TABLE dre_search_rate_limit (bucket_key TEXT PRIMARY KEY, window_started TEXT NOT NULL, request_count INT NOT NULL DEFAULT 0)');
+        foreach (['current' => 0, 'last-minute' => 60, 'ten-minutes' => 600, 'yesterday' => 80000] as $key => $age) {
+            $db->insert('dre_search_rate_limit', ['bucket_key' => $key, 'window_started' => gmdate('Y-m-d H:i:s', time() - $age)]);
+        }
+        self::assertSame(2, (new RateLimiter($db))->forgetExpired());
+        self::assertSame(['current', 'last-minute'], $db->fetchFirstColumn('SELECT bucket_key FROM dre_search_rate_limit ORDER BY window_started DESC'));
+    }
+
     /** @param list<string> $trusted */
     private function limiter(array $trusted): RateLimiter
     {
