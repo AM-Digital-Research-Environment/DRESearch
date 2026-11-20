@@ -287,6 +287,9 @@ final class OmekaIntegrationTest extends TestCase
         $template = new Request('update', 'resource_templates');
         $template->setId(11);
         $listener->onResourceTemplatePre(new Event('api.update.pre', null, ['request' => $template]));
+        // A change the index reads (the title property); a save that changes
+        // nothing it reads queues nothing (the test after the event tests).
+        $this->db->executeStatement('UPDATE resource_template SET title_property_id = 1 WHERE id = 11');
         $listener->onResourceTemplatePost(new Event('api.update.post', null, ['request' => $template]));
         self::assertSame([1], $this->queued());
     }
