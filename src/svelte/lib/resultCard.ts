@@ -147,6 +147,19 @@ export interface PublicationReference {
 }
 
 /**
+ * What `pages_s` holds: a page range or a single page ("185–209", "12"), or a
+ * monograph's page COUNT, which PublicationMapper writes "370 pp.". The card
+ * and the exports (RIS SP/EP, BibTeX pages or pagetotal) read it through this
+ * one rule, so a count is never cited as a start page.
+ */
+export function pagesOf(doc: Doc): { range: string } | { total: string } | null {
+  const pages = (doc.pages_s ?? '').trim();
+  if (pages === '') return null;
+  const total = /^(\S+)\s+pp\.$/.exec(pages)?.[1];
+  return total !== undefined ? { total } : { range: pages };
+}
+
+/**
  * Volume, issue and pages: "vol. 4(2)", "vol. 4" or "no. 2", then "pp. 25–48".
  * A range takes the "pp." prefix; a monograph's page COUNT already reads
  * "370 pp." (PublicationMapper), and prefixing it gave "pp. 370 pp.".
@@ -158,8 +171,10 @@ export function publicationMetrics(doc: Doc): string {
   if (vol && issue) bits.push(`${t('vol_short')} ${vol}(${issue})`);
   else if (vol) bits.push(`${t('vol_short')} ${vol}`);
   else if (issue) bits.push(`${t('no_short')} ${issue}`);
-  const pages = doc.pages_s ?? '';
-  if (pages) bits.push(/\spp\.$/.test(pages) ? pages : `${t('pp_short')} ${pages}`);
+  const pages = pagesOf(doc);
+  if (pages !== null) {
+    bits.push('total' in pages ? `${pages.total} pp.` : `${t('pp_short')} ${pages.range}`);
+  }
   return bits.join(', ');
 }
 
