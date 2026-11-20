@@ -5,6 +5,8 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+## [1.37.1] - 2026-11-20
+
 **Upgrade:** no schema change, no new table, and no reindex needed, except: rebuild any corpus whose resource template's title property was changed since its items were last saved (see Security).
 
 ### Security
