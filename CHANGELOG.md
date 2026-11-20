@@ -25,6 +25,10 @@ All notable changes to DRE Search are documented here. The project follows
 - BibTeX keeps a corporate creator whole. A name such as "Ministry of Health and Public Hygiene" was split by BibTeX into two people at the "and"; a name without a comma (people are stored "Surname, Forename") is now wrapped in braces.
 - On the federated results page, removing a corpus tab's "Search: …" chip (or taking "Did you mean") now changes the page's query. It changed only the tab's own copy, so the tab showed the whole corpus while the address bar, the search box and the tab counts kept the old query.
 
+### Changed
+
+- The card for each kind is chosen from one map (`src/svelte/components/cards.ts`), read by the corpus results list and the federated merged list. They were two copies of the same if-chain that fell back silently to the research-item card; a kind without a card now fails the type check.
+
 ## [1.37.0] - 2026-11-16
 
 ### Added

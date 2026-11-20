@@ -154,7 +154,8 @@ DRESearch/
 │       │   │   ResultSkeleton · ExportMenu · CiteMenu · CopyLinkButton · MapView
 │       │   ├── ResultItem · ProjectCard · PublicationCard · PodcastCard · VideoCard · ChronicleCard ·
 │       │   │   PersonCard · SectionCard · OrganisationCard · TermCard · MixedResultCard
-│       │   │                        #   one card per kind (+ the union list's)
+│       │   │                        #   one card per kind (+ the union list's);
+│       │   │                        #   cards.ts maps each kind to its card
 │       │   └── CardThumb · Highlight · MatchedIn · IdentifierLinks · RegisterMark ·
 │       │       RecordLink · Sparkline
 │       ├── lib/

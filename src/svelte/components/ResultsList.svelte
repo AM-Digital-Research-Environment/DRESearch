@@ -2,16 +2,7 @@
   import type { ActiveFilters, CardKind, Doc, ViewMode } from '../lib/types';
   import { activeCardFilters, provideCardFilters } from '../lib/cardFilters';
   import Pagination from './Pagination.svelte';
-  import ResultItem from './ResultItem.svelte';
-  import ProjectCard from './ProjectCard.svelte';
-  import PublicationCard from './PublicationCard.svelte';
-  import PodcastCard from './PodcastCard.svelte';
-  import VideoCard from './VideoCard.svelte';
-  import ChronicleCard from './ChronicleCard.svelte';
-  import PersonCard from './PersonCard.svelte';
-  import SectionCard from './SectionCard.svelte';
-  import OrganisationCard from './OrganisationCard.svelte';
-  import TermCard from './TermCard.svelte';
+  import { cardFor } from './cards';
 
   interface Props {
     hits: Doc[];
@@ -50,6 +41,8 @@
     onToggleFilter,
   }: Props = $props();
 
+  const Card = $derived(cardFor(cardKind));
+
   // Every card's filter values read this (lib/cardFilters.ts).
   provideCardFilters(
     activeCardFilters(
@@ -68,27 +61,7 @@
 >
   {#each hits as doc, index (doc.id)}
     <li class="dre-results__item">
-      {#if cardKind === 'project'}
-        <ProjectCard {doc} {itemUrlBase} />
-      {:else if cardKind === 'publication'}
-        <PublicationCard {doc} {itemUrlBase} />
-      {:else if cardKind === 'podcast'}
-        <PodcastCard {doc} {itemUrlBase} />
-      {:else if cardKind === 'video'}
-        <VideoCard {doc} {itemUrlBase} />
-      {:else if cardKind === 'chronicle'}
-        <ChronicleCard {doc} {itemUrlBase} />
-      {:else if cardKind === 'person'}
-        <PersonCard {doc} {itemUrlBase} />
-      {:else if cardKind === 'section'}
-        <SectionCard {doc} {itemUrlBase} />
-      {:else if cardKind === 'organisation'}
-        <OrganisationCard {doc} {itemUrlBase} />
-      {:else if cardKind === 'term'}
-        <TermCard {doc} {itemUrlBase} {profile} />
-      {:else}
-        <ResultItem {doc} {itemUrlBase} {view} eager={index < 4} />
-      {/if}
+      <Card {doc} {itemUrlBase} {profile} {view} eager={index < 4} />
     </li>
   {/each}
 </ol>
