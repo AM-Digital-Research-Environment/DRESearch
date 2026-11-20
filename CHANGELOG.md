@@ -5,6 +5,10 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The federated results page no longer shows a corpus tab's results for other filters. The tab cache was keyed by corpus and page only, so a card chip's hand-off from the All list (or Back to a tab with different filters) painted the response cached on an earlier visit under the new filter chips. The key now includes the state the URL asks for.
+
 ## [1.37.0] - 2026-11-16
 
 ### Added

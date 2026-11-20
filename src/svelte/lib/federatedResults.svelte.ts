@@ -10,9 +10,12 @@
  *
  * The rules this carries:
  *
- *  - One response per tab and page is cached for the current query, so going
- *    back to a tab paints at once; a new query empties the cache and forgets
- *    the counts.
+ *  - One response per tab and request is cached for the current query, so
+ *    going back to a tab paints at once; a new query empties the cache and
+ *    forgets the counts. A corpus tab's key includes the state its URL asks
+ *    for (filters, sort, page, years): the embedded App adopts the cached
+ *    response as the answer to that state, so a hit for other filters would
+ *    paint the wrong results under the chips.
  *  - The counts fan out across every corpus, so they are asked for once per
  *    query, by whichever request comes first.
  *  - The latest request wins. Returning to a cached tab supersedes a request
@@ -102,7 +105,9 @@ export function createFederatedResults(
     controller?.abort();
     isLoading = false;
     failed = false;
-    const cacheKey = `${profile}:${page}`;
+    const corpus = profile === opts.all ? null : opts.corpusRequest(profile);
+    const cacheKey =
+      corpus === null ? `${profile}:${page}` : `${profile}:${page}:${JSON.stringify(corpus)}`;
     const cached = cache[cacheKey];
     if (cached) {
       if (profile === opts.all) unionResponse = cached;
@@ -152,7 +157,7 @@ export function createFederatedResults(
       } else {
         activeResponse = null;
         const result = await client.searchAll(
-          { ...opts.corpusRequest(profile), profile, q, include_counts: countsQuery !== q },
+          { ...corpus, profile, q, include_counts: countsQuery !== q },
           request.signal,
         );
         if (seq.isStale(ticket)) return;
