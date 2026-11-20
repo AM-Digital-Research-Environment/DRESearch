@@ -98,6 +98,11 @@ describe('export menu', () => {
       'The export could not be completed.',
     );
     expect(download).not.toHaveBeenCalled();
+    // The pressed format was disabled while busy, which drops focus: it is
+    // handed back, so a keyboard user can retry from where they were.
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'BibTeX (.bib)' })),
+    );
   });
 
   it('says when there is nothing to export', async () => {
