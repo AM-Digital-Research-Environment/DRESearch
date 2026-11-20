@@ -306,11 +306,13 @@
   // Previous URL snapshot, so the sync can choose pushState vs replaceState.
   let prevUrlState: UrlSearchState | null = null;
 
-  // An adopted server seed is the first result set on screen, so it is what
-  // the gallery is suggested from; otherwise the suggestion waited for the
-  // visitor's first search and switched the layout under them mid-task. (No
-  // snapshot exists yet, so the first URL sync replaces, never pushes.)
-  if (adoptSeed && initialResponse) suggestGallery(initialResponse);
+  // An adopted server seed is the first result set on screen, and it spends
+  // the one suggestion: the block stays on the list it was rendered as.
+  // Otherwise the suggestion waited for the visitor's first search and
+  // switched the layout under them mid-task. Opening the seed in the gallery
+  // instead would load the gallery's larger images on every page view
+  // (about 1 MB against 70 KB on the Lighthouse block fixture).
+  if (adoptSeed) viewExplicit = true;
 
   // Facet value search reads the CURRENT scope when it runs. A stable function
   // (not a $derived closure) matters: a new closure on every filter change made
