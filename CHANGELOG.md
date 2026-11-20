@@ -11,6 +11,7 @@ All notable changes to DRE Search are documented here. The project follows
 - A Cluster Chronicles search that matched inside a work's text no longer prints the whole essay or poem under the card ("Matched in: Full text"). The full text was highlighted in full because the list of fields that are only ever snippeted named transcripts and full texts by name; it is now every profile's search-only fields, so the text is shown as a short window around the match, like a transcript.
 - Exports cite a monograph's page count correctly. A count ("370 pp.") was written as RIS `SP  - 370 pp.` and BibTeX `pages = {370 pp.}`, which reference managers read as a start page; RIS now leaves it out and BibTeX writes `pagetotal = {370}`. Page ranges are unchanged.
 - BibTeX keeps a corporate creator whole. A name such as "Ministry of Health and Public Hygiene" was split by BibTeX into two people at the "and"; a name without a comma (people are stored "Surname, Forename") is now wrapped in braces.
+- On the federated results page, removing a corpus tab's "Search: …" chip (or taking "Did you mean") now changes the page's query. It changed only the tab's own copy, so the tab showed the whole corpus while the address bar, the search box and the tab counts kept the old query.
 
 ## [1.37.0] - 2026-11-16
 

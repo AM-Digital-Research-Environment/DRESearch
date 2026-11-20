@@ -96,4 +96,26 @@ describe('the All results page in the URL', () => {
     await screen.findByText('Hit on page 2');
     expect(new URL(window.location.href).searchParams.get('page')).toBe('2');
   });
+
+  it("removes a corpus tab's query chip from the shell, not only from the tab", async () => {
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener() {},
+      removeEventListener() {},
+    }));
+    window.history.replaceState({}, '', '/?q=islam&profile=first');
+    vi.mocked(searchAll).mockReset();
+    vi.mocked(searchAll).mockResolvedValue({
+      available: true,
+      counts: { first: 1 },
+      active: union(1, 1),
+    });
+    mount();
+    const chip = await screen.findByRole('button', { name: 'Remove filter Search: islam' });
+    await fireEvent.click(chip);
+    // The shell owns the query: the address bar and the shared box follow.
+    await vi.waitFor(() => expect(new URL(window.location.href).searchParams.get('q')).toBeNull());
+    expect((screen.getByRole('searchbox') as HTMLInputElement).value).toBe('');
+    expect(vi.mocked(searchAll).mock.calls.at(-1)?.[1]).toMatchObject({ profile: 'first', q: '' });
+  });
 });
