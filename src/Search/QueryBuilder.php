@@ -232,9 +232,12 @@ final class QueryBuilder
      * Match marks, so each card can show *where* a result matched. Short fields
      * (title, linked-value facets, names) are highlighted in full — so a card can
      * highlight a whole chip/byline value — while the long free-text fields
-     * (abstract, description, transcript) return a windowed snippet centred on
-     * the match (the full text would scroll the match out of the clamped card, or
-     * dump a whole transcript into a line). The restricted full text is only
+     * (abstract, description, and every search-only field: transcripts, full
+     * texts) return a windowed snippet centred on the match (the full text
+     * would scroll the match out of the clamped card, or dump a whole
+     * transcript into a line). Search-only fields are read from the profile,
+     * not named here, so a new one (the chronicles' `content`) can never be
+     * shipped whole through its highlight. The restricted full text is only
      * ever snippeted, and {@see ResponseNormalizer} caps that snippet again.
      * Nothing to mark on a browse.
      *
@@ -246,7 +249,10 @@ final class QueryBuilder
         if (self::isBrowse($req)) {
             return [];
         }
-        $longTextFields = ['abstract', 'description', 'transcript', 'fulltext', SearchProfile::RESTRICTED_TEXT_FIELD];
+        $longTextFields = array_merge(
+            ['abstract', 'description', SearchProfile::RESTRICTED_TEXT_FIELD],
+            $this->profile->searchOnlyFields(),
+        );
         $queryFields = array_values(array_filter(array_map(
             'trim',
             explode(',', $this->profile->queryBy())

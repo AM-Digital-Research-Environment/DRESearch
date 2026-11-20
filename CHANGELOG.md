@@ -8,6 +8,7 @@ All notable changes to DRE Search are documented here. The project follows
 ### Fixed
 
 - The federated results page no longer shows a corpus tab's results for other filters. The tab cache was keyed by corpus and page only, so a card chip's hand-off from the All list (or Back to a tab with different filters) painted the response cached on an earlier visit under the new filter chips. The key now includes the state the URL asks for.
+- A Cluster Chronicles search that matched inside a work's text no longer prints the whole essay or poem under the card ("Matched in: Full text"). The full text was highlighted in full because the list of fields that are only ever snippeted named transcripts and full texts by name; it is now every profile's search-only fields, so the text is shown as a short window around the match, like a transcript.
 
 ## [1.37.0] - 2026-11-16
 

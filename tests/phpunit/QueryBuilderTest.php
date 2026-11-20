@@ -101,6 +101,32 @@ final class QueryBuilderTest extends TestCase
         self::assertArrayNotHasKey('highlight_full_fields', $params);
     }
 
+    /**
+     * A search-only field (a transcript, a full text) is searched but never
+     * shipped, so its highlight must be a snippet: in highlight_full_fields
+     * Typesense would return the whole field, marked, and the card would
+     * print it. Checked over every shipped profile.
+     */
+    public function testSearchOnlyFieldsAreNeverHighlightedInFull(): void
+    {
+        $config = require dirname(__DIR__, 2) . '/config/module.config.php';
+        $checked = 0;
+        foreach ($config['dre_search']['profiles'] as $name => $definition) {
+            $profile = \DRESearch\Settings\SearchProfile::fromArray((string) $name, $definition);
+            $searchOnly = $profile->searchOnlyFields();
+            if ($searchOnly === []) {
+                continue;
+            }
+            $params = (new QueryBuilder($profile))->search(['q' => 'word']);
+            $full = explode(',', (string) ($params['highlight_full_fields'] ?? ''));
+            foreach ($searchOnly as $field) {
+                self::assertNotContains($field, $full, "{$name}: {$field} would be returned whole.");
+                $checked++;
+            }
+        }
+        self::assertGreaterThanOrEqual(4, $checked, 'The shipped transcripts, publication full text and chronicle text.');
+    }
+
     public function testUnrefinedSearchStaysASingleQuery(): void
     {
         $builder = new QueryBuilder($this->multiFacetProfile());
