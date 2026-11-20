@@ -144,6 +144,28 @@ final class OmekaSourceRepository
                 $public[$id] = true;
             }
         }
+        // What is left on Omeka's cached title has no value for its CURRENT
+        // title property. Omeka caches the first value of the title property
+        // whatever its visibility and recomputes it only on save, so after a
+        // template's title property changes (which re-titles no item) that
+        // cache can still hold a private value of the former property. Keep it
+        // only when no private value of the resource carries the same text.
+        $fallback = array_keys(array_filter(
+            $titles,
+            static fn(string $title, int $id): bool => $title !== '' && !isset($seen[$id]),
+            ARRAY_FILTER_USE_BOTH,
+        ));
+        if ($fallback !== []) {
+            foreach (
+                $this->connection->executeQuery(
+                    'SELECT DISTINCT v.resource_id FROM value v JOIN resource r ON r.id = v.resource_id'
+                    . ' WHERE v.resource_id IN (' . implode(',', $fallback) . ') AND v.is_public = 0'
+                    . ' AND v.value IS NOT NULL AND TRIM(v.value) = TRIM(r.title)',
+                )->fetchFirstColumn() as $id
+            ) {
+                $titles[(int) $id] = '';
+            }
+        }
         return $titles;
     }
 

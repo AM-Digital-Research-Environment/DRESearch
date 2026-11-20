@@ -70,4 +70,27 @@ final class OmekaSourceRepositoryTest extends TestCase
         self::assertSame([3, 8], (new ChangeQueue($this->db))->pendingIds('records'));
         self::assertSame([], (new ChangeQueue($this->db))->pendingIds('unused'));
     }
+
+    /**
+     * A template whose title property changed re-titles no item: Omeka's
+     * cached title still holds the first value of the former property,
+     * whatever its visibility. It is kept only when no private value of the
+     * resource carries that text.
+     */
+    public function testAStaleCachedTitleFromAPrivateValueIsNeverIndexed(): void
+    {
+        $this->db->insert('resource_template', ['id' => 10, 'title_property_id' => $this->term('dcterms:alternative')]);
+        // Titled by a private dcterms:title before the template switched to
+        // dcterms:alternative, of which these items have none.
+        $this->item(1, 'Secret former title', 10, [7]);
+        $this->db->executeStatement('UPDATE value SET is_public = 0 WHERE resource_id = 1');
+        $this->item(2, 'Public former title', 10, [7]);
+        $this->item(3, 'Cached', 10, [7]);
+        $this->literalValue(3, 'dcterms:alternative', 'Current public title');
+
+        $titles = (new OmekaSourceRepository($this->db, $this->profile(['item_set_id' => 7])))->publicTitles([1, 2, 3]);
+        self::assertSame('', $titles[1]);
+        self::assertSame('Public former title', $titles[2], 'A public former title is not a secret.');
+        self::assertSame('Current public title', $titles[3]);
+    }
 }
