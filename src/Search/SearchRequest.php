@@ -237,9 +237,13 @@ final class SearchRequest
                 // Inside a backtick-quoted filter list Typesense still reads a
                 // trailing "*" as a prefix wildcard, a "…"-wrapped value as a
                 // phrase, and a trailing "\" as escaping the closing backtick.
-                // No facet value needs them; refuse rather than reinterpret.
+                // No facet value needs them; refuse rather than reinterpret. A
+                // backtick is refused anywhere: it is the quote itself, and
+                // stripping it later turned "Book\`" into the escaped closing
+                // quote this check exists to refuse.
                 if (
-                    str_ends_with($text, '*') || str_ends_with($text, '\\')
+                    str_contains($text, '`')
+                    || str_ends_with($text, '*') || str_ends_with($text, '\\')
                     || (strlen($text) > 1 && str_starts_with($text, '"') && str_ends_with($text, '"'))
                 ) {
                     throw new RequestValidationException('invalid_filter_values', 'A filter value cannot be matched literally.');

@@ -537,10 +537,21 @@ final class QueryBuilder
                 if (!is_array($values) || $values === []) {
                     continue;
                 }
-                // Backtick-quote each value (handles spaces); strip stray
-                // backticks so a value can't break out of the quoting.
+                // Backtick-quote each value (handles spaces). SearchRequest
+                // refuses the values Typesense would reinterpret; refuse them
+                // here too rather than rewrite them, since stripping a backtick
+                // can leave the trailing backslash that escapes the quote.
                 $quoted = array_map(
-                    static fn($v): string => '`' . str_replace('`', '', (string) $v) . '`',
+                    static function ($v): string {
+                        $v = (string) $v;
+                        if (str_contains($v, '`') || str_ends_with($v, '\\')) {
+                            throw new Exception\RequestValidationException(
+                                'invalid_filter_values',
+                                'A filter value cannot be matched literally.',
+                            );
+                        }
+                        return '`' . $v . '`';
+                    },
                     $values,
                 );
                 // Multiple values within a field are OR'd; fields are AND'd.

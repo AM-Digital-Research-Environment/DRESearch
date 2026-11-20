@@ -33,7 +33,7 @@ client.
 Requests are strict: unknown keys, profiles/fields, unsupported sorts, oversized
 bodies/queries, invalid UTF-8 and out-of-range paging are rejected. Filter
 values are matched literally, so a value Typesense would reinterpret (a trailing
-`*` or `\`, or one wrapped in double quotes) is refused. Raw `locked_filter`
+`*` or `\`, a backtick anywhere, or one wrapped in double quotes) is refused. Raw `locked_filter`
 input is not accepted. `filters` takes a profile's sidebar facets and its
 filterable display fields; on research items that includes `project_id_s`, the
 project's item id as a string (`{"project_id_s": ["1797"]}`), the stable

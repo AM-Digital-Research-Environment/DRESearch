@@ -5,6 +5,10 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+### Security
+
+- A filter value containing a backtick is refused (`400 invalid_filter_values`). The check for values Typesense would reinterpret (a trailing `*` or `\`) ran before the query builder stripped backticks, so `Book\` followed by a backtick passed and reached Typesense as the escaped closing quote the check exists to refuse. The builder now refuses such a value instead of rewriting it. No facet value contains a backtick.
+
 ### Fixed
 
 - The federated results page no longer shows a corpus tab's results for other filters. The tab cache was keyed by corpus and page only, so a card chip's hand-off from the All list (or Back to a tab with different filters) painted the response cached on an earlier visit under the new filter chips. The key now includes the state the URL asks for.

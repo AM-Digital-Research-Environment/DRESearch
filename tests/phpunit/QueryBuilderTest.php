@@ -15,12 +15,29 @@ final class QueryBuilderTest extends TestCase
     {
         $params = (new QueryBuilder($this->profile(), 'tenant_s:=`A`'))->search([
             'q' => '',
-            'filters' => ['type_s' => ['Book` && is_public:=false']],
+            'filters' => ['type_s' => ['Book && is_public:=false']],
         ]);
 
-        self::assertStringContainsString('is_public:=true', $params['filter_by']);
+        self::assertStringStartsWith('is_public:=true', $params['filter_by']);
         self::assertStringContainsString('tenant_s:=`A`', $params['filter_by']);
         self::assertStringContainsString('type_s:=[`Book && is_public:=false`]', $params['filter_by']);
+    }
+
+    /**
+     * A value that would leave its quotes is refused, never rewritten: the
+     * builder used to strip a backtick, which turned "Book\`" into the
+     * escaped closing quote SearchRequest refuses.
+     */
+    public function testFilterValuesThatWouldLeaveTheirQuotesAreRefused(): void
+    {
+        foreach (['Book` && is_public:=false', "Book\\`", "Book\\"] as $value) {
+            try {
+                (new QueryBuilder($this->profile()))->search(['filters' => ['type_s' => [$value]]]);
+                self::fail("Accepted {$value}");
+            } catch (\DRESearch\Search\Exception\RequestValidationException $e) {
+                self::assertSame('invalid_filter_values', $e->publicCode());
+            }
+        }
     }
 
     public function testSuggestAlsoEnforcesServerScope(): void
