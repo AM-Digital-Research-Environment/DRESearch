@@ -97,6 +97,35 @@ foreach (array_diff($clientKinds, $serverKinds) as $kind) {
     $errors[] = "kind $kind is in the client's CARD_KINDS but no mapper is registered for it";
 }
 
+// Constants the client copies from the server, which only a comment tied
+// together. A page past the server's MAX_PAGE is refused (400), not clamped;
+// a different export cap misstates the limit hint; other highlight markers
+// print raw private-use characters and mark nothing.
+$clientConstants = [
+    'MAX_PAGE' => ['src/svelte/lib/urlState.ts', QueryBuilder::MAX_PAGE],
+    'EXPORT_MAX_HITS' => ['src/svelte/lib/export.ts', QueryBuilder::EXPORT_MAX_HITS],
+];
+foreach ($clientConstants as $constant => [$file, $expected]) {
+    $source = (string) file_get_contents($root . '/' . $file);
+    if (!preg_match('/export const ' . $constant . ' = ([0-9_]+);/', $source, $match)) {
+        $errors[] = "$file: $constant is missing";
+    } elseif ((int) str_replace('_', '', $match[1]) !== $expected) {
+        $errors[] = "$file: $constant is {$match[1]}, the server's QueryBuilder::$constant is $expected";
+    }
+}
+$highlight = (string) file_get_contents($root . '/src/svelte/lib/highlight.ts');
+foreach (['HL_START' => QueryBuilder::HL_START, 'HL_END' => QueryBuilder::HL_END] as $constant => $marker) {
+    // json_encode escapes the private-use character as \uXXXX (no mbstring needed).
+    $codePoint = '0x' . strtolower(substr((string) json_encode($marker), 3, 4));
+    if (!preg_match('/export const ' . $constant . ' = String\.fromCharCode\((0x[0-9a-f]+)\);/i', $highlight, $match)
+        || strtolower($match[1]) !== $codePoint) {
+        $errors[] = "src/svelte/lib/highlight.ts: $constant must be String.fromCharCode($codePoint), as QueryBuilder::$constant";
+    }
+}
+if (!str_contains($highlight, "export const RESTRICTED_TEXT_FIELD = '" . SearchProfile::RESTRICTED_TEXT_FIELD . "';")) {
+    $errors[] = 'src/svelte/lib/highlight.ts: RESTRICTED_TEXT_FIELD must be \'' . SearchProfile::RESTRICTED_TEXT_FIELD . '\', as SearchProfile';
+}
+
 if ($errors !== []) {
     fwrite(STDERR, "Profile/schema drift detected:\n - " . implode("\n - ", $errors) . "\n");
     exit(1);
