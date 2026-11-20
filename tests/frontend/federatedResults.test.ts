@@ -105,6 +105,37 @@ describe('createFederatedResults', () => {
     });
   });
 
+  it('never answers a corpus tab with a response cached for other filters', async () => {
+    // The embedded App adopts the tab's response as the answer to the URL's
+    // state, so a card chip's hand-off (which writes a filter to the URL)
+    // must not be met by the unfiltered page cached on an earlier visit.
+    const client = {
+      searchAll: vi.fn(async (req: SearchAllRequest) => ({
+        available: true,
+        counts: {},
+        active: res(Object.keys(req.filters ?? {}).length > 0 ? 'filtered' : 'unfiltered'),
+      })),
+      searchUnion: vi.fn(async (_req: UnionSearchRequest) => res('merged')),
+    };
+    let filters: Record<string, string[]> = {};
+    const { results } = make(client, {
+      corpusRequest: () => ({ sort: 'relevance', page: 1, filters }),
+    });
+    await results.load('first', '');
+    expect(results.activeResponse?.hits[0]?.title).toBe('unfiltered');
+
+    filters = { type_s: ['Book'] };
+    await results.load('first', '');
+    expect(client.searchAll).toHaveBeenCalledTimes(2);
+    expect(results.activeResponse?.hits[0]?.title).toBe('filtered');
+
+    // Back to the unfiltered state: that one is cached.
+    filters = {};
+    await results.load('first', '');
+    expect(client.searchAll).toHaveBeenCalledTimes(2);
+    expect(results.activeResponse?.hits[0]?.title).toBe('unfiltered');
+  });
+
   it('ignores a pending answer once a cached tab has been shown again', async () => {
     const pending = deferred<SearchAllResponse>();
     const client = {

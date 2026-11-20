@@ -167,4 +167,6 @@ Adding a corpus of an existing kind takes:
 
 A new mapper kind additionally needs a mapper (one entry in
 `Indexer\MapperRegistry::default()`, which also makes the kind valid in config)
-and a result card (`src/svelte/components`).
+and a result card (`src/svelte/components`), registered in
+`src/svelte/components/cards.ts` (`CARD_COMPONENTS`, a map over every kind, so
+a kind without a card fails `npm run check`).

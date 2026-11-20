@@ -67,6 +67,11 @@ final class SearchRequestTest extends TestCase
         yield 'prefix wildcard' => ['Hist*'];
         yield 'escaped closing backtick' => ['Book\\'];
         yield 'phrase quotes' => ['"Oral history"'];
+        // A backtick is the quote itself; stripping it used to leave the
+        // trailing backslash or wildcard the cases above refuse.
+        yield 'backslash then backtick' => ['Book\\`'];
+        yield 'wildcard then backtick' => ['Hist*`'];
+        yield 'backtick inside' => ['Bo`ok'];
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('reinterpretedValues')]

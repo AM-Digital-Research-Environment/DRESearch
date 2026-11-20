@@ -410,6 +410,10 @@
             syncUrl={true}
             urlPrefix=""
             includeQuery={false}
+            onQueryChange={(next) => {
+              inputValue = next;
+              commitQuery(next);
+            }}
           />{/key}{/if}
     </div>
   {/if}

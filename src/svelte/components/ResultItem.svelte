@@ -164,7 +164,7 @@
   /* The gallery tile keeps the image, title and byline only. */
   .dre-shell--gallery .dre-card__snippet,
   .dre-shell--gallery .dre-card__geo,
-  .dre-shell--gallery :global(.dre-matched-in) {
+  .dre-shell--gallery :global(.dre-match) {
     display: none;
   }
 </style>

@@ -1,6 +1,7 @@
 import type { ActiveFilters, CardKind, Doc } from './types';
 import { matchFieldLabel, t } from './i18n';
 import { safeExternalUrl } from './text';
+import { pagesOf } from './resultCard';
 
 /**
  * Client-side serializers for the result-export menu: plain text, JSON, RIS
@@ -173,11 +174,15 @@ function year(d: Doc): string {
   return '';
 }
 
-/** "185–209" → [start, end]; single page → [page, '']. */
+/**
+ * "185–209" → [start, end]; single page → [page, '']. A monograph's page
+ * count ("370 pp.") is not a range: RIS has no field for it, so it yields
+ * nothing rather than a start page of "370 pp.".
+ */
 function pageRange(d: Doc): [string, string] {
-  const pages = (d.pages_s ?? '').trim();
-  if (!pages) return ['', ''];
-  const m = pages.split(/[–—-]/).map((s) => s.trim());
+  const pages = pagesOf(d);
+  if (pages === null || 'total' in pages) return ['', ''];
+  const m = pages.range.split(/[–—-]/).map((s) => s.trim());
   return [m[0] ?? '', m[1] ?? ''];
 }
 
@@ -396,6 +401,20 @@ function bib(value: string): string {
  * end up inside the identifier (`10.1000/abc\_def`), so only what could break
  * the braces or the field is dropped.
  */
+/**
+ * A BibTeX name list. BibTeX splits names on a top-level "and" and reads one
+ * without a comma as "First Last", so a corporate creator ("Ministry of
+ * Health and Public Hygiene") became two people. People are stored
+ * "Surname, Forename"; a name with no comma is kept whole in braces.
+ */
+function bibNames(names: string[]): string {
+  return names
+    .map((name) => bib(oneLine(name)))
+    .filter((name) => name !== '')
+    .map((name) => (name.includes(',') ? name : `{${name}}`))
+    .join(' and ');
+}
+
 function bibVerbatim(value: string): string {
   return value.replace(/[{}\s\\]/g, '').trim();
 }
@@ -415,10 +434,15 @@ function toBibtex(docs: Doc[], kind: CardKind, base: string): string {
       const v = (value ?? '').trim();
       if (v !== '') fields.push([name, name === 'doi' || name === 'url' ? bibVerbatim(v) : bib(v)]);
     };
+    // Already escaped by bibNames(), which adds the braces bib() would drop.
+    const addNames = (name: string, names: string[]): void => {
+      const v = bibNames(names);
+      if (v !== '') fields.push([name, v]);
+    };
 
     add('title', d.title);
-    add('author', creators(d, kind).join(' and '));
-    add('editor', editors(d, kind).join(' and '));
+    addNames('author', creators(d, kind));
+    addNames('editor', editors(d, kind));
     add('year', year(d));
 
     const cont = container(d, kind);
@@ -439,8 +463,9 @@ function toBibtex(docs: Doc[], kind: CardKind, base: string): string {
       add('howpublished', cont);
     }
 
-    const pages = (d.pages_s ?? '').trim();
-    if (pages) add('pages', pages.replace(/[–—]/g, '--'));
+    const pages = pagesOf(d);
+    if (pages !== null && 'range' in pages) add('pages', pages.range.replace(/[–—]/g, '--'));
+    else if (pages !== null) add('pagetotal', pages.total);
     add('language', d.language_ss?.[0]);
     add('keywords', keywords(d).join(', '));
     add('doi', bareDoi(d));

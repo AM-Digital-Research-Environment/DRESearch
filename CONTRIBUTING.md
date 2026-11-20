@@ -29,7 +29,7 @@ gzipped budgets (`scripts/check-bundle-size.mjs`) and fails if either page chunk
 stops loading lazily; raise a budget deliberately, in the commit that needs it.
 PHP 8.4 is the minimum; CI runs 8.4–8.5 and production runs 8.5. After changing
 user-visible strings run `npm run i18n`. Omeka supplies Laminas and PSR
-interfaces at runtime, so the module must never bundle them in Composer.
+interfaces at runtime, so the module must never declare them in composer.json.
 
 For profile changes, ensure every `query_by` field is indexed, every custom sort
 targets a sortable field, and collection aliases stay unique. Test the affected

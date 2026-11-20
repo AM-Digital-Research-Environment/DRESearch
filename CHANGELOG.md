@@ -5,6 +5,32 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+**Upgrade:** no schema change, no new table, and no reindex needed, except: rebuild any corpus whose resource template's title property was changed since its items were last saved (see Security).
+
+### Security
+
+- A filter value containing a backtick is refused (`400 invalid_filter_values`). The check for values Typesense would reinterpret (a trailing `*` or `\`) ran before the query builder stripped backticks, so `Book\` followed by a backtick passed and reached Typesense as the escaped closing quote the check exists to refuse. The builder now refuses such a value instead of rewriting it. No facet value contains a backtick.
+- The rate limiter keeps its rows for five minutes instead of a day. Each row is a one-minute window keyed by an unsalted hash of the endpoint, the visitor's address and the minute, from which an IPv4 address can be recovered; a day of rows was a day's log of who searched what, and nothing reads a window once it has ended.
+- The indexer no longer keeps a title taken from a private value. A record with no value for its template's current title property used Omeka's cached title, which Omeka takes from the title property whatever its visibility and recomputes only when the item is saved: after a template's title property changed, an item could keep a private former title. That fallback is now dropped when a private value of the record carries the same text. Rebuild the corpora whose template's title property was ever changed.
+
+### Fixed
+
+- Saving a resource template no longer pauses search when nothing the index reads from it changed. Every template save queued all the items using it and the records they link (for template 10, some 3,800 research items and their people, places and subjects), which paused each corpus over 250 queued records ("search unavailable") until the worker drained them. An update now queues them only when the template's title property or an alternate label changed; a deletion still queues them.
+- A rebuild requested while the background worker drains a long queue (after a large sync, for one) no longer fails after a minute with "A rebuild of … is already active". The worker held the corpus's lock for its whole queue; it now releases it between batches of 100, so the rebuild takes over and drains the rest itself.
+- The "Matched in" line agrees with what each card shows. Gallery tiles hide it, as intended (the rule targeted a class the line never had). A publication's publisher match is marked in the reference line instead of repeated below it; a keyword match beyond the eight chips shown now comes first among them instead of disappearing. A chronicle's translated title and places are marked where the card shows them instead of repeated.
+- A block rendered as a list on the server no longer switches to the gallery under the visitor after their first search or filter. The gallery suggestion ignored the server-rendered first page and fired on the first fetch instead; the server-rendered page now settles it, and the block stays on the list (opening it on the gallery would load the gallery's larger images on every page view). A shared link whose results are fetched in the browser is still suggested the gallery, as before.
+- In Windows High Contrast (forced colours), the current page in the pager, a pressed research-section phase toggle and the active full-text toggle are outlined, and the Project records caret stays visible. Their state was drawn only with a fill or a shadow, which forced colours repaint.
+- After an export fails or finds nothing, keyboard focus returns to the format that was chosen. The button was disabled while the export ran, which dropped focus to the page.
+- The federated results page no longer shows a corpus tab's results for other filters. The tab cache was keyed by corpus and page only, so a card chip's hand-off from the All list (or Back to a tab with different filters) painted the response cached on an earlier visit under the new filter chips. The key now includes the state the URL asks for.
+- A Cluster Chronicles search that matched inside a work's text no longer prints the whole essay or poem under the card ("Matched in: Full text"). The full text was highlighted in full because the list of fields that are only ever snippeted named transcripts and full texts by name; it is now every profile's search-only fields, so the text is shown as a short window around the match, like a transcript.
+- Exports cite a monograph's page count correctly. A count ("370 pp.") was written as RIS `SP  - 370 pp.` and BibTeX `pages = {370 pp.}`, which reference managers read as a start page; RIS now leaves it out and BibTeX writes `pagetotal = {370}`. Page ranges are unchanged.
+- BibTeX keeps a corporate creator whole. A name such as "Ministry of Health and Public Hygiene" was split by BibTeX into two people at the "and"; a name without a comma (people are stored "Surname, Forename") is now wrapped in braces.
+- On the federated results page, removing a corpus tab's "Search: …" chip (or taking "Did you mean") now changes the page's query. It changed only the tab's own copy, so the tab showed the whole corpus while the address bar, the search box and the tab counts kept the old query.
+
+### Changed
+
+- The card for each kind is chosen from one map (`src/svelte/components/cards.ts`), read by the corpus results list and the federated merged list. They were two copies of the same if-chain that fell back silently to the research-item card; a kind without a card now fails the type check.
+
 ## [1.37.0] - 2026-11-16
 
 ### Added

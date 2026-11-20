@@ -145,6 +145,25 @@ describe('views', () => {
     expect(screen.queryByRole('button', { name: /Grid/ })).toBeNull();
   });
 
+  it('never switches a server-rendered list to the gallery under the visitor', async () => {
+    const pictures = {
+      ...response(4),
+      hits: response(4).hits.map((hit) => ({ ...hit, thumbnail_url: `/files/${hit.id}.jpg` })),
+    } as SearchResponse;
+    searchSpy.mockResolvedValue(pictures);
+    render(App, { bootstrap: { ...bootstrap(), initial_response: pictures } });
+    await screen.findByText('Item 1');
+    expect(searchSpy).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /List/ })).toHaveAttribute('aria-pressed', 'true');
+
+    // The visitor's first search: mostly pictures again, still the list.
+    window.history.pushState({}, '', '/page?b7.sort=title');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await waitFor(() => expect(searchSpy).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.getByRole('button', { name: /List/ })).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('shows no toggle when the server sends no views', async () => {
     render(App, { bootstrap: { ...bootstrap(), views: undefined } });
     await screen.findByText('Item 1');

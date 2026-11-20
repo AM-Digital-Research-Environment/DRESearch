@@ -72,22 +72,6 @@ final class ReadinessGate
         $this->memo = [];
     }
 
-    public function ready(string ...$profiles): bool
-    {
-        foreach ($this->check(array_values($profiles)) as $state) {
-            if (!$state['ready']) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /** @return list<int> */
-    public function exclusions(string $profile): array
-    {
-        return $this->check([$profile])[$profile]['exclude'] ?? [];
-    }
-
     /**
      * @param list<string> $profiles
      * @return array<string,array{ready:bool,exclude:list<int>}>

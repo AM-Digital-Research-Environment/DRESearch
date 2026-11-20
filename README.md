@@ -43,8 +43,9 @@ template, item set and Omeka properties behind each are in
   publication counts.
 
 All are **search profiles**: independent Typesense collections + facet/index
-mappings, all config-driven. Adding a further corpus is a config block plus a
-mapper — not a rewrite. The last four share the generic **`term`** kind (one
+mappings, all config-driven. Adding a further corpus of an existing kind is a
+profile plus a block layout row (`Settings\BlockProfiles::LAYOUTS`); a new kind
+adds a mapper and a card — not a rewrite (docs/profile-configuration.md). The last four share the generic **`term`** kind (one
 `TermMapper` + one `TermCard`): an authority item set whose substance is the
 reverse count of the records that reference each term.
 

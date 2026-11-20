@@ -14,7 +14,9 @@ use Doctrine\DBAL\Connection;
  * Nothing is therefore shown until an editor approves it on the maintenance
  * page; a hidden query stays out of the review queue. Revoking a decision puts
  * the query back in review. Every decision invalidates the search cache in the
- * same transaction, so the public list reflects it on the next request.
+ * same transaction, so the server answers with it at once; a browser that
+ * fetched the list keeps its copy for up to five minutes (the endpoint's
+ * Cache-Control, SearchController::apiPopularAction()).
  */
 final class PopularModeration
 {

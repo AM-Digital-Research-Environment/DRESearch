@@ -305,8 +305,8 @@
     -webkit-appearance: none;
     appearance: none;
   }
-  /* Theme also adds a focus border + ring on the input itself; keep focus on
-     the thumb only. */
+  /* The theme adds a focus border and ring to the input itself: replace them
+     with one outline around the slider, the shared focus colour. */
   .dre-yr__input:focus,
   .dre-yr__input:focus-visible {
     outline: 2px solid var(--focus-color, #007a50);

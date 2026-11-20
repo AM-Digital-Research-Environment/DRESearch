@@ -2,16 +2,7 @@
   import type { Doc } from '../lib/types';
   import { provideCardFilters } from '../lib/cardFilters';
   import { filterFieldLabel } from '../lib/i18n';
-  import ResultItem from './ResultItem.svelte';
-  import ProjectCard from './ProjectCard.svelte';
-  import PublicationCard from './PublicationCard.svelte';
-  import PodcastCard from './PodcastCard.svelte';
-  import VideoCard from './VideoCard.svelte';
-  import ChronicleCard from './ChronicleCard.svelte';
-  import PersonCard from './PersonCard.svelte';
-  import SectionCard from './SectionCard.svelte';
-  import OrganisationCard from './OrganisationCard.svelte';
-  import TermCard from './TermCard.svelte';
+  import { cardFor } from './cards';
   interface Props {
     doc: Doc;
     itemUrlBase: string;
@@ -19,6 +10,7 @@
   }
   const { doc, itemUrlBase, onHandoff }: Props = $props();
   const profile = $derived(doc._profile ?? '');
+  const Card = $derived(cardFor(doc._kind));
   // The merged list has no filters of its own: a card value is never pressed,
   // and pressing one opens its corpus's tab filtered by it.
   provideCardFilters({
@@ -32,16 +24,7 @@
   <button type="button" class="dre-mixed__source" onclick={() => onHandoff(profile)}
     >{doc._profile_label ?? profile}</button
   >
-  {#if doc._kind === 'project'}<ProjectCard {doc} {itemUrlBase} />
-  {:else if doc._kind === 'publication'}<PublicationCard {doc} {itemUrlBase} />
-  {:else if doc._kind === 'podcast'}<PodcastCard {doc} {itemUrlBase} />
-  {:else if doc._kind === 'video'}<VideoCard {doc} {itemUrlBase} />
-  {:else if doc._kind === 'chronicle'}<ChronicleCard {doc} {itemUrlBase} />
-  {:else if doc._kind === 'person'}<PersonCard {doc} {itemUrlBase} />
-  {:else if doc._kind === 'section'}<SectionCard {doc} {itemUrlBase} />
-  {:else if doc._kind === 'organisation'}<OrganisationCard {doc} {itemUrlBase} />
-  {:else if doc._kind === 'term'}<TermCard {doc} {itemUrlBase} {profile} />
-  {:else}<ResultItem {doc} {itemUrlBase} />{/if}
+  <Card {doc} {itemUrlBase} {profile} />
 </div>
 
 <style>

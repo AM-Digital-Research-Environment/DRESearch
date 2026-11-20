@@ -41,6 +41,8 @@ final class ItemEventListener
     private array $pendingSetMembers = [];
     /** @var list<int> */
     private array $pendingTemplateItems = [];
+    /** @var array<int,?string> template id => what the indexer reads from it, before an update */
+    private array $templateFingerprints = [];
 
     public function __construct(
         private readonly IncrementalIndexer $indexer,
@@ -196,16 +198,27 @@ final class ItemEventListener
      * A template's title property drives the computed title of every item
      * using it (and the linked titles other documents embed); its alternate
      * labels drive role names; deleting it un-templates its items, moving them
-     * out of template-scoped profiles. Capture the items before the write.
+     * out of template-scoped profiles.
+     *
+     * A delete captures the items and their scope before the write. An update
+     * cannot change any item's scope (its items keep their template), and it
+     * changes a document only through the title property or an alternate
+     * label: those are fingerprinted before the write and compared after it,
+     * so saving a template's description or property order queues nothing.
+     * Queuing every item of a large template (3,800 research items, plus the
+     * people, places and subjects they link) paused those corpora until the
+     * worker drained them.
      */
     public function onResourceTemplatePre(Event $event): void
     {
+        if (str_ends_with($event->getName() ?? '', '.update.pre')) {
+            foreach ($this->requestIds($event) as $id) {
+                $this->templateFingerprints[$id] = $this->templateFingerprint($id);
+            }
+            return;
+        }
         foreach ($this->requestIds($event) as $id) {
-            $items = $this->fetchFirstColumn(
-                'SELECT id FROM resource WHERE resource_template_id = :id AND resource_type = :type',
-                ['id' => $id, 'type' => Item::class],
-            );
-            array_push($this->pendingTemplateItems, ...array_map('intval', $items));
+            array_push($this->pendingTemplateItems, ...$this->templateItems($id));
         }
         $items = ScopeMatcher::normalize($this->pendingTemplateItems);
         if ($items !== []) {
@@ -215,6 +228,15 @@ final class ItemEventListener
 
     public function onResourceTemplatePost(Event $event): void
     {
+        $fingerprints = $this->templateFingerprints;
+        $this->templateFingerprints = [];
+        foreach ($fingerprints as $id => $before) {
+            $after = $this->templateFingerprint($id);
+            // An unreadable fingerprint (null) counts as a change.
+            if ($before === null || $after === null || $before !== $after) {
+                array_push($this->pendingTemplateItems, ...$this->templateItems($id));
+            }
+        }
         $items = ScopeMatcher::normalize($this->pendingTemplateItems);
         $former = $this->formerScope;
         $this->pendingTemplateItems = [];
@@ -226,6 +248,37 @@ final class ItemEventListener
                 $former,
             );
         }
+    }
+
+    /** @return list<int> the items using a template */
+    private function templateItems(int $template): array
+    {
+        return array_map('intval', $this->fetchFirstColumn(
+            'SELECT id FROM resource WHERE resource_template_id = :id AND resource_type = :type',
+            ['id' => $template, 'type' => Item::class],
+        ));
+    }
+
+    /**
+     * What the indexer reads from a template: its title property and its
+     * alternate labels (OmekaSourceRepository). Null when it cannot be read.
+     */
+    private function templateFingerprint(int $template): ?string
+    {
+        try {
+            $title = $this->connection->executeQuery(
+                'SELECT title_property_id FROM resource_template WHERE id = :id',
+                ['id' => $template],
+            )->fetchOne();
+            $labels = $this->connection->executeQuery(
+                'SELECT property_id, alternate_label FROM resource_template_property'
+                . ' WHERE resource_template_id = :id ORDER BY property_id',
+                ['id' => $template],
+            )->fetchAllNumeric();
+        } catch (\Throwable) {
+            return null;
+        }
+        return json_encode([$title, $labels]) ?: null;
     }
 
     /** @return list<int> */

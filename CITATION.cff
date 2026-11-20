@@ -10,8 +10,9 @@ authors:
 abstract: >-
   DRE Search is an Omeka S module that adds Typesense-backed faceted search to
   the Africa Multiple Cluster of Excellence's Digital Research Environment.
-  Twelve search corpora — research items, research projects, publications,
-  podcasts, YouTube videos, people, research sections, organisations, and the
+  Thirteen search corpora — research items, research projects, publications,
+  podcasts, YouTube videos, Cluster Chronicles, people, research sections,
+  organisations, and the
   genre, language, location and subject authority terms — ship as configurable
   search profiles, each an independent Typesense collection with its own
   facets, sorts and result card. The index is built directly from the Omeka

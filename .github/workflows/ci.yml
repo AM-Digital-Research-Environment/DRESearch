@@ -148,6 +148,24 @@ jobs:
       - run: composer test -- --fail-on-skipped
       - run: composer analyse
 
+  # PHP 8.4 is the floor, but Module.php and src/ must still PARSE on 8.2: on
+  # an older server Module.php loads src/ through its fallback autoloader and
+  # reports search unavailable instead of failing the site. One typed class
+  # constant would turn that into a fatal on every request.
+  php-parse-floor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.2'
+          coverage: none
+      - name: Module.php, src and the CLI parse on PHP 8.2
+        run: find Module.php src -name '*.php' -print0 | xargs -0 -n1 php -l && php -l bin/dre-search
+
   release-shape:
     runs-on: ubuntu-latest
     timeout-minutes: 5

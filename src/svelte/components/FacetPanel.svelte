@@ -199,6 +199,12 @@
     border-color: var(--primary, #007a50);
     background: color-mix(in srgb, var(--primary, #007a50) 12%, var(--surface, #fdfcf9));
   }
+  /* Forced colours repaint the border and fill that mark the active toggle. */
+  @media (forced-colors: active) {
+    .dre-facets__fulltext-active {
+      outline: 2px solid Highlight;
+    }
+  }
   .dre-facets__empty {
     padding-block: var(--space-md, 1rem);
     color: var(--muted, #716a66);

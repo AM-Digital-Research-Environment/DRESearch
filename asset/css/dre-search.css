@@ -104,6 +104,15 @@
     background-color: var(--primary, #007a50);
 }
 
+/* Forced colours repaint backgrounds, which would erase the masked caret
+   (the theme's %svg-icon-forced rule, as styles/card.css applies it). */
+@media (forced-colors: active) {
+    .dre-search-project-records__chevron {
+        forced-color-adjust: none;
+        background-color: CanvasText;
+    }
+}
+
 .dre-search-project-records[open] .dre-search-project-records__chevron {
     transform: rotate(180deg);
 }

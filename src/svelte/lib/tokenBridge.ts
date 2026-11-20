@@ -87,20 +87,6 @@ export function cssColor(name: string, fallback = '#000'): string {
   }
 }
 
-/** Resolve a custom property holding a font stack. */
-export function cssFont(name: string, fallback = 'system-ui, sans-serif'): string {
-  const bridge = themeBridge();
-  if (bridge) return bridge.cssFont(name, fallback);
-  try {
-    const el = getProbe();
-    el.style.fontFamily = '';
-    el.style.fontFamily = `var(${name}, ${fallback})`;
-    return window.getComputedStyle(el).fontFamily || fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 /**
  * Whether the active theme is dark.
  *

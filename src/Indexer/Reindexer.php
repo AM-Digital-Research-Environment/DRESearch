@@ -19,7 +19,8 @@ use Laminas\Log\LoggerInterface;
  *
  * Strategy: build a fresh, timestamp-versioned collection, stream the profile's
  * source resources into it PAGED (keyset by id) and batch-upserted, then swap
- * the live alias to it atomically and drop the previous versions. Reads never
+ * the live alias to it atomically, keeping the previous generation for rollback
+ * and deleting older ones. Reads never
  * touch the half-built collection, and memory stays flat regardless of corpus
  * size — the only thing held whole is the small authority lookup (item kind).
  *
@@ -76,8 +77,9 @@ final class Reindexer
             $this->alias,
             $this->stateStore,
         );
-        // A drain holds the profile lock only for one short batch at a time;
-        // wait for it instead of failing a requested rebuild outright.
+        // A drain holds the profile lock only for one batch at a time and
+        // releases it between batches (IncrementalIndexer::drain()); wait for
+        // it instead of failing a requested rebuild outright.
         $lock->acquire(self::LOCK_WAIT_SECONDS);
         $collection = '';
         $previous = null;

@@ -15,12 +15,29 @@ final class QueryBuilderTest extends TestCase
     {
         $params = (new QueryBuilder($this->profile(), 'tenant_s:=`A`'))->search([
             'q' => '',
-            'filters' => ['type_s' => ['Book` && is_public:=false']],
+            'filters' => ['type_s' => ['Book && is_public:=false']],
         ]);
 
-        self::assertStringContainsString('is_public:=true', $params['filter_by']);
+        self::assertStringStartsWith('is_public:=true', $params['filter_by']);
         self::assertStringContainsString('tenant_s:=`A`', $params['filter_by']);
         self::assertStringContainsString('type_s:=[`Book && is_public:=false`]', $params['filter_by']);
+    }
+
+    /**
+     * A value that would leave its quotes is refused, never rewritten: the
+     * builder used to strip a backtick, which turned "Book\`" into the
+     * escaped closing quote SearchRequest refuses.
+     */
+    public function testFilterValuesThatWouldLeaveTheirQuotesAreRefused(): void
+    {
+        foreach (['Book` && is_public:=false', "Book\\`", "Book\\"] as $value) {
+            try {
+                (new QueryBuilder($this->profile()))->search(['filters' => ['type_s' => [$value]]]);
+                self::fail("Accepted {$value}");
+            } catch (\DRESearch\Search\Exception\RequestValidationException $e) {
+                self::assertSame('invalid_filter_values', $e->publicCode());
+            }
+        }
     }
 
     public function testSuggestAlsoEnforcesServerScope(): void
@@ -99,6 +116,32 @@ final class QueryBuilderTest extends TestCase
         self::assertSame(0, $params['per_page']);
         self::assertSame('id', $params['include_fields']);
         self::assertArrayNotHasKey('highlight_full_fields', $params);
+    }
+
+    /**
+     * A search-only field (a transcript, a full text) is searched but never
+     * shipped, so its highlight must be a snippet: in highlight_full_fields
+     * Typesense would return the whole field, marked, and the card would
+     * print it. Checked over every shipped profile.
+     */
+    public function testSearchOnlyFieldsAreNeverHighlightedInFull(): void
+    {
+        $config = require dirname(__DIR__, 2) . '/config/module.config.php';
+        $checked = 0;
+        foreach ($config['dre_search']['profiles'] as $name => $definition) {
+            $profile = \DRESearch\Settings\SearchProfile::fromArray((string) $name, $definition);
+            $searchOnly = $profile->searchOnlyFields();
+            if ($searchOnly === []) {
+                continue;
+            }
+            $params = (new QueryBuilder($profile))->search(['q' => 'word']);
+            $full = explode(',', (string) ($params['highlight_full_fields'] ?? ''));
+            foreach ($searchOnly as $field) {
+                self::assertNotContains($field, $full, "{$name}: {$field} would be returned whole.");
+                $checked++;
+            }
+        }
+        self::assertGreaterThanOrEqual(4, $checked, 'The shipped transcripts, publication full text and chronicle text.');
     }
 
     public function testUnrefinedSearchStaysASingleQuery(): void

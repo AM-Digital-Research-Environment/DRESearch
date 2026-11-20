@@ -71,8 +71,10 @@ Omeka item and media post events contain entities before representations are
 built. The listener accepts both forms, captures dependencies before updates or
 deletes, and refreshes the union of former and current relationships. Incoming
 two-hop links cover authority hierarchies; media changes refresh their parents
-and dependants. Item-set deletion and resource-template changes queue the
-affected items. Omeka's batch operations fire the per-resource events for every
+and dependants. Item-set deletion and resource-template deletion queue the
+affected items; a template update queues them only when it changes what the
+indexer reads from the template (its title property or an alternate label),
+so saving a template's description queues nothing. Omeka's batch operations fire the per-resource events for every
 id, so batch events are not observed separately.
 
 Work is queued only for the profiles whose source scope holds each item

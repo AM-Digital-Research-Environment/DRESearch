@@ -13,9 +13,11 @@
  *
  * DRE-Visualizations publishes its vendored URLs on `window.RV_LIBS` and its
  * basemap configuration on `window.RV_MAP_CONFIG` (both emitted by its
- * DashboardAssets helper). Reading them is loose coupling, not a dependency:
- * every step degrades, and the CDN remains the floor for a host that has
- * neither module's assets.
+ * DashboardAssets helper). Reading them is loose coupling, not a dependency.
+ * The CDN is the floor for a host that has neither module's assets; a host
+ * that vendors MapLibre is never sent to the CDN, even if its copy fails to
+ * load (the map then shows its error): self-hosting is a choice to make no
+ * third-party request.
  *
  * MapLibre 6 ships ES modules only — an entry and a worker — and no browser
  * global, so every copy is loaded with import() and published as

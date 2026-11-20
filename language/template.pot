@@ -171,7 +171,7 @@ msgstr ""
 msgid "Configured"
 msgstr ""
 
-#: Module.php:379
+#: Module.php:380
 msgid "Connection values in effect:"
 msgstr ""
 
@@ -511,11 +511,11 @@ msgstr ""
 msgid "Moderator"
 msgstr ""
 
-#: src/Settings/SearchProfile.php:705
+#: src/Settings/SearchProfile.php:700
 msgid "Most results"
 msgstr ""
 
-#: src/Settings/SortOptions.php:20 src/svelte/lib/i18n.ts (sort_newest)
+#: src/Settings/SortOptions.php:20
 msgid "Newest first"
 msgstr ""
 
@@ -537,10 +537,6 @@ msgstr ""
 
 #: src/svelte/lib/i18n.ts (facet_no_matches)
 msgid "No matches"
-msgstr ""
-
-#: src/svelte/lib/i18n.ts (no_matches_anywhere)
-msgid "No matches in any collection."
 msgstr ""
 
 #: src/svelte/lib/i18n.ts (map_empty)
@@ -579,7 +575,7 @@ msgstr ""
 msgid "Nothing to show yet."
 msgstr ""
 
-#: src/Settings/SortOptions.php:21 src/svelte/lib/i18n.ts (sort_oldest)
+#: src/Settings/SortOptions.php:21
 msgid "Oldest first"
 msgstr ""
 
@@ -696,7 +692,7 @@ msgstr ""
 msgid "Principal investigator"
 msgstr ""
 
-#: config/module.config.php (research_items) src/svelte/lib/i18n.ts (field_project) src/svelte/lib/i18n.ts (project_label)
+#: config/module.config.php (research_items) src/svelte/lib/i18n.ts (field_project)
 msgid "Project"
 msgstr ""
 
@@ -846,10 +842,6 @@ msgstr ""
 msgid "Result types"
 msgstr ""
 
-#: src/svelte/lib/i18n.ts (search_results_for)
-msgid "Results for “{q}”"
-msgstr ""
-
 #: src/Site/BlockLayout/SearchBlock.php:195
 msgid "Results per page"
 msgstr ""
@@ -992,14 +984,6 @@ msgstr ""
 
 #: src/svelte/lib/i18n.ts (result_actions)
 msgid "Share and export"
-msgstr ""
-
-#: src/svelte/lib/i18n.ts (show_less)
-msgid "Show less"
-msgstr ""
-
-#: src/svelte/lib/i18n.ts (show_more)
-msgid "Show {n} more"
 msgstr ""
 
 #: view/dre-search/admin/maintenance/index.phtml:166
@@ -1284,16 +1268,16 @@ msgstr ""
 msgid "documents imported"
 msgstr ""
 
-#: Module.php:367
+#: Module.php:368
 #, php-format
 msgid "environment variable %s"
 msgstr ""
 
-#: Module.php:369
+#: Module.php:370
 msgid "module default"
 msgstr ""
 
-#: Module.php:371
+#: Module.php:372
 msgid "not set"
 msgstr ""
 
@@ -1301,7 +1285,7 @@ msgstr ""
 msgid "range slider"
 msgstr ""
 
-#: Module.php:365
+#: Module.php:366
 msgid "saved in these settings"
 msgstr ""
 

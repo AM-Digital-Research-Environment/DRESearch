@@ -33,6 +33,29 @@ describe('export serializers', () => {
     expect(bib).toContain('title = {A\\_title}');
   });
 
+  it('cites a page range as pages and a page count as a total', () => {
+    const chapter: Doc = { id: '5', title: 'Chapter', type_s: 'Book Section', pages_s: '185–209' };
+    const book: Doc = { id: '6', title: 'Monograph', type_s: 'Book', pages_s: '370 pp.' };
+    const ris = serialize('ris', [chapter, book], meta, 'publication', '/s/site/item');
+    expect(ris).toContain('SP  - 185');
+    expect(ris).toContain('EP  - 209');
+    expect(ris).not.toContain('370 pp.');
+    const bib = serialize('bibtex', [chapter, book], meta, 'publication', '/s/site/item');
+    expect(bib).toContain('pages = {185--209}');
+    expect(bib).toContain('pagetotal = {370}');
+    expect(bib).not.toContain('pages = {370');
+  });
+
+  it('keeps a corporate creator whole in a BibTeX name list', () => {
+    const doc: Doc = {
+      id: '7',
+      title: 'Report',
+      author_ss: ['Ministry of Health and Public Hygiene', 'Doe, Jane'],
+    };
+    const bib = serialize('bibtex', [doc], meta, 'publication', '/s/site/item');
+    expect(bib).toContain('author = {{Ministry of Health and Public Hygiene} and Doe, Jane}');
+  });
+
   it('drops unsafe external media URLs', () => {
     const doc: Doc = { id: '2', title: 'Episode', url_s: 'javascript:alert(1)' };
     const ris = serialize('ris', [doc], meta, 'podcast', '/s/site/item');

@@ -85,10 +85,11 @@
     });
   });
 
-  async function run(format: ExportFormat): Promise<void> {
+  async function run(format: ExportFormat, pressed: HTMLElement | null = null): Promise<void> {
     if (busy) return;
     busy = true;
     error = null;
+    let done = false;
     try {
       const res = await fetchDocs();
       if (!res.available || !res.complete || res.exported !== res.docs.length) {
@@ -112,6 +113,7 @@
         spec.mime,
         serialize(format, res.docs, meta, kind, itemUrlBase),
       );
+      done = true;
       close();
     } catch (e) {
       // The reason is for the console; the visitor gets the translated message
@@ -120,6 +122,10 @@
       error = t('export_failed');
     } finally {
       busy = false;
+      // Disabling the pressed button while busy dropped keyboard focus to the
+      // page. A failed or empty export keeps the panel open with its message:
+      // hand focus back to the format that was chosen, so a retry is one key.
+      if (!done && pressed) requestAnimationFrame(() => pressed.focus());
     }
   }
 </script>
@@ -164,7 +170,7 @@
           type="button"
           class="dre-export__item"
           disabled={busy}
-          onclick={() => run(spec.format)}
+          onclick={(event) => run(spec.format, event.currentTarget)}
         >
           {t(`export_${spec.format}`)}
         </button>

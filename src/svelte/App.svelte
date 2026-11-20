@@ -77,6 +77,14 @@
     /** Whether this App owns the `q` key (false on the federated page — the shell does). */
     includeQuery?: boolean;
     /**
+     * Where a query change goes when this App does not own the query (the
+     * federated page's corpus tabs): removing the "Search: …" chip or taking
+     * "Did you mean" changes the SHELL's query, so the address bar, the shared
+     * box and the tab counts follow. Without it the App changed only its own
+     * copy, which it never writes to the URL.
+     */
+    onQueryChange?: (q: string) => void;
+    /**
      * Level of this surface's headings: 3 under a titled block's <h2>, else 2
      * (an untitled block, the federated page under its <h1>). Card titles sit
      * one level below. See lib/headings.ts.
@@ -90,6 +98,7 @@
     syncUrl: syncUrlProp,
     urlPrefix: urlPrefixProp,
     includeQuery: includeQueryProp,
+    onQueryChange,
     headingLevel = 2,
   }: Props = $props();
   // svelte-ignore state_referenced_locally
@@ -245,6 +254,20 @@
     map: (...args: Parameters<SearchApi['map']>) => api.map(...args),
   };
 
+  // Skip the first search only when the seed already answers the seeded
+  // state: a shared link with facets, a sort, page 2 or a year must fetch.
+  // svelte-ignore state_referenced_locally
+  const adoptSeed = seedAnswersFirstSearch({
+    initialResponse,
+    url: urlInitial,
+    seedSort,
+    defaultSort,
+    seedQuery,
+    initialQuery: bootstrap.initial_query ?? '',
+    includeQuery,
+    stateApplied: bootstrap.initial_state_applied === true,
+  });
+
   // What the search state turns into (lib/searchResults.svelte.ts). A failed
   // request shows a translated message and "Try again", which re-runs the
   // effect below; the technical detail is logged by api.ts, never shown.
@@ -253,18 +276,7 @@
     facets: bootstrap.facets,
     perPage: bootstrap.per_page,
     initialResponse,
-    // Skip the first search only when the seed already answers the seeded
-    // state: a shared link with facets, a sort, page 2 or a year must fetch.
-    adoptInitial: seedAnswersFirstSearch({
-      initialResponse,
-      url: urlInitial,
-      seedSort,
-      defaultSort,
-      seedQuery,
-      initialQuery: bootstrap.initial_query ?? '',
-      includeQuery,
-      stateApplied: bootstrap.initial_state_applied === true,
-    }),
+    adoptInitial: adoptSeed,
     onPageOverflow: (lastPage) => (page = lastPage),
     onSettled: suggestGallery,
   });
@@ -293,6 +305,14 @@
 
   // Previous URL snapshot, so the sync can choose pushState vs replaceState.
   let prevUrlState: UrlSearchState | null = null;
+
+  // An adopted server seed is the first result set on screen, and it spends
+  // the one suggestion: the block stays on the list it was rendered as.
+  // Otherwise the suggestion waited for the visitor's first search and
+  // switched the layout under them mid-task. Opening the seed in the gallery
+  // instead would load the gallery's larger images on every page view
+  // (about 1 MB against 70 KB on the Lighthouse block fixture).
+  if (adoptSeed) viewExplicit = true;
 
   // Facet value search reads the CURRENT scope when it runs. A stable function
   // (not a $derived closure) matters: a new closure on every filter change made
@@ -486,6 +506,12 @@
     page = 1;
   }
 
+  /** A query change from the results (a chip, "Did you mean"), routed to its owner. */
+  function changeQuery(next: string): void {
+    if (!includeQuery && onQueryChange) onQueryChange(next);
+    else handleQueryChange(next);
+  }
+
   function handleSortChange(next: SortKey): void {
     sort = next;
     page = 1;
@@ -532,7 +558,7 @@
   }
 
   function handleRemoveChip(chip: ChipModel): void {
-    if (chip.kind === 'query') handleQueryChange('');
+    if (chip.kind === 'query') changeQuery('');
     else if (chip.kind === 'year') {
       yearFrom = null;
       yearTo = null;
@@ -740,7 +766,7 @@
                 <button
                   type="button"
                   class="dre-search__clear-link dre-button-secondary"
-                  onclick={() => handleQueryChange(results.correction ?? '')}
+                  onclick={() => changeQuery(results.correction ?? '')}
                 >
                   {t('did_you_mean', { q: results.correction })}
                 </button>
