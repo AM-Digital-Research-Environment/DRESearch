@@ -4,6 +4,7 @@
   import { t } from '../lib/i18n';
   import { markedLookup } from '../lib/highlight';
   import {
+    cappedChips,
     cardSnippet,
     cardTitle,
     publicationIds,
@@ -59,9 +60,11 @@
   // Abstract: the matched window when it matched, else the plain abstract.
   const snippet = $derived(cardSnippet(doc, ['abstract']));
   // Cap chips so a heavily-tagged publication doesn't blow out the card; the
-  // Keyword facet still exposes the full list.
-  const keywords = $derived((doc.keyword_ss ?? []).slice(0, 8));
+  // Keyword facet still exposes the full list. Matched keywords come first, so
+  // the cap never hides the one the query found (keyword_ss is left out of
+  // "Matched in").
   const keywordHl = $derived(markedLookup(doc, 'keyword_ss'));
+  const keywords = $derived(cappedChips(doc.keyword_ss ?? [], keywordHl, 8));
   const doi = $derived(safeExternalUrl(doc.doi_s));
   // The work's Wikidata item. The DOI keeps its own action pill below.
   const ids = $derived(publicationIds(doc));
@@ -200,6 +203,7 @@
         'editor_ss',
         'creator_ss',
         'container_ss',
+        'publisher_ss',
         'keyword_ss',
       ]}
     />

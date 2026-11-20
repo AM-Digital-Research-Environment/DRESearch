@@ -49,6 +49,9 @@
   const dateLabel = $derived(formatDate(doc.date_s));
   const type = $derived(doc.type_s ?? '');
   const alternative = $derived(doc.alternative_s ?? '');
+  // Both are searched, so a match is marked where the card shows them and
+  // left out of the "Matched in" line, which would only repeat them.
+  const alternativeHl = $derived(doc._highlights?.alternative_s?.[0] ?? null);
 
   // People are searched through people_ss, so its highlights mark every role.
   const peopleHl = $derived(markedLookup(doc, 'people_ss'));
@@ -70,6 +73,7 @@
   );
 
   const places = $derived(doc.place_ss ?? []);
+  const placeHl = $derived(markedLookup(doc, 'place_ss'));
   const languages = $derived(doc.language_ss ?? []);
   const hasContent = $derived(doc.has_content === true);
 
@@ -102,7 +106,7 @@
     </svelte:element>
 
     {#if alternative}
-      <p class="dre-ccard__alternative">{alternative}</p>
+      <p class="dre-ccard__alternative"><Highlight value={alternativeHl ?? alternative} /></p>
     {/if}
 
     {#if type}
@@ -134,7 +138,7 @@
         <span class="dre-shell__label">{t('place_label')}</span>
         {#each places as l, i (l + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
             field="place_ss"
-            value={l}>{l}</FilterLink
+            value={l}><Highlight value={placeHl.get(l) ?? l} /></FilterLink
           >{/each}
       </p>
     {/if}
@@ -162,7 +166,7 @@
       </div>
     {/if}
 
-    <MatchedIn {doc} exclude={['title', 'abstract', 'people_ss']} />
+    <MatchedIn {doc} exclude={['title', 'alternative_s', 'abstract', 'people_ss', 'place_ss']} />
   </div>
 </article>
 

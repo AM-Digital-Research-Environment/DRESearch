@@ -38,6 +38,22 @@ export function titleMarkup(doc: Doc): string | null {
 }
 
 /**
+ * The first `limit` chip values, the ones the query matched (keys of
+ * `marked`, from markedLookup()) first and otherwise in their stored order.
+ * A card that caps its chips and leaves the field out of "Matched in" would
+ * otherwise hide the very value a record was found by.
+ */
+export function cappedChips(
+  values: string[],
+  marked: Map<string, string>,
+  limit: number,
+): string[] {
+  const hit = values.filter((v) => marked.has(v));
+  const rest = values.filter((v) => !marked.has(v));
+  return [...hit, ...rest].slice(0, limit);
+}
+
+/**
  * The body snippet: the first of `fields` that matched the query (centred on
  * the match), else the first of them that has text, shown plainly.
  */
