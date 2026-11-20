@@ -46,7 +46,8 @@ const BUDGETS = {
   'entry css': 1_350, //    1,222
   App: 36_500, //          33,108
   'App css': 8_300, //      7,529
-  FederatedApp: 4_700, //   4,236
+  // 4,717 in 1.38.0: the corpus tab hands its query changes to the shell.
+  FederatedApp: 4_800, //   4,236
   'FederatedApp css': 1_400, // 1,276
 };
 
