@@ -5,6 +5,8 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+**Upgrade:** no schema change, no new table, and no reindex needed, except: rebuild any corpus whose resource template's title property was changed since its items were last saved (see Security).
+
 ### Security
 
 - A filter value containing a backtick is refused (`400 invalid_filter_values`). The check for values Typesense would reinterpret (a trailing `*` or `\`) ran before the query builder stripped backticks, so `Book\` followed by a backtick passed and reached Typesense as the escaped closing quote the check exists to refuse. The builder now refuses such a value instead of rewriting it. No facet value contains a backtick.
