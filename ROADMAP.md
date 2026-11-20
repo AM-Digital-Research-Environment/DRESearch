@@ -51,8 +51,8 @@ a linter beyond the token rules.
   PHP 8.2 so that an under-version server degrades instead of failing, so
   syntax newer than 8.2 (typed class constants, for instance) waits for a
   later release.
-- **Platform.** Omeka S `^4.2`, Typesense 30.x. Never bundle `laminas/*` or
-  `psr/*` packages.
+- **Platform.** Omeka S `^4.2.1`, Typesense 30.x. Never declare `laminas/*` or
+  `psr/*` packages in composer.json.
 
 ## Decided against
 

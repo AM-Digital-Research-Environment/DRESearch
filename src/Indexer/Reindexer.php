@@ -19,7 +19,8 @@ use Laminas\Log\LoggerInterface;
  *
  * Strategy: build a fresh, timestamp-versioned collection, stream the profile's
  * source resources into it PAGED (keyset by id) and batch-upserted, then swap
- * the live alias to it atomically and drop the previous versions. Reads never
+ * the live alias to it atomically, keeping the previous generation for rollback
+ * and deleting older ones. Reads never
  * touch the half-built collection, and memory stays flat regardless of corpus
  * size — the only thing held whole is the small authority lookup (item kind).
  *

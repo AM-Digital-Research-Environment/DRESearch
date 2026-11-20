@@ -5,8 +5,9 @@ declare(strict_types=1);
  * DRESearch module configuration.
  *
  * Wires the public search proxy, the admin maintenance page, the search page
- * blocks, services, view templates, and the api.*.post listeners that drive
- * incremental indexing. Lean — no browse tables, no scoped-key endpoints.
+ * blocks, services, view templates, and the services behind incremental
+ * indexing (Module::attachListeners() attaches the write listeners). Lean — no
+ * browse tables, no scoped-key endpoints.
  */
 
 namespace DRESearch;
@@ -33,8 +34,9 @@ return [
             // overrides templates, item sets, facets, query fields, etc. via
             // config/local.config.php — no module source edits needed.
             Settings\ProfileRegistry::class => Service\ProfileRegistryFactory::class,
-            // Live incremental indexing — re-maps a single item into its
-            // matching profile collection(s) on api.*.post (Module::attachListeners).
+            // Incremental indexing: Omeka writes queue SQL work for the profiles
+            // that hold each item; one background worker applies it
+            // (Module::attachListeners, ItemEventListener, DrainSearchChanges).
             Indexer\IncrementalIndexer::class => Service\Indexer\IncrementalIndexerFactory::class,
             // Event-handler class that owns the api.*.post bodies, kept out of
             // Module.php so the listener logic stays testable.
@@ -435,7 +437,7 @@ return [
         // mapper (Indexer\MapperRegistry) and a card — no rewrite (see
         // docs/profile-configuration.md). Each profile's `kind` selects its
         // indexer mapper and its result card ('item' | 'project' |
-        // 'publication' | 'podcast' | 'video' | 'person' | 'section' |
+        // 'publication' | 'podcast' | 'video' | 'chronicle' | 'person' | 'section' |
         // 'organisation' | 'term'). The
         // `term` kind (genres, languages, locations, subjects & tags) is the
         // generic authority-term corpus: a name + optional Type facet + reverse-

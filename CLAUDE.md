@@ -61,9 +61,12 @@ borrow from each other, but the boundaries below are this module's own.
   the indexer uses); one coalesced worker (`WorkerLease`) drains it.
   `ReadinessGate` hides queued ids from public results, or pauses a profile, so
   a record just made private is never served from a stale copy.
-- **Never bundle `laminas/*` or `psr/*`.** Omeka's vendor provides them; a second
-  copy fatals the site. Monolog stays on 2.x (core's PSR Log 1), and CI checks
-  PSR Log loads from core (`scripts/check-psr-log-origin.php`).
+- **Never declare `laminas/*` or `psr/*` in composer.json.** Omeka's vendor
+  provides them; a second copy fatals the site. Guzzle and Monolog still pull a
+  few `psr/*` packages into the module's vendor (http-client, http-factory,
+  http-message, log); Omeka's autoloader is registered first, so core's copies
+  win. Monolog stays on 2.x (core's PSR Log 1), and CI checks PSR Log loads from
+  core (`scripts/check-psr-log-origin.php`).
 - **PHP 8.4 is the floor, but the code must parse on 8.2**, so an under-version
   server degrades instead of failing: no syntax newer than 8.2 (typed class
   constants, for one).

@@ -13,7 +13,7 @@ use Psr\Container\ContainerInterface;
  * The header bar renders on every page, and needs only whether search is
  * configured: the connection provider answers that from settings alone,
  * without the search proxy, its readiness gate and cache, or the profile
- * registry (twelve validated profiles).
+ * registry (every profile, validated).
  */
 final class SearchBarFactory implements FactoryInterface
 {

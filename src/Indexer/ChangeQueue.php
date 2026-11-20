@@ -18,8 +18,8 @@ final class ChangeQueue
     }
 
     /**
-     * Queue the same ids for every listed profile (rebuild replay tests, the
-     * maintenance retry). Omeka writes use {@see enqueueScoped()}.
+     * Queue the same ids for every listed profile (the tests' fixtures). Omeka
+     * writes use {@see enqueueScoped()}.
      *
      * @param list<string> $profiles
      * @param list<int> $ids

@@ -34,7 +34,7 @@ use Omeka\Stdlib\ErrorStore;
  * tags — each appearing as its own entry in the block picker. The layout names
  * are what `site_page_block.layout` stores, so they never change.
  *
- * Persisted block data (site_block.data):
+ * Persisted block data (site_page_block.data):
  *   {
  *     "title":            "Optional H2",
  *     "intro_html":       "Optional intro HTML",

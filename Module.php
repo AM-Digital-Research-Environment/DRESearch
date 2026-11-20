@@ -3,9 +3,10 @@
 /**
  * DRESearch — Omeka S module.
  *
- * Faceted, Typesense-backed search over the DRE "research items" corpus. The
- * index is built on demand from the Omeka dashboard (Admin → DRE Search →
- * Reindex), reading resources straight out of the Omeka database — there is no
+ * Faceted, Typesense-backed search over the Africa Multiple corpora, one search
+ * profile each (config/module.config.php). The index is built from the Omeka
+ * dashboard (Admin → DRE Search → Reindex), reading resources straight out of
+ * the Omeka database, and kept current by Omeka's write events — there is no
  * external ingestion pipeline.
  *
  * Typesense is OPTIONAL. With no connection configured the module installs

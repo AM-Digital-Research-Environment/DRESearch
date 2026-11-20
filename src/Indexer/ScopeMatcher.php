@@ -14,9 +14,12 @@ use Omeka\Entity\Item;
  * each item — the same {@see SourcePredicate} the indexer and the public
  * counts use, evaluated for a bounded id list in ONE `UNION ALL` round trip.
  *
- * Visibility is deliberately ignored: a private item still belongs to the
- * profile whose index may hold a stale public copy of it, so the change must
- * reach that profile's queue to delete it. Callers capture membership before a
+ * The item's own visibility is deliberately ignored: a private item still
+ * belongs to the profile whose index may hold a stale public copy of it, so the
+ * change must reach that profile's queue to delete it. (An extra source's
+ * required property does count only public values, as the indexer's scan does:
+ * an organisation whose coordinates were just made private leaves the locations
+ * scope.) Callers capture membership before a
  * write as well as after it, so an item leaving a profile's scope (template,
  * item set or required property changed) is still reconciled there.
  */

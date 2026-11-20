@@ -446,7 +446,10 @@ export interface SearchAllResponse {
   active: SearchResponse;
 }
 
-/** Shared request for the federated search: free-text + optional year only. */
+/**
+ * Request for the federated search: the shared query, and the active corpus
+ * tab's state from the URL (filters, sort, page, years, facets).
+ */
 export interface SearchAllRequest {
   record_query?: boolean;
   profile: string;
