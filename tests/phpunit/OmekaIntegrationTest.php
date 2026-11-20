@@ -916,6 +916,31 @@ final class OmekaIntegrationTest extends TestCase
         return new Reindexer($this->db, new CollectionOps($this->client), $this->profile, $this->logger, $this->state, 30, 'test', $cancel);
     }
 
+    /**
+     * A template save queues its items only when it changes what the indexer
+     * reads from it (the title property, an alternate label): queuing every
+     * item of a large template paused the corpora holding them.
+     */
+    public function testATemplateSaveQueuesItsItemsOnlyWhenWhatTheIndexerReadsChanged(): void
+    {
+        $listener = new ItemEventListener($this->incremental(), $this->db);
+        $this->template(30);
+        $this->db->executeStatement('UPDATE resource SET resource_template_id = 30 WHERE id = 1');
+        $request = new Request('update', 'resource_templates');
+        $request->setId(30);
+        $save = function (string $sql) use ($listener, $request): void {
+            $listener->onResourceTemplatePre(new Event('api.update.pre', null, ['request' => $request]));
+            $this->db->executeStatement($sql);
+            $listener->onResourceTemplatePost(new Event('api.update.post', null, ['request' => $request]));
+        };
+
+        $save("UPDATE resource_template SET label = 'Renamed template' WHERE id = 30");
+        self::assertSame([], $this->queued(), 'A label change reaches no document.');
+
+        $save('UPDATE resource_template SET title_property_id = 1 WHERE id = 30');
+        self::assertSame([1], $this->queued(), 'A new title property re-titles the template\'s items.');
+    }
+
     private function incremental(): IncrementalIndexer
     {
         return new IncrementalIndexer($this->db, $this->provider, $this->registry, $this->logger, $this->state);
