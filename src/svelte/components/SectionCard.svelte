@@ -126,6 +126,13 @@
     background: color-mix(in srgb, var(--primary, #007a50) 24%, var(--surface, #fdfcf9));
     box-shadow: inset 0 0 0 2px var(--primary, #007a50);
   }
+  /* Forced colours drop the fill and the shadow that mark the pressed state
+     (as styles/card.css does for the chips). */
+  @media (forced-colors: active) {
+    .dre-scard :global(.dre-scard__phase[aria-pressed='true']) {
+      outline: 2px solid Highlight;
+    }
+  }
   .dre-scard :global(.dre-scard__phase:focus-visible) {
     outline: 2px solid var(--focus-color, #007a50);
     outline-offset: 2px;

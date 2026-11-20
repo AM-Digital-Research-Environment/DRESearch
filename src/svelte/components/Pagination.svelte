@@ -115,6 +115,12 @@
     border-color: var(--primary, #007a50);
     color: var(--primary-contrast, #fcfcf9);
   }
+  /* Forced colours repaint the fill, which alone marks the current page. */
+  @media (forced-colors: active) {
+    .dre-pager__btn--active {
+      outline: 2px solid Highlight;
+    }
+  }
   @media print {
     .dre-pager {
       display: none;
