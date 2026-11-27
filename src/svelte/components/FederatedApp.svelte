@@ -314,9 +314,9 @@
       oninput={onInput}
       onkeydown={keySearch}
       onblur={() => typingBurst.end()}
-    />{#if inputValue}<button type="button" aria-label={t('clear_search')} onclick={clearQuery}
-        >×</button
-      >{/if}
+    />{#if inputValue}<button type="button" aria-label={t('clear_search')} onclick={clearQuery}>
+        ×
+      </button>{/if}
   </div>
   {#if !bootstrap.available}<div class="dre-fed__notice" role="status">
       <strong>{t('search_unavailable')}</strong>
@@ -327,15 +327,15 @@
       <span>{t('result_types')}</span>
       <select value={activeProfile} onchange={(event) => selectTab(event.currentTarget.value)}>
         {#each tabs as tab (tab.name)}
-          <option value={tab.name}
-            >{tab.label}{tab.name === ALL
+          <option value={tab.name}>
+            {tab.label}{tab.name === ALL
               ? unionResponse
                 ? ' (' + formatNumber(unionResponse.found) + ')'
                 : ''
               : count(tab.name)
                 ? ' (' + count(tab.name) + ')'
-                : ''}</option
-          >
+                : ''}
+          </option>
         {/each}
       </select>
     </label>
@@ -355,11 +355,13 @@
           tabindex={tab.name === activeProfile ? 0 : -1}
           onclick={() => selectTab(tab.name)}
           onkeydown={(event) => tabKey(event, tab.name)}
-          ><span>{tab.label}</span>{#if tab.name === ALL && unionResponse}<small
-              >{formatNumber(unionResponse.found)}</small
-            >{:else if tab.name !== ALL && count(tab.name)}<small>{count(tab.name)}</small
-            >{/if}</button
-        >{/each}
+        >
+          <span>{tab.label}</span>{#if tab.name === ALL && unionResponse}<small>
+              {formatNumber(unionResponse.found)}
+            </small>{:else if tab.name !== ALL && count(tab.name)}<small>
+              {count(tab.name)}
+            </small>{/if}
+        </button>{/each}
     </div>
     <div
       class="dre-fed__panel"
@@ -374,17 +376,17 @@
       </p>
       {#if failed}<div class="dre-fed__error">
           <strong>{t('search_unavailable')}</strong>
-          <button type="button" class="dre-button-secondary" onclick={retry}
-            >{t('try_again')}</button
-          >
+          <button type="button" class="dre-button-secondary" onclick={retry}>
+            {t('try_again')}
+          </button>
         </div>
       {:else if isLoading}<ResultSkeleton count={activeProfile === ALL ? 8 : 6} />
       {:else if activeProfile === ALL && unionResponse}
         <header class="dre-fed__all-summary">
-          <span
-            ><strong>{formatNumber(unionResponse.found)}</strong>
-            {resultWord(unionResponse.found)}</span
-          ><span>{t('all_no_facets')}</span><CopyLinkButton />
+          <span>
+            <strong>{formatNumber(unionResponse.found)}</strong>
+            {resultWord(unionResponse.found)}
+          </span><span>{t('all_no_facets')}</span><CopyLinkButton />
         </header>
         {#if unionResponse.found === 0}<div class="dre-fed__empty">
             {query ? t('no_results_title') : t('corpus_empty')}

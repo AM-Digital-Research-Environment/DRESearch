@@ -5,6 +5,10 @@ All notable changes to DRE Search are documented here. The project follows
 
 ## [Unreleased]
 
+### Changed
+
+- Svelte 5.59. Its new custom renderer API adds about 4 KB gzipped to the shared runtime chunk loaded on every page; the bundle budget for that chunk is raised to match. The Svelte files are reformatted for prettier-plugin-svelte 4.2.
+
 ## [1.37.1] - 2026-11-20
 
 **Upgrade:** no schema change, no new table, and no reindex needed, except: rebuild any corpus whose resource template's title property was changed since its items were last saved (see Security).

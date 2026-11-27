@@ -21,10 +21,10 @@
 <div class="dre-summary">
   <header class="dre-summary__bar">
     <div class="dre-summary__scope">
-      <span class="dre-summary__count"
-        ><strong>{formatNumber(found)}</strong>
-        {resultWord(found)}</span
-      >
+      <span class="dre-summary__count">
+        <strong>{formatNumber(found)}</strong>
+        {resultWord(found)}
+      </span>
       {#if chips.length > 0}<ul>
           {#each chips as chip (chip.id)}<li><FilterChip {chip} {onRemove} /></li>{/each}
         </ul>{/if}

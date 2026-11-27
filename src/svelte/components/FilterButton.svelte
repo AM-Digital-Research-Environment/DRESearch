@@ -31,5 +31,7 @@
   class={className}
   aria-pressed={active}
   aria-label={label}
-  onclick={() => filters.toggle(field, value)}>{@render children()}</button
+  onclick={() => filters.toggle(field, value)}
 >
+  {@render children()}
+</button>

@@ -76,12 +76,12 @@
 <details class="dre-cite" use:detailsPopover>
   <summary>{t('cite')}</summary>
   <div class="dre-cite__actions" role="group" aria-label={t('cite')}>
-    <button type="button" class="dre-button-secondary" onclick={() => copy('bibtex')}
-      >{copiedFormat === 'bibtex' ? t('copied') : t('copy_bibtex')}</button
-    >
-    <button type="button" class="dre-button-secondary" onclick={() => copy('ris')}
-      >{copiedFormat === 'ris' ? t('copied') : t('copy_ris')}</button
-    >
+    <button type="button" class="dre-button-secondary" onclick={() => copy('bibtex')}>
+      {copiedFormat === 'bibtex' ? t('copied') : t('copy_bibtex')}
+    </button>
+    <button type="button" class="dre-button-secondary" onclick={() => copy('ris')}>
+      {copiedFormat === 'ris' ? t('copied') : t('copy_ris')}
+    </button>
     <button type="button" class="dre-button-secondary" onclick={save}>{t('download_ris')}</button>
   </div>
   <!-- Spoken only: the button label already shows "Copied". -->

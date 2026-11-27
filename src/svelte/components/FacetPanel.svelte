@@ -65,9 +65,9 @@
 
 <div class="dre-facets">
   <header class="dre-facets__header">
-    <svelte:element this={`h${headingLevel}`} class="dre-facets__heading"
-      >{t('filters')}</svelte:element
-    >
+    <svelte:element this={`h${headingLevel}`} class="dre-facets__heading">
+      {t('filters')}
+    </svelte:element>
     {#if activeCount > 0}
       <button type="button" class="dre-facets__clear-all" onclick={onClearAll}>
         {t('clear_all_filters')}
@@ -101,8 +101,9 @@
             aria-pressed={(selected.has_fulltext ?? []).includes('Yes')}
             onclick={() =>
               onToggle('has_fulltext', 'Yes', !(selected.has_fulltext ?? []).includes('Yes'))}
-            >{labelFor(facet.field)}</button
           >
+            {labelFor(facet.field)}
+          </button>
         {:else}
           <FacetGroup
             field={facet.field}

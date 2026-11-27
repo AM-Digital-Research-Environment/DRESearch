@@ -23,17 +23,18 @@
     href={`${itemUrlBase}/${encodeURIComponent(id)}`}
     aria-label={t('open_record', { name })}
     title={t('open_record', { name })}
-    ><svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"
-      ><path
+  >
+    <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true">
+      <path
         d="M8 4H4.5A1.5 1.5 0 0 0 3 5.5v10A1.5 1.5 0 0 0 4.5 17h10a1.5 1.5 0 0 0 1.5-1.5V12M11 3h6v6M17 3 9 11"
         fill="none"
         stroke="currentColor"
         stroke-width="1.8"
         stroke-linecap="round"
         stroke-linejoin="round"
-      /></svg
-    ></a
-  >
+      />
+    </svg>
+  </a>
 {/if}
 
 <style>

@@ -208,8 +208,10 @@
         type="button"
         class="dre-search-box__clear"
         aria-label={t('clear_search')}
-        onclick={handleClear}>×</button
+        onclick={handleClear}
       >
+        ×
+      </button>
     {/if}
   </div>
 

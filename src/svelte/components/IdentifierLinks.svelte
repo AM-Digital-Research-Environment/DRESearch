@@ -32,11 +32,13 @@
           target="_blank"
           rel="noopener noreferrer"
           title="{ext.label} {ext.id}"
-          ><RegisterMark key={ext.key} /><span
-            class={hasMark(ext.key) ? 'dre-sr-only' : 'dre-shell__id-register'}
-            >{`${ext.label} `}</span
-          ><span class="dre-shell__id-value">{ext.id}</span></a
         >
+          <RegisterMark key={ext.key} /><span
+            class={hasMark(ext.key) ? 'dre-sr-only' : 'dre-shell__id-register'}
+          >
+            {`${ext.label} `}
+          </span><span class="dre-shell__id-value">{ext.id}</span>
+        </a>
       </li>
     {/each}
   </ul>

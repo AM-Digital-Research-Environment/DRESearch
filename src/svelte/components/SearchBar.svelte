@@ -253,8 +253,10 @@
           class="dre-search-bar__clear"
           aria-label={t('clear_search')}
           onmousedown={(e) => e.preventDefault()}
-          onclick={handleClear}>×</button
+          onclick={handleClear}
         >
+          ×
+        </button>
       {/if}
     </div>
 

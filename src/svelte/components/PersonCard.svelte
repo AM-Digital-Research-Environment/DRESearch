@@ -65,8 +65,10 @@
       <p class="dre-shell__line">
         {#each affiliations as aff, i (aff + '|' + i)}{i > 0 ? '; ' : ''}<FilterLink
             field="affiliation_ss"
-            value={aff}><Highlight value={affilHl.get(aff) ?? aff} /></FilterLink
-          >{/each}
+            value={aff}
+          >
+            <Highlight value={affilHl.get(aff) ?? aff} />
+          </FilterLink>{/each}
       </p>
     {/if}
 

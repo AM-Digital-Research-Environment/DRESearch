@@ -97,8 +97,12 @@
         <span class="dre-shell__label">{t('speaker_label')}</span>
         {#each speakers as p, i (p.name + '|' + i)}{i > 0 ? ', ' : ''}{#if p.href}<a
               class="dre-shell__person"
-              href={p.href}><Highlight value={speakerHl.get(p.name) ?? p.name} /></a
-            >{:else}<span><Highlight value={speakerHl.get(p.name) ?? p.name} /></span>{/if}{/each}
+              href={p.href}
+            >
+              <Highlight value={speakerHl.get(p.name) ?? p.name} />
+            </a>{:else}<span>
+              <Highlight value={speakerHl.get(p.name) ?? p.name} />
+            </span>{/if}{/each}
       </p>
     {/if}
 
@@ -111,16 +115,19 @@
         <span class="dre-shell__label">{t('language_label')}</span>
         {#each languages as l, i (l + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
             field="language_ss"
-            value={l}>{l}</FilterLink
-          >{/each}
+            value={l}
+          >
+            {l}
+          </FilterLink>{/each}
       </p>
     {/if}
 
     {#if hasTranscript || watch}
       <div class="dre-shell__footer">
         {#if hasTranscript}
-          <span class="dre-shell__badge" title={t('transcript_label')}>{t('transcript_label')}</span
-          >
+          <span class="dre-shell__badge" title={t('transcript_label')}>
+            {t('transcript_label')}
+          </span>
         {/if}
         {#if watch}
           <a class="dre-shell__external" href={watch} target="_blank" rel="noopener noreferrer">

@@ -92,8 +92,10 @@
       <p class="dre-shell__line">
         {#each creators as name, i (name + '|' + i)}{i > 0 ? ', ' : ''}<FilterLink
             field="creator_ss"
-            value={name}><Highlight value={creatorHl.get(name) ?? name} /></FilterLink
-          >{/each}
+            value={name}
+          >
+            <Highlight value={creatorHl.get(name) ?? name} />
+          </FilterLink>{/each}
       </p>
     {/if}
 
@@ -120,8 +122,10 @@
         <span class="dre-shell__label">{t('origin_label')}</span>
         {#each origins as o, i (o + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
             field="origin_ss"
-            value={o}>{o}</FilterLink
-          >{/each}
+            value={o}
+          >
+            {o}
+          </FilterLink>{/each}
       </p>
     {/if}
 
@@ -130,8 +134,10 @@
         <span class="dre-shell__label">{t('current_location_label')}</span>
         {#each currentLocations as c, i (c + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
             field="provenance_ss"
-            value={c}>{c}</FilterLink
-          >{/each}
+            value={c}
+          >
+            {c}
+          </FilterLink>{/each}
       </p>
     {/if}
 
@@ -140,8 +146,10 @@
         <span class="dre-shell__label">{t('language_label')}</span>
         {#each languages as l, i (l + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
             field="language_ss"
-            value={l}>{l}</FilterLink
-          >{/each}
+            value={l}
+          >
+            {l}
+          </FilterLink>{/each}
       </p>
     {/if}
 

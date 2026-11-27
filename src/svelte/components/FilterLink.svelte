@@ -52,8 +52,10 @@
   aria-pressed={active}
   aria-label={label}
   onclick={() => filters.toggle(field, value)}
-  onkeydown={handleKeydown}>{@render children()}</span
+  onkeydown={handleKeydown}
 >
+  {@render children()}
+</span>
 
 <style>
   /* Plain underlined text that turns brand-coloured on hover. No chrome to

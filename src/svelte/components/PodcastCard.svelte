@@ -104,8 +104,10 @@
         <span class="dre-shell__label">{t('host_label')}</span>
         {#each hosts as p, i (p.name + '|' + i)}{i > 0 ? ', ' : ''}{#if p.href}<a
               class="dre-shell__person"
-              href={p.href}><Highlight value={hostHl.get(p.name) ?? p.name} /></a
-            >{:else}<span><Highlight value={hostHl.get(p.name) ?? p.name} /></span>{/if}{/each}
+              href={p.href}
+            >
+              <Highlight value={hostHl.get(p.name) ?? p.name} />
+            </a>{:else}<span><Highlight value={hostHl.get(p.name) ?? p.name} /></span>{/if}{/each}
       </p>
     {/if}
 
@@ -114,8 +116,10 @@
         <span class="dre-shell__label">{t('guest_label')}</span>
         {#each guests as p, i (p.name + '|' + i)}{i > 0 ? ', ' : ''}{#if p.href}<a
               class="dre-shell__person"
-              href={p.href}><Highlight value={guestHl.get(p.name) ?? p.name} /></a
-            >{:else}<span><Highlight value={guestHl.get(p.name) ?? p.name} /></span>{/if}{/each}
+              href={p.href}
+            >
+              <Highlight value={guestHl.get(p.name) ?? p.name} />
+            </a>{:else}<span><Highlight value={guestHl.get(p.name) ?? p.name} /></span>{/if}{/each}
       </p>
     {/if}
 
@@ -124,8 +128,12 @@
         <span class="dre-shell__label">{t('engineer_label')}</span>
         {#each engineers as p, i (p.name + '|' + i)}{i > 0 ? ', ' : ''}{#if p.href}<a
               class="dre-shell__person"
-              href={p.href}><Highlight value={engineerHl.get(p.name) ?? p.name} /></a
-            >{:else}<span><Highlight value={engineerHl.get(p.name) ?? p.name} /></span>{/if}{/each}
+              href={p.href}
+            >
+              <Highlight value={engineerHl.get(p.name) ?? p.name} />
+            </a>{:else}<span>
+              <Highlight value={engineerHl.get(p.name) ?? p.name} />
+            </span>{/if}{/each}
       </p>
     {/if}
 
@@ -138,16 +146,19 @@
         <span class="dre-shell__label">{t('language_label')}</span>
         {#each languages as l, i (l + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
             field="language_ss"
-            value={l}>{l}</FilterLink
-          >{/each}
+            value={l}
+          >
+            {l}
+          </FilterLink>{/each}
       </p>
     {/if}
 
     {#if hasTranscript || listen}
       <div class="dre-shell__footer">
         {#if hasTranscript}
-          <span class="dre-shell__badge" title={t('transcript_label')}>{t('transcript_label')}</span
-          >
+          <span class="dre-shell__badge" title={t('transcript_label')}>
+            {t('transcript_label')}
+          </span>
         {/if}
         {#if listen}
           <a class="dre-shell__external" href={listen} target="_blank" rel="noopener noreferrer">

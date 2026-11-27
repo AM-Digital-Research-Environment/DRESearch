@@ -16,8 +16,9 @@
   const segments = $derived(parseHighlight(value ?? ''));
 </script>
 
-{#each segments as seg, i (i)}{#if seg.mark}<mark class="dre-hl">{seg.text}</mark
-    >{:else}{seg.text}{/if}{/each}
+{#each segments as seg, i (i)}{#if seg.mark}<mark class="dre-hl">
+      {seg.text}
+    </mark>{:else}{seg.text}{/if}{/each}
 
 <style>
   .dre-hl {
