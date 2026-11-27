@@ -124,8 +124,10 @@
         <span class="dre-shell__label">{t(role.label)}</span>
         {#each role.people as p, i (p.name + '|' + i)}{i > 0 ? ', ' : ''}{#if p.href}<a
               class="dre-shell__person"
-              href={p.href}><Highlight value={peopleHl.get(p.name) ?? p.name} /></a
-            >{:else}<span><Highlight value={peopleHl.get(p.name) ?? p.name} /></span>{/if}{/each}
+              href={p.href}
+            >
+              <Highlight value={peopleHl.get(p.name) ?? p.name} />
+            </a>{:else}<span><Highlight value={peopleHl.get(p.name) ?? p.name} /></span>{/if}{/each}
       </p>
     {/each}
 
@@ -138,8 +140,10 @@
         <span class="dre-shell__label">{t('place_label')}</span>
         {#each places as l, i (l + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
             field="place_ss"
-            value={l}><Highlight value={placeHl.get(l) ?? l} /></FilterLink
-          >{/each}
+            value={l}
+          >
+            <Highlight value={placeHl.get(l) ?? l} />
+          </FilterLink>{/each}
       </p>
     {/if}
 
@@ -148,8 +152,10 @@
         <span class="dre-shell__label">{t('language_label')}</span>
         {#each languages as l, i (l + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
             field="language_ss"
-            value={l}>{l}</FilterLink
-          >{/each}
+            value={l}
+          >
+            {l}
+          </FilterLink>{/each}
       </p>
     {/if}
 

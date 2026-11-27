@@ -50,13 +50,15 @@
       class="dre-pager__btn dre-button-secondary"
       disabled={page <= 1}
       aria-label={t('previous_page')}
-      onclick={() => go(page - 1)}>‹</button
+      onclick={() => go(page - 1)}
     >
+      ‹
+    </button>
 
     {#if firstWindow > 1}
-      <button type="button" class="dre-pager__btn dre-button-secondary" onclick={() => go(1)}
-        >1</button
-      >
+      <button type="button" class="dre-pager__btn dre-button-secondary" onclick={() => go(1)}>
+        1
+      </button>
       {#if firstWindow > 2}
         <span class="dre-pager__gap" aria-hidden="true">…</span>
       {/if}
@@ -68,8 +70,10 @@
         class="dre-pager__btn dre-button-secondary"
         class:dre-pager__btn--active={p === page}
         aria-current={p === page ? 'page' : undefined}
-        onclick={() => go(p)}>{p}</button
+        onclick={() => go(p)}
       >
+        {p}
+      </button>
     {/each}
 
     {#if lastWindow < totalPages}
@@ -79,8 +83,10 @@
       <button
         type="button"
         class="dre-pager__btn dre-button-secondary"
-        onclick={() => go(totalPages)}>{totalPages}</button
+        onclick={() => go(totalPages)}
       >
+        {totalPages}
+      </button>
     {/if}
 
     <button
@@ -88,8 +94,10 @@
       class="dre-pager__btn dre-button-secondary"
       disabled={page >= totalPages}
       aria-label={t('next_page')}
-      onclick={() => go(page + 1)}>›</button
+      onclick={() => go(page + 1)}
     >
+      ›
+    </button>
   </nav>
 {/if}
 

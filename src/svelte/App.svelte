@@ -666,9 +666,9 @@
         <!-- In-block bypass: the first stop after the search box, ahead of every
              facet. The theme's own skip link lands above the block, from where
              the first result was a facet column of Tab presses away. -->
-        <a class="dre-search__skip dre-sr-only" href="#{resultsHeadingId}" onclick={skipToResults}
-          >{t('skip_to_results')}</a
-        >
+        <a class="dre-search__skip dre-sr-only" href="#{resultsHeadingId}" onclick={skipToResults}>
+          {t('skip_to_results')}
+        </a>
         <aside
           id="dre-facets-{instanceKey}"
           class="dre-search__facets"
@@ -708,9 +708,9 @@
         {#if failed}
           <div class="dre-search__error">
             <strong>{t('search_unavailable')}</strong>
-            <button type="button" class="dre-button-secondary" onclick={retry}
-              >{t('try_again')}</button
-            >
+            <button type="button" class="dre-button-secondary" onclick={retry}>
+              {t('try_again')}
+            </button>
           </div>
         {/if}
         {#if response}
@@ -777,9 +777,9 @@
           {#if mapResults.failed}
             <div class="dre-search__error">
               <strong>{t('map_error')}</strong>
-              <button type="button" class="dre-button-secondary" onclick={() => mapResults.retry()}
-                >{t('try_again')}</button
-              >
+              <button type="button" class="dre-button-secondary" onclick={() => mapResults.retry()}>
+                {t('try_again')}
+              </button>
             </div>
           {/if}
           <MapView

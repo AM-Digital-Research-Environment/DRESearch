@@ -18,15 +18,15 @@
       aria-pressed={value === option}
       onclick={() => onChange(option)}
     >
-      {#if option === 'list'}<svg viewBox="0 0 20 20" aria-hidden="true"
-          ><path d="M3 4h2v2H3zm4 0h10v2H7zM3 9h2v2H3zm4 0h10v2H7zM3 14h2v2H3zm4 0h10v2H7z" /></svg
-        >
-      {:else if option === 'gallery'}<svg viewBox="0 0 20 20" aria-hidden="true"
-          ><path d="M3 3h6v6H3zm8 0h6v6h-6zM3 11h6v6H3zm8 0h6v6h-6z" /></svg
-        >
-      {:else}<svg viewBox="0 0 20 20" aria-hidden="true"
-          ><path d="m2 5 5-2 6 2 5-2v12l-5 2-6-2-5 2zm6-.5v9l4 1.4v-9zm6 1.4v8.6l2-.8V5.1z" /></svg
-        >{/if}
+      {#if option === 'list'}<svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M3 4h2v2H3zm4 0h10v2H7zM3 9h2v2H3zm4 0h10v2H7zM3 14h2v2H3zm4 0h10v2H7z" />
+        </svg>
+      {:else if option === 'gallery'}<svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M3 3h6v6H3zm8 0h6v6h-6zM3 11h6v6H3zm8 0h6v6h-6z" />
+        </svg>
+      {:else}<svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="m2 5 5-2 6 2 5-2v12l-5 2-6-2-5 2zm6-.5v9l4 1.4v-9zm6 1.4v8.6l2-.8V5.1z" />
+        </svg>{/if}
       <span class="dre-sr-only-narrow">{t(`view_${option}`)}</span>
     </button>
   {/each}

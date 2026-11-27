@@ -251,9 +251,9 @@
   </p>
   {#if failed}<div class="dre-map__status dre-map__status--error">
       <span>{t('map_error')}</span>
-      <button type="button" class="dre-button-secondary" onclick={() => attempt++}
-        >{t('try_again')}</button
-      >
+      <button type="button" class="dre-button-secondary" onclick={() => attempt++}>
+        {t('try_again')}
+      </button>
     </div>{:else if loading || !ready}<p class="dre-map__status" aria-hidden="true">
       {t('loading')}
     </p>{:else if geojson.features.length === 0}<p class="dre-map__status" aria-hidden="true">
@@ -274,8 +274,9 @@
       <ul>
         {#each docs as doc (doc.id)}
           <li>
-            <a href={`${itemUrlBase}/${encodeURIComponent(doc.id)}`}>{doc.title}</a
-            >{#if doc.type_s}<span> · {doc.type_s}</span>{/if}
+            <a href={`${itemUrlBase}/${encodeURIComponent(doc.id)}`}>
+              {doc.title}
+            </a>{#if doc.type_s}<span> · {doc.type_s}</span>{/if}
           </li>
         {/each}
       </ul>

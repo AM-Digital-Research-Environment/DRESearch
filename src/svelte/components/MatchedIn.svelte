@@ -44,8 +44,10 @@
   <p class="dre-match">
     <span class="dre-match__label">{t('matched_in')}</span>
     {#each items as it, i (it.field)}{#if i > 0}<span class="dre-match__sep"> · </span>{/if}<span
-        class="dre-match__field">{it.label}:</span
+        class="dre-match__field"
       >
+        {it.label}:
+      </span>
       <Highlight value={it.snippet} />{/each}
   </p>
 {/if}

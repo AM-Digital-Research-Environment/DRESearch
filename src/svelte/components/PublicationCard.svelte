@@ -118,8 +118,10 @@
       <p class="dre-shell__line dre-bcard__authors">
         {#each authors as name, i (name + '|' + i)}{i > 0 ? ', ' : ''}<FilterLink
             field="creator_ss"
-            value={name}><Highlight value={authorHl.get(name) ?? name} /></FilterLink
-          >{/each}
+            value={name}
+          >
+            <Highlight value={authorHl.get(name) ?? name} />
+          </FilterLink>{/each}
       </p>
     {/if}
 
@@ -127,8 +129,10 @@
       <p class="dre-shell__line dre-bcard__authors">
         {#each editors as name, i (name + '|' + i)}{i > 0 ? '; ' : ''}<FilterLink
             field="creator_ss"
-            value={name}><Highlight value={editorHl.get(name) ?? name} /></FilterLink
-          >{/each}{` (${edsLabel})`}
+            value={name}
+          >
+            <Highlight value={editorHl.get(name) ?? name} />
+          </FilterLink>{/each}{` (${edsLabel})`}
       </p>
     {/if}
 
@@ -136,19 +140,21 @@
       <p class="dre-bcard__ref">
         {#if editorsInRef}{`${t('in_prefix')} `}{#each editors as name, i (name + '|' + i)}{i > 0
               ? '; '
-              : ''}<FilterLink field="creator_ss" value={name}
-              ><Highlight value={editorHl.get(name) ?? name} /></FilterLink
-            >{/each}{` (${edsLabel}), `}{/if}{#if container}<FilterLink
+              : ''}<FilterLink field="creator_ss" value={name}>
+              <Highlight value={editorHl.get(name) ?? name} />
+            </FilterLink>{/each}{` (${edsLabel}), `}{/if}{#if container}<FilterLink
             field="container_ss"
             value={container}
-            ><cite class="dre-bcard__venue"
-              ><Highlight value={containerHl.get(container) ?? container} /></cite
-            ></FilterLink
-          >{sepAfterVenue}{/if}{#if metrics}{metrics}{sepAfterMetrics}{/if}{#if publisher}<FilterLink
+          >
+            <cite class="dre-bcard__venue">
+              <Highlight value={containerHl.get(container) ?? container} />
+            </cite>
+          </FilterLink>{sepAfterVenue}{/if}{#if metrics}{metrics}{sepAfterMetrics}{/if}{#if publisher}<FilterLink
             field="publisher_ss"
             value={publisher}
-            ><Highlight value={publisherHl.get(publisher) ?? publisher} /></FilterLink
-          >{/if}
+          >
+            <Highlight value={publisherHl.get(publisher) ?? publisher} />
+          </FilterLink>{/if}
       </p>
     {/if}
 
@@ -157,8 +163,10 @@
         <span>{t('language_label')}</span>
         {#each languages as language, i (language + '|' + i)}{i > 0 ? ' · ' : ''}<FilterLink
             field="language_ss"
-            value={language}>{language}</FilterLink
-          >{/each}
+            value={language}
+          >
+            {language}
+          </FilterLink>{/each}
       </p>
     {/if}
 

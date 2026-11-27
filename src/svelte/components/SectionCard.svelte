@@ -80,8 +80,10 @@
         <span class="dre-scard__leaders-label">{leaders.label}</span>
         {#each leaders.names as nm, i (nm + '|' + i)}{i > 0 ? ', ' : ''}<FilterLink
             field="people_ss"
-            value={nm}><Highlight value={leaderHl.get(nm) ?? nm} /></FilterLink
-          >{/each}
+            value={nm}
+          >
+            <Highlight value={leaderHl.get(nm) ?? nm} />
+          </FilterLink>{/each}
       </p>
     {/if}
 

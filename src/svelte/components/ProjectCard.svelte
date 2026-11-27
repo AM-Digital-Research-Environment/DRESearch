@@ -80,8 +80,10 @@
         <span class="dre-pcard__pi-label">{t('pi_label')}</span>
         {#each pis as pi, i (pi + '|' + i)}{i > 0 ? ', ' : ''}<FilterLink
             field="people_ss"
-            value={pi}><Highlight value={piHl.get(pi) ?? pi} /></FilterLink
-          ><RecordLink {itemUrlBase} id={doc.pi_ids?.[i]} name={pi} />{/each}
+            value={pi}
+          >
+            <Highlight value={piHl.get(pi) ?? pi} />
+          </FilterLink><RecordLink {itemUrlBase} id={doc.pi_ids?.[i]} name={pi} />{/each}
       </p>
     {/if}
 

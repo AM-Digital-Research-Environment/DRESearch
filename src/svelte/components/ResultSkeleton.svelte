@@ -12,9 +12,9 @@
 <div class="dre-skeletons" class:dre-skeletons--gallery={view === 'gallery'} aria-hidden="true">
   {#each Array(count) as _, i (i)}
     <div class="dre-skeleton">
-      <span class="dre-skeleton__image"></span><span class="dre-skeleton__body"
-        ><i></i><i></i><i></i></span
-      >
+      <span class="dre-skeleton__image"></span><span class="dre-skeleton__body">
+        <i></i><i></i><i></i>
+      </span>
     </div>
   {/each}
 </div>

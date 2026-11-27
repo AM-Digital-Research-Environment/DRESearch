@@ -21,9 +21,9 @@
 </script>
 
 <div class="dre-mixed">
-  <button type="button" class="dre-mixed__source" onclick={() => onHandoff(profile)}
-    >{doc._profile_label ?? profile}</button
-  >
+  <button type="button" class="dre-mixed__source" onclick={() => onHandoff(profile)}>
+    {doc._profile_label ?? profile}
+  </button>
   <Card {doc} {itemUrlBase} {profile} />
 </div>
 

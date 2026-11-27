@@ -39,10 +39,15 @@ const distAt = process.argv.indexOf('--dist');
 const DIST =
   distAt === -1 ? join(import.meta.dirname, '..', 'asset', 'dist') : process.argv[distAt + 1];
 
-/** Gzipped budgets in bytes (level 9); sizes of 1.32.2 in the comments. */
+/**
+ * Gzipped budgets in bytes (level 9); sizes of 1.32.2 in the comments.
+ * entry imports was re-based on Svelte 5.59.2 (27,549 B): 5.59.0's custom
+ * renderer API put about 4 KB into the runtime every page loads, which no
+ * code here can shake out.
+ */
 const BUDGETS = {
   entry: 4_400, //          3,969
-  'entry imports': 24_300, // 22,057
+  'entry imports': 30_300, // 27,549 (Svelte 5.59.2)
   'entry css': 1_350, //    1,222
   App: 36_500, //          33,108
   'App css': 8_300, //      7,529
